@@ -2339,6 +2339,15 @@ export default function RobotPanel() {
   const rawReplDoneRef = useRef(null); // resolves when micro:bit raw REPL sends \x04\x04 completion
   const serialSniffRef = useRef(null); // { pattern, resolve } — used for firmware detection
 
+  // BLE (Bluetooth) — Nordic UART Service for wireless micro:bit connection
+  const BLE_NUS_SERVICE = '6e400001-b5b3-f393-e0a9-e50e24dcca9e';
+  const BLE_NUS_TX      = '6e400002-b5b3-f393-e0a9-e50e24dcca9e'; // write to device
+  const BLE_NUS_RX      = '6e400003-b5b3-f393-e0a9-e50e24dcca9e'; // notify from device
+  const btDeviceRef     = useRef(null);
+  const btTxCharRef     = useRef(null);
+  const connectionTypeRef = useRef(null); // 'usb' | 'bluetooth'
+  const bleBufferRef    = useRef('');
+
   const profile = ROBOT_PROFILES[robotType];
 
   useEffect(() => {
@@ -2358,6 +2367,125 @@ export default function RobotPanel() {
   }, []);
 
   /* ─── Web Serial connect ─── */
+  // Process incoming BLE data — same buffer logic as the USB readLoop
+  const handleBleData = useCallback((event) => {
+    const chunk = new TextDecoder().decode(event.target.value);
+    bleBufferRef.current += chunk;
+    let buffer = bleBufferRef.current;
+    if (serialSniffRef.current && buffer.includes(serialSniffRef.current.pattern)) {
+      const resolve = serialSniffRef.current.resolve;
+      serialSniffRef.current = null;
+      resolve(true);
+    }
+    {
+      let cnt = 0, pos = -1;
+      for (let i = 0; i < buffer.length; i++) {
+        if (buffer[i] === '\x04') { cnt++; if (cnt === 2) { pos = i; break; } }
+      }
+      if (pos >= 0) {
+        if (rawReplDoneRef.current) {
+          buffer.slice(0, pos).split('\n').forEach(line => {
+            const clean = line.replace(/[\x00-\x09\x0b-\x1f\x7f-\x9f]/g, '').trim();
+            if (clean && !clean.includes('\x04')) addTerminal(`← ${clean}`, 'recv');
+          });
+          rawReplDoneRef.current();
+          rawReplDoneRef.current = null;
+        }
+        buffer = buffer.slice(pos + 1);
+      }
+    }
+    const lines = buffer.split('\n');
+    buffer = lines.pop();
+    lines.forEach(line => {
+      const clean = line.replace(/[\x00-\x09\x0b-\x1f\x7f-\x9f]/g, '').trim();
+      if (clean && !clean.includes('\x04')) addTerminal(`← ${clean}`, 'recv');
+    });
+    bleBufferRef.current = buffer;
+  }, [addTerminal]);
+
+  const connectBluetooth = async () => {
+    if (!navigator.bluetooth) {
+      addTerminal('⚠️ Web Bluetooth not supported. Use Chrome or Edge.', 'error');
+      return;
+    }
+    setConnecting(true);
+    try {
+      const device = await navigator.bluetooth.requestDevice({
+        filters: [{ services: [BLE_NUS_SERVICE] }],
+      });
+      btDeviceRef.current = device;
+      device.addEventListener('gattserverdisconnected', () => {
+        btTxCharRef.current = null;
+        btDeviceRef.current = null;
+        connectionTypeRef.current = null;
+        connectedRef.current = false;
+        firmwareOkRef.current = null;
+        setConnected(false);
+        setFirmwareOk(null);
+        addTerminal('🔌 Bluetooth disconnected', 'info');
+      });
+      const server = await device.gatt.connect();
+      const service = await server.getPrimaryService(BLE_NUS_SERVICE);
+      const txChar = await service.getCharacteristic(BLE_NUS_TX);
+      const rxChar = await service.getCharacteristic(BLE_NUS_RX);
+      btTxCharRef.current = txChar;
+      await rxChar.startNotifications();
+      rxChar.addEventListener('characteristicvaluechanged', handleBleData);
+      connectionTypeRef.current = 'bluetooth';
+      connectedRef.current = true;
+      setConnected(true);
+
+      if (robotType === 'microbit') {
+        const enc = new TextEncoder();
+        const bleWrite = async (data) => {
+          const bytes = typeof data === 'string' ? enc.encode(data) : data;
+          for (let i = 0; i < bytes.length; i += 20) {
+            await txChar.writeValueWithoutResponse(bytes.slice(i, i + 20));
+            if (i + 20 < bytes.length) await new Promise(r => setTimeout(r, 20));
+          }
+        };
+        const waitFor = (pattern, ms = 2000) => new Promise(resolve => {
+          serialSniffRef.current = { pattern, resolve };
+          setTimeout(() => { if (serialSniffRef.current?.pattern === pattern) { serialSniffRef.current = null; resolve(false); } }, ms);
+        });
+        try {
+          await bleWrite('\x02');
+          await new Promise(r => setTimeout(r, 300));
+          let gotRepl = false;
+          for (let attempt = 0; attempt < 3 && !gotRepl; attempt++) {
+            if (attempt > 0) await new Promise(r => setTimeout(r, 500));
+            await bleWrite('\x03\x03');
+            await new Promise(r => setTimeout(r, 100));
+            const p = waitFor('raw REPL', 2000);
+            await bleWrite('\x01');
+            gotRepl = await p;
+          }
+          if (!gotRepl) {
+            setFirmwareOk(false); firmwareOkRef.current = false;
+            addTerminal('⚠️ MakeCode firmware detected — flash MicroPython first.', 'warn');
+            return;
+          }
+          setFirmwareOk(true); firmwareOkRef.current = true;
+          addTerminal('✅ MicroPython detected via Bluetooth', 'success');
+          const lines = MICROBIT_KIT_SETUPS[microbitKit] || MICROBIT_KIT_SETUPS.generic;
+          for (const line of lines) {
+            const done = new Promise(resolve => { rawReplDoneRef.current = resolve; setTimeout(resolve, 3000); });
+            await bleWrite(line + '\x04');
+            await done;
+          }
+          addTerminal(`🔬 micro:bit ready via Bluetooth — ${microbitKit} kit loaded. Press ▶ Run!`, 'success');
+        } catch (e) {
+          addTerminal(`⚠️ BLE setup error: ${e.message}`, 'warn');
+        }
+      }
+      addTerminal(`✅ Connected via Bluetooth! (${device.name || 'micro:bit'})`, 'success');
+    } catch (e) {
+      if (e.name !== 'NotFoundError') addTerminal(`❌ ${e.message}`, 'error');
+    } finally {
+      setConnecting(false);
+    }
+  };
+
   const connect = async () => {
     if (!navigator.serial) {
       addTerminal('⚠️ Web Serial not supported. Use Chrome or Edge browser.', 'error');
@@ -2439,6 +2567,7 @@ export default function RobotPanel() {
 
       const info = port.getInfo();
       setPortInfo(info);
+      connectionTypeRef.current = 'usb';
       connectedRef.current = true;
       setConnected(true);
 
@@ -2523,14 +2652,21 @@ export default function RobotPanel() {
   };
 
   const disconnect = async () => {
-    try {
-      writerRef.current?.releaseLock();
-      readerRef.current?.cancel();
-      await portRef.current?.close();
-    } catch (_) {}
-    portRef.current = null;
-    writerRef.current = null;
-    readerRef.current = null;
+    if (connectionTypeRef.current === 'bluetooth') {
+      try { btDeviceRef.current?.gatt?.disconnect(); } catch (_) {}
+      btTxCharRef.current = null;
+      btDeviceRef.current = null;
+    } else {
+      try {
+        writerRef.current?.releaseLock();
+        readerRef.current?.cancel();
+        await portRef.current?.close();
+      } catch (_) {}
+      portRef.current = null;
+      writerRef.current = null;
+      readerRef.current = null;
+    }
+    connectionTypeRef.current = null;
     connectedRef.current = false;
     firmwareOkRef.current = null;
     setConnected(false);
@@ -2541,12 +2677,21 @@ export default function RobotPanel() {
 
   /* ─── Send data in chunks to avoid 64-byte UART buffer overflow ─── */
   const writeChunked = useCallback(async (data) => {
-    if (!writerRef.current) return;
     const bytes = typeof data === 'string' ? new TextEncoder().encode(data) : data;
-    for (let i = 0; i < bytes.length; i += 32) {
-      await writerRef.current.ready;
-      await writerRef.current.write(bytes.slice(i, i + 32));
-      if (i + 32 < bytes.length) await new Promise(r => setTimeout(r, 15));
+    if (connectionTypeRef.current === 'bluetooth') {
+      if (!btTxCharRef.current) return;
+      for (let i = 0; i < bytes.length; i += 20) {
+        try { await btTxCharRef.current.writeValueWithoutResponse(bytes.slice(i, i + 20)); }
+        catch (e) { break; }
+        if (i + 20 < bytes.length) await new Promise(r => setTimeout(r, 20));
+      }
+    } else {
+      if (!writerRef.current) return;
+      for (let i = 0; i < bytes.length; i += 32) {
+        await writerRef.current.ready;
+        await writerRef.current.write(bytes.slice(i, i + 32));
+        if (i + 32 < bytes.length) await new Promise(r => setTimeout(r, 15));
+      }
     }
   }, []);
 
@@ -2937,9 +3082,18 @@ export default function RobotPanel() {
 
           {connected
             ? <button style={s.btn('#ef4444')} onClick={disconnect}>Disconnect</button>
-            : <button style={s.btn('#6366f1')} onClick={connect} disabled={connecting}>
-                {connecting ? 'Connecting…' : '🔌 Connect Robot'}
-              </button>
+            : robotType === 'microbit'
+              ? <span style={{ display:'flex', gap:6 }}>
+                  <button style={s.btn('#6366f1')} onClick={connect} disabled={connecting} title="Connect via USB cable">
+                    {connecting ? 'Connecting…' : '🔌 USB'}
+                  </button>
+                  <button style={s.btn('#0ea5e9')} onClick={connectBluetooth} disabled={connecting} title="Connect wirelessly via Bluetooth">
+                    {connecting ? 'Connecting…' : '📡 Bluetooth'}
+                  </button>
+                </span>
+              : <button style={s.btn('#6366f1')} onClick={connect} disabled={connecting}>
+                  {connecting ? 'Connecting…' : '🔌 Connect Robot'}
+                </button>
           }
           <button style={s.btn('var(--bg-secondary)', 'var(--text-muted)')} onClick={() => setShowSetup(!showSetup)}>
             📋 Setup Guide
