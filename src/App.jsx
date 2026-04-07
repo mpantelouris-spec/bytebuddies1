@@ -44,6 +44,7 @@ import TeacherHome from './components/TeacherHome';
 import AdminPanel from './components/AdminPanel';
 import MissionMode from './components/MissionMode';
 import Portfolio from './components/Portfolio';
+import WhitePaper from './components/WhitePaper';
 
 /* Inner app — has access to UserContext */
 function AppInner() {
@@ -94,9 +95,12 @@ function AppInner() {
       case 'admin':      return <AdminPanel />;
       case 'missions':   return <MissionMode onNavigate={navigate} />;
       case 'portfolio':  return <Portfolio onNavigate={navigate} />;
+      case 'whitepaper': return <WhitePaper />;
       default:           return <WorkspaceEditor />;
     }
   };
+
+  if (currentPage === 'whitepaper') return <WhitePaper />;
 
   if (!isLoggedIn) return (
     <>

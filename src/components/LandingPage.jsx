@@ -40,6 +40,7 @@ export default function LandingPage({ onLogin, onSignup }) {
           ))}
         </div>
         <div style={{ display: 'flex', gap: 12 }}>
+          <button onClick={() => { window.location.hash = 'whitepaper'; }} style={{ padding: '9px 22px', background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 8, color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>Research</button>
           <button onClick={onLogin} style={{ padding: '9px 22px', background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 8, color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>Log In</button>
           <button onClick={onSignup} style={{ padding: '9px 22px', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', border: 'none', borderRadius: 8, color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>Get Started Free</button>
         </div>
