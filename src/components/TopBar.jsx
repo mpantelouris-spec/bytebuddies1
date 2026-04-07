@@ -81,24 +81,8 @@ export default function TopBar({ currentPage, onNavigate, onExport, onAuth }) {
 
       <div className="topbar-spacer" />
 
-      {currentPage === 'workspace' && activeProject && (
-        <div className="flex items-center gap-2">
-          <button className="btn btn-success btn-sm" onClick={() => {}} title="Run">
-            ▶ Run
-          </button>
-          <button className="btn btn-secondary btn-sm" onClick={() => {}}>
-            💾 Save
-          </button>
-          <button className="btn btn-secondary btn-sm" onClick={onExport}>
-            📦 Export
-          </button>
-          <button className="btn btn-secondary btn-sm" onClick={() => {}}>
-            🔗 Share
-          </button>
-        </div>
-      )}
 
-      <div className="topbar-actions" style={{ flexShrink: 0 }}>
+<div className="topbar-actions" style={{ flexShrink: 0 }}>
         <div className="xp-bar" title={`${user.xp} / ${user.xpToNext} XP`} style={{ gap: 4 }}>
           <span style={{ fontSize: 11, whiteSpace: 'nowrap' }}>⚡ Lv.{user.level}</span>
           <div className="xp-bar-fill" style={{ width: 60 }}>
