@@ -13,7 +13,6 @@ const s = {
     color: '#fff',
     padding: '80px 60px 60px',
     position: 'relative',
-    overflow: 'hidden',
   },
   coverOverlay: {
     position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
@@ -115,7 +114,7 @@ export default function WhitePaper() {
       <div style={s.cover}>
         <div style={s.coverOverlay} />
         <div style={s.coverContent}>
-          <div style={s.tag}>White Paper · 2025</div>
+          <div style={s.tag}>White Paper · 2026</div>
           <h1 style={s.title}>
             Transforming Computing Education:<br />
             An Evidence-Based Case for ByteBuddies<br />
@@ -128,7 +127,7 @@ export default function WhitePaper() {
           </p>
           <div style={s.meta}>
             <span>ByteBuddies Research &amp; Policy Team</span>
-            <span>Published: 2025</span>
+            <span>Published: 2026</span>
             <span>Classification: Public</span>
             <span>Markets: United Kingdom · United Arab Emirates</span>
           </div>
@@ -590,7 +589,7 @@ export default function WhitePaper() {
         </div>
 
         <div style={{ textAlign: 'center', marginTop: 40, fontFamily: 'system-ui, sans-serif', fontSize: 13, color: '#9ca3af' }}>
-          © 2025 ByteBuddies. This white paper is available for free distribution for educational and research purposes.
+          © 2026 ByteBuddies. This white paper is available for free distribution for educational and research purposes.
           <br />For institutional licensing, partnership enquiries, or curriculum alignment documentation, contact the ByteBuddies team.
         </div>
       </div>
