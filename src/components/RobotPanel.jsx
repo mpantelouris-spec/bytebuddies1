@@ -1878,6 +1878,43 @@ const VirtualRobot = forwardRef(function VirtualRobot({ simRobotType, simTrack, 
   const stateRef = useRef({ ledOn: false, servoAngle: 90, tick: 0, moving: false, wheelAngle: 0 });
   const animLoopRef = useRef(null);
 
+  // Output display state (React state so panel re-renders when lights change)
+  const [out, setOut] = useState({
+    headlightL: null, headlightR: null,
+    neopixels: Array(8).fill(null), neoCount: 8,
+    displayText: '', displayIcon: null,
+    ledMatrix: Array(25).fill(0),
+  });
+  const outRef = useRef(out);
+  const updateOut = (patch) => {
+    outRef.current = { ...outRef.current, ...patch };
+    setOut({ ...outRef.current });
+  };
+
+  // Named colour → {r,g,b}
+  const NAMED_RGB = { red:[255,0,0], green:[0,200,0], blue:[0,0,255], yellow:[255,220,0], cyan:[0,220,220], magenta:[220,0,220], white:[255,255,255], orange:[255,140,0], pink:[255,0,150], purple:[150,0,255], off:[0,0,0] };
+  const namedToRgb = (n) => { const c = NAMED_RGB[(n||'').toLowerCase()] || [255,255,255]; return {r:c[0],g:c[1],b:c[2]}; };
+  const rgbStr = (c) => c ? `rgb(${c.r},${c.g},${c.b})` : null;
+
+  // Micro:bit 5×5 icon patterns (row-major, 1=on)
+  const MB_ICONS = {
+    HAPPY:    [0,0,0,0,0,0,1,0,1,0,0,0,0,0,0,1,0,0,0,1,0,1,1,1,0],
+    SAD:      [0,0,0,0,0,0,1,0,1,0,0,0,0,0,0,0,1,1,1,0,1,0,0,0,1],
+    HEART:    [0,1,0,1,0,1,1,1,1,1,1,1,1,1,1,0,1,1,1,0,0,0,1,0,0],
+    YES:      [0,0,0,0,0,0,0,0,0,1,0,0,0,1,0,1,0,1,0,0,0,1,0,0,0],
+    NO:       [1,0,0,0,1,0,1,0,1,0,0,0,1,0,0,0,1,0,1,0,1,0,0,0,1],
+    ARROW_N:  [0,0,1,0,0,0,1,1,1,0,1,0,1,0,1,0,0,1,0,0,0,0,1,0,0],
+    ARROW_S:  [0,0,1,0,0,0,0,1,0,0,1,0,1,0,1,0,1,1,1,0,0,0,1,0,0],
+    ARROW_E:  [0,0,1,0,0,0,0,0,1,0,1,1,1,1,1,0,0,0,1,0,0,0,1,0,0],
+    ARROW_W:  [0,0,1,0,0,1,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,1,0,0],
+    SURPRISED:[0,1,0,1,0,0,1,0,1,0,0,0,0,0,0,0,1,1,1,0,0,1,1,1,0],
+    ANGRY:    [1,0,0,0,1,0,1,0,1,0,0,0,0,0,0,0,1,0,1,0,1,1,1,1,1],
+    DIAMOND:  [0,0,1,0,0,0,1,0,1,0,1,0,0,0,1,0,1,0,1,0,0,0,1,0,0],
+    SKULL:    [0,1,1,1,0,1,0,1,0,1,1,1,1,1,1,0,1,1,1,0,0,1,1,1,0],
+    ASLEEP:   [0,0,0,0,0,1,1,0,1,1,0,0,0,0,0,0,1,0,1,0,0,1,1,1,0],
+    CONFUSED: [0,1,1,1,0,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,0,1,0,0,0],
+  };
+
   /* pixel scale: 1cm = 4px, capped to keep robot on screen */
   const CM_TO_PX = 1;  /* 1 step = 1 pixel */
   const DEG_PER_MS = 0.18;   /* ~180°/s turn speed */
@@ -1979,6 +2016,7 @@ const VirtualRobot = forwardRef(function VirtualRobot({ simRobotType, simTrack, 
     posRef.current = { x: 160, y: 120, angle: -90 };
     trailRef.current = [];
     stateRef.current = { ledOn: false, servoAngle: 90, tick: 0, moving: false, wheelAngle: 0 };
+    updateOut({ headlightL:null, headlightR:null, neopixels:Array(8).fill(null), neoCount:8, displayText:'', displayIcon:null, ledMatrix:Array(25).fill(0) });
   }, [simRobotType]);
 
   /* ─── Animate a single command, return Promise that resolves when done ─── */
@@ -1989,11 +2027,6 @@ const VirtualRobot = forwardRef(function VirtualRobot({ simRobotType, simTrack, 
       const s = stateRef.current;
 
       /* non-movement commands resolve immediately */
-      if (id === 'led' || id === 'led_rgb') {
-        s.ledOn = (params?.color || '') !== 'off';
-        resolve(); return;
-      }
-      if (id === 'clear_disp') { s.ledOn = false; resolve(); return; }
       if (id === 'stop' || id === 'coast') { s.moving = false; resolve(); return; }
       if (id === 'wait') { setTimeout(resolve, (parseFloat(params?.secs)||1) * 1000); return; }
       if (id === 'servo' || id === 'servo_sweep') {
@@ -2009,6 +2042,62 @@ const VirtualRobot = forwardRef(function VirtualRobot({ simRobotType, simTrack, 
         };
         requestAnimationFrame(go); return;
       }
+
+      // ── Headlights ──
+      if (id === 'headlight') {
+        const c = { r: +(params?.r??255), g: +(params?.g??255), b: +(params?.b??255) };
+        updateOut({ headlightL: c, headlightR: c }); resolve(); return;
+      }
+      if (id === 'headlight_l') {
+        updateOut({ headlightL: { r: +(params?.r??255), g: +(params?.g??0), b: +(params?.b??0) } }); resolve(); return;
+      }
+      if (id === 'headlight_r') {
+        updateOut({ headlightR: { r: +(params?.r??0), g: +(params?.g??0), b: +(params?.b??255) } }); resolve(); return;
+      }
+
+      // ── NeoPixel ──
+      if (id === 'neo_init') {
+        const n = +(params?.n || 8);
+        updateOut({ neoCount: n, neopixels: Array(n).fill(null) }); resolve(); return;
+      }
+      if (id === 'neo_color') {
+        const pxs = [...outRef.current.neopixels];
+        pxs[+(params?.idx||0)] = namedToRgb(params?.color);
+        updateOut({ neopixels: pxs }); resolve(); return;
+      }
+      if (id === 'neo_rgb') {
+        const pxs = [...outRef.current.neopixels];
+        pxs[+(params?.idx||0)] = { r: +(params?.r||0), g: +(params?.g||0), b: +(params?.b||0) };
+        updateOut({ neopixels: pxs }); resolve(); return;
+      }
+      if (id === 'neo_all') {
+        const c = { r: +(params?.r||0), g: +(params?.g||0), b: +(params?.b||0) };
+        updateOut({ neopixels: Array(outRef.current.neoCount || 8).fill(c) }); resolve(); return;
+      }
+      if (id === 'neo_clear') { updateOut({ neopixels: Array(outRef.current.neoCount||8).fill(null) }); resolve(); return; }
+      if (id === 'neo_show' || id === 'neo_bright') { resolve(); return; }
+
+      // ── Display / micro:bit ──
+      if (id === 'disp_scroll' || id === 'show_num' || id === 'show_icon') {
+        const txt = params?.text || String(params?.num ?? '') || params?.icon || '';
+        updateOut({ displayText: txt, displayIcon: null, ledMatrix: Array(25).fill(0) });
+        setTimeout(resolve, Math.max(600, txt.length * 120)); return;
+      }
+      if (id === 'disp_show') { updateOut({ displayText: String(params?.val ?? ''), displayIcon: null }); resolve(); return; }
+      if (id === 'disp_image') {
+        const icon = params?.icon || 'HAPPY';
+        const matrix = MB_ICONS[icon] || Array(25).fill(0);
+        updateOut({ displayIcon: icon, displayText: '', ledMatrix: matrix }); resolve(); return;
+      }
+      if (id === 'disp_pixel') {
+        const mx = [...outRef.current.ledMatrix];
+        mx[+(params?.y||0)*5 + +(params?.x||0)] = +(params?.bright||9);
+        updateOut({ ledMatrix: mx, displayText: '', displayIcon: null }); resolve(); return;
+      }
+      if (id === 'disp_clear') { updateOut({ displayText:'', displayIcon:null, ledMatrix:Array(25).fill(0) }); resolve(); return; }
+      if (id === 'led') { s.ledOn = (params?.color||'') !== 'off'; resolve(); return; }
+      if (id === 'led_rgb') { s.ledOn = true; resolve(); return; }
+      if (id === 'clear_disp') { s.ledOn = false; updateOut({ displayText:'', displayIcon:null, ledMatrix:Array(25).fill(0) }); resolve(); return; }
 
       /* movement commands */
       const FORWARD  = ['forward','follow_line','avoid_wall'];
@@ -2078,6 +2167,7 @@ const VirtualRobot = forwardRef(function VirtualRobot({ simRobotType, simTrack, 
     posRef.current = { x: 240, y: 180, angle: -90 };
     trailRef.current = [];
     stateRef.current = { ledOn: false, servoAngle: 90, tick: 0, moving: false, wheelAngle: 0 };
+    updateOut({ headlightL:null, headlightR:null, neopixels:Array(8).fill(null), neoCount:8, displayText:'', displayIcon:null, ledMatrix:Array(25).fill(0) });
   }, []);
 
   // Soft reset — clears trail & state, resets angle to face up, keeps x/y position
@@ -2085,6 +2175,7 @@ const VirtualRobot = forwardRef(function VirtualRobot({ simRobotType, simTrack, 
     trailRef.current = [];
     stateRef.current = { ledOn: false, servoAngle: 90, tick: 0, moving: false, wheelAngle: 0 };
     posRef.current = { ...posRef.current, angle: -90 };
+    updateOut({ headlightL:null, headlightR:null, neopixels:Array(8).fill(null), neoCount:8, displayText:'', displayIcon:null, ledMatrix:Array(25).fill(0) });
   }, []);
 
   useImperativeHandle(ref, () => ({ execute, reset, resetState }), [execute, reset, resetState]);
@@ -2130,19 +2221,115 @@ const VirtualRobot = forwardRef(function VirtualRobot({ simRobotType, simTrack, 
 
   const handleMouseUp = () => { draggingRobotRef.current = false; };
 
+  const hasOutput = out.headlightL || out.headlightR || out.neopixels.some(Boolean) || out.displayText || out.displayIcon || out.ledMatrix.some(Boolean);
+
   return (
-    <canvas ref={canvasRef} width={480} height={360}
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp}
-      style={{
-        borderRadius: isFullscreen ? 0 : 10,
-        background: '#080818', display: 'block',
-        width: '100%', height: isFullscreen ? '100%' : 'auto',
-        maxWidth: isFullscreen ? '100%' : 480,
-        cursor: 'crosshair',
-      }} />
+    <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
+      <canvas ref={canvasRef} width={480} height={360}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+        style={{
+          borderRadius: isFullscreen ? 0 : 10,
+          background: '#080818', display: 'block',
+          width: '100%', height: isFullscreen ? '100%' : 'auto',
+          maxWidth: isFullscreen ? '100%' : 480,
+          cursor: 'crosshair',
+        }} />
+
+      {/* ── Output Panel ── */}
+      <div style={{
+        background: '#0f172a', borderTop: '1px solid #1e293b',
+        borderRadius: '0 0 10px 10px', padding: '10px 14px',
+        display: 'flex', flexDirection: 'column', gap: 8,
+        minHeight: 56,
+      }}>
+        {/* Headlights row */}
+        {(out.headlightL || out.headlightR) && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span style={{ fontSize: 11, color: '#64748b', fontWeight: 700, width: 78 }}>💡 Headlights</span>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              {['L','R'].map((side, i) => {
+                const c = i === 0 ? out.headlightL : out.headlightR;
+                const col = rgbStr(c) || '#1e293b';
+                const glow = c && (c.r + c.g + c.b) > 10;
+                return (
+                  <div key={side} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <div style={{
+                      width: 22, height: 22, borderRadius: '50%',
+                      background: col,
+                      boxShadow: glow ? `0 0 10px 4px ${col}` : 'none',
+                      border: '1.5px solid #334155',
+                      transition: 'all 0.2s',
+                    }} />
+                    <span style={{ fontSize: 10, color: '#94a3b8', fontWeight: 700 }}>{side}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* NeoPixel strip */}
+        {out.neopixels.some(Boolean) && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 11, color: '#64748b', fontWeight: 700, width: 78 }}>🌈 NeoPixels</span>
+            <div style={{ display: 'flex', gap: 4 }}>
+              {out.neopixels.map((c, i) => {
+                const col = rgbStr(c) || '#1e293b';
+                const glow = c && (c.r + c.g + c.b) > 10;
+                return (
+                  <div key={i} style={{
+                    width: 18, height: 18, borderRadius: 4,
+                    background: col,
+                    boxShadow: glow ? `0 0 8px 3px ${col}` : 'none',
+                    border: '1.5px solid #334155',
+                    transition: 'all 0.2s',
+                  }} />
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* LED matrix (5×5) */}
+        {(out.ledMatrix.some(Boolean) || out.displayText) && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 11, color: '#64748b', fontWeight: 700, width: 78 }}>📟 Display</span>
+            {out.displayText ? (
+              <div style={{
+                background: '#1e293b', borderRadius: 6, padding: '4px 12px',
+                color: '#f59e0b', fontFamily: 'monospace', fontSize: 15, fontWeight: 700,
+                letterSpacing: 2, border: '1px solid #334155',
+                maxWidth: 220, overflow: 'hidden', whiteSpace: 'nowrap',
+                animation: out.displayText.length > 4 ? 'lh-scroll 3s linear infinite' : 'none',
+              }}>
+                {out.displayText}
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,14px)', gap: 2 }}>
+                {out.ledMatrix.map((b, i) => (
+                  <div key={i} style={{
+                    width: 14, height: 14, borderRadius: 3,
+                    background: b > 0 ? `rgba(251,191,36,${b/9})` : '#1e293b',
+                    boxShadow: b > 0 ? `0 0 6px 2px rgba(251,191,36,${b/12})` : 'none',
+                    transition: 'all 0.15s',
+                  }} />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Idle state */}
+        {!hasOutput && (
+          <div style={{ fontSize: 11, color: '#334155', fontStyle: 'italic', textAlign: 'center', paddingBottom: 2 }}>
+            Run a Lights or Outputs block to see it here
+          </div>
+        )}
+      </div>
+    </div>
   );
 });
 
