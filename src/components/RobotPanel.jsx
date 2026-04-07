@@ -1925,7 +1925,11 @@ const VirtualRobot = forwardRef(function VirtualRobot({ simRobotType, simTrack, 
         if (facingLeft) ctx.scale(-1, 1);
         drawHumanoid(ctx, state);
       } else {
+        // Sprites are drawn with front facing local -Y (upward).
+        // Movement uses standard math angles (0=right, -90=up).
+        // Pre-rotate +90° so the sprite visually matches the movement direction.
         ctx.rotate(angle * Math.PI / 180);
+        ctx.rotate(Math.PI / 2);
         if      (simRobotType === 'rover')  drawRover(ctx, state);
         else if (simRobotType === 'tank')   drawTank(ctx, state);
         else if (simRobotType === 'drone')  drawDrone(ctx, state);
