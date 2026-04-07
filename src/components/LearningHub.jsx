@@ -984,13 +984,29 @@ export default function LearningHub() {
 
   const handleComplete = (key) => setCompletedSet(prev => new Set([...prev, key]));
 
+  const openCourse = (course) => {
+    setSelectedCourse(course);
+    window.history.pushState({ courseId: course.id }, '', window.location.href);
+  };
+
+  const closeCourse = () => {
+    setSelectedCourse(null);
+  };
+
+  // Browser back button → go back to course list
+  React.useEffect(() => {
+    const handlePop = () => setSelectedCourse(null);
+    window.addEventListener('popstate', handlePop);
+    return () => window.removeEventListener('popstate', handlePop);
+  }, []);
+
   if (selectedCourse) {
     return (
       <LessonView
         course={selectedCourse}
         completedSet={completedSet}
         onComplete={handleComplete}
-        onBack={() => setSelectedCourse(null)}
+        onBack={closeCourse}
       />
     );
   }
@@ -1110,7 +1126,7 @@ export default function LearningHub() {
               const done = getCompletedModules(completedSet, course);
               const pct = Math.round((done / course.modules.length) * 100);
               return (
-                <div key={course.id} onClick={() => setSelectedCourse(course)}
+                <div key={course.id} onClick={() => openCourse(course)}
                   style={{ minWidth: 232, maxWidth: 232, background: 'var(--bg-card)', border: `2px solid ${course.color}40`, borderRadius: 14, padding: '14px 16px', cursor: 'pointer', transition: 'all 0.18s', flexShrink: 0, display: 'flex', gap: 12, alignItems: 'center' }}
                   onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = `0 8px 24px ${course.color}30`; }}
                   onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = ''; }}
@@ -1137,7 +1153,7 @@ export default function LearningHub() {
             <h3 style={{ fontSize: 16, fontWeight: 800, marginBottom: 4 }}>🗺️ Learning Path</h3>
             <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>Your full journey from Year 3 to Year 6. Complete a course to unlock connections.</p>
           </div>
-          <SkillTreeView completedSet={completedSet} onSelectCourse={setSelectedCourse} />
+          <SkillTreeView completedSet={completedSet} onSelectCourse={openCourse} />
         </div>
       ) : (
         <>
@@ -1197,7 +1213,7 @@ export default function LearningHub() {
                 const statusColor = isComplete ? '#10b981' : isStarted ? course.color : 'var(--text-muted)';
                 const yearColor = YEAR_COLORS[course.yearGroup];
                 return (
-                  <div key={course.id} className="course-card" onClick={() => setSelectedCourse(course)}
+                  <div key={course.id} className="course-card" onClick={() => openCourse(course)}
                     style={{ display: 'flex', flexDirection: 'column', transition: 'all 0.2s', cursor: 'pointer' }}
                     onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-5px)'; e.currentTarget.style.boxShadow = `0 14px 36px ${course.color}30, var(--shadow-md)`; }}
                     onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = ''; }}
