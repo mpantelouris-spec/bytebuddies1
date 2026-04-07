@@ -703,6 +703,31 @@ function LessonView({ course, completedSet, onComplete, onBack }) {
                 </div>
               )}
 
+              {/* Interactive Editor */}
+              {(() => {
+                const interactive = INTERACTIVE[course.id]?.[activeModule];
+                if (!interactive) return null;
+                if (interactive.type === 'blocks') return (
+                  <div style={{ marginBottom: 16 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                      <span style={{ fontSize: 18 }}>🧩</span>
+                      <h4 style={{ fontSize: 14, fontWeight: 800, color: course.color }}>Block Editor</h4>
+                    </div>
+                    <BlockEditor key={`${course.id}-${activeModule}`} starterBlocks={interactive.starter} editorHeight={420} />
+                  </div>
+                );
+                if (interactive.type === 'python') return (
+                  <div style={{ marginBottom: 16 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                      <span style={{ fontSize: 18 }}>🐍</span>
+                      <h4 style={{ fontSize: 14, fontWeight: 800, color: course.color }}>Python Editor</h4>
+                    </div>
+                    <PythonRunner key={`${course.id}-${activeModule}`} starterCode={interactive.code} editorHeight={240} />
+                  </div>
+                );
+                return null;
+              })()}
+
               {/* UNIQUE FEATURE 6: Module Notes */}
               <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: 14, marginTop: 8 }}>
                 <button
