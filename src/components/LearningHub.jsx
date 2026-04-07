@@ -3,6 +3,7 @@ import { courses } from '../data/courseData';
 import { useUser } from '../contexts/UserContext';
 import BlockEditor from './BlockEditor';
 import PythonRunner from './PythonRunner';
+import HtmlEditor from './HtmlEditor';
 import { INTERACTIVE } from '../data/interactiveContent';
 
 // ─────────────────────────────────────────
@@ -638,7 +639,7 @@ function LessonView({ course, completedSet, onComplete, onBack }) {
             const EDITOR_TYPE = {
               'y3-first-steps': 'blocks', 'y3-sprite-school': 'blocks', 'y3-patterns': 'blocks',
               'y4-game-maker': 'blocks', 'y4-sprite-adventures': 'blocks',
-              'y4-web-basics': false,
+              'y4-web-basics': 'html',
               'y5-advanced-games': 'blocks',
               'y5-python-basics': 'python', 'y5-data-detective': 'python',
               'y6-app-inventor': false,
@@ -957,6 +958,9 @@ function LessonView({ course, completedSet, onComplete, onBack }) {
                     )}
                     {interactive.type === 'python' && (
                       <PythonRunner key={`${course.id}-${activeModule}`} starterCode={interactive.code || '# Write your Python here\n'} editorHeight={440} />
+                    )}
+                    {interactive.type === 'html' && (
+                      <HtmlEditor key={`${course.id}-${activeModule}`} starterCode={interactive.code} editorHeight={560} />
                     )}
                   </div>
                 )}

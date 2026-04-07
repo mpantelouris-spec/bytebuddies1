@@ -325,4 +325,194 @@ for name in names:
     greet(name)`,
     },
   },
+
+  // ── My First Website (HTML/CSS) ────────────────────────────────────────────
+  'y4-web-basics': {
+    // Module 0: What is a Website?
+    0: {
+      type: 'html',
+      code: `<!DOCTYPE html>
+<html>
+  <head>
+    <title>My First Page</title>
+  </head>
+  <body>
+    <h1>Hello World!</h1>
+    <p>This is my very first web page.</p>
+    <p>I built this with HTML!</p>
+  </body>
+</html>`,
+    },
+    // Module 1: HTML Tags & Elements
+    1: {
+      type: 'html',
+      code: `<!DOCTYPE html>
+<html>
+  <head>
+    <title>HTML Tags</title>
+  </head>
+  <body>
+    <h1>Big Heading</h1>
+    <h2>Smaller Heading</h2>
+    <h3>Even Smaller</h3>
+    <p>This is a paragraph of text.</p>
+    <p>This is <strong>bold</strong> and this is <em>italic</em>.</p>
+    <ul>
+      <li>First item</li>
+      <li>Second item</li>
+      <li>Third item</li>
+    </ul>
+  </body>
+</html>`,
+    },
+    // Module 2: CSS: Adding Colour & Style
+    2: {
+      type: 'html',
+      code: `<!DOCTYPE html>
+<html>
+  <head>
+    <title>My Styled Page</title>
+    <style>
+      body {
+        background-color: #f0f4ff;
+        font-family: Arial, sans-serif;
+        padding: 20px;
+      }
+      h1 {
+        color: #6366f1;
+        text-align: center;
+      }
+      p {
+        color: #334155;
+        font-size: 18px;
+      }
+      .highlight {
+        background-color: #fef9c3;
+        padding: 10px;
+        border-radius: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Welcome to My Styled Page!</h1>
+    <p>This text has a custom colour and font.</p>
+    <p class="highlight">This paragraph is highlighted in yellow!</p>
+  </body>
+</html>`,
+    },
+    // Module 3: The Box Model & Layout
+    3: {
+      type: 'html',
+      code: `<!DOCTYPE html>
+<html>
+  <head>
+    <title>Box Model</title>
+    <style>
+      body { font-family: Arial, sans-serif; padding: 20px; background: #f8fafc; }
+      .box {
+        background-color: #6366f1;
+        color: white;
+        width: 200px;
+        padding: 20px;
+        margin: 20px;
+        border: 4px solid #4f46e5;
+        border-radius: 10px;
+        text-align: center;
+      }
+      .container {
+        display: flex;
+        gap: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>The Box Model</h1>
+    <div class="container">
+      <div class="box">Box 1</div>
+      <div class="box">Box 2</div>
+      <div class="box">Box 3</div>
+    </div>
+  </body>
+</html>`,
+    },
+    // Module 4: Images & Links
+    4: {
+      type: 'html',
+      code: `<!DOCTYPE html>
+<html>
+  <head>
+    <title>Images and Links</title>
+    <style>
+      body { font-family: Arial, sans-serif; padding: 20px; background: #f8fafc; }
+      img { border-radius: 10px; max-width: 300px; }
+      a { color: #6366f1; font-weight: bold; }
+      a:hover { color: #4f46e5; }
+    </style>
+  </head>
+  <body>
+    <h1>Images and Links</h1>
+    <p>Here is an image from the internet:</p>
+    <img src="https://picsum.photos/300/200" alt="A random photo" />
+    <p>Click here to visit <a href="https://www.bbc.co.uk/cbbc" target="_blank">CBBC</a>!</p>
+    <p>Or go to <a href="https://www.google.com" target="_blank">Google</a>.</p>
+  </body>
+</html>`,
+    },
+    // Module 5: Project — Personal Website
+    5: {
+      type: 'html',
+      code: `<!DOCTYPE html>
+<html>
+  <head>
+    <title>My Personal Website</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background-color: #0f172a;
+        color: #e2e8f0;
+        margin: 0;
+        padding: 0;
+      }
+      header {
+        background: linear-gradient(135deg, #6366f1, #ec4899);
+        padding: 40px;
+        text-align: center;
+      }
+      header h1 { font-size: 48px; margin: 0; }
+      header p { font-size: 18px; opacity: 0.9; }
+      main { padding: 30px; max-width: 700px; margin: 0 auto; }
+      section { margin-bottom: 30px; }
+      h2 { color: #818cf8; border-bottom: 2px solid #818cf8; padding-bottom: 6px; }
+      ul li { margin-bottom: 8px; }
+      footer { text-align: center; padding: 20px; color: #64748b; font-size: 14px; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>👋 Hi, I'm [Your Name]!</h1>
+      <p>Year 4 student and budding web developer</p>
+    </header>
+    <main>
+      <section>
+        <h2>About Me</h2>
+        <p>Write something about yourself here! What do you like? What are your hobbies?</p>
+      </section>
+      <section>
+        <h2>My Favourite Things</h2>
+        <ul>
+          <li>🎮 Gaming</li>
+          <li>🐶 Animals</li>
+          <li>⚽ Football</li>
+        </ul>
+      </section>
+      <section>
+        <h2>My Goals</h2>
+        <p>What do you want to achieve? Write your goals here!</p>
+      </section>
+    </main>
+    <footer>Made with ❤️ and HTML</footer>
+  </body>
+</html>`,
+    },
+  },
 };
