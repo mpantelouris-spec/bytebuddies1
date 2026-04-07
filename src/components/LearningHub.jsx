@@ -635,11 +635,20 @@ function LessonView({ course, completedSet, onComplete, onBack }) {
           {/* Split layout: instructions left + editor right when interactive */}
           {(() => {
             const defined = INTERACTIVE[course.id]?.[activeModule];
-            const defaultType = (course.id.includes('python') || (course.topics || []).some(t => /python/i.test(t))) ? 'python' : 'blocks';
-            const interactive = defined || { type: defaultType };
+            const EDITOR_TYPE = {
+              'y3-first-steps': 'blocks', 'y3-sprite-school': 'blocks', 'y3-patterns': 'blocks',
+              'y4-game-maker': 'blocks', 'y4-sprite-adventures': 'blocks',
+              'y4-web-basics': null,
+              'y5-advanced-games': 'blocks',
+              'y5-python-basics': 'python', 'y5-data-detective': 'python',
+              'y6-app-inventor': null,
+              'y6-python-adventures': 'python', 'y6-cyber-smart': 'python',
+            };
+            const defaultType = EDITOR_TYPE[course.id] ?? 'blocks';
+            const interactive = defined || (defaultType ? { type: defaultType } : null);
             return (
-              <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
-                <div style={{ flex: '0 0 440px', minWidth: 0, maxHeight: 'calc(100vh - 220px)', overflowY: 'auto', paddingRight: 2 }}>
+              <div style={interactive ? { display: 'flex', gap: 16, alignItems: 'flex-start' } : {}}>
+                <div style={interactive ? { flex: '0 0 440px', minWidth: 0, maxHeight: 'calc(100vh - 220px)', overflowY: 'auto', paddingRight: 2 } : {}}>
 
           {/* Content card */}
           <div className="card" style={{ marginBottom: 20 }}>
@@ -941,14 +950,16 @@ function LessonView({ course, completedSet, onComplete, onBack }) {
           </div>
 
                 </div>
-                <div style={{ flex: 1, position: 'sticky', top: 16 }}>
-                  {interactive.type === 'blocks' && (
-                    <BlockEditor key={`${course.id}-${activeModule}`} starterBlocks={interactive.starter} editorHeight={600} />
-                  )}
-                  {interactive.type === 'python' && (
-                    <PythonRunner key={`${course.id}-${activeModule}`} starterCode={interactive.code || '# Write your Python here\n'} editorHeight={440} />
-                  )}
-                </div>
+                {interactive && (
+                  <div style={{ flex: 1, position: 'sticky', top: 16 }}>
+                    {interactive.type === 'blocks' && (
+                      <BlockEditor key={`${course.id}-${activeModule}`} starterBlocks={interactive.starter} editorHeight={600} />
+                    )}
+                    {interactive.type === 'python' && (
+                      <PythonRunner key={`${course.id}-${activeModule}`} starterCode={interactive.code || '# Write your Python here\n'} editorHeight={440} />
+                    )}
+                  </div>
+                )}
               </div>
             );
           })()}
