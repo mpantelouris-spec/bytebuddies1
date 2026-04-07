@@ -638,13 +638,13 @@ function LessonView({ course, completedSet, onComplete, onBack }) {
             const EDITOR_TYPE = {
               'y3-first-steps': 'blocks', 'y3-sprite-school': 'blocks', 'y3-patterns': 'blocks',
               'y4-game-maker': 'blocks', 'y4-sprite-adventures': 'blocks',
-              'y4-web-basics': null,
+              'y4-web-basics': false,
               'y5-advanced-games': 'blocks',
               'y5-python-basics': 'python', 'y5-data-detective': 'python',
-              'y6-app-inventor': null,
+              'y6-app-inventor': false,
               'y6-python-adventures': 'python', 'y6-cyber-smart': 'python',
             };
-            const defaultType = EDITOR_TYPE[course.id] ?? 'blocks';
+            const defaultType = course.id in EDITOR_TYPE ? EDITOR_TYPE[course.id] : 'blocks';
             const interactive = defined || (defaultType ? { type: defaultType } : null);
             return (
               <div style={interactive ? { display: 'flex', gap: 16, alignItems: 'flex-start' } : {}}>
