@@ -4,60 +4,153 @@
 export const INTERACTIVE = {
   // ── My First Code (block coding) ───────────────────────────────────────────
   'y3-first-steps': {
+    // Module 0: Meet the Blocks! — just the flag block
     0: {
       type: 'blocks',
       starter: [
         { type: 'when_flag', params: {} },
-        { type: 'say', params: { msg: 'Hello, World!' } },
-        { type: 'say', params: { msg: 'I love coding!' } },
       ],
     },
+    // Module 1: Make Your Sprite Talk — say blocks
     1: {
       type: 'blocks',
       starter: [
         { type: 'when_flag', params: {} },
+        { type: 'say', params: { msg: 'Hi! My name is Sparky!' } },
+        { type: 'say', params: { msg: 'I love block coding!' } },
+      ],
+    },
+    // Module 2: Wait for It — say + wait
+    2: {
+      type: 'blocks',
+      starter: [
+        { type: 'when_flag', params: {} },
+        { type: 'say', params: { msg: 'Knock knock!' } },
+        { type: 'wait', params: { secs: 2 } },
+        { type: 'say', params: { msg: "Who's there?" } },
+        { type: 'wait', params: { secs: 2 } },
+        { type: 'say', params: { msg: 'Lettuce!' } },
+        { type: 'wait', params: { secs: 2 } },
+        { type: 'say', params: { msg: "Lettuce in, it's cold out here! 🥬" } },
+      ],
+    },
+    // Module 3: Move Your Sprite — move blocks
+    3: {
+      type: 'blocks',
+      starter: [
+        { type: 'when_flag', params: {} },
+        { type: 'say', params: { msg: "I'm going on a walk!" } },
+        { type: 'wait', params: { secs: 1 } },
         { type: 'move', params: { steps: 50 } },
-        { type: 'turn_r', params: { deg: 90 } },
-        { type: 'move', params: { steps: 50 } },
-        { type: 'turn_r', params: { deg: 90 } },
-        { type: 'move', params: { steps: 50 } },
-        { type: 'turn_r', params: { deg: 90 } },
+        { type: 'wait', params: { secs: 1 } },
         { type: 'move', params: { steps: 50 } },
       ],
     },
+    // Module 4: Turn and Change Direction — move + turn
+    4: {
+      type: 'blocks',
+      starter: [
+        { type: 'when_flag', params: {} },
+        { type: 'move', params: { steps: 100 } },
+        { type: 'turn_r', params: { deg: 90 } },
+        { type: 'move', params: { steps: 100 } },
+      ],
+    },
+    // Module 5: Pick Up the Pen! — pen_down + move
+    5: {
+      type: 'blocks',
+      starter: [
+        { type: 'when_flag', params: {} },
+        { type: 'say', params: { msg: 'Watch me draw!' } },
+        { type: 'wait', params: { secs: 1 } },
+        { type: 'pen_down', params: {} },
+        { type: 'move', params: { steps: 100 } },
+        { type: 'pen_up', params: {} },
+      ],
+    },
+    // Module 6: Repeat Block Magic — repeat loop drawing a square
     6: {
       type: 'blocks',
       starter: [
         { type: 'when_flag', params: {} },
         { type: 'pen_down', params: {} },
         { type: 'repeat', params: { n: 4 }, children: [
-          { type: 'move', params: { steps: 60 } },
+          { type: 'move', params: { steps: 80 } },
           { type: 'turn_r', params: { deg: 90 } },
         ]},
+        { type: 'pen_up', params: {} },
       ],
     },
+    // Module 7: Colourful Drawing — pen_color + repeat hexagon
     7: {
       type: 'blocks',
       starter: [
         { type: 'when_flag', params: {} },
-        { type: 'say', params: { msg: 'Press run!' } },
+        { type: 'pen_color', params: { color: '#ef4444' } },
         { type: 'pen_down', params: {} },
         { type: 'repeat', params: { n: 6 }, children: [
-          { type: 'move', params: { steps: 50 } },
+          { type: 'move', params: { steps: 60 } },
           { type: 'turn_r', params: { deg: 60 } },
         ]},
+        { type: 'pen_up', params: {} },
       ],
     },
+    // Module 8: Thick and Thin Lines — pen_size + circle spiral
     8: {
       type: 'blocks',
       starter: [
         { type: 'when_flag', params: {} },
+        { type: 'pen_size', params: { size: 5 } },
         { type: 'pen_color', params: { color: '#6366f1' } },
         { type: 'pen_down', params: {} },
         { type: 'repeat', params: { n: 36 }, children: [
           { type: 'move', params: { steps: 10 } },
           { type: 'turn_r', params: { deg: 10 } },
         ]},
+        { type: 'pen_up', params: {} },
+      ],
+    },
+    // Module 9: Jump to Any Spot — go_xy positioning
+    9: {
+      type: 'blocks',
+      starter: [
+        { type: 'when_flag', params: {} },
+        { type: 'go_xy', params: { x: -100, y: 0 } },
+        { type: 'pen_down', params: {} },
+        { type: 'move', params: { steps: 200 } },
+        { type: 'pen_up', params: {} },
+        { type: 'go_xy', params: { x: 0, y: -100 } },
+        { type: 'pen_down', params: {} },
+        { type: 'move', params: { steps: 0 } },
+      ],
+    },
+    // Module 10: Shapes Galore! — triangle with 360/3=120
+    10: {
+      type: 'blocks',
+      starter: [
+        { type: 'when_flag', params: {} },
+        { type: 'pen_color', params: { color: '#10b981' } },
+        { type: 'pen_down', params: {} },
+        { type: 'repeat', params: { n: 3 }, children: [
+          { type: 'move', params: { steps: 80 } },
+          { type: 'turn_r', params: { deg: 120 } },
+        ]},
+        { type: 'pen_up', params: {} },
+      ],
+    },
+    // Module 11: Project — free canvas with pen_color, size, shapes
+    11: {
+      type: 'blocks',
+      starter: [
+        { type: 'when_flag', params: {} },
+        { type: 'pen_size', params: { size: 3 } },
+        { type: 'pen_color', params: { color: '#f59e0b' } },
+        { type: 'pen_down', params: {} },
+        { type: 'repeat', params: { n: 4 }, children: [
+          { type: 'move', params: { steps: 80 } },
+          { type: 'turn_r', params: { deg: 90 } },
+        ]},
+        { type: 'pen_up', params: {} },
       ],
     },
   },
