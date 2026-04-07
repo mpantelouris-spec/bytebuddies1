@@ -590,8 +590,11 @@ const SIM_ROBOTS = [
 
 /* ─── Robot draw functions ─── */
 function drawRover(ctx, state) {
-  const { ledOn, tick, moving } = state;
+  const { ledOn, tick, moving, headlightL, headlightR } = state;
   const wa = (tick || 0) * (moving ? 0.13 : 0);
+  const hlL = headlightL ? `rgb(${headlightL.r},${headlightL.g},${headlightL.b})` : '#22d3ee';
+  const hlR = headlightR ? `rgb(${headlightR.r},${headlightR.g},${headlightR.b})` : '#ef4444';
+  const hlGlow = (c) => c ? (c.r + c.g + c.b > 30) : ledOn;
 
   // Drop shadow ellipse
   ctx.save();
@@ -701,18 +704,18 @@ function drawRover(ctx, state) {
   ctx.restore();
   ctx.strokeStyle = 'rgba(71,85,105,0.7)'; ctx.lineWidth = 0.7;
   ctx.beginPath(); ctx.roundRect(-7,-19,14,6,2); ctx.stroke();
-  if (ledOn) {
-    ctx.save(); ctx.shadowBlur = 10; ctx.shadowColor = '#fbbf24';
-    ctx.fillStyle = '#fef08a';
-    ctx.beginPath(); ctx.arc(-3,-16,2.5,0,Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.arc(3,-16,2.5,0,Math.PI*2); ctx.fill();
-    ctx.restore();
-  } else {
-    ctx.fillStyle = '#22d3ee';
-    ctx.beginPath(); ctx.arc(-3,-16,2.5,0,Math.PI*2); ctx.fill();
-    ctx.fillStyle = '#ef4444';
-    ctx.beginPath(); ctx.arc(3,-16,2.5,0,Math.PI*2); ctx.fill();
-  }
+  // Left headlight
+  ctx.save();
+  if (hlGlow(headlightL)) { ctx.shadowBlur = 12; ctx.shadowColor = hlL; }
+  ctx.fillStyle = hlL;
+  ctx.beginPath(); ctx.arc(-3,-16,3,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+  // Right headlight
+  ctx.save();
+  if (hlGlow(headlightR)) { ctx.shadowBlur = 12; ctx.shadowColor = hlR; }
+  ctx.fillStyle = hlR;
+  ctx.beginPath(); ctx.arc(3,-16,3,0,Math.PI*2); ctx.fill();
+  ctx.restore();
 
   // ── Camera dome — glass sphere with inner caustic ──
   ctx.save();
@@ -1875,7 +1878,7 @@ const VirtualRobot = forwardRef(function VirtualRobot({ simRobotType, simTrack, 
   const canvasRef = useRef(null);
   const posRef   = useRef({ x: 240, y: 180, angle: -90 });
   const trailRef = useRef([]);
-  const stateRef = useRef({ ledOn: false, servoAngle: 90, tick: 0, moving: false, wheelAngle: 0 });
+  const stateRef = useRef({ ledOn: false, servoAngle: 90, tick: 0, moving: false, wheelAngle: 0, headlightL: null, headlightR: null });
   const animLoopRef = useRef(null);
 
   // Output display state (React state so panel re-renders when lights change)
@@ -2046,13 +2049,16 @@ const VirtualRobot = forwardRef(function VirtualRobot({ simRobotType, simTrack, 
       // ── Headlights ──
       if (id === 'headlight') {
         const c = { r: +(params?.r??255), g: +(params?.g??255), b: +(params?.b??255) };
+        s.headlightL = c; s.headlightR = c;
         updateOut({ headlightL: c, headlightR: c }); resolve(); return;
       }
       if (id === 'headlight_l') {
-        updateOut({ headlightL: { r: +(params?.r??255), g: +(params?.g??0), b: +(params?.b??0) } }); resolve(); return;
+        const c = { r: +(params?.r??255), g: +(params?.g??0), b: +(params?.b??0) };
+        s.headlightL = c; updateOut({ headlightL: c }); resolve(); return;
       }
       if (id === 'headlight_r') {
-        updateOut({ headlightR: { r: +(params?.r??0), g: +(params?.g??0), b: +(params?.b??255) } }); resolve(); return;
+        const c = { r: +(params?.r??0), g: +(params?.g??0), b: +(params?.b??255) };
+        s.headlightR = c; updateOut({ headlightR: c }); resolve(); return;
       }
 
       // ── NeoPixel ──
@@ -2245,23 +2251,22 @@ const VirtualRobot = forwardRef(function VirtualRobot({ simRobotType, simTrack, 
         display: 'flex', flexDirection: 'column', gap: 8,
         minHeight: 56,
       }}>
-        {/* Headlights row */}
-        {(out.headlightL || out.headlightR) && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span style={{ fontSize: 11, color: '#64748b', fontWeight: 700, width: 78 }}>💡 Headlights</span>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              {['L','R'].map((side, i) => {
-                const c = i === 0 ? out.headlightL : out.headlightR;
-                const col = rgbStr(c) || '#1e293b';
-                const glow = c && (c.r + c.g + c.b) > 10;
-                return (
-                  <div key={side} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <div style={{
-                      width: 22, height: 22, borderRadius: '50%',
-                      background: col,
-                      boxShadow: glow ? `0 0 10px 4px ${col}` : 'none',
-                      border: '1.5px solid #334155',
-                      transition: 'all 0.2s',
+        {/* Headlights row — always visible */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ fontSize: 11, color: '#64748b', fontWeight: 700, width: 78 }}>💡 Headlights</span>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            {['L','R'].map((side, i) => {
+              const c = i === 0 ? out.headlightL : out.headlightR;
+              const col = rgbStr(c) || '#1e293b';
+              const glow = c && (c.r + c.g + c.b) > 10;
+              return (
+                <div key={side} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <div style={{
+                    width: 22, height: 22, borderRadius: '50%',
+                    background: col,
+                    boxShadow: glow ? `0 0 10px 4px ${col}` : 'none',
+                    border: '1.5px solid #334155',
+                    transition: 'all 0.2s',
                     }} />
                     <span style={{ fontSize: 10, color: '#94a3b8', fontWeight: 700 }}>{side}</span>
                   </div>
@@ -2269,7 +2274,6 @@ const VirtualRobot = forwardRef(function VirtualRobot({ simRobotType, simTrack, 
               })}
             </div>
           </div>
-        )}
 
         {/* NeoPixel strip */}
         {out.neopixels.some(Boolean) && (
