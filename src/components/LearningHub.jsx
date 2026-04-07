@@ -632,6 +632,13 @@ function LessonView({ course, completedSet, onComplete, onBack }) {
             </div>
           </div>
 
+          {/* Split layout: instructions left + editor right when interactive */}
+          {(() => {
+            const interactive = INTERACTIVE[course.id]?.[activeModule];
+            return (
+              <div style={interactive ? { display: 'flex', gap: 16, alignItems: 'flex-start' } : {}}>
+                <div style={interactive ? { flex: '0 0 440px', minWidth: 0, maxHeight: 'calc(100vh - 220px)', overflowY: 'auto', paddingRight: 2 } : {}}>
+
           {/* Content card */}
           <div className="card" style={{ marginBottom: 20 }}>
             <div className="card-body" style={{ fontSize: 14, lineHeight: 1.85 }}>
@@ -703,30 +710,6 @@ function LessonView({ course, completedSet, onComplete, onBack }) {
                 </div>
               )}
 
-              {/* Interactive Editor */}
-              {(() => {
-                const interactive = INTERACTIVE[course.id]?.[activeModule];
-                if (!interactive) return null;
-                if (interactive.type === 'blocks') return (
-                  <div style={{ marginBottom: 16 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                      <span style={{ fontSize: 18 }}>🧩</span>
-                      <h4 style={{ fontSize: 14, fontWeight: 800, color: course.color }}>Block Editor</h4>
-                    </div>
-                    <BlockEditor key={`${course.id}-${activeModule}`} starterBlocks={interactive.starter} editorHeight={420} />
-                  </div>
-                );
-                if (interactive.type === 'python') return (
-                  <div style={{ marginBottom: 16 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                      <span style={{ fontSize: 18 }}>🐍</span>
-                      <h4 style={{ fontSize: 14, fontWeight: 800, color: course.color }}>Python Editor</h4>
-                    </div>
-                    <PythonRunner key={`${course.id}-${activeModule}`} starterCode={interactive.code} editorHeight={240} />
-                  </div>
-                );
-                return null;
-              })()}
 
               {/* UNIQUE FEATURE 6: Module Notes */}
               <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: 14, marginTop: 8 }}>
@@ -954,6 +937,21 @@ function LessonView({ course, completedSet, onComplete, onBack }) {
               Next →
             </button>
           </div>
+
+                </div>
+                {interactive && (
+                  <div style={{ flex: 1, position: 'sticky', top: 16 }}>
+                    {interactive.type === 'blocks' && (
+                      <BlockEditor key={`${course.id}-${activeModule}`} starterBlocks={interactive.starter} editorHeight={600} />
+                    )}
+                    {interactive.type === 'python' && (
+                      <PythonRunner key={`${course.id}-${activeModule}`} starterCode={interactive.code} editorHeight={440} />
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </div>
       </div>
     </div>
