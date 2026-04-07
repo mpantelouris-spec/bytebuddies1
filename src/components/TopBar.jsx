@@ -98,16 +98,16 @@ export default function TopBar({ currentPage, onNavigate, onExport, onAuth }) {
         </div>
       )}
 
-      <div className="topbar-actions">
-        <div className="xp-bar" title={`${user.xp} / ${user.xpToNext} XP`}>
-          <span>⚡ Lv.{user.level}</span>
-          <div className="xp-bar-fill">
+      <div className="topbar-actions" style={{ flexShrink: 0 }}>
+        <div className="xp-bar" title={`${user.xp} / ${user.xpToNext} XP`} style={{ gap: 4 }}>
+          <span style={{ fontSize: 11, whiteSpace: 'nowrap' }}>⚡ Lv.{user.level}</span>
+          <div className="xp-bar-fill" style={{ width: 60 }}>
             <div
               className="xp-bar-fill-inner"
               style={{ width: `${(user.xp / user.xpToNext) * 100}%`, transition: 'width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)' }}
             />
           </div>
-          <span style={{fontSize: 10, color: 'var(--text-muted)'}}>{user.xp} XP</span>
+          <span style={{ fontSize: 10, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{user.xp} XP</span>
         </div>
 
         {/* Notifications bell */}
