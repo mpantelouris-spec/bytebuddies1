@@ -106,10 +106,13 @@ const H2 = ({ children, id }) => <h2 id={id} style={s.h2}>{children}</h2>;
 const H3 = ({ children }) => <h3 style={s.h3}>{children}</h3>;
 
 export default function WhitePaper() {
-  useEffect(() => { window.scrollTo(0, 0); }, []);
+  useEffect(() => {
+    document.documentElement.classList.add('whitepaper-open');
+    window.scrollTo(0, 0);
+    return () => document.documentElement.classList.remove('whitepaper-open');
+  }, []);
 
   return (
-    <div style={{ position: 'fixed', inset: 0, overflowY: 'auto', zIndex: 9999, background: '#fff' }}>
     <div style={s.page}>
       {/* Cover */}
       <div style={s.cover}>
@@ -594,7 +597,6 @@ export default function WhitePaper() {
           <br />For institutional licensing, partnership enquiries, or curriculum alignment documentation, contact the ByteBuddies team.
         </div>
       </div>
-    </div>
     </div>
   );
 }
