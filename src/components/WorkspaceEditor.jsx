@@ -160,6 +160,57 @@ function BlockContent({ block, onParamChange }) {
 }
 
 /* ─── Block Visual Editor ─── */
+const PALETTE_CATS = [
+  { id: 'event',    label: '⚡ Events',    color: '#f59e0b' },
+  { id: 'variable', label: '📦 Variables', color: '#06b6d4' },
+  { id: 'logic',    label: '🧠 Logic',     color: '#6366f1' },
+  { id: 'loop',     label: '🔁 Loops',     color: '#8b5cf6' },
+  { id: 'function', label: '⚙️ Functions', color: '#10b981' },
+  { id: 'action',   label: '💬 Actions',   color: '#a855f7' },
+  { id: 'math',     label: '🔢 Math',      color: '#ef4444' },
+  { id: 'text',     label: '📝 Text',      color: '#ec4899' },
+  { id: 'list',     label: '📋 Lists',     color: '#14b8a6' },
+  { id: 'sprite',   label: '🎭 Sprite',    color: '#06b6d4' },
+  { id: 'sound',    label: '🔊 Sound',     color: '#84cc16' },
+  { id: 'ai',       label: '🤖 AI',        color: '#f97316' },
+];
+
+function BlockPalette({ onAdd }) {
+  const [activeCat, setActiveCat] = useState('event');
+  const cat = PALETTE_CATS.find(c => c.id === activeCat);
+  const blocks = Object.entries(BLOCK_DEFS).filter(([, d]) => d.category === activeCat);
+  return (
+    <div style={{ width: 180, flexShrink: 0, display: 'flex', flexDirection: 'column', borderRight: '1px solid var(--border-color)', background: 'var(--bg-secondary)', overflow: 'hidden' }}>
+      {/* Category list */}
+      <div style={{ overflowY: 'auto', borderBottom: '1px solid var(--border-color)', padding: '4px 4px' }}>
+        {PALETTE_CATS.map(c => (
+          <button key={c.id} onClick={() => setActiveCat(c.id)} style={{
+            display: 'block', width: '100%', textAlign: 'left', padding: '5px 8px',
+            borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 600,
+            background: activeCat === c.id ? `${c.color}25` : 'transparent',
+            color: activeCat === c.id ? c.color : 'var(--text-muted)',
+            borderLeft: activeCat === c.id ? `3px solid ${c.color}` : '3px solid transparent',
+            marginBottom: 1,
+          }}>{c.label}</button>
+        ))}
+      </div>
+      {/* Blocks in selected category */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '6px 6px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+        {blocks.map(([type, def]) => (
+          <button key={type} onClick={() => onAdd(type)} style={{
+            padding: '6px 8px', borderRadius: 8, border: `1.5px solid ${cat.color}50`,
+            background: `${cat.color}18`, color: 'var(--text-primary)', cursor: 'pointer',
+            textAlign: 'left', fontSize: 11, fontWeight: 600, lineHeight: 1.4,
+          }}
+          onMouseEnter={e => e.currentTarget.style.background = `${cat.color}35`}
+          onMouseLeave={e => e.currentTarget.style.background = `${cat.color}18`}
+          >{def.icon} {def.label}</button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function BlockCanvas({ code, onCodeChange, onBlockLineMap, activeCodeLine, onNavigate }) {
   const canvasRef = useRef(null);
   const { user } = useUser();
@@ -228,6 +279,14 @@ function BlockCanvas({ code, onCodeChange, onBlockLineMap, activeCodeLine, onNav
       b.id === blockId ? { ...b, params: { ...b.params, [paramKey]: value } } : b
     ));
   }, []);
+
+  const addBlockFromPalette = useCallback((type) => {
+    const def = BLOCK_DEFS[type];
+    if (!def) return;
+    const id = Date.now();
+    const newBlock = { id, type, ...def, params: { ...def.params }, x: 40 + Math.random() * 60, y: 40 + (blocks.length * 65) % 400, connected: [] };
+    setBlocks(prev => [...prev, newBlock]);
+  }, [blocks.length]);
 
   const deleteBlock = useCallback((blockId) => {
     setBlocks(prev => {
@@ -302,6 +361,8 @@ function BlockCanvas({ code, onCodeChange, onBlockLineMap, activeCodeLine, onNav
     : null;
 
   return (
+    <div style={{ display: 'flex', flex: 1, minWidth: 0, minHeight: 0 }}>
+      <BlockPalette onAdd={addBlockFromPalette} />
     <div
       ref={canvasRef}
       className="block-canvas"
@@ -408,10 +469,11 @@ function BlockCanvas({ code, onCodeChange, onBlockLineMap, activeCodeLine, onNav
       {blocks.length === 0 && (
         <div className="empty-state" style={{ height: '100%' }}>
           <div className="empty-state-icon">🧩</div>
-          <h3>Drag blocks here to start coding</h3>
-          <p>Pick blocks from the sidebar and drop them on the canvas</p>
+          <h3>Click a block to add it</h3>
+          <p>Pick blocks from the palette on the left</p>
         </div>
       )}
+    </div>
     </div>
   );
 }
