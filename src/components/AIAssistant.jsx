@@ -63,33 +63,33 @@ function getMockResponse(input) {
   return mockResponses.general[Math.floor(Math.random() * mockResponses.general.length)];
 }
 
-/* ─── Claude API call ─── */
+/* ─── Groq API call ─── */
 async function callClaude(messages, language, moduleContext, code) {
-  const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
+  const apiKey = import.meta.env.VITE_GROQ_API_KEY;
   if (!apiKey) return null;
 
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
+  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: {
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'content-type': 'application/json',
-      'anthropic-dangerous-direct-browser-access': 'true',
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'claude-haiku-4-5',
+      model: 'llama3-8b-8192',
       max_tokens: 300,
-      system: buildSystemPrompt(language, moduleContext, code),
-      messages: messages.slice(-10).map(m => ({
-        role: m.role === 'ai' ? 'assistant' : 'user',
-        content: m.content,
-      })),
+      messages: [
+        { role: 'system', content: buildSystemPrompt(language, moduleContext, code) },
+        ...messages.slice(-10).map(m => ({
+          role: m.role === 'ai' ? 'assistant' : 'user',
+          content: m.content,
+        })),
+      ],
     }),
   });
 
   if (!response.ok) throw new Error(`API error ${response.status}`);
   const data = await response.json();
-  return data.content?.[0]?.text || null;
+  return data.choices?.[0]?.message?.content || null;
 }
 
 /* ─── Render markdown-ish message content ─── */
@@ -126,14 +126,14 @@ function MessageContent({ content }) {
 
 export default function AIAssistant({ code, language, moduleContext }) {
   const { user } = useUser();
-  const hasApiKey = !!import.meta.env.VITE_ANTHROPIC_API_KEY;
+  const hasApiKey = !!import.meta.env.VITE_GROQ_API_KEY;
 
   const [messages, setMessages] = useState([
     {
       role: 'ai',
       content: hasApiKey
         ? `Hi ${user?.name || 'there'}! I'm **CodeMentor** 🤖 — your Socratic coding guide!\n\nI won't just give you answers — I'll ask questions to help YOU figure it out. That's how real programmers learn!\n\nWhat are you working on today?`
-        : `Hi! I'm **CodeMentor** 🤖\n\nAsk me anything about your code and I'll guide you with questions!\n\n*(Tip: Add VITE_ANTHROPIC_API_KEY for full AI tutoring)*`,
+        : `Hi! I'm **CodeMentor** 🤖\n\nAsk me anything about your code and I'll guide you with questions!\n\n*(Tip: Add VITE_GROQ_API_KEY for full AI tutoring)*`,
     },
   ]);
   const [input, setInput] = useState('');
@@ -193,7 +193,7 @@ export default function AIAssistant({ code, language, moduleContext }) {
 
       {!hasApiKey && (
         <div style={{ padding: '6px 12px', background: 'rgba(245,158,11,0.1)', borderBottom: '1px solid var(--border-color)', fontSize: 11, color: '#f59e0b' }}>
-          Add <code>VITE_ANTHROPIC_API_KEY</code> for full Socratic AI tutoring
+          Add <code>VITE_GROQ_API_KEY</code> for full Socratic AI tutoring
         </div>
       )}
 

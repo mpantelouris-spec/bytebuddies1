@@ -20,6 +20,8 @@ jobs:
         run: npm ci
 
       - name: Build
+        env:
+          VITE_GROQ_API_KEY: ${{ secrets.VITE_GROQ_API_KEY }}
         run: npm run build
 
       - name: Setup SSH
