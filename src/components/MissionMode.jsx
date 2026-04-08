@@ -2,6 +2,85 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useUser } from '../contexts/UserContext';
 import { runPython } from '../utils/pythonRunner';
 
+const CAMPAIGNS = [
+  {
+    id: 'space',
+    title: 'Space Explorer',
+    emoji: '🚀',
+    tagline: 'Master sequences & loops across the galaxy',
+    color: '#6366f1',
+    glow: 'rgba(99,102,241,0.4)',
+    bg: 'linear-gradient(135deg, #0a0a2e 0%, #1a1a4e 50%, #0f0f3a 100%)',
+    concept: 'Sequences & Loops',
+    difficulty: 'Beginner',
+    xpTotal: 500,
+    missions: [
+      { id: 'space-1', title: 'Launch Sequence', emoji: '🔥', story: 'Captain! The launch computer is offline. Mission control needs you to manually program the engine sequence before the window closes.', challenge: 'Create a sequence of at least 5 blocks that fires the rocket: countdown → ignite engines → release clamps → go!', xp: 75, hint: 'Use the "repeat" and "print" blocks to build your countdown.' },
+      { id: 'space-2', title: 'Orbit Calculator', emoji: '🌍', story: 'You\'ve escaped Earth\'s atmosphere! Now you need to set the perfect orbit around the planet.', challenge: 'Use a loop to make your rocket orbit the planet exactly 3 times, adjusting speed at each pass.', xp: 100, hint: 'Use "repeat 3 times" with print blocks inside it.' },
+      { id: 'space-3', title: 'Asteroid Field', emoji: '☄️', story: 'Danger! A field of asteroids is dead ahead. You\'ll need quick reactions to survive.', challenge: 'Write code that checks "if touching asteroid → dodge left". Add a score counter for each asteroid dodged.', xp: 100, hint: 'Use if blocks from Control and a variable to track your score.' },
+      { id: 'space-4', title: 'Space Beacon', emoji: '📡', story: 'You\'ve found a distress beacon from a lost probe! You need to decode it and broadcast the reply.', challenge: 'Use a function to handle different beacon signals. Call it with at least 2 different signals.', xp: 125, hint: 'Define a function with a parameter, then call it multiple times.' },
+      { id: 'space-5', title: 'Safe Landing', emoji: '🏆', story: 'The mission is complete. Now guide your ship through re-entry and land safely.', challenge: 'Build a full landing sequence using sequences, loops, conditions AND functions — all four concepts!', xp: 100, hint: 'Combine all the concepts from previous missions into one final program.' },
+    ],
+  },
+  {
+    id: 'ocean',
+    title: 'Ocean Deep',
+    emoji: '🌊',
+    tagline: 'Explore the deep sea with conditions & events',
+    color: '#0ea5e9',
+    glow: 'rgba(14,165,233,0.4)',
+    bg: 'linear-gradient(135deg, #001a2e 0%, #003a5c 50%, #001f3f 100%)',
+    concept: 'Conditions & Events',
+    difficulty: 'Intermediate',
+    xpTotal: 600,
+    missions: [
+      { id: 'ocean-1', title: 'Dive Protocol', emoji: '🤿', story: 'The submarine systems are ready. Pressure increases with depth — your code must adapt.', challenge: 'Program the submarine to dive in stages: surface → 10m → 50m → 200m, checking pressure at each depth.', xp: 80, hint: 'Use variables for depth and if/else to check thresholds.' },
+      { id: 'ocean-2', title: 'Coral Maze', emoji: '🪸', story: 'The coral reef is beautiful — but deadly to your sub. Navigate through without touching the walls.', challenge: 'Use if to detect coral and change direction. Make the sub navigate the whole maze without stopping.', xp: 120, hint: 'Use a repeat loop and if to dodge coral obstacles.' },
+      { id: 'ocean-3', title: 'Shark Alert', emoji: '🦈', story: 'The sonar just lit up. Sharks in the area! Trigger 3 simultaneous responses.', challenge: 'When a shark is detected, trigger 3 functions: sound the alarm, flash the lights, and send a radio message.', xp: 120, hint: 'Define 3 functions and call them all inside an if block.' },
+      { id: 'ocean-4', title: 'Treasure Grid', emoji: '💎', story: 'Ancient treasure is scattered on an 8×8 grid. Your robot arm needs to scan every square.', challenge: 'Use nested loops to scan every square of an 8×8 grid. Count how many treasures you find.', xp: 150, hint: 'Use two repeat loops — one inside the other — to cover a grid.' },
+      { id: 'ocean-5', title: 'Surface!', emoji: '🏆', story: 'The oxygen supply is running low. Emergency ascent!', challenge: 'Build a full escape sequence — use a while loop, track oxygen, and surface before time runs out.', xp: 130, hint: 'Use a while loop with oxygen as the condition.' },
+    ],
+  },
+  {
+    id: 'city',
+    title: 'City Builder',
+    emoji: '🏙️',
+    tagline: 'Build a thriving city with variables & data',
+    color: '#f59e0b',
+    glow: 'rgba(245,158,11,0.4)',
+    bg: 'linear-gradient(135deg, #1a1200 0%, #3d2a00 50%, #1f1800 100%)',
+    concept: 'Variables & Data',
+    difficulty: 'Intermediate',
+    xpTotal: 650,
+    missions: [
+      { id: 'city-1', title: 'Blueprint', emoji: '📐', story: 'You\'ve been appointed lead engineer! Set up the city variables before anything can be built.', challenge: 'Create 4 variables: population (100), budget (50000), happiness (75), days (0). Display them all.', xp: 80, hint: 'Use set variable blocks for each one, then print them.' },
+      { id: 'city-2', title: 'Build the Roads', emoji: '🛣️', story: 'The citizens need roads! Each road costs money but increases happiness.', challenge: 'Loop 5 times: each iteration deduct 2000 from budget, add 3 to happiness, print the new values.', xp: 120, hint: 'Use change variable blocks inside a repeat loop.' },
+      { id: 'city-3', title: 'Power Grid', emoji: '⚡', story: 'The city needs power across 4 districts.', challenge: 'Loop through 4 districts: if power < 50 → add power and deduct from budget. Report total cost.', xp: 130, hint: 'Use a repeat loop and if to check each district.' },
+      { id: 'city-4', title: 'Population Boom', emoji: '📈', story: 'Your city is growing fast! Track growth over 10 days.', challenge: 'Simulate 10 days: each day population increases by 5% if happiness > 70, or by 1% if not.', xp: 160, hint: 'Use set population to int(population * 1.05) inside if/else inside a loop.' },
+      { id: 'city-5', title: 'Grand Opening', emoji: '🏆', story: 'The mayor is arriving! Show off all your city\'s stats.', challenge: 'Build a report that displays all variables and calculates a "City Score" = (happiness × 10) + (population / 10).', xp: 160, hint: 'Create a city_score variable and calculate it from your other variables.' },
+    ],
+  },
+  {
+    id: 'cyber',
+    title: 'Cyber Quest',
+    emoji: '⚡',
+    tagline: 'Master functions & AI to save the network',
+    color: '#10b981',
+    glow: 'rgba(16,185,129,0.4)',
+    bg: 'linear-gradient(135deg, #001a0e 0%, #003320 50%, #001a0e 100%)',
+    concept: 'Functions & AI',
+    difficulty: 'Advanced',
+    xpTotal: 750,
+    missions: [
+      { id: 'cyber-1', title: 'Debug Protocol', emoji: '🐛', story: 'The network is riddled with bugs! Write a fix function for each bug type.', challenge: 'Create a function called fixBug that takes a bug type as input. Call it 5 times with different inputs.', xp: 100, hint: 'Define a function with a parameter, then call it 5 times.' },
+      { id: 'cyber-2', title: 'Pattern Lock', emoji: '🔐', story: 'The security vault uses a pattern lock. Crack the formula to unlock the door.', challenge: 'Write a function that generates the sequence: 2, 4, 8, 16, 32.', xp: 140, hint: 'Each step multiplies by 2. Use a loop inside your function.' },
+      { id: 'cyber-3', title: 'Neural Guard', emoji: '🤖', story: 'The base AI has gone rogue! Train a new classifier to recognise safe vs threat signals.', challenge: 'Classify 5 different inputs as "safe" or "threat". For each "threat" trigger a lockdown function.', xp: 160, hint: 'Use a classify function with "if result = threat → call lockdown()" pattern.' },
+      { id: 'cyber-4', title: 'Data Heist', emoji: '💾', story: 'The enemy has stolen the city\'s data! Decrypt it using recursive function calls.', challenge: 'Write a recursive function "decrypt" that calls itself until it reaches the base case.', xp: 200, hint: 'Recursion: a function that calls itself. Use if count > 0 → call decrypt(count - 1).' },
+      { id: 'cyber-5', title: 'System Victory', emoji: '🏆', story: 'Run the final diagnostic — a function that calls all your previous functions.', challenge: 'Write a "runDiagnostic" function that calls fixBug, decrypt, and lockdown in order.', xp: 150, hint: 'Your final function should call all the functions you wrote in earlier missions.' },
+    ],
+  },
+];
+
 const MISSION_CHECKS = {
   'space-1': {
     starter: `# 🔥 Launch Sequence\n# Print each step of your rocket launch\nprint("Systems check...")\nprint("Fuel loading...")\n# Add at least 3 more launch steps below!\n`,
