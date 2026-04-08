@@ -3424,8 +3424,15 @@ export default function RobotPanel() {
               >
                 ⚡ Flash BLE Firmware via USB
               </button>
-              <p style={{ margin: '8px 0 0 0', fontSize: 11, color: 'var(--text-muted)' }}>
-                After flashing: unplug USB, screen shows "B", then click 📡 Bluetooth
+              <a
+                href="/bytebuddies_ble.hex"
+                download="bytebuddies_ble.hex"
+                style={{ ...s.btn('#475569'), fontSize: 12, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 6, padding: '7px 14px' }}
+              >
+                ⬇️ Download .hex (drag to MICROBIT drive instead)
+              </a>
+              <p style={{ margin: '6px 0 0 0', fontSize: 11, color: 'var(--text-muted)' }}>
+                After flashing: unplug USB → screen shows "B" → click 📡 Bluetooth
               </p>
             </div>
           )}
