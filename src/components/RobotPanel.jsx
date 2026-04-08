@@ -2538,8 +2538,8 @@ export default function RobotPanel() {
   // NUS standard: 6e400002 = TX of microbit (NOTIFY → browser reads)
   //               6e400003 = RX of microbit (WRITE  → browser sends)
   const BLE_NUS_SERVICE = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
-  const BLE_NUS_TX      = '6e400003-b5a3-f393-e0a9-e50e24dcca9e'; // micro:bit TRANSMITS → browser subscribes (NOTIFY)
-  const BLE_NUS_RX      = '6e400002-b5a3-f393-e0a9-e50e24dcca9e'; // micro:bit RECEIVES  → browser writes (WRITE)
+  const BLE_NUS_TX      = '6e400002-b5a3-f393-e0a9-e50e24dcca9e'; // micro:bit RECEIVES (RX) — browser writes to this
+  const BLE_NUS_RX      = '6e400003-b5a3-f393-e0a9-e50e24dcca9e'; // micro:bit TRANSMITS (TX) — browser subscribes to this (NOTIFY)
   const btDeviceRef     = useRef(null);
   const btTxCharRef     = useRef(null);
   const connectionTypeRef = useRef(null); // 'usb' | 'bluetooth'
