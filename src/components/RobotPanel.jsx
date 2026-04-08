@@ -2605,8 +2605,15 @@ export default function RobotPanel() {
     }
     setConnecting(true);
     try {
+      // Show micro:bit devices by name — filtering by 128-bit service UUID is broken
+      // on Windows Chrome. Name filter catches both flashed ("ByteBuddies") and
+      // unflashed ("BBC micro:bit [XXXXX]") devices.
       const device = await navigator.bluetooth.requestDevice({
-        filters: [{ services: [BLE_NUS_SERVICE] }],
+        filters: [
+          { name: 'ByteBuddies' },
+          { namePrefix: 'BBC micro:bit' },
+        ],
+        optionalServices: [BLE_NUS_SERVICE],
       });
       btDeviceRef.current = device;
       device.addEventListener('gattserverdisconnected', () => {
@@ -2619,10 +2626,40 @@ export default function RobotPanel() {
         setFirmwareOk(null);
         addTerminal('🔌 Bluetooth disconnected', 'info');
       });
+      addTerminal(`🔗 Connecting to ${device.name || 'micro:bit'}…`, 'info');
       const server = await device.gatt.connect();
-      const service = await server.getPrimaryService(BLE_NUS_SERVICE);
-      const txChar = await service.getCharacteristic(BLE_NUS_TX);
-      const rxChar = await service.getCharacteristic(BLE_NUS_RX);
+
+      // Give the BLE stack time to complete service discovery before querying
+      await new Promise(r => setTimeout(r, 800));
+
+      // Try to open the NUS service — only present if ByteBuddies firmware is flashed.
+      // Retry up to 3 times because GATT discovery can be slow on Windows.
+      let service = null;
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          service = await server.getPrimaryService(BLE_NUS_SERVICE);
+          break;
+        } catch (e) {
+          addTerminal(`  (attempt ${attempt}/3 — ${e.message})`, 'info');
+          if (attempt < 3) await new Promise(r => setTimeout(r, 600));
+        }
+      }
+      if (!service) {
+        addTerminal('⚠️ NUS service not found — is bytebuddies_ble.py flashed?', 'warn');
+        addTerminal('👉 Open Setup Guide → "📡 Bluetooth" section for flashing instructions.', 'info');
+        try { server.disconnect(); } catch (_) {}
+        return;
+      }
+
+      let txChar, rxChar;
+      try {
+        txChar = await service.getCharacteristic(BLE_NUS_TX);
+        rxChar = await service.getCharacteristic(BLE_NUS_RX);
+      } catch (e) {
+        addTerminal(`⚠️ Could not access UART characteristics: ${e.message}`, 'warn');
+        try { server.disconnect(); } catch (_) {}
+        return;
+      }
       btTxCharRef.current = txChar;
       await rxChar.startNotifications();
       rxChar.addEventListener('characteristicvaluechanged', handleBleData);
@@ -2639,36 +2676,30 @@ export default function RobotPanel() {
             if (i + 20 < bytes.length) await new Promise(r => setTimeout(r, 20));
           }
         };
-        const waitFor = (pattern, ms = 2000) => new Promise(resolve => {
-          serialSniffRef.current = { pattern, resolve };
-          setTimeout(() => { if (serialSniffRef.current?.pattern === pattern) { serialSniffRef.current = null; resolve(false); } }, ms);
-        });
         try {
-          await bleWrite('\x02');
-          await new Promise(r => setTimeout(r, 300));
-          let gotRepl = false;
-          for (let attempt = 0; attempt < 3 && !gotRepl; attempt++) {
-            if (attempt > 0) await new Promise(r => setTimeout(r, 500));
-            await bleWrite('\x03\x03');
-            await new Promise(r => setTimeout(r, 100));
-            const p = waitFor('raw REPL', 2000);
-            await bleWrite('\x01');
-            gotRepl = await p;
-          }
-          if (!gotRepl) {
+          // Short pause after connection before sending
+          await new Promise(r => setTimeout(r, 800));
+          // Ping with \n — works with both bytebuddies_ble.py and MakeCode firmware
+          // Both respond with \x04\x04 when they receive a recognised command
+          addTerminal('🔍 Pinging ByteBuddies firmware…', 'info');
+          bleBufferRef.current = '';
+          rawReplDoneRef.current = null;
+          const pingDone = new Promise(resolve => {
+            rawReplDoneRef.current = () => { rawReplDoneRef.current = null; resolve(true); };
+            setTimeout(() => { if (rawReplDoneRef.current) { rawReplDoneRef.current = null; resolve(false); } }, 5000);
+          });
+          await bleWrite('display.show(Image.HAPPY)\n');
+          const pingOk = await pingDone;
+
+          if (!pingOk) {
             setFirmwareOk(false); firmwareOkRef.current = false;
-            addTerminal('⚠️ MakeCode firmware detected — flash MicroPython first.', 'warn');
+            addTerminal('⚠️ No response from micro:bit.', 'warn');
+            addTerminal('👉 Make sure bytebuddies_ble.py is flashed — see Setup Guide → Bluetooth.', 'info');
             return;
           }
           setFirmwareOk(true); firmwareOkRef.current = true;
-          addTerminal('✅ MicroPython detected via Bluetooth', 'success');
-          const lines = MICROBIT_KIT_SETUPS[microbitKit] || MICROBIT_KIT_SETUPS.generic;
-          for (const line of lines) {
-            const done = new Promise(resolve => { rawReplDoneRef.current = resolve; setTimeout(resolve, 3000); });
-            await bleWrite(line + '\x04');
-            await done;
-          }
-          addTerminal(`🔬 micro:bit ready via Bluetooth — ${microbitKit} kit loaded. Press ▶ Run!`, 'success');
+          addTerminal('✅ ByteBuddies BLE firmware ready!', 'success');
+          addTerminal(`🔬 micro:bit connected via Bluetooth! Press ▶ Run.`, 'success');
         } catch (e) {
           addTerminal(`⚠️ BLE setup error: ${e.message}`, 'warn');
         }
@@ -2892,7 +2923,7 @@ export default function RobotPanel() {
 
   /* ─── Send command via micro:bit raw REPL, wait for \x04\x04 completion ─── */
   const sendMicrobitRaw = useCallback(async (code) => {
-    if (!writerRef.current) return false;
+    if (!writerRef.current && !btTxCharRef.current) return false;
     try {
       const trimmed = code.trim();
       if (!trimmed) return true;
@@ -2900,7 +2931,8 @@ export default function RobotPanel() {
         rawReplDoneRef.current = resolve;
         setTimeout(() => { rawReplDoneRef.current = null; reject(new Error('timeout')); }, 25000);
       });
-      await writeChunked(trimmed + '\x04');
+      const term = connectionTypeRef.current === 'bluetooth' ? '\n' : '\x04';
+      await writeChunked(trimmed + term);
       await done;
       addTerminal(`→ ${trimmed}`, 'send');
       return true;
@@ -3076,7 +3108,7 @@ export default function RobotPanel() {
         // Forever programs never send \x04\x04 back — just fire-and-forget the code.
         // Running executeBlocks(sim-only) in parallel would spin at JS speed (no serial wait)
         // and freeze the browser. Let the micro:bit handle the loop natively.
-        await writeChunked(pythonCode + '\x04');
+        await writeChunked(pythonCode + (connectionTypeRef.current === 'bluetooth' ? '\n' : '\x04'));
         addTerminal('▶ Running forever — press Stop to interrupt', 'info');
         // Park here until user clicks Stop
         await new Promise(resolve => { const iv = setInterval(() => { if (!runningRef.current) { clearInterval(iv); resolve(); } }, 200); });
@@ -3106,10 +3138,14 @@ export default function RobotPanel() {
     setActiveBlockUid(null);
     if (connectedRef.current) {
       if (robotType === 'microbit' && firmwareOkRef.current === true) {
-        // Interrupt any running program (Ctrl+C twice), then stop motors
-        await writeChunked('\x03\x03');
-        await new Promise(r => setTimeout(r, 400));
-        await sendMicrobitRaw('sp()');
+        if (connectionTypeRef.current === 'bluetooth') {
+          await writeChunked('sp()\n');
+        } else {
+          // USB: interrupt running program with Ctrl+C, then stop motors
+          await writeChunked('\x03\x03');
+          await new Promise(r => setTimeout(r, 400));
+          await sendMicrobitRaw('sp()');
+        }
       } else {
         await sendRaw(profile.buildCmd('stop', {}));
       }
@@ -3305,10 +3341,8 @@ export default function RobotPanel() {
           </div>
           <ol style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 2 }}>
             {robotType === 'microbit' && <>
-              <li>Connect your micro:bit to your computer with a USB cable — <strong>no flashing needed!</strong></li>
-              <li>Click <strong>Connect Robot</strong> and select the micro:bit USB serial port (e.g. "USB Serial Port")</li>
-              <li>ByteBuddies sends commands directly to the micro:bit MicroPython REPL</li>
-              <li>Build your program using the blocks on the left, then click <strong>Run</strong></li>
+              <li><strong>🔌 USB (easiest):</strong> Connect with a USB cable → click <strong>🔌 USB</strong> → select the serial port → click <strong>Run</strong></li>
+              <li>No flashing needed over USB — ByteBuddies sends code directly to MicroPython REPL</li>
             </>}
             {robotType === 'mbot' && <>
               <li>Step 1 — <strong>Download &amp; upload the sketch</strong> to your mBot (Arduino IDE + Makeblock library)</li>
@@ -3321,6 +3355,25 @@ export default function RobotPanel() {
               <li>Step 3 — Click <strong>Connect Robot</strong> → select the COM port → click <strong>Run</strong></li>
             </>}
           </ol>
+          {robotType === 'microbit' && (
+            <div style={{ marginTop: 12, padding: '12px 14px', background: '#0c1a2e', border: '1px solid #0ea5e9', borderRadius: 8 }}>
+              <strong style={{ fontSize: 13, color: '#38bdf8' }}>📡 Wireless via Bluetooth — one-time setup</strong>
+              <ol style={{ margin: '8px 0 0 0', paddingLeft: 18, fontSize: 12, color: 'var(--text-secondary)', lineHeight: 2 }}>
+                <li>Download the BLE firmware file below</li>
+                <li>Connect your micro:bit via USB, then open <a href="https://python.microbit.org/v/3" target="_blank" rel="noreferrer" style={{ color: '#38bdf8' }}>python.microbit.org/v/3</a></li>
+                <li>Click the <strong>three dots (⋮)</strong> next to "Open" → <strong>Open file</strong> → select the downloaded <strong>bytebuddies_ble.py</strong></li>
+                <li>Click <strong>Send to micro:bit</strong> (the flash button)</li>
+                <li>Unplug USB — the screen shows <strong>"B"</strong> = ready to connect wirelessly!</li>
+                <li>Click <strong>📡 Bluetooth</strong> above → select <strong>ByteBuddies</strong> from the list</li>
+              </ol>
+              <a
+                href="/bytebuddies_ble.py"
+                download
+                style={{ ...s.btn('#0ea5e9'), fontSize: 13, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 10, padding: '8px 16px', fontWeight: 700 }}>
+                ⬇️ Download BLE Firmware (bytebuddies_ble.py)
+              </a>
+            </div>
+          )}
           {(robotType === 'mbot' || robotType === 'arduino') && (
             <div style={{ marginTop: 12, padding: '10px 14px', background: '#0f2a1a', border: '1px solid #16a34a', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
               <a
