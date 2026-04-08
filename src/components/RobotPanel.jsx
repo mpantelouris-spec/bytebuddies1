@@ -2538,8 +2538,8 @@ export default function RobotPanel() {
   // NUS standard: 6e400002 = TX of microbit (NOTIFY → browser reads)
   //               6e400003 = RX of microbit (WRITE  → browser sends)
   const BLE_NUS_SERVICE = '6e400001-b5b3-f393-e0a9-e50e24dcca9e';
-  const BLE_NUS_TX      = '6e400003-b5b3-f393-e0a9-e50e24dcca9e'; // browser WRITES to this (microbit RX)
-  const BLE_NUS_RX      = '6e400002-b5b3-f393-e0a9-e50e24dcca9e'; // browser SUBSCRIBES to this (microbit TX)
+  const BLE_NUS_TX      = '6e400003-b5b3-f393-e0a9-e50e24dcca9e'; // micro:bit TRANSMITS → browser subscribes (NOTIFY)
+  const BLE_NUS_RX      = '6e400002-b5b3-f393-e0a9-e50e24dcca9e'; // micro:bit RECEIVES  → browser writes (WRITE)
   const btDeviceRef     = useRef(null);
   const btTxCharRef     = useRef(null);
   const connectionTypeRef = useRef(null); // 'usb' | 'bluetooth'
@@ -2684,8 +2684,8 @@ export default function RobotPanel() {
       addTerminal('📡 Step 4/6: Getting TX/RX characteristics…', 'info');
       let txChar, rxChar;
       try {
-        txChar = await service.getCharacteristic(BLE_NUS_TX);
-        rxChar = await service.getCharacteristic(BLE_NUS_RX);
+        txChar = await service.getCharacteristic(BLE_NUS_RX);  // browser writes TO micro:bit's RX char (6e400002)
+        rxChar = await service.getCharacteristic(BLE_NUS_TX);  // browser subscribes TO micro:bit's TX char (6e400003)
         addTerminal('✅ Step 4/6: Characteristics found', 'success');
       } catch (e) {
         addTerminal(`❌ Step 4/6 FAILED: ${e.message}`, 'error');
@@ -2715,7 +2715,10 @@ export default function RobotPanel() {
         const bytes = typeof data === 'string' ? enc.encode(data) : data;
         for (let i = 0; i < bytes.length; i += 20) {
           try { await txChar.writeValueWithoutResponse(bytes.slice(i, i + 20)); }
-          catch (e) { addTerminal(`  write error: ${e.message}`, 'warn'); }
+          catch (wErr) {
+            try { await txChar.writeValue(bytes.slice(i, i + 20)); }
+            catch (e) { addTerminal(`  write error: ${e.message}`, 'warn'); }
+          }
           if (i + 20 < bytes.length) await new Promise(r => setTimeout(r, 30));
         }
       };
@@ -2942,7 +2945,10 @@ export default function RobotPanel() {
       if (!btTxCharRef.current) return;
       for (let i = 0; i < bytes.length; i += 20) {
         try { await btTxCharRef.current.writeValueWithoutResponse(bytes.slice(i, i + 20)); }
-        catch (e) { break; }
+        catch (_) {
+          try { await btTxCharRef.current.writeValue(bytes.slice(i, i + 20)); }
+          catch (e) { addTerminal(`BLE write error: ${e.message}`, 'warn'); break; }
+        }
         if (i + 20 < bytes.length) await new Promise(r => setTimeout(r, 20));
       }
     } else {
