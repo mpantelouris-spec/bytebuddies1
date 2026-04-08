@@ -24,6 +24,7 @@ export default function TeacherHome({ onNavigate }) {
   const [classes, setClasses] = useState([]);
   const [assignments, setAssignments] = useState([]);
   const [studentCount, setStudentCount] = useState(0);
+  const [showGClassroom, setShowGClassroom] = useState(false);
 
   useEffect(() => {
     const cls = JSON.parse(localStorage.getItem('bb-classes') || '[]');
@@ -182,6 +183,58 @@ export default function TeacherHome({ onNavigate }) {
           </div>
         )}
       </div>
+
+      {/* Google Classroom Banner */}
+      <div style={{ background: 'linear-gradient(135deg, rgba(66,133,244,0.12), rgba(66,133,244,0.06))', border: '1px solid rgba(66,133,244,0.25)', borderRadius: 16, padding: '20px 24px', display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap', cursor: 'pointer' }} onClick={() => setShowGClassroom(true)}>
+        <div style={{ width: 48, height: 48, borderRadius: 12, background: 'rgba(66,133,244,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <svg width="26" height="26" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="48" height="48" rx="10" fill="#4285F4"/>
+            <rect x="10" y="14" width="28" height="20" rx="2" fill="white"/>
+            <rect x="16" y="20" width="16" height="8" rx="1" fill="#4285F4"/>
+            <circle cx="24" cy="24" r="3" fill="white"/>
+          </svg>
+        </div>
+        <div style={{ flex: 1, minWidth: 200 }}>
+          <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-primary)', marginBottom: 4 }}>Connect Google Classroom</div>
+          <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Import your class roster automatically — no invite codes needed for students</div>
+        </div>
+        <button style={{ padding: '9px 20px', background: '#4285F4', border: 'none', borderRadius: 8, color: '#fff', fontWeight: 600, fontSize: 13, cursor: 'pointer', flexShrink: 0 }}>
+          Connect →
+        </button>
+      </div>
+
+      {/* Google Classroom Modal */}
+      {showGClassroom && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }} onClick={() => setShowGClassroom(false)}>
+          <div style={{ background: 'var(--bg-secondary)', borderRadius: 20, width: '100%', maxWidth: 440, border: '1px solid var(--border-color)', boxShadow: '0 24px 80px rgba(0,0,0,0.5)', padding: 32 }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(66,133,244,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <svg width="24" height="24" viewBox="0 0 48 48" fill="none"><rect width="48" height="48" rx="10" fill="#4285F4"/><rect x="10" y="14" width="28" height="20" rx="2" fill="white"/><rect x="16" y="20" width="16" height="8" rx="1" fill="#4285F4"/><circle cx="24" cy="24" r="3" fill="white"/></svg>
+              </div>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--text-primary)' }}>Google Classroom Sync</div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Import your class roster automatically</div>
+              </div>
+              <button onClick={() => setShowGClassroom(false)} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 20, cursor: 'pointer' }}>✕</button>
+            </div>
+            <div style={{ background: 'rgba(66,133,244,0.08)', border: '1px solid rgba(66,133,244,0.2)', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
+              <div style={{ fontSize: 13, color: '#4285F4', fontWeight: 600, marginBottom: 8 }}>How it works</div>
+              {['Sign in with your school Google account', 'Select which Classroom class to import', 'Students are added automatically — no invite codes needed', 'Assignments sync back to Google Classroom'].map((s, i) => (
+                <div key={i} style={{ fontSize: 13, color: 'var(--text-muted)', display: 'flex', gap: 8, marginBottom: 6 }}>
+                  <span style={{ color: '#4285F4', fontWeight: 700, minWidth: 18 }}>{i + 1}.</span>{s}
+                </div>
+              ))}
+            </div>
+            <div style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 8, padding: '10px 14px', marginBottom: 20, fontSize: 12, color: '#f59e0b' }}>
+              Available on the School plan — contact us to activate for your school.
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => setShowGClassroom(false)} style={{ flex: 1, padding: '11px', background: 'none', border: '1px solid var(--border-color)', borderRadius: 8, color: 'var(--text-muted)', cursor: 'pointer', fontSize: 14 }}>Close</button>
+              <button onClick={() => { alert('Email us at hello@bytebuddies.io to activate Google Classroom for your school.'); setShowGClassroom(false); }} style={{ flex: 1, padding: '11px', background: '#4285F4', border: 'none', borderRadius: 8, color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 700 }}>Contact Us →</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Quick Actions */}
       <div>
