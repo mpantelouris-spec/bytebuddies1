@@ -628,9 +628,9 @@ function MissionBlockEditor({ missionId, campColor, blocks, setBlocks }) {
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: 10, height: 360, maxHeight: 360 }}>
+      <div style={{ display: 'flex', gap: 10, minHeight: 180 }}>
         {/* Palette */}
-        <div style={{ width: 148, flexShrink: 0, background: 'rgba(0,0,0,0.3)', borderRadius: 12, padding: '10px 8px', overflowY: 'auto', border: '1px solid rgba(255,255,255,0.08)' }}>
+        <div style={{ width: 148, flexShrink: 0, background: 'rgba(0,0,0,0.3)', borderRadius: 12, padding: '10px 8px', border: '1px solid rgba(255,255,255,0.08)' }}>
           <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8, paddingLeft: 2 }}>Blocks</div>
           {available.map(type => {
             const def = MBLOCK_DEFS[type];
@@ -650,7 +650,7 @@ function MissionBlockEditor({ missionId, campColor, blocks, setBlocks }) {
         </div>
 
         {/* Workspace */}
-        <div style={{ flex: 1, background: 'rgba(0,0,0,0.2)', borderRadius: 12, padding: 10, overflowY: 'auto', border: '1px solid rgba(255,255,255,0.07)' }}>
+        <div style={{ flex: 1, background: 'rgba(0,0,0,0.2)', borderRadius: 12, padding: 10, minHeight: 180, border: '1px solid rgba(255,255,255,0.07)' }}>
           {blocks.length === 0 && (
             <div style={{ color: 'rgba(255,255,255,0.2)', fontSize: 13, textAlign: 'center', marginTop: 60 }}>
               ← Click blocks on the left to add them!
