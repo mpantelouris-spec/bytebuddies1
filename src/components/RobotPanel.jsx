@@ -3357,20 +3357,21 @@ export default function RobotPanel() {
           </ol>
           {robotType === 'microbit' && (
             <div style={{ marginTop: 12, padding: '12px 14px', background: '#0c1a2e', border: '1px solid #0ea5e9', borderRadius: 8 }}>
-              <strong style={{ fontSize: 13, color: '#38bdf8' }}>📡 Wireless via Bluetooth — one-time setup</strong>
+              <strong style={{ fontSize: 13, color: '#38bdf8' }}>📡 Wireless via Bluetooth — one-time MakeCode setup</strong>
               <ol style={{ margin: '8px 0 0 0', paddingLeft: 18, fontSize: 12, color: 'var(--text-secondary)', lineHeight: 2 }}>
-                <li>Download the BLE firmware file below</li>
-                <li>Connect your micro:bit via USB, then open <a href="https://python.microbit.org/v/3" target="_blank" rel="noreferrer" style={{ color: '#38bdf8' }}>python.microbit.org/v/3</a></li>
-                <li>Click the <strong>three dots (⋮)</strong> next to "Open" → <strong>Open file</strong> → select the downloaded <strong>bytebuddies_ble.py</strong></li>
-                <li>Click <strong>Send to micro:bit</strong> (the flash button)</li>
-                <li>Unplug USB — the screen shows <strong>"B"</strong> = ready to connect wirelessly!</li>
-                <li>Click <strong>📡 Bluetooth</strong> above → select <strong>ByteBuddies</strong> from the list</li>
+                <li>Download the MakeCode program below</li>
+                <li>Open <a href="https://makecode.microbit.org" target="_blank" rel="noreferrer" style={{ color: '#38bdf8' }}>makecode.microbit.org</a> → <strong>New Project</strong></li>
+                <li>Click the <strong>gear ⚙️</strong> → <strong>Project Settings</strong> → <strong>Bluetooth</strong> → tick <strong>"No Pairing Required"</strong> → Save</li>
+                <li>Click <strong>Extensions</strong> → search <strong>bluetooth</strong> → add it</li>
+                <li>Click the <strong>JavaScript</strong> tab at the top → select all (Ctrl+A) → delete → paste the downloaded file contents</li>
+                <li>Click <strong>Download</strong> → drag the .hex onto the MICROBIT USB drive (USB only needed this once)</li>
+                <li>Unplug USB — screen shows <strong>"B"</strong> = ready! Click <strong>📡 Bluetooth</strong> → select your micro:bit</li>
               </ol>
               <a
-                href="/bytebuddies_ble.py"
+                href="/bytebuddies_makecode.js"
                 download
                 style={{ ...s.btn('#0ea5e9'), fontSize: 13, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 10, padding: '8px 16px', fontWeight: 700 }}>
-                ⬇️ Download BLE Firmware (bytebuddies_ble.py)
+                ⬇️ Download MakeCode BLE Program (.js)
               </a>
             </div>
           )}
