@@ -2640,21 +2640,42 @@ export default function RobotPanel() {
       // Windows needs extra time to complete GATT service discovery
       await new Promise(r => setTimeout(r, 1500));
 
-      addTerminal('📡 Step 3/6: Finding UART service…', 'info');
+      addTerminal('📡 Step 3/6: Scanning all services on device…', 'info');
       let service = null;
-      for (let attempt = 1; attempt <= 5; attempt++) {
-        try {
-          service = await server.getPrimaryService(BLE_NUS_SERVICE);
-          break;
-        } catch (e) {
-          addTerminal(`  attempt ${attempt}/5: ${e.message}`, 'info');
-          if (attempt < 5) await new Promise(r => setTimeout(r, 1000));
+
+      // Step A: enumerate ALL services first — this triggers full GATT discovery
+      // and fixes the Windows Chrome stale-cache bug
+      try {
+        const allServices = await server.getPrimaryServices();
+        if (allServices.length === 0) {
+          addTerminal('  ⚠️ Device has 0 services — MakeCode BLE program may not be running', 'warn');
+        } else {
+          allServices.forEach(s => addTerminal(`  found service: ${s.uuid}`, 'info'));
+          service = allServices.find(s => s.uuid.toLowerCase() === BLE_NUS_SERVICE.toLowerCase()) || null;
+        }
+      } catch (e) {
+        addTerminal(`  getPrimaryServices() failed: ${e.message}`, 'warn');
+      }
+
+      // Step B: fallback — try direct UUID lookup (sometimes works after Step A)
+      if (!service) {
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          try {
+            service = await server.getPrimaryService(BLE_NUS_SERVICE);
+            break;
+          } catch (e) {
+            addTerminal(`  direct lookup attempt ${attempt}/3: ${e.message}`, 'info');
+            if (attempt < 3) await new Promise(r => setTimeout(r, 800));
+          }
         }
       }
+
       if (!service) {
-        addTerminal('❌ Step 3/6 FAILED: UART service not found.', 'error');
-        addTerminal('🔧 Fix: Open Windows Settings → Bluetooth → find your micro:bit → Remove device. Then try connecting again here.', 'warn');
-        addTerminal('👉 Also check the MakeCode program is flashed — Setup Guide → Bluetooth.', 'info');
+        addTerminal('❌ Step 3/6 FAILED: UART service not found on this device.', 'error');
+        addTerminal('🔧 Check: did you follow ALL steps in Setup Guide → Bluetooth?', 'warn');
+        addTerminal('   • Project Settings → Bluetooth → "No Pairing Required" ticked?', 'info');
+        addTerminal('   • bluetooth extension added in MakeCode?', 'info');
+        addTerminal('   • Pasted the .js code in the JavaScript tab and downloaded the .hex?', 'info');
         try { server.disconnect(); } catch (_) {}
         return;
       }
