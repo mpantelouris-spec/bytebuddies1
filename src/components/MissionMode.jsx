@@ -832,6 +832,17 @@ export default function MissionMode({ onNavigate }) {
     }
   }, [activeMission?.id]);
 
+  // Allow scrolling on mission/campaign detail pages
+  useEffect(() => {
+    if (activeMission || activeCampaign) {
+      document.documentElement.classList.add('whitepaper-open');
+      window.scrollTo(0, 0);
+    } else {
+      document.documentElement.classList.remove('whitepaper-open');
+    }
+    return () => document.documentElement.classList.remove('whitepaper-open');
+  }, [activeMission, activeCampaign]);
+
   const save = (newProgress) => {
     setProgress(newProgress);
     localStorage.setItem('bb-mission-progress', JSON.stringify(newProgress));
