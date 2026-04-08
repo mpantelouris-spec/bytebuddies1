@@ -2607,16 +2607,12 @@ export default function RobotPanel() {
     }
     setConnecting(true);
     try {
-      addTerminal('📡 Step 1/6: Opening device picker…', 'info');
-      addTerminal('⚠️ If it fails: remove micro:bit from Windows Bluetooth settings first!', 'warn');
-      // acceptAllDevices forces a fresh GATT discovery — avoids Windows Chrome
-      // stale-cache bug that occurs when device was OS-paired first
+      addTerminal('📡 Step 1/6: Opening device picker — select your micro:bit…', 'info');
+      // acceptAllDevices + optionalServices is the most compatible approach:
+      // it bypasses Chrome's advertisement-filter requirement and pre-authorizes
+      // access to the UART service UUID regardless of what the device advertises
       const device = await navigator.bluetooth.requestDevice({
-        filters: [
-          { name: 'ByteBuddies' },
-          { namePrefix: 'BBC micro:bit' },
-          { services: [BLE_NUS_SERVICE] },
-        ],
+        acceptAllDevices: true,
         optionalServices: [BLE_NUS_SERVICE],
       });
       addTerminal(`✅ Step 1/6: Device selected — "${device.name}"`, 'success');
