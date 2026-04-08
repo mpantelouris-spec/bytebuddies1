@@ -3397,22 +3397,36 @@ export default function RobotPanel() {
           </ol>
           {robotType === 'microbit' && (
             <div style={{ marginTop: 12, padding: '12px 14px', background: '#0c1a2e', border: '1px solid #0ea5e9', borderRadius: 8 }}>
-              <strong style={{ fontSize: 13, color: '#38bdf8' }}>📡 Wireless via Bluetooth — one-time MakeCode setup</strong>
-              <ol style={{ margin: '8px 0 0 0', paddingLeft: 18, fontSize: 12, color: 'var(--text-secondary)', lineHeight: 2 }}>
-                <li>Download the MakeCode program below</li>
-                <li>Open <a href="https://makecode.microbit.org" target="_blank" rel="noreferrer" style={{ color: '#38bdf8' }}>makecode.microbit.org</a> → <strong>New Project</strong></li>
-                <li>Click the <strong>gear ⚙️</strong> → <strong>Project Settings</strong> → <strong>Bluetooth</strong> → tick <strong>"No Pairing Required"</strong> → Save</li>
-                <li>Click <strong>Extensions</strong> → search <strong>bluetooth</strong> → add it</li>
-                <li>Click the <strong>JavaScript</strong> tab at the top → select all (Ctrl+A) → delete → paste the downloaded file contents</li>
-                <li>Click <strong>Download</strong> → drag the .hex onto the MICROBIT USB drive (USB only needed this once)</li>
-                <li>Unplug USB — screen shows <strong>"B"</strong> = ready! Click <strong>📡 Bluetooth</strong> → select your micro:bit</li>
-              </ol>
-              <a
-                href="/bytebuddies_makecode.js"
-                download
-                style={{ ...s.btn('#0ea5e9'), fontSize: 13, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 10, padding: '8px 16px', fontWeight: 700 }}>
-                ⬇️ Download MakeCode BLE Program (.js)
-              </a>
+              <strong style={{ fontSize: 13, color: '#38bdf8' }}>📡 Wireless via Bluetooth — one-click USB flash</strong>
+              <p style={{ margin: '6px 0', fontSize: 12, color: 'var(--text-secondary)' }}>
+                Connect your micro:bit via USB, then click the button below. ByteBuddies will automatically flash the BLE firmware — no MakeCode needed!
+              </p>
+              <button
+                style={{ ...s.btn('#0ea5e9'), fontSize: 13, padding: '9px 18px', fontWeight: 700, marginTop: 4 }}
+                onClick={async () => {
+                  try {
+                    addTerminal('📦 Fetching BLE firmware…', 'info');
+                    const res = await fetch('/bytebuddies_ble.hex');
+                    if (!res.ok) throw new Error('Could not load firmware file');
+                    const hexStr = await res.text();
+                    addTerminal('⚡ Flashing BLE firmware via USB…', 'info');
+                    setFlashProgress(0);
+                    await flashViaDAPLink(hexStr, p => setFlashProgress(p));
+                    setFlashProgress('done');
+                    addTerminal('✅ BLE firmware flashed! Unplug USB — screen shows "B" = ready.', 'success');
+                    addTerminal('Now click 📡 Bluetooth above to connect wirelessly!', 'info');
+                    setTimeout(() => setFlashProgress(null), 3000);
+                  } catch (e) {
+                    setFlashProgress(null);
+                    addTerminal(`❌ Flash failed: ${e.message}`, 'error');
+                  }
+                }}
+              >
+                ⚡ Flash BLE Firmware via USB
+              </button>
+              <p style={{ margin: '8px 0 0 0', fontSize: 11, color: 'var(--text-muted)' }}>
+                After flashing: unplug USB, screen shows "B", then click 📡 Bluetooth
+              </p>
             </div>
           )}
           {(robotType === 'mbot' || robotType === 'arduino') && (
