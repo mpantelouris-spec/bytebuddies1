@@ -2535,9 +2535,11 @@ export default function RobotPanel() {
   const serialSniffRef = useRef(null); // { pattern, resolve } — used for firmware detection
 
   // BLE (Bluetooth) — Nordic UART Service for wireless micro:bit connection
+  // NUS standard: 6e400002 = TX of microbit (NOTIFY → browser reads)
+  //               6e400003 = RX of microbit (WRITE  → browser sends)
   const BLE_NUS_SERVICE = '6e400001-b5b3-f393-e0a9-e50e24dcca9e';
-  const BLE_NUS_TX      = '6e400002-b5b3-f393-e0a9-e50e24dcca9e'; // write to device
-  const BLE_NUS_RX      = '6e400003-b5b3-f393-e0a9-e50e24dcca9e'; // notify from device
+  const BLE_NUS_TX      = '6e400003-b5b3-f393-e0a9-e50e24dcca9e'; // browser WRITES to this (microbit RX)
+  const BLE_NUS_RX      = '6e400002-b5b3-f393-e0a9-e50e24dcca9e'; // browser SUBSCRIBES to this (microbit TX)
   const btDeviceRef     = useRef(null);
   const btTxCharRef     = useRef(null);
   const connectionTypeRef = useRef(null); // 'usb' | 'bluetooth'
