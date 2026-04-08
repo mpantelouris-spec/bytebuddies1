@@ -116,8 +116,8 @@ export default function TopBar({ currentPage, onNavigate, onExport, onAuth }) {
           </button>
           {showNotifs && (
             <>
-              <div style={{ position: 'fixed', inset: 0, zIndex: 499 }} onClick={() => setShowNotifs(false)} />
-              <div className="dropdown-menu" style={{ zIndex: 500, width: 300, right: 0, left: 'auto' }}>
+              <div style={{ position: 'fixed', inset: 0, zIndex: 9998 }} onClick={() => setShowNotifs(false)} />
+              <div className="dropdown-menu" style={{ zIndex: 9999, width: 300, right: 0, left: 'auto' }}>
                 <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontWeight: 700, fontSize: 14 }}>Notifications</span>
                   <button className="btn btn-ghost btn-sm" style={{ fontSize: 11 }} onClick={() => setReadNotifs(new Set(notifications.map(n => n.id)))}>Mark all read</button>
@@ -156,8 +156,8 @@ export default function TopBar({ currentPage, onNavigate, onExport, onAuth }) {
           </div>
           {showUserMenu && (
             <>
-              <div style={{position:'fixed',inset:0,zIndex:499}} onClick={() => setShowUserMenu(false)} />
-              <div className="dropdown-menu" style={{zIndex:500}}>
+              <div style={{position:'fixed',inset:0,zIndex:9998}} onClick={() => setShowUserMenu(false)} />
+              <div className="dropdown-menu" style={{zIndex:9999}}>
                 <div style={{padding:'12px 16px',borderBottom:'1px solid var(--border-color)'}}>
                   <div style={{fontWeight:700,fontSize:14}}>{user.name}</div>
                   <div style={{fontSize:11,color:'var(--text-muted)'}}>Level {user.level} • {user.badges.length} badges</div>

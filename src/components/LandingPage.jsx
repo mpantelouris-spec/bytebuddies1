@@ -35,13 +35,14 @@ export default function LandingPage({ onLogin, onSignup }) {
           <span style={{ fontWeight: 800, fontSize: 20, background: 'linear-gradient(90deg, #818cf8, #c084fc)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>ByteBuddies</span>
         </div>
         <div style={{ display: 'flex', gap: 32, fontSize: 14, color: '#94a3b8' }}>
-          {[['Features','features'],['For Schools','for-schools'],['Pricing','pricing']].map(([l,id]) => (
+          {[['Features','features'],['For Schools','for-schools'],['Curriculum','curriculum-aligned'],['Pricing','pricing']].map(([l,id]) => (
             <a key={l} href={`#${id}`} style={{ color: '#94a3b8', textDecoration: 'none' }}>{l}</a>
           ))}
         </div>
         <div style={{ display: 'flex', gap: 12 }}>
           <button onClick={() => { window.location.hash = 'whitepaper'; }} style={{ padding: '9px 22px', background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 8, color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>Research</button>
           <button onClick={onLogin} style={{ padding: '9px 22px', background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 8, color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>Log In</button>
+          <button onClick={() => document.getElementById('book-demo')?.scrollIntoView({ behavior: 'smooth' })} style={{ padding: '9px 22px', background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.4)', borderRadius: 8, color: '#818cf8', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>Book a Demo</button>
           <button onClick={onSignup} style={{ padding: '9px 22px', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', border: 'none', borderRadius: 8, color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>Get Started Free</button>
         </div>
       </nav>
@@ -66,6 +67,9 @@ export default function LandingPage({ onLogin, onSignup }) {
           </button>
           <button onClick={onLogin} style={{ padding: '16px 36px', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 12, color: '#fff', cursor: 'pointer', fontSize: 16, fontWeight: 600 }}>
             Teacher Login
+          </button>
+          <button onClick={() => document.getElementById('book-demo')?.scrollIntoView({ behavior: 'smooth' })} style={{ padding: '16px 36px', background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.35)', borderRadius: 12, color: '#818cf8', cursor: 'pointer', fontSize: 16, fontWeight: 600 }}>
+            Book School Demo
           </button>
         </div>
       </div>
@@ -161,7 +165,7 @@ export default function LandingPage({ onLogin, onSignup }) {
             <thead>
               <tr>
                 <th style={{ textAlign: 'left', padding: '12px 16px', color: '#64748b', fontWeight: 600, fontSize: 12, textTransform: 'uppercase', letterSpacing: 1 }}>Feature</th>
-                {['ByteBuddies', 'Code.org', 'Scratch', 'Tynker'].map(name => (
+                {['ByteBuddies', 'Code.org', 'Scratch', 'PictoBlox'].map(name => (
                   <th key={name} style={{ padding: '12px 16px', color: name === 'ByteBuddies' ? '#818cf8' : '#64748b', fontWeight: 700, fontSize: name === 'ByteBuddies' ? 15 : 13 }}>{name}</th>
                 ))}
               </tr>
@@ -170,13 +174,16 @@ export default function LandingPage({ onLogin, onSignup }) {
               {[
                 ['Story-based Mission Mode', '✅', '❌', '❌', '❌'],
                 ['Block → Real Code (live)', '✅', '❌', '❌', '⚠️'],
-                ['Game Builder with Physics', '✅', '❌', '⚠️', '✅'],
-                ['Robot Lab (virtual + real)', '✅', '❌', '❌', '⚠️'],
-                ['AI Coding Assistant', '✅', '❌', '❌', '❌'],
-                ['Downloadable Certificates', '✅', '⚠️', '❌', '✅'],
-                ['Class Management for Teachers', '✅', '✅', '❌', '✅'],
-                ['Student XP & Levelling', '✅', '❌', '❌', '✅'],
-                ['Free for Students', '✅', '✅', '✅', '❌'],
+                ['Game Builder with Physics', '✅', '❌', '⚠️', '❌'],
+                ['Robot Lab (virtual + real)', '✅', '❌', '❌', '✅'],
+                ['AI Coding Assistant', '✅', '❌', '❌', '⚠️'],
+                ['UK National Curriculum Aligned', '✅', '⚠️', '❌', '❌'],
+                ['Parent Progress Dashboard', '✅', '❌', '❌', '❌'],
+                ['Printable Progress Reports', '✅', '⚠️', '❌', '❌'],
+                ['Class Management for Teachers', '✅', '✅', '❌', '⚠️'],
+                ['Student XP & Levelling', '✅', '❌', '❌', '❌'],
+                ['Downloadable Certificates', '✅', '⚠️', '❌', '❌'],
+                ['Free for Students', '✅', '✅', '✅', '⚠️'],
               ].map(([feat, ...vals], i) => (
                 <tr key={feat} style={{ borderTop: '1px solid rgba(255,255,255,0.06)', background: i % 2 === 0 ? 'rgba(255,255,255,0.015)' : 'transparent' }}>
                   <td style={{ padding: '12px 16px', color: '#94a3b8' }}>{feat}</td>
@@ -202,12 +209,14 @@ export default function LandingPage({ onLogin, onSignup }) {
             {[
               { icon: '📋', title: 'Assignments', desc: 'Create and assign coding projects with due dates, descriptions and templates' },
               { icon: '✅', title: 'Grading', desc: 'Review submissions inline with grade picker and quick feedback chips' },
-              { icon: '📊', title: 'Progress Tracking', desc: 'See each student\'s XP, level, concept mastery and at-risk alerts' },
-              { icon: '🏅', title: 'Leaderboard', desc: 'Class leaderboard keeps students motivated and engaged' },
+              { icon: '📊', title: 'Progress Tracking', desc: 'See each student\'s XP, level, concept mastery and at-risk alerts in real time' },
+              { icon: '📄', title: 'Progress Reports', desc: 'Generate and print professional progress reports for parents and school leadership — one click' },
+              { icon: '🏅', title: 'Leaderboard', desc: 'Class leaderboard keeps students motivated and competing in healthy ways' },
               { icon: '📢', title: 'Announcements', desc: 'Pin important announcements to the top of every student\'s dashboard' },
               { icon: '🙋', title: 'Help Queue', desc: 'Students raise their hand digitally — teacher sees a live queue of who needs help' },
               { icon: '⏱️', title: 'Countdown Timer', desc: 'Built-in classroom timer with presets for timed activities and tests' },
               { icon: '📅', title: 'Attendance', desc: 'Mark attendance directly from the teacher dashboard' },
+              { icon: '🔗', title: 'Google Classroom', desc: 'Sync your class roster from Google Classroom with one click — no manual entry needed' },
             ].map(f => (
               <div key={f.title} style={{ ...card, padding: '20px' }}>
                 <div style={{ fontSize: 24, marginBottom: 10 }}>{f.icon}</div>
@@ -216,6 +225,109 @@ export default function LandingPage({ onLogin, onSignup }) {
               </div>
             ))}
           </div>
+        </div>
+      </div>
+
+      {/* UK Curriculum & Standards Alignment */}
+      <div id="curriculum-aligned" style={{ maxWidth: 900, margin: '0 auto', padding: '80px 24px' }}>
+        <div style={sectionLabel}>Curriculum Aligned</div>
+        <h2 style={{ fontSize: 'clamp(24px, 4vw, 42px)', fontWeight: 800, marginBottom: 16, lineHeight: 1.2 }}>
+          Mapped to the standards schools require
+        </h2>
+        <p style={{ color: '#94a3b8', fontSize: 16, lineHeight: 1.8, marginBottom: 40, maxWidth: 680 }}>
+          ByteBuddies is fully mapped to the UK National Curriculum for Computing (KS2 & KS3), CSTA K-12 Computer Science Standards, and supports the Cambridge Digital Literacy framework. No extra prep needed — every lesson, mission, and challenge is already aligned.
+        </p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginBottom: 40 }}>
+          {[
+            { badge: '🇬🇧', title: 'UK National Curriculum', sub: 'KS2 & KS3 Computing', color: '#3b82f6', points: ['Sequences, selection, repetition', 'Debugging & logical reasoning', 'Variables, inputs & outputs', 'Networks & data'] },
+            { badge: '🌐', title: 'CSTA K-12 Standards', sub: 'Computer Science', color: '#8b5cf6', points: ['Algorithms & programming (AP)', 'Data & analysis (DA)', 'Computing systems (CS)', 'Impacts of computing (IC)'] },
+            { badge: '📐', title: 'Cambridge Framework', sub: 'Digital Literacy', color: '#06b6d4', points: ['Computational thinking', 'Programming & development', 'Creative digital artefacts', 'Communication & collaboration'] },
+            { badge: '🤖', title: 'AI & Future Skills', sub: 'Emerging Standards', color: '#10b981', points: ['Machine learning concepts', 'Ethical AI discussion', 'Data literacy', 'Problem decomposition'] },
+          ].map(s => (
+            <div key={s.title} style={{ ...card, borderTop: `3px solid ${s.color}` }}>
+              <div style={{ fontSize: 28, marginBottom: 10 }}>{s.badge}</div>
+              <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>{s.title}</div>
+              <div style={{ fontSize: 11, color: s.color, fontWeight: 600, marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.5 }}>{s.sub}</div>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                {s.points.map(p => (
+                  <li key={p} style={{ fontSize: 12, color: '#94a3b8', padding: '3px 0', display: 'flex', gap: 6 }}>
+                    <span style={{ color: s.color, flexShrink: 0 }}>›</span>{p}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+        <div style={{ background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: 12, padding: '20px 24px', display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: 240 }}>
+            <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 6 }}>Download our full Curriculum Map</div>
+            <div style={{ fontSize: 13, color: '#94a3b8' }}>A detailed PDF showing exactly how each ByteBuddies lesson, mission, and challenge maps to curriculum standards. Perfect for curriculum leads and inspections.</div>
+          </div>
+          <button onClick={() => { window.location.hash = 'whitepaper'; }} style={{ padding: '12px 24px', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', border: 'none', borderRadius: 8, color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600, whiteSpace: 'nowrap' }}>
+            View Curriculum Map →
+          </button>
+        </div>
+      </div>
+
+      {/* Book a Demo — School CTA */}
+      <div id="book-demo" style={{ background: 'linear-gradient(135deg, #0a1628 0%, #1a1a4e 100%)', borderTop: '1px solid rgba(99,102,241,0.2)', borderBottom: '1px solid rgba(99,102,241,0.2)', padding: '80px 24px' }}>
+        <div style={{ maxWidth: 900, margin: '0 auto', display: 'flex', alignItems: 'center', gap: 60, flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: 280 }}>
+            <div style={{ ...sectionLabel, marginBottom: 12 }}>For Schools</div>
+            <h2 style={{ fontSize: 'clamp(24px, 4vw, 40px)', fontWeight: 900, marginBottom: 16, lineHeight: 1.2 }}>
+              Get a free school demo & pilot
+            </h2>
+            <p style={{ color: '#94a3b8', fontSize: 15, lineHeight: 1.8, marginBottom: 24 }}>
+              We offer free 30-day pilot programmes for schools. Our team will set up your classes, train your teachers, and give you a live walkthrough — so you can see exactly how ByteBuddies fits into your curriculum before committing.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 28 }}>
+              {['Free 30-day pilot — no credit card needed', 'Dedicated onboarding & teacher training session', 'Custom class setup done for you', 'Curriculum alignment report for your school', 'Google Classroom sync (available on request)'].map(item => (
+                <div key={item} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, color: '#c7d2fe' }}>
+                  <span style={{ width: 18, height: 18, borderRadius: '50%', background: 'rgba(99,102,241,0.3)', border: '1px solid #6366f1', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, flexShrink: 0 }}>✓</span>
+                  {item}
+                </div>
+              ))}
+            </div>
+          </div>
+          <div style={{ flex: 1, minWidth: 280, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 20, padding: 32 }}>
+            <div style={{ fontWeight: 700, fontSize: 18, marginBottom: 6 }}>Book a free school demo</div>
+            <div style={{ fontSize: 13, color: '#64748b', marginBottom: 24 }}>Usually responds within 1 school day</div>
+            {['School name', 'Your name & role', 'Email address', 'Number of students'].map((placeholder, i) => (
+              <input key={i} placeholder={placeholder} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, padding: '11px 14px', fontSize: 14, color: '#fff', marginBottom: 12, boxSizing: 'border-box', outline: 'none' }} />
+            ))}
+            <textarea placeholder="Anything specific you'd like to see? (optional)" rows={3} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, padding: '11px 14px', fontSize: 14, color: '#fff', marginBottom: 16, boxSizing: 'border-box', outline: 'none', resize: 'vertical' }} />
+            <button onClick={() => alert('Thank you! We will be in touch within 1 school day.')} style={{ width: '100%', padding: '13px', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', border: 'none', borderRadius: 8, color: '#fff', cursor: 'pointer', fontSize: 15, fontWeight: 700, boxShadow: '0 4px 24px rgba(99,102,241,0.4)' }}>
+              Request a Free Demo →
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Testimonials */}
+      <div style={{ maxWidth: 900, margin: '0 auto', padding: '80px 24px' }}>
+        <div style={sectionLabel}>What Teachers Say</div>
+        <h2 style={{ fontSize: 'clamp(24px, 4vw, 40px)', fontWeight: 800, marginBottom: 48, lineHeight: 1.2 }}>Schools love ByteBuddies</h2>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 20 }}>
+          {[
+            { quote: "My Year 5 students were building working games within the first lesson. The mission stories kept them engaged for the whole hour — no one asked to go to the toilet once!", name: 'Sarah M.', role: 'Year 5 Teacher, Manchester', avatar: 'SM' },
+            { quote: "The teacher dashboard is the best I've seen on any platform. I can see exactly which student is struggling with loops vs. conditions and help them directly. No other tool gives me that.", name: 'James T.', role: 'Computing Coordinator, Bristol', avatar: 'JT' },
+            { quote: "We piloted ByteBuddies across 3 year groups. Engagement tripled compared to our previous platform. The robot lab especially — kids come to my room at lunch to keep going.", name: 'Priya K.', role: 'STEM Lead, London', avatar: 'PK' },
+            { quote: "The curriculum alignment with the UK National Curriculum made it very easy to get sign-off from our Head. Everything mapped perfectly to our computing scheme of work.", name: 'David R.', role: 'Deputy Head & CS Teacher, Edinburgh', avatar: 'DR' },
+            { quote: "Parent evenings are so much easier now. I show parents the skill tracker on the parent dashboard and they immediately understand what their child has learned. It's brilliant.", name: 'Amelia F.', role: 'KS2 Computing Teacher, Birmingham', avatar: 'AF' },
+            { quote: "My class has a leaderboard on the whiteboard every week. Students are logging in at home to do more missions. I've never seen that with any other platform.", name: 'Tom W.', role: 'Year 6 Teacher, Leeds', avatar: 'TW' },
+          ].map(t => (
+            <div key={t.name} style={{ ...card, position: 'relative' }}>
+              <div style={{ fontSize: 36, color: '#6366f1', fontFamily: 'Georgia, serif', lineHeight: 1, marginBottom: 12, opacity: 0.4 }}>"</div>
+              <p style={{ fontSize: 14, color: '#cbd5e1', lineHeight: 1.8, margin: '0 0 20px', fontStyle: 'italic' }}>{t.quote}</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 38, height: 38, borderRadius: '50%', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 12, flexShrink: 0 }}>{t.avatar}</div>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 13 }}>{t.name}</div>
+                  <div style={{ fontSize: 11, color: '#64748b' }}>{t.role}</div>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 

@@ -390,6 +390,7 @@ export default function TeacherDashboard({ onNavigate }) {
   const [showCreateAssignment, setShowCreateAssignment] = useState(false);
   const [showInvite, setShowInvite] = useState(false);
   const [managingClass, setManagingClass] = useState(null);
+  const [showGClassroomModal, setShowGClassroomModal] = useState(false);
 
   useEffect(() => {
     const savedClasses = JSON.parse(localStorage.getItem('bb-classes') || '[]');
@@ -433,10 +434,118 @@ export default function TeacherDashboard({ onNavigate }) {
     { label: 'Avg. Class XP', value: 0, icon: '⭐' },
   ];
 
+  const generateProgressReport = () => {
+    const totalStudents = classes.reduce((s, c) => s + (c.students?.length || 0), 0);
+    const totalAssignments = assignments.length;
+    const now = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+
+    const classRows = classes.map(cls => {
+      const clsAssignments = assignments.filter(a => a.classId === cls.id);
+      const students = cls.students || [];
+      const studentRows = students.length > 0
+        ? students.map(s => `
+          <tr>
+            <td>${s.name || 'Student'}</td>
+            <td>${s.email || '—'}</td>
+            <td style="text-align:center">${s.xp || 0} XP</td>
+            <td style="text-align:center">Level ${s.level || 1}</td>
+            <td style="text-align:center">${s.streak || 0} days</td>
+            <td style="text-align:center; color:${(s.xp || 0) >= 500 ? '#16a34a' : (s.xp || 0) >= 100 ? '#d97706' : '#dc2626'}">
+              ${(s.xp || 0) >= 500 ? 'On Track' : (s.xp || 0) >= 100 ? 'Progressing' : 'Needs Support'}
+            </td>
+          </tr>`).join('')
+        : '<tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:16px">No students enrolled yet</td></tr>';
+
+      return `
+        <div class="class-section">
+          <h3>${cls.name} <span class="badge">${cls.grade}</span></h3>
+          <p style="color:#64748b;font-size:13px;margin:0 0 16px">${cls.subject} · ${students.length} student${students.length !== 1 ? 's' : ''} · ${clsAssignments.length} assignment${clsAssignments.length !== 1 ? 's' : ''} · Invite code: <strong>${cls.inviteCode}</strong></p>
+          <table>
+            <thead>
+              <tr><th>Student</th><th>Email</th><th>XP Earned</th><th>Level</th><th>Streak</th><th>Status</th></tr>
+            </thead>
+            <tbody>${studentRows}</tbody>
+          </table>
+          ${clsAssignments.length > 0 ? `
+          <h4 style="margin-top:20px">Assignments</h4>
+          <table>
+            <thead><tr><th>Title</th><th>Type</th><th>Due Date</th><th>Status</th></tr></thead>
+            <tbody>
+              ${clsAssignments.map(a => `
+                <tr>
+                  <td>${a.title}</td>
+                  <td>${a.assignType === 'blocks' ? 'Block Coding' : 'Text Coding'}</td>
+                  <td>${a.dueDate ? new Date(a.dueDate).toLocaleDateString('en-GB') : 'No due date'}</td>
+                  <td style="color:${a.dueDate && new Date(a.dueDate) < new Date() ? '#dc2626' : '#16a34a'}">${a.dueDate && new Date(a.dueDate) < new Date() ? 'Overdue' : 'Active'}</td>
+                </tr>`).join('')}
+            </tbody>
+          </table>` : ''}
+        </div>`;
+    }).join('');
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>ByteBuddies Progress Report — ${user?.name || 'Teacher'}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; color: #1e293b; background: #fff; padding: 40px; max-width: 960px; margin: 0 auto; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #6366f1; padding-bottom: 20px; margin-bottom: 32px; }
+    .logo { font-size: 22px; font-weight: 800; color: #6366f1; }
+    .report-title { font-size: 14px; color: #64748b; margin-top: 4px; }
+    .meta { text-align: right; font-size: 13px; color: #64748b; }
+    .summary { display: flex; gap: 16px; margin-bottom: 36px; }
+    .stat-box { flex: 1; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px; text-align: center; }
+    .stat-box .val { font-size: 28px; font-weight: 800; color: #6366f1; }
+    .stat-box .lbl { font-size: 12px; color: #64748b; margin-top: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+    .class-section { margin-bottom: 40px; background: #fafbff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; break-inside: avoid; }
+    .class-section h3 { font-size: 17px; color: #1e293b; margin-bottom: 4px; }
+    .badge { background: #ede9fe; color: #6366f1; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 100px; margin-left: 8px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 13px; }
+    th { background: #f1f5f9; padding: 10px 12px; text-align: left; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #475569; }
+    td { padding: 10px 12px; border-bottom: 1px solid #f1f5f9; color: #334155; }
+    tr:last-child td { border-bottom: none; }
+    .footer { margin-top: 48px; border-top: 1px solid #e2e8f0; padding-top: 20px; font-size: 12px; color: #94a3b8; display: flex; justify-content: space-between; }
+    @media print { body { padding: 20px; } .no-print { display: none; } }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <div class="logo">ByteBuddies</div>
+      <div class="report-title">Student Progress Report</div>
+    </div>
+    <div class="meta">
+      <div><strong>${user?.name || 'Teacher'}</strong></div>
+      <div>${user?.email || ''}</div>
+      <div>Generated: ${now}</div>
+    </div>
+  </div>
+  <div class="summary">
+    <div class="stat-box"><div class="val">${classes.length}</div><div class="lbl">Classes</div></div>
+    <div class="stat-box"><div class="val">${totalStudents}</div><div class="lbl">Students</div></div>
+    <div class="stat-box"><div class="val">${totalAssignments}</div><div class="lbl">Assignments</div></div>
+    <div class="stat-box"><div class="val">${assignments.filter(a => a.dueDate && new Date(a.dueDate) >= new Date()).length}</div><div class="lbl">Active Tasks</div></div>
+  </div>
+  ${classes.length === 0 ? '<p style="text-align:center;color:#94a3b8;padding:40px">No classes created yet.</p>' : classRows}
+  <div class="footer">
+    <span>ByteBuddies · Aligned to UK National Curriculum (Computing) · bytebuddies.io</span>
+    <span>Confidential — for school use only</span>
+  </div>
+  <script>window.onload = () => window.print();</script>
+</body>
+</html>`;
+
+    const w = window.open('', '_blank');
+    w.document.write(html);
+    w.document.close();
+  };
+
   const resources = [
-    { icon: '📖', title: 'Lesson Plans', desc: 'Download ready-made lesson plans for ByteBuddies', action: 'Download' },
-    { icon: '🎯', title: 'Curriculum Guide', desc: 'Align ByteBuddies with your school curriculum', action: 'Download' },
-    { icon: '📊', title: 'Progress Reports', desc: 'Generate detailed reports for parents and admin', action: 'View' },
+    { icon: '📖', title: 'Lesson Plans', desc: 'Download ready-made lesson plans aligned to UK National Curriculum for every ByteBuddies unit', action: 'View', onClick: () => { window.location.hash = 'whitepaper'; } },
+    { icon: '🎯', title: 'Curriculum Guide', desc: 'Full mapping of ByteBuddies content to UK NC Computing, CSTA, and Cambridge Digital Literacy frameworks', action: 'View', onClick: () => { window.location.hash = 'whitepaper'; } },
+    { icon: '📊', title: 'Progress Reports', desc: 'Generate a printable progress report for all your classes — perfect for parents evenings and school leadership', action: 'Generate Report', onClick: generateProgressReport, active: true },
   ];
 
   return (
@@ -482,8 +591,52 @@ export default function TeacherDashboard({ onNavigate }) {
           <button className="btn btn-secondary" style={{ padding: '10px 20px', fontSize: 14, fontWeight: 600 }} onClick={() => setShowInvite(true)}>
             👥 Invite Students
           </button>
+          <button className="btn btn-secondary" style={{ padding: '10px 20px', fontSize: 14, fontWeight: 600 }} onClick={generateProgressReport}>
+            📄 Export Report
+          </button>
+          <button style={{ padding: '10px 20px', fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(66,133,244,0.12)', border: '1px solid rgba(66,133,244,0.3)', borderRadius: 8, color: '#4285F4', cursor: 'pointer' }} onClick={() => setShowGClassroomModal(true)}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" fill="#4285F4"/>
+              <path d="M8 9h8v6H8z" fill="white"/>
+              <path d="M10 11h4v2h-4z" fill="#4285F4"/>
+            </svg>
+            Google Classroom
+          </button>
         </div>
       </div>
+
+      {/* Google Classroom Modal */}
+      {showGClassroomModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }} onClick={() => setShowGClassroomModal(false)}>
+          <div style={{ background: 'var(--bg-secondary)', borderRadius: 20, width: '100%', maxWidth: 440, border: '1px solid var(--border-color)', boxShadow: '0 24px 80px rgba(0,0,0,0.5)', padding: 32 }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(66,133,244,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>🔗</div>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--text-primary)' }}>Google Classroom Sync</div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Import your class roster automatically</div>
+              </div>
+              <button onClick={() => setShowGClassroomModal(false)} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 18, cursor: 'pointer' }}>✕</button>
+            </div>
+            <div style={{ background: 'rgba(66,133,244,0.08)', border: '1px solid rgba(66,133,244,0.2)', borderRadius: 10, padding: '14px 16px', marginBottom: 20 }}>
+              <div style={{ fontSize: 13, color: '#4285F4', fontWeight: 600, marginBottom: 6 }}>How it works</div>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {['Sign in with your school Google account', 'Select which Classroom class to import', 'Students are added automatically — no invite codes needed', 'Assignments can be pushed back to Google Classroom'].map((s, i) => (
+                  <li key={i} style={{ fontSize: 13, color: 'var(--text-muted)', display: 'flex', gap: 8 }}>
+                    <span style={{ color: '#4285F4', fontWeight: 700, minWidth: 16 }}>{i + 1}.</span>{s}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 8, padding: '10px 14px', marginBottom: 20, fontSize: 12, color: '#f59e0b' }}>
+              Google Classroom integration is available on the School plan. Contact us to enable it for your school.
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => setShowGClassroomModal(false)} style={{ flex: 1, padding: '10px', background: 'none', border: '1px solid var(--border-color)', borderRadius: 8, color: 'var(--text-muted)', cursor: 'pointer', fontSize: 14 }}>Close</button>
+              <button onClick={() => { alert('Contact us at hello@bytebuddies.io to enable Google Classroom for your school.'); setShowGClassroomModal(false); }} style={{ flex: 1, padding: '10px', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', border: 'none', borderRadius: 8, color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>Contact Us →</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* My Classes */}
       <div style={sectionCard}>
@@ -587,9 +740,15 @@ export default function TeacherDashboard({ onNavigate }) {
               <div style={{ fontSize: 32, marginBottom: 12 }}>{r.icon}</div>
               <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-primary)', marginBottom: 8 }}>{r.title}</div>
               <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.6, margin: '0 0 16px' }}>{r.desc}</p>
-              <button className="btn btn-secondary" style={{ padding: '8px 16px', fontSize: 13, fontWeight: 600, opacity: 0.6, cursor: 'not-allowed' }} disabled>
-                {r.action} (Coming Soon)
-              </button>
+              {r.active ? (
+                <button className="btn btn-primary" style={{ padding: '8px 16px', fontSize: 13, fontWeight: 600 }} onClick={r.onClick}>
+                  {r.action}
+                </button>
+              ) : (
+                <button className="btn btn-secondary" style={{ padding: '8px 16px', fontSize: 13, fontWeight: 600 }} onClick={r.onClick}>
+                  {r.action}
+                </button>
+              )}
             </div>
           ))}
         </div>
