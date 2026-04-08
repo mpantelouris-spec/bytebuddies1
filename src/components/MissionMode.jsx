@@ -1,6 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useUser } from '../contexts/UserContext';
-import { runPython } from '../utils/pythonRunner';
+import MissionBlockEditor, {
+  MISSION_STARTERS,
+  runMissionBlocks,
+  countAllBlocks,
+  flatBlockTypes,
+  initMissionBlocks,
+} from './MissionBlockEditor';
 
 const CAMPAIGNS = [
   {
@@ -81,194 +87,183 @@ const CAMPAIGNS = [
   },
 ];
 
+// ── Mission validation: check(blocks, outputStr) ─────────────────────────
 const MISSION_CHECKS = {
   'space-1': {
-    starter: `# 🔥 Launch Sequence\n# Print each step of your rocket launch\nprint("Systems check...")\nprint("Fuel loading...")\n# Add at least 3 more launch steps below!\n`,
-    check: (code, out) => {
-      if (out.includes('Error')) return { ok: false, msg: 'Fix the error in your code first!' };
-      const lines = out.split('\n').filter(l => l.trim());
-      if (lines.length < 5) return { ok: false, msg: `Need at least 5 steps! You have ${lines.length}. Add more print() statements.` };
+    check: (blocks, out) => {
+      const count = countAllBlocks(blocks);
+      if (count < 5) return { ok: false, msg: `Need at least 5 blocks in your sequence! You have ${count}. Add countdown, ignite, release clamps and Go! blocks.` };
       return { ok: true, msg: '🚀 Launch sequence confirmed! Rocket is away!' };
     },
   },
   'space-2': {
-    starter: `# 🌍 Orbit Calculator\n# Use a loop to orbit the planet exactly 3 times\nfor orbit in range(3):\n    print(f"Orbit {orbit + 1}/3 - adjusting speed...")\n`,
-    check: (code, out) => {
-      if (out.includes('Error')) return { ok: false, msg: 'Fix the error first!' };
-      if (!code.includes('for') && !code.includes('while')) return { ok: false, msg: 'Use a loop! Try: for orbit in range(3):' };
-      const lines = out.split('\n').filter(l => l.trim());
-      if (lines.length < 3) return { ok: false, msg: 'Make your loop run at least 3 times!' };
+    check: (blocks, out) => {
+      const types = flatBlockTypes(blocks);
+      if (!types.includes('orbit') && !types.includes('repeat')) return { ok: false, msg: 'Use an Orbit block (or Repeat) to go around the planet!' };
+      const orbitLines = out.split('\n').filter(l => l.includes('Orbit') || l.includes('orbit'));
+      if (orbitLines.length < 3) return { ok: false, msg: 'Make your rocket complete at least 3 orbits! Set orbit times to 3 (or higher).' };
       return { ok: true, msg: '🌍 Perfect orbit! 3 laps around the planet complete!' };
     },
   },
   'space-3': {
-    starter: `# ☄️ Asteroid Field\nscore = 0\nfor i in range(5):\n    asteroid = True  # simulate detection\n    if asteroid:\n        print(f"Asteroid {i+1}! Dodging...")\n        score += 1\n    else:\n        print("Clear...")\nprint(f"Final score: {score}")\n`,
-    check: (code, out) => {
-      if (out.includes('Error')) return { ok: false, msg: 'Fix the error first!' };
-      if (!code.includes('if')) return { ok: false, msg: 'Use an if statement to detect asteroids!' };
-      if (!code.includes('score')) return { ok: false, msg: 'Add a score variable to track dodges!' };
+    check: (blocks, out) => {
+      const types = flatBlockTypes(blocks);
+      if (!types.includes('if-asteroid')) return { ok: false, msg: 'Use the "If asteroid" block to detect asteroids!' };
+      if (!types.includes('dodge')) return { ok: false, msg: 'Add a "Dodge Asteroid" block inside the if-asteroid block!' };
       return { ok: true, msg: '☄️ Asteroid field cleared! Great flying!' };
     },
   },
   'space-4': {
-    starter: `# 📡 Space Beacon\ndef respond_to_signal(signal):\n    if signal == "SOS":\n        print("SOS received - sending rescue coordinates!")\n    elif signal == "PING":\n        print("PING - sending PONG!")\n    else:\n        print(f"Unknown signal: {signal}")\n\nrespond_to_signal("SOS")\nrespond_to_signal("PING")\nrespond_to_signal("DATA")\n`,
-    check: (code, out) => {
-      if (out.includes('Error')) return { ok: false, msg: 'Fix the error first!' };
-      if (!code.includes('def')) return { ok: false, msg: 'Define a function to handle signals!' };
-      const lines = out.split('\n').filter(l => l.trim());
-      if (lines.length < 2) return { ok: false, msg: 'Call your function with at least 2 different signals!' };
+    check: (blocks, out) => {
+      const types = flatBlockTypes(blocks);
+      if (!types.includes('broadcast') && !types.includes('listen')) return { ok: false, msg: 'Use Broadcast or Listen blocks to handle the beacon signal!' };
+      const count = countAllBlocks(blocks);
+      if (count < 3) return { ok: false, msg: 'Add more blocks to build a full signal response system!' };
       return { ok: true, msg: '📡 Beacon decoded! Signal response system working!' };
     },
   },
   'space-5': {
-    starter: `# 🏆 Safe Landing - use ALL concepts!\ndef check_altitude(alt):\n    if alt > 1000:\n        return "descending"\n    elif alt > 100:\n        return "approach"\n    else:\n        return "landing"\n\naltitude = 5000\nfor step in range(5):\n    altitude -= 1000\n    status = check_altitude(altitude)\n    print(f"Altitude: {altitude}m | {status}")\nprint("Touchdown!")\n`,
-    check: (code, out) => {
-      if (out.includes('Error')) return { ok: false, msg: 'Fix the error first!' };
-      if (!code.includes('for') && !code.includes('while')) return { ok: false, msg: 'Missing a loop (for/while)!' };
-      if (!code.includes('if')) return { ok: false, msg: 'Missing an if statement!' };
-      if (!code.includes('def')) return { ok: false, msg: 'Missing a function (def)!' };
-      return { ok: true, msg: '🏆 Safe landing! You used loops, conditions AND functions!' };
+    check: (blocks, out) => {
+      const types = flatBlockTypes(blocks);
+      const count = countAllBlocks(blocks);
+      if (count < 5) return { ok: false, msg: `Need at least 5 blocks for the full landing sequence! You have ${count}.` };
+      if (!types.includes('repeat') && !types.includes('orbit')) return { ok: false, msg: 'Use a Repeat block in your landing sequence (loops!).' };
+      if (!types.includes('land') && !types.includes('go')) return { ok: false, msg: 'Add a Landing Sequence or Go! block to complete the descent.' };
+      return { ok: true, msg: '🏆 Safe landing! Full mission complete!' };
     },
   },
   'ocean-1': {
-    starter: `# 🤿 Dive Protocol\ndepth = 0\nlife_support = 100\nfor target in [10, 50, 200]:\n    depth = target\n    if depth > 100:\n        life_support -= 10\n        print(f"Depth: {depth}m - Adjusting life support: {life_support}%")\n    else:\n        print(f"Depth: {depth}m - Systems nominal")\n`,
-    check: (code, out) => {
-      if (out.includes('Error')) return { ok: false, msg: 'Fix the error first!' };
-      if (!code.includes('depth')) return { ok: false, msg: 'Create a depth variable!' };
-      if (!code.includes('if')) return { ok: false, msg: 'Use if to check pressure at each depth!' };
-      const lines = out.split('\n').filter(l => l.trim());
-      if (lines.length < 3) return { ok: false, msg: 'Dive through all 3 depth stages!' };
+    check: (blocks, out) => {
+      const types = flatBlockTypes(blocks);
+      if (!types.includes('dive-depth')) return { ok: false, msg: 'Use "Dive to _ m" blocks to descend through the depths!' };
+      const diveLines = out.split('\n').filter(l => l.includes('Diving'));
+      if (diveLines.length < 3) return { ok: false, msg: `Dive through at least 3 different depths. You have ${diveLines.length} dive blocks.` };
       return { ok: true, msg: '🤿 Dive complete! All depths reached safely!' };
     },
   },
   'ocean-2': {
-    starter: `# 🪸 Coral Maze\nposition = 0\nfor step in range(8):\n    if position >= 5:\n        print(f"Step {step+1}: Coral! Dodging...")\n        position = 0\n    else:\n        print(f"Step {step+1}: Moving forward...")\n        position += 1\nprint("Maze complete!")\n`,
-    check: (code, out) => {
-      if (out.includes('Error')) return { ok: false, msg: 'Fix the error first!' };
-      if (!code.includes('if')) return { ok: false, msg: 'Use if to detect and dodge coral!' };
-      if (!out.includes('complete') && !out.includes('done') && !out.includes('Clear')) return { ok: false, msg: 'Navigate to the end of the maze!' };
+    check: (blocks, out) => {
+      const types = flatBlockTypes(blocks);
+      if (!types.includes('sonar') && !types.includes('scan-grid')) return { ok: false, msg: 'Use Sonar Scan or Scan Grid Square to navigate the coral maze!' };
+      const count = countAllBlocks(blocks);
+      if (count < 4) return { ok: false, msg: 'Build a longer sequence — you need more blocks to navigate the full maze!' };
       return { ok: true, msg: '🪸 Coral maze navigated! No scratches on the sub!' };
     },
   },
   'ocean-3': {
-    starter: `# 🦈 Shark Alert!\ndef sound_alarm():\n    print("ALARM SOUNDING!")\ndef flash_lights():\n    print("LIGHTS FLASHING!")\ndef radio_surface():\n    print("Radioing surface: SHARK DETECTED!")\n\nshark_detected = True\nif shark_detected:\n    sound_alarm()\n    flash_lights()\n    radio_surface()\n`,
-    check: (code, out) => {
-      if (out.includes('Error')) return { ok: false, msg: 'Fix the error first!' };
-      const fns = (code.match(/def /g) || []).length;
-      if (fns < 3) return { ok: false, msg: `Create 3 functions (alarm, lights, radio). You have ${fns}.` };
-      const lines = out.split('\n').filter(l => l.trim());
-      if (lines.length < 3) return { ok: false, msg: 'All 3 events must trigger!' };
-      return { ok: true, msg: '🦈 Shark alert handled! All 3 systems triggered!' };
+    check: (blocks, out) => {
+      const types = flatBlockTypes(blocks);
+      if (!types.includes('alarm')) return { ok: false, msg: 'Add a "Sound Alarm" block to trigger the alarm!' };
+      if (!types.includes('lights')) return { ok: false, msg: 'Add a "Flash Lights" block for the visual alert!' };
+      if (!types.includes('radio')) return { ok: false, msg: 'Add a "Radio Surface" block to call for help!' };
+      return { ok: true, msg: '🦈 Shark alert handled! All 3 systems triggered simultaneously!' };
     },
   },
   'ocean-4': {
-    starter: `# 💎 Treasure Grid - scan an 8x8 grid!\ntreasure_count = 0\nfor row in range(8):\n    for col in range(8):\n        if (row + col) % 7 == 0:\n            treasure_count += 1\n            print(f"Treasure at ({row},{col})!")\nprint(f"Total treasures: {treasure_count}")\n`,
-    check: (code, out) => {
-      if (out.includes('Error')) return { ok: false, msg: 'Fix the error first!' };
-      const forCount = (code.match(/for /g) || []).length;
-      if (forCount < 2) return { ok: false, msg: 'Use nested loops — a for loop INSIDE another for loop!' };
-      if (!out.includes('Total') && !out.includes('count') && !out.includes('found')) return { ok: false, msg: 'Display your total treasure count!' };
+    check: (blocks, out) => {
+      const types = flatBlockTypes(blocks);
+      const repeatCount = types.filter(t => t === 'repeat').length;
+      if (repeatCount < 2) return { ok: false, msg: 'Use nested Repeat blocks — a Repeat block inside another Repeat block — to scan the 8×8 grid!' };
+      if (!types.includes('scan-grid')) return { ok: false, msg: 'Add "Scan Grid Square" inside your loops to scan each cell!' };
       return { ok: true, msg: '💎 Grid fully scanned! Treasure hunt complete!' };
     },
   },
   'ocean-5': {
-    starter: `# 🏆 Surface! Emergency ascent!\noxygen = 60\ndepth = 200\nwhile oxygen > 0 and depth > 0:\n    oxygen -= 5\n    depth -= 30\n    if depth < 0:\n        depth = 0\n    print(f"Depth: {depth}m | Oxygen: {oxygen}s")\n    if depth == 0:\n        break\nif depth == 0:\n    print("SURFACED! You made it!")\n`,
-    check: (code, out) => {
-      if (out.includes('Error')) return { ok: false, msg: 'Fix the error first!' };
-      if (!code.includes('while') && !code.includes('for')) return { ok: false, msg: 'Use a loop for the ascent!' };
-      if (!out.toLowerCase().includes('surface') && !out.includes('made it')) return { ok: false, msg: "Make sure your sub reaches the surface!" };
+    check: (blocks, out) => {
+      const types = flatBlockTypes(blocks);
+      if (!types.includes('surface')) return { ok: false, msg: 'Add a "Surface!" block to complete the emergency ascent!' };
+      if (!types.includes('repeat') && !types.includes('if-shark')) return { ok: false, msg: 'Use loops and conditions to navigate safely back to the surface!' };
       return { ok: true, msg: '🌊 Surfaced safely! You escaped in time!' };
     },
   },
   'city-1': {
-    starter: `# 📐 City Blueprint\npopulation = 100\nbudget = 50000\nhappiness = 75\ndays = 0\nprint(f"Population: {population}")\nprint(f"Budget: {budget}")\nprint(f"Happiness: {happiness}%")\nprint(f"Day: {days}")\n`,
-    check: (code, out) => {
-      if (out.includes('Error')) return { ok: false, msg: 'Fix the error first!' };
-      if (!code.includes('population') || !code.includes('budget') || !code.includes('happiness')) return { ok: false, msg: 'Create all 4 variables: population, budget, happiness, days!' };
-      const lines = out.split('\n').filter(l => l.trim());
-      if (lines.length < 4) return { ok: false, msg: 'Display all 4 variables!' };
+    check: (blocks, out) => {
+      const types = flatBlockTypes(blocks);
+      if (!types.includes('set-pop')) return { ok: false, msg: 'Set the Population block to define the starting population!' };
+      if (!types.includes('set-budget')) return { ok: false, msg: 'Set the Budget block to define the city budget!' };
+      if (!types.includes('set-happy')) return { ok: false, msg: 'Set the Happiness block to define citizen happiness!' };
+      if (!types.includes('display')) return { ok: false, msg: 'Add "Display City Stats" to show all your variables!' };
       return { ok: true, msg: '📐 Blueprint complete! City variables all set!' };
     },
   },
   'city-2': {
-    starter: `# 🛣️ Build the Roads!\nbudget = 50000\nhappiness = 75\nfor road in range(5):\n    budget -= 2000\n    happiness += 3\n    if budget < 0:\n        print("Budget depleted!")\n        break\n    print(f"Road {road+1} built | Budget: {budget} | Happiness: {happiness}%")\n`,
-    check: (code, out) => {
-      if (out.includes('Error')) return { ok: false, msg: 'Fix the error first!' };
-      if (!code.includes('for') && !code.includes('while')) return { ok: false, msg: 'Use a loop to build 5 roads!' };
-      if (!code.includes('budget')) return { ok: false, msg: 'Deduct from budget each iteration!' };
+    check: (blocks, out) => {
+      const types = flatBlockTypes(blocks);
+      if (!types.includes('build-road')) return { ok: false, msg: 'Use "Build Road" blocks to construct roads!' };
+      if (!types.includes('repeat')) return { ok: false, msg: 'Use a Repeat block to build 5 roads in a loop!' };
+      const roadLines = out.split('\n').filter(l => l.includes('Road built'));
+      if (roadLines.length < 5) return { ok: false, msg: `Build at least 5 roads! Your loop is producing ${roadLines.length} roads — increase the Repeat count.` };
       return { ok: true, msg: '🛣️ Roads built! The city is connected!' };
     },
   },
   'city-3': {
-    starter: `# ⚡ Power Grid\ndistricts = [40, 80, 30, 90]\nbudget = 50000\ntotal_cost = 0\nfor i in range(len(districts)):\n    if districts[i] < 50:\n        districts[i] += 20\n        total_cost += 5000\n        print(f"District {i+1}: Powered up | Cost: 5000")\n    else:\n        print(f"District {i+1}: Power OK ({districts[i]})")\nprint(f"Total cost: {total_cost}")\n`,
-    check: (code, out) => {
-      if (out.includes('Error')) return { ok: false, msg: 'Fix the error first!' };
-      if (!code.includes('[')) return { ok: false, msg: 'Use a list for the 4 districts!' };
-      if (!code.includes('if')) return { ok: false, msg: 'Check power levels with if!' };
-      return { ok: true, msg: '⚡ Power grid stable! All districts online!' };
+    check: (blocks, out) => {
+      const types = flatBlockTypes(blocks);
+      if (!types.includes('power-dist')) return { ok: false, msg: 'Use "Power District" blocks to bring electricity to each district!' };
+      const powered = out.split('\n').filter(l => l.includes('powered up')).length;
+      if (powered < 4) return { ok: false, msg: `Power up all 4 districts! You've powered ${powered} so far.` };
+      return { ok: true, msg: '⚡ Power grid stable! All 4 districts online!' };
     },
   },
   'city-4': {
-    starter: `# 📈 Population Boom!\npopulation = 100\nhappiness = 75\nfor day in range(10):\n    if happiness > 70:\n        population = int(population * 1.05)\n    else:\n        population = int(population * 1.01)\n    print(f"Day {day+1}: Population {population}")\nprint(f"Final population: {population}")\n`,
-    check: (code, out) => {
-      if (out.includes('Error')) return { ok: false, msg: 'Fix the error first!' };
-      if (!code.includes('for') && !code.includes('while')) return { ok: false, msg: 'Use a loop to simulate 10 days!' };
-      if (!code.includes('1.05') && !code.includes('1.01')) return { ok: false, msg: 'Use percentage growth (1.05 or 1.01)!' };
+    check: (blocks, out) => {
+      const types = flatBlockTypes(blocks);
+      if (!types.includes('grow-pop')) return { ok: false, msg: 'Use "Grow Population" blocks to simulate growth!' };
+      if (!types.includes('repeat')) return { ok: false, msg: 'Use a Repeat block to simulate 10 days of growth!' };
+      const growth = out.split('\n').filter(l => l.includes('growing')).length;
+      if (growth < 10) return { ok: false, msg: `Simulate at least 10 days! Set the Repeat count to 10 — you have ${growth} days so far.` };
       return { ok: true, msg: '📈 Population boom! The city is thriving!' };
     },
   },
   'city-5': {
-    starter: `# 🏆 Grand Opening!\npopulation = 350\nbudget = 30000\nhappiness = 90\ncity_score = (happiness * 10) + (population // 10)\nprint("=== CITY REPORT ===")\nprint(f"Population: {population}")\nprint(f"Budget: {budget}")\nprint(f"Happiness: {happiness}%")\nprint(f"CITY SCORE: {city_score}")\nprint("FIREWORKS! Grand opening!")\n`,
-    check: (code, out) => {
-      if (out.includes('Error')) return { ok: false, msg: 'Fix the error first!' };
-      if (!code.includes('score') && !code.includes('Score')) return { ok: false, msg: 'Calculate a city score!' };
-      if (!out.includes('Score') && !out.includes('score')) return { ok: false, msg: 'Display your city score!' };
+    check: (blocks, out) => {
+      const types = flatBlockTypes(blocks);
+      if (!types.includes('calc-score')) return { ok: false, msg: 'Add "Calc City Score" to calculate the final score!' };
+      if (!types.includes('fireworks')) return { ok: false, msg: 'Launch fireworks for the grand opening ceremony!' };
+      if (!types.includes('display')) return { ok: false, msg: 'Add "Display City Stats" to show the full city report!' };
       return { ok: true, msg: '🏆 Grand opening complete! The mayor is impressed!' };
     },
   },
   'cyber-1': {
-    starter: `# 🐛 Debug Protocol\ndef fixBug(bug_type):\n    if bug_type == "memory":\n        print("Fixing memory leak...")\n    elif bug_type == "network":\n        print("Patching network...")\n    elif bug_type == "syntax":\n        print("Correcting syntax...")\n    else:\n        print(f"Fixing {bug_type} bug...")\n    print(f"{bug_type} bug fixed!")\n\nfixBug("memory")\nfixBug("network")\nfixBug("syntax")\nfixBug("logic")\nfixBug("runtime")\n`,
-    check: (code, out) => {
-      if (out.includes('Error')) return { ok: false, msg: 'Fix the error first!' };
-      if (!code.includes('def fixBug') && !code.includes('def fix_bug')) return { ok: false, msg: 'Create a function called fixBug!' };
-      const calls = (code.match(/fixBug|fix_bug/g) || []).length - 1;
-      if (calls < 5) return { ok: false, msg: `Call fixBug at least 5 times! You have ${calls}.` };
+    check: (blocks, out) => {
+      const types = flatBlockTypes(blocks);
+      const bugFixes = types.filter(t => t === 'fix-bug').length;
+      if (bugFixes < 5) return { ok: false, msg: `Add at least 5 "Fix Bug" blocks with different bug types! You have ${bugFixes}.` };
       return { ok: true, msg: '🐛 All bugs squashed! Network systems repaired!' };
     },
   },
   'cyber-2': {
-    starter: `# 🔐 Pattern Lock\ndef generate_sequence(steps):\n    result = 1\n    for i in range(steps):\n        result *= 2\n        print(result)\n\ngenerate_sequence(5)  # Should print: 2, 4, 8, 16, 32\n`,
-    check: (code, out) => {
-      if (out.includes('Error')) return { ok: false, msg: 'Fix the error first!' };
-      if (!code.includes('def')) return { ok: false, msg: 'Write the sequence inside a function!' };
-      if (!out.includes('32')) return { ok: false, msg: 'The 5th number should be 32. Each step doubles!' };
-      return { ok: true, msg: '🔐 Pattern cracked! Vault unlocked: 2, 4, 8, 16, 32!' };
+    check: (blocks, out) => {
+      const types = flatBlockTypes(blocks);
+      if (!types.includes('def-func')) return { ok: false, msg: 'Define a function using the "Define Func" block!' };
+      if (!types.includes('repeat')) return { ok: false, msg: 'Use a Repeat block inside your function to generate the sequence!' };
+      return { ok: true, msg: '🔐 Pattern cracked! Vault unlocked!' };
     },
   },
   'cyber-3': {
-    starter: `# 🤖 Neural Guard\ndef lockdown():\n    print("LOCKDOWN INITIATED")\ndef classify(signal):\n    if signal % 2 != 0:\n        return "threat"\n    return "safe"\n\nsignals = [10, 7, 4, 13, 6]\nfor s in signals:\n    result = classify(s)\n    print(f"Signal {s}: {result}")\n    if result == "threat":\n        lockdown()\n`,
-    check: (code, out) => {
-      if (out.includes('Error')) return { ok: false, msg: 'Fix the error first!' };
-      if (!code.includes('def')) return { ok: false, msg: 'Define a classify function and a lockdown function!' };
-      if (!out.toLowerCase().includes('lockdown')) return { ok: false, msg: 'Your lockdown must trigger for threats!' };
+    check: (blocks, out) => {
+      const types = flatBlockTypes(blocks);
+      if (!types.includes('classify')) return { ok: false, msg: 'Use "Classify Signal" blocks to detect threats!' };
+      if (!types.includes('lockdown')) return { ok: false, msg: 'Add a "Lockdown!" block to respond to threats!' };
+      const threatLines = out.split('\n').filter(l => l.includes('threat'));
+      if (threatLines.length < 1) return { ok: false, msg: 'Classify signals to detect at least one threat (try odd numbers like 7, 13)!' };
       return { ok: true, msg: '🤖 Neural Guard active! All threats neutralised!' };
     },
   },
   'cyber-4': {
-    starter: `# 💾 Recursive Decryption\ndef decrypt(count):\n    if count == 0:\n        print("Decryption complete! Data restored.")\n        return\n    print(f"Peeling layer {count}...")\n    decrypt(count - 1)\n\ndecrypt(5)\n`,
-    check: (code, out) => {
-      if (out.includes('Error')) return { ok: false, msg: 'Fix the error first!' };
-      if (!code.includes('def decrypt')) return { ok: false, msg: 'Write a recursive function called decrypt!' };
-      if (!out.includes('complete') && !out.includes('restored')) return { ok: false, msg: 'Reach the base case — decrypt until count == 0!' };
-      return { ok: true, msg: '💾 Decryption complete! All 5 layers peeled!' };
+    check: (blocks, out) => {
+      const types = flatBlockTypes(blocks);
+      if (!types.includes('decrypt')) return { ok: false, msg: 'Use the "Decrypt _ layers" block to peel encryption layers!' };
+      if (!out.includes('Decryption complete')) return { ok: false, msg: 'Decrypt all layers — the output should say "Decryption complete!"' };
+      return { ok: true, msg: '💾 Decryption complete! All layers peeled!' };
     },
   },
   'cyber-5': {
-    starter: `# 🏆 System Victory!\ndef fixBug(t): print(f"Fixed {t} bug")\ndef decrypt(n):\n    if n == 0: return\n    decrypt(n-1)\ndef lockdown(): print("Lockdown cleared")\n\ndef runDiagnostic():\n    score = 0\n    print("Running diagnostic...")\n    fixBug("memory"); score += 1\n    decrypt(3); score += 1\n    lockdown(); score += 1\n    print(f"Systems passed: {score}/3")\n    if score == 3:\n        print("ALL SYSTEMS GO! Network secured!")\n\nrunDiagnostic()\n`,
-    check: (code, out) => {
-      if (out.includes('Error')) return { ok: false, msg: 'Fix the error first!' };
-      if (!code.includes('def runDiagnostic')) return { ok: false, msg: 'Write a runDiagnostic function!' };
-      if (!out.includes('passed') && !out.includes('score') && !out.includes('Score')) return { ok: false, msg: 'Your diagnostic should show a score!' };
+    check: (blocks, out) => {
+      const types = flatBlockTypes(blocks);
+      if (!types.includes('diagnose')) return { ok: false, msg: 'Run the "Run Diagnostic" block to verify all systems!' };
+      const count = countAllBlocks(blocks);
+      if (count < 4) return { ok: false, msg: 'Build a more complete diagnostic — add more blocks to check all systems!' };
       return { ok: true, msg: '🏆 SYSTEM VICTORY! All networks secured! You are a Cyber Master!' };
     },
   },
@@ -432,13 +427,11 @@ export default function MissionMode({ onNavigate }) {
   const [activeMission, setActiveMission] = useState(null);
   const [showCert, setShowCert] = useState(null);
   const [justCompleted, setJustCompleted] = useState(null);
-  const [missionCode, setMissionCode] = useState('');
   const [missionOutput, setMissionOutput] = useState([]);
   const [missionResult, setMissionResult] = useState(null);
 
   useEffect(() => {
     if (activeMission) {
-      setMissionCode(MISSION_CHECKS[activeMission.id]?.starter || '');
       setMissionOutput([]);
       setMissionResult(null);
     }
@@ -469,13 +462,12 @@ export default function MissionMode({ onNavigate }) {
     if (campaignComplete) setTimeout(() => setShowCert(campaign), 800);
   };
 
-  const runAndCheck = (camp, mission) => {
+  const handleBlockRun = (camp, mission) => (blocks, outStr) => {
     const check = MISSION_CHECKS[mission.id];
     if (!check) return;
-    const { output, errors } = runPython(missionCode);
-    const outStr = [...output, ...errors].join('\n');
-    setMissionOutput([...output.map(t => ({ type: 'output', text: t })), ...errors.map(t => ({ type: 'error', text: t }))]);
-    const result = check.check(missionCode, outStr);
+    const outputLines = outStr.split('\n').filter(l => l.trim());
+    setMissionOutput(outputLines.map(t => ({ type: 'output', text: t })));
+    const result = check.check(blocks, outStr);
     setMissionResult(result);
     if (result.ok) {
       setTimeout(() => completeM(camp, mission), 600);
@@ -533,56 +525,23 @@ export default function MissionMode({ onNavigate }) {
           <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13, marginTop: 12, marginBottom: 0, lineHeight: 1.7 }}>{mission.hint}</p>
         </details>
 
-        {/* Code Editor */}
+        {/* Block Editor */}
         {MISSION_CHECKS[mission.id] && (
           <div style={{ marginBottom: 24 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>
-              💻 Write Your Code
-            </div>
-            <textarea
-              value={missionCode}
-              onChange={e => { setMissionCode(e.target.value); setMissionResult(null); }}
-              spellCheck={false}
-              style={{
-                width: '100%', boxSizing: 'border-box',
-                height: 220, background: '#0d0d1a', color: '#e2e8f0',
-                fontFamily: 'monospace', fontSize: 13, lineHeight: 1.7,
-                border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10,
-                padding: '12px 14px', resize: 'vertical', outline: 'none',
-                tabSize: 4,
-              }}
-              onKeyDown={e => {
-                if (e.key === 'Tab') {
-                  e.preventDefault();
-                  const s = e.target.selectionStart;
-                  const v = e.target.value;
-                  setMissionCode(v.substring(0, s) + '    ' + v.substring(e.target.selectionEnd));
-                  requestAnimationFrame(() => { e.target.selectionStart = e.target.selectionEnd = s + 4; });
-                }
-              }}
+            <MissionBlockEditor
+              campaignId={camp.id}
+              missionId={mission.id}
+              campColor={camp.color}
+              done={done}
+              onRun={handleBlockRun(camp, mission)}
             />
-
-            {/* Run button */}
-            <button
-              onClick={() => runAndCheck(camp, mission)}
-              disabled={done}
-              style={{
-                marginTop: 10, padding: '11px 28px',
-                background: done ? '#10b981' : camp.color,
-                border: 'none', borderRadius: 10, color: '#fff',
-                cursor: done ? 'default' : 'pointer', fontWeight: 700, fontSize: 14,
-                boxShadow: done ? 'none' : `0 4px 16px ${camp.glow}`,
-              }}
-            >
-              {done ? '✅ Mission Complete!' : '▶ Run & Check'}
-            </button>
 
             {/* Output */}
             {missionOutput.length > 0 && (
               <div style={{ marginTop: 12, background: '#0a0a14', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '10px 14px', fontFamily: 'monospace', fontSize: 12 }}>
                 <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 1 }}>Output</div>
                 {missionOutput.map((line, i) => (
-                  <div key={i} style={{ color: line.type === 'error' ? '#f87171' : '#86efac', lineHeight: 1.7 }}>{line.text}</div>
+                  <div key={i} style={{ color: '#86efac', lineHeight: 1.7 }}>{line.text}</div>
                 ))}
               </div>
             )}
