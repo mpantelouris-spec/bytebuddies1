@@ -2608,10 +2608,14 @@ export default function RobotPanel() {
     setConnecting(true);
     try {
       addTerminal('📡 Step 1/6: Opening device picker…', 'info');
+      addTerminal('⚠️ If it fails: remove micro:bit from Windows Bluetooth settings first!', 'warn');
+      // acceptAllDevices forces a fresh GATT discovery — avoids Windows Chrome
+      // stale-cache bug that occurs when device was OS-paired first
       const device = await navigator.bluetooth.requestDevice({
         filters: [
           { name: 'ByteBuddies' },
           { namePrefix: 'BBC micro:bit' },
+          { services: [BLE_NUS_SERVICE] },
         ],
         optionalServices: [BLE_NUS_SERVICE],
       });
@@ -2633,22 +2637,24 @@ export default function RobotPanel() {
       const server = await device.gatt.connect();
       addTerminal('✅ Step 2/6: GATT connected', 'success');
 
-      await new Promise(r => setTimeout(r, 1000));
+      // Windows needs extra time to complete GATT service discovery
+      await new Promise(r => setTimeout(r, 1500));
 
       addTerminal('📡 Step 3/6: Finding UART service…', 'info');
       let service = null;
-      for (let attempt = 1; attempt <= 4; attempt++) {
+      for (let attempt = 1; attempt <= 5; attempt++) {
         try {
           service = await server.getPrimaryService(BLE_NUS_SERVICE);
           break;
         } catch (e) {
-          addTerminal(`  attempt ${attempt}/4: ${e.message}`, 'info');
-          if (attempt < 4) await new Promise(r => setTimeout(r, 800));
+          addTerminal(`  attempt ${attempt}/5: ${e.message}`, 'info');
+          if (attempt < 5) await new Promise(r => setTimeout(r, 1000));
         }
       }
       if (!service) {
         addTerminal('❌ Step 3/6 FAILED: UART service not found.', 'error');
-        addTerminal('👉 Make sure you flashed the MakeCode BLE program — see Setup Guide → Bluetooth.', 'info');
+        addTerminal('🔧 Fix: Open Windows Settings → Bluetooth → find your micro:bit → Remove device. Then try connecting again here.', 'warn');
+        addTerminal('👉 Also check the MakeCode program is flashed — Setup Guide → Bluetooth.', 'info');
         try { server.disconnect(); } catch (_) {}
         return;
       }
