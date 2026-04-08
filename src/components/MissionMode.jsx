@@ -176,7 +176,7 @@ const MISSION_CHECKS = {
     check: (code, out) => {
       if (out.includes('Error')) return { ok: false, msg: 'Fix the error first!' };
       if (!code.includes('while') && !code.includes('for')) return { ok: false, msg: 'Use a loop for the ascent!' };
-      if (!out.toLowerCase().includes('surface') && !out.includes('made it')) return { ok: false, msg: "Make sure your sub reaches the surface!" };
+      if (!out.toLowerCase().includes('surface') && !out.toLowerCase().includes('surfaced') && !out.includes('made it')) return { ok: false, msg: "Make sure your sub reaches the surface!" };
       return { ok: true, msg: '🌊 Surfaced safely! You escaped in time!' };
     },
   },
@@ -212,8 +212,10 @@ const MISSION_CHECKS = {
     starter: `# 📈 Population Boom!\npopulation = 100\nhappiness = 75\nfor day in range(10):\n    if happiness > 70:\n        population = int(population * 1.05)\n    else:\n        population = int(population * 1.01)\n    print(f"Day {day+1}: Population {population}")\nprint(f"Final population: {population}")\n`,
     check: (code, out) => {
       if (out.includes('Error')) return { ok: false, msg: 'Fix the error first!' };
-      if (!code.includes('for') && !code.includes('while')) return { ok: false, msg: 'Use a loop to simulate 10 days!' };
-      if (!code.includes('1.05') && !code.includes('1.01')) return { ok: false, msg: 'Use percentage growth (1.05 or 1.01)!' };
+      if (!code.includes('for') && !code.includes('while')) return { ok: false, msg: 'Use a loop to simulate the days!' };
+      if (!code.includes('population')) return { ok: false, msg: 'Track the population variable!' };
+      const nums = out.split('\n').filter(l => l.trim()).filter(l => /\d+/.test(l));
+      if (nums.length < 5) return { ok: false, msg: 'Run through at least 5 days and print population each time!' };
       return { ok: true, msg: '📈 Population boom! The city is thriving!' };
     },
   },
@@ -241,8 +243,10 @@ const MISSION_CHECKS = {
     check: (code, out) => {
       if (out.includes('Error')) return { ok: false, msg: 'Fix the error first!' };
       if (!code.includes('def')) return { ok: false, msg: 'Write the sequence inside a function!' };
-      if (!out.includes('32')) return { ok: false, msg: 'The 5th number should be 32. Each step doubles!' };
-      return { ok: true, msg: '🔐 Pattern cracked! Vault unlocked: 2, 4, 8, 16, 32!' };
+      if (!code.includes('for') && !code.includes('while')) return { ok: false, msg: 'Use a loop inside your function!' };
+      const nums = out.split('\n').filter(l => l.trim()).filter(l => /^\d+$/.test(l.trim()));
+      if (nums.length < 3) return { ok: false, msg: 'Your function should print at least 3 numbers in the sequence!' };
+      return { ok: true, msg: '🔐 Pattern cracked! Vault unlocked!' };
     },
   },
   'cyber-3': {
@@ -273,6 +277,445 @@ const MISSION_CHECKS = {
     },
   },
 };
+
+// ── Mission Block Editor ────────────────────────────────────────────────────
+
+const MBLOCK_DEFS = {
+  print:      { label: 'Print',           color: '#10b981', icon: '📢',
+    params: [{ key: 'message', label: 'Value', default: '"Hello!"' }],
+    gen: (p) => {
+      const msg = (p.message || '""').trim();
+      if (/^["']/.test(msg) || /^f["']/.test(msg) || /^[a-zA-Z_][a-zA-Z0-9_.()[\]]*$/.test(msg)) return `print(${msg})`;
+      return `print("${msg}")`;
+    },
+  },
+  repeat:     { label: 'Repeat',          color: '#f59e0b', icon: '🔄',
+    params: [{ key: 'times', label: 'Times', default: '3' }],
+    gen: (p, v) => `for ${v || 'i'} in range(${p.times || '3'}):`, container: true,
+  },
+  while:      { label: 'While',           color: '#f97316', icon: '🔁',
+    params: [{ key: 'cond', label: 'Condition', default: 'x > 0' }],
+    gen: (p) => `while ${p.cond || 'True'}:`, container: true,
+  },
+  if:         { label: 'If',              color: '#8b5cf6', icon: '❓',
+    params: [{ key: 'cond', label: 'Condition', default: 'x > 0' }],
+    gen: (p) => `if ${p.cond || 'True'}:`, container: true,
+  },
+  'var-set':  { label: 'Set Variable',    color: '#0ea5e9', icon: '📦',
+    params: [{ key: 'name', label: 'Name', default: 'x' }, { key: 'value', label: 'Value', default: '0' }],
+    gen: (p) => `${p.name || 'x'} = ${p.value || '0'}`,
+  },
+  'var-change': { label: 'Change Var',   color: '#0284c7', icon: '🔧',
+    params: [{ key: 'name', label: 'Name', default: 'x' }, { key: 'op', label: 'Op', default: '+=' }, { key: 'amount', label: 'By', default: '1' }],
+    gen: (p) => `${p.name || 'x'} ${p.op || '+='} ${p.amount || '1'}`,
+  },
+  'func-def': { label: 'Define Function', color: '#ec4899', icon: '⚡',
+    params: [{ key: 'name', label: 'Name', default: 'myFunc' }, { key: 'args', label: 'Args', default: '' }],
+    gen: (p) => `def ${p.name || 'myFunc'}(${p.args || ''}):`, container: true,
+  },
+  'func-call':{ label: 'Call Function',  color: '#db2777', icon: '📞',
+    params: [{ key: 'name', label: 'Name', default: 'myFunc' }, { key: 'args', label: 'Args', default: '' }],
+    gen: (p) => `${p.name || 'myFunc'}(${p.args || ''})`,
+  },
+  return:     { label: 'Return',          color: '#ef4444', icon: '↩',
+    params: [{ key: 'value', label: 'Value', default: '' }],
+    gen: (p) => p.value ? `return ${p.value}` : 'return',
+  },
+  comment:    { label: 'Comment',         color: '#6b7280', icon: '#',
+    params: [{ key: 'text', label: 'Text', default: 'My note' }],
+    gen: (p) => `# ${p.text || ''}`,
+  },
+};
+
+const MISSION_PALETTE = {
+  'space-1':  ['print', 'comment'],
+  'space-2':  ['repeat', 'print', 'var-set', 'comment'],
+  'space-3':  ['var-set', 'var-change', 'repeat', 'if', 'print', 'comment'],
+  'space-4':  ['func-def', 'func-call', 'if', 'print', 'comment'],
+  'space-5':  ['func-def', 'func-call', 'var-set', 'var-change', 'repeat', 'if', 'return', 'print', 'comment'],
+  'ocean-1':  ['var-set', 'var-change', 'repeat', 'if', 'print', 'comment'],
+  'ocean-2':  ['var-set', 'var-change', 'repeat', 'if', 'print', 'comment'],
+  'ocean-3':  ['func-def', 'func-call', 'var-set', 'if', 'print', 'comment'],
+  'ocean-4':  ['var-set', 'var-change', 'repeat', 'if', 'print', 'comment'],
+  'ocean-5':  ['var-set', 'var-change', 'while', 'if', 'print', 'comment'],
+  'city-1':   ['var-set', 'print', 'comment'],
+  'city-2':   ['var-set', 'var-change', 'repeat', 'if', 'print', 'comment'],
+  'city-3':   ['var-set', 'var-change', 'repeat', 'if', 'print', 'comment'],
+  'city-4':   ['var-set', 'var-change', 'repeat', 'if', 'print', 'comment'],
+  'city-5':   ['var-set', 'var-change', 'print', 'comment'],
+  'cyber-1':  ['func-def', 'func-call', 'if', 'print', 'comment'],
+  'cyber-2':  ['func-def', 'func-call', 'var-set', 'var-change', 'repeat', 'return', 'print', 'comment'],
+  'cyber-3':  ['func-def', 'func-call', 'var-set', 'var-change', 'repeat', 'if', 'return', 'print', 'comment'],
+  'cyber-4':  ['func-def', 'func-call', 'var-set', 'var-change', 'if', 'return', 'print', 'comment'],
+  'cyber-5':  ['func-def', 'func-call', 'var-set', 'var-change', 'print', 'comment'],
+};
+
+function mb(type, indent, params) {
+  return { id: Math.random().toString(36).slice(2), type, indent, params };
+}
+
+const MISSION_STARTERS = {
+  'space-1': [
+    mb('print', 0, { message: '"Systems check..."' }),
+    mb('print', 0, { message: '"Fuel loading..."' }),
+    mb('print', 0, { message: '"Engines ignite!"' }),
+    mb('print', 0, { message: '"Clamps released!"' }),
+    mb('print', 0, { message: '"Liftoff!"' }),
+    mb('comment', 0, { text: 'Add more steps to make a great launch!' }),
+  ],
+  'space-2': [
+    mb('repeat', 0, { times: '3' }),
+    mb('print', 1, { message: 'f"Orbit {i+1}/3 - adjusting speed..."' }),
+    mb('comment', 0, { text: 'You can add more actions inside the loop!' }),
+  ],
+  'space-3': [
+    mb('var-set', 0, { name: 'score', value: '0' }),
+    mb('repeat', 0, { times: '5' }),
+    mb('var-set', 1, { name: 'asteroid', value: 'True' }),
+    mb('if', 1, { cond: 'asteroid' }),
+    mb('print', 2, { message: 'f"Asteroid {i+1}! Dodging..."' }),
+    mb('var-change', 2, { name: 'score', op: '+=', amount: '1' }),
+    mb('print', 0, { message: 'f"Final score: {score}"' }),
+  ],
+  'space-4': [
+    mb('func-def', 0, { name: 'respond_to_signal', args: 'signal' }),
+    mb('if', 1, { cond: 'signal == "SOS"' }),
+    mb('print', 2, { message: '"SOS received - sending rescue coordinates!"' }),
+    mb('if', 1, { cond: 'signal == "PING"' }),
+    mb('print', 2, { message: '"PING - sending PONG!"' }),
+    mb('func-call', 0, { name: 'respond_to_signal', args: '"SOS"' }),
+    mb('func-call', 0, { name: 'respond_to_signal', args: '"PING"' }),
+    mb('func-call', 0, { name: 'respond_to_signal', args: '"DATA"' }),
+  ],
+  'space-5': [
+    mb('func-def', 0, { name: 'check_altitude', args: 'alt' }),
+    mb('if', 1, { cond: 'alt > 1000' }),
+    mb('return', 2, { value: '"descending"' }),
+    mb('return', 1, { value: '"landing"' }),
+    mb('var-set', 0, { name: 'altitude', value: '5000' }),
+    mb('repeat', 0, { times: '5' }),
+    mb('var-change', 1, { name: 'altitude', op: '-=', amount: '1000' }),
+    mb('var-set', 1, { name: 'status', value: 'check_altitude(altitude)' }),
+    mb('print', 1, { message: 'f"Altitude: {altitude}m | {status}"' }),
+    mb('print', 0, { message: '"Touchdown!"' }),
+  ],
+  'ocean-1': [
+    mb('var-set', 0, { name: 'depth', value: '0' }),
+    mb('var-set', 0, { name: 'life_support', value: '100' }),
+    mb('repeat', 0, { times: '3' }),
+    mb('var-change', 1, { name: 'depth', op: '+=', amount: '70' }),
+    mb('if', 1, { cond: 'depth > 100' }),
+    mb('var-change', 2, { name: 'life_support', op: '-=', amount: '10' }),
+    mb('print', 2, { message: 'f"Depth: {depth}m - Adjusting life support: {life_support}%"' }),
+    mb('if', 1, { cond: 'depth <= 100' }),
+    mb('print', 2, { message: 'f"Depth: {depth}m - Systems nominal"' }),
+  ],
+  'ocean-2': [
+    mb('var-set', 0, { name: 'position', value: '0' }),
+    mb('repeat', 0, { times: '8' }),
+    mb('if', 1, { cond: 'position >= 5' }),
+    mb('print', 2, { message: 'f"Step {i+1}: Coral! Dodging..."' }),
+    mb('var-set', 2, { name: 'position', value: '0' }),
+    mb('if', 1, { cond: 'position < 5' }),
+    mb('print', 2, { message: 'f"Step {i+1}: Moving forward..."' }),
+    mb('var-change', 2, { name: 'position', op: '+=', amount: '1' }),
+    mb('print', 0, { message: '"Maze complete!"' }),
+  ],
+  'ocean-3': [
+    mb('func-def', 0, { name: 'sound_alarm', args: '' }),
+    mb('print', 1, { message: '"ALARM SOUNDING!"' }),
+    mb('func-def', 0, { name: 'flash_lights', args: '' }),
+    mb('print', 1, { message: '"LIGHTS FLASHING!"' }),
+    mb('func-def', 0, { name: 'radio_surface', args: '' }),
+    mb('print', 1, { message: '"Radioing surface: SHARK DETECTED!"' }),
+    mb('var-set', 0, { name: 'shark_detected', value: 'True' }),
+    mb('if', 0, { cond: 'shark_detected' }),
+    mb('func-call', 1, { name: 'sound_alarm', args: '' }),
+    mb('func-call', 1, { name: 'flash_lights', args: '' }),
+    mb('func-call', 1, { name: 'radio_surface', args: '' }),
+  ],
+  'ocean-4': [
+    mb('var-set', 0, { name: 'treasure_count', value: '0' }),
+    mb('repeat', 0, { times: '8' }),
+    mb('repeat', 1, { times: '8' }),
+    mb('if', 2, { cond: 'treasure_count < 3' }),
+    mb('var-change', 3, { name: 'treasure_count', op: '+=', amount: '1' }),
+    mb('print', 3, { message: 'f"Treasure found! Total: {treasure_count}"' }),
+    mb('print', 0, { message: 'f"Total treasures: {treasure_count}"' }),
+  ],
+  'ocean-5': [
+    mb('var-set', 0, { name: 'oxygen', value: '60' }),
+    mb('var-set', 0, { name: 'depth', value: '200' }),
+    mb('while', 0, { cond: 'oxygen > 0 and depth > 0' }),
+    mb('var-change', 1, { name: 'oxygen', op: '-=', amount: '5' }),
+    mb('var-change', 1, { name: 'depth', op: '-=', amount: '30' }),
+    mb('if', 1, { cond: 'depth < 0' }),
+    mb('var-set', 2, { name: 'depth', value: '0' }),
+    mb('print', 0, { message: '"SURFACED! You made it!"' }),
+  ],
+  'city-1': [
+    mb('var-set', 0, { name: 'population', value: '100' }),
+    mb('var-set', 0, { name: 'budget', value: '50000' }),
+    mb('var-set', 0, { name: 'happiness', value: '75' }),
+    mb('var-set', 0, { name: 'days', value: '0' }),
+    mb('print', 0, { message: 'f"Population: {population}"' }),
+    mb('print', 0, { message: 'f"Budget: {budget}"' }),
+    mb('print', 0, { message: 'f"Happiness: {happiness}%"' }),
+    mb('print', 0, { message: 'f"Day: {days}"' }),
+  ],
+  'city-2': [
+    mb('var-set', 0, { name: 'budget', value: '50000' }),
+    mb('var-set', 0, { name: 'happiness', value: '75' }),
+    mb('repeat', 0, { times: '5' }),
+    mb('var-change', 1, { name: 'budget', op: '-=', amount: '2000' }),
+    mb('var-change', 1, { name: 'happiness', op: '+=', amount: '3' }),
+    mb('if', 1, { cond: 'budget < 0' }),
+    mb('print', 2, { message: '"Budget depleted!"' }),
+    mb('print', 1, { message: 'f"Road {i+1} built | Budget: {budget} | Happiness: {happiness}%"' }),
+  ],
+  'city-3': [
+    mb('var-set', 0, { name: 'districts', value: '[40, 80, 30, 90]' }),
+    mb('var-set', 0, { name: 'total_cost', value: '0' }),
+    mb('var-set', 0, { name: 'power_needed', value: '50' }),
+    mb('repeat', 0, { times: '4' }),
+    mb('if', 1, { cond: 'i < 2' }),
+    mb('var-change', 2, { name: 'total_cost', op: '+=', amount: '5000' }),
+    mb('print', 2, { message: 'f"District {i+1}: Powered up | Cost: 5000"' }),
+    mb('print', 0, { message: 'f"Total cost: {total_cost}"' }),
+  ],
+  'city-4': [
+    mb('var-set', 0, { name: 'population', value: '100' }),
+    mb('var-set', 0, { name: 'happiness', value: '75' }),
+    mb('repeat', 0, { times: '10' }),
+    mb('if', 1, { cond: 'happiness > 70' }),
+    mb('var-set', 2, { name: 'population', value: 'int(population * 1.05)' }),
+    mb('if', 1, { cond: 'happiness <= 70' }),
+    mb('var-set', 2, { name: 'population', value: 'int(population * 1.01)' }),
+    mb('print', 1, { message: 'f"Day {i+1}: Population {population}"' }),
+    mb('print', 0, { message: 'f"Final population: {population}"' }),
+  ],
+  'city-5': [
+    mb('var-set', 0, { name: 'population', value: '350' }),
+    mb('var-set', 0, { name: 'budget', value: '30000' }),
+    mb('var-set', 0, { name: 'happiness', value: '90' }),
+    mb('var-set', 0, { name: 'city_score', value: '(happiness * 10) + (population // 10)' }),
+    mb('print', 0, { message: '"=== CITY REPORT ==="' }),
+    mb('print', 0, { message: 'f"Population: {population}"' }),
+    mb('print', 0, { message: 'f"Budget: {budget}"' }),
+    mb('print', 0, { message: 'f"Happiness: {happiness}%"' }),
+    mb('print', 0, { message: 'f"CITY SCORE: {city_score}"' }),
+    mb('print', 0, { message: '"FIREWORKS! Grand opening!"' }),
+  ],
+  'cyber-1': [
+    mb('func-def', 0, { name: 'fixBug', args: 'bug_type' }),
+    mb('if', 1, { cond: 'bug_type == "memory"' }),
+    mb('print', 2, { message: '"Fixing memory leak..."' }),
+    mb('if', 1, { cond: 'bug_type == "network"' }),
+    mb('print', 2, { message: '"Patching network..."' }),
+    mb('print', 1, { message: 'f"{bug_type} bug fixed!"' }),
+    mb('func-call', 0, { name: 'fixBug', args: '"memory"' }),
+    mb('func-call', 0, { name: 'fixBug', args: '"network"' }),
+    mb('func-call', 0, { name: 'fixBug', args: '"syntax"' }),
+    mb('func-call', 0, { name: 'fixBug', args: '"logic"' }),
+    mb('func-call', 0, { name: 'fixBug', args: '"runtime"' }),
+  ],
+  'cyber-2': [
+    mb('func-def', 0, { name: 'generate_sequence', args: 'steps' }),
+    mb('var-set', 1, { name: 'result', value: '1' }),
+    mb('repeat', 1, { times: 'steps' }),
+    mb('var-change', 2, { name: 'result', op: '*=', amount: '2' }),
+    mb('print', 2, { message: 'result' }),
+    mb('func-call', 0, { name: 'generate_sequence', args: '5' }),
+  ],
+  'cyber-3': [
+    mb('func-def', 0, { name: 'lockdown', args: '' }),
+    mb('print', 1, { message: '"LOCKDOWN INITIATED"' }),
+    mb('func-def', 0, { name: 'classify', args: 'signal' }),
+    mb('if', 1, { cond: 'signal > 10' }),
+    mb('return', 2, { value: '"threat"' }),
+    mb('return', 1, { value: '"safe"' }),
+    mb('repeat', 0, { times: '5' }),
+    mb('var-set', 1, { name: 'sig', value: 'i * 3 + 4' }),
+    mb('var-set', 1, { name: 'result', value: 'classify(sig)' }),
+    mb('print', 1, { message: 'f"Signal {sig}: {result}"' }),
+    mb('if', 1, { cond: 'result == "threat"' }),
+    mb('func-call', 2, { name: 'lockdown', args: '' }),
+  ],
+  'cyber-4': [
+    mb('func-def', 0, { name: 'decrypt', args: 'count' }),
+    mb('if', 1, { cond: 'count == 0' }),
+    mb('print', 2, { message: '"Decryption complete! Data restored."' }),
+    mb('return', 2, { value: '' }),
+    mb('print', 1, { message: 'f"Peeling layer {count}..."' }),
+    mb('func-call', 1, { name: 'decrypt', args: 'count - 1' }),
+    mb('func-call', 0, { name: 'decrypt', args: '5' }),
+  ],
+  'cyber-5': [
+    mb('func-def', 0, { name: 'fixBug', args: 't' }),
+    mb('print', 1, { message: 'f"Fixed {t} bug"' }),
+    mb('func-def', 0, { name: 'decrypt', args: 'n' }),
+    mb('if', 1, { cond: 'n == 0' }),
+    mb('return', 2, { value: '' }),
+    mb('func-call', 1, { name: 'decrypt', args: 'n - 1' }),
+    mb('func-def', 0, { name: 'lockdown', args: '' }),
+    mb('print', 1, { message: '"Lockdown cleared"' }),
+    mb('func-def', 0, { name: 'runDiagnostic', args: '' }),
+    mb('var-set', 1, { name: 'score', value: '0' }),
+    mb('print', 1, { message: '"Running diagnostic..."' }),
+    mb('func-call', 1, { name: 'fixBug', args: '"memory"' }),
+    mb('var-change', 1, { name: 'score', op: '+=', amount: '1' }),
+    mb('func-call', 1, { name: 'decrypt', args: '3' }),
+    mb('var-change', 1, { name: 'score', op: '+=', amount: '1' }),
+    mb('func-call', 1, { name: 'lockdown', args: '' }),
+    mb('var-change', 1, { name: 'score', op: '+=', amount: '1' }),
+    mb('print', 1, { message: 'f"Systems passed: {score}/3"' }),
+    mb('func-call', 0, { name: 'runDiagnostic', args: '' }),
+  ],
+};
+
+function genPyFromBlocks(blocks) {
+  if (!blocks.length) return '# Add blocks from the palette!\n';
+  const loopVars = ['i', 'j', 'k', 'n'];
+  const lines = [];
+  for (let idx = 0; idx < blocks.length; idx++) {
+    const block = blocks[idx];
+    const def = MBLOCK_DEFS[block.type];
+    if (!def) continue;
+    const indent = block.indent || 0;
+    const pad = '    '.repeat(indent);
+    const loopVar = loopVars[indent] || 'x';
+    lines.push(pad + def.gen(block.params || {}, loopVar));
+    if (def.container) {
+      const nextIndent = idx + 1 < blocks.length ? (blocks[idx + 1].indent || 0) : -1;
+      if (nextIndent <= indent) lines.push(pad + '    pass');
+    }
+  }
+  return lines.join('\n');
+}
+
+const MB_BTN = {
+  background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)',
+  borderRadius: 4, color: 'rgba(255,255,255,0.7)', cursor: 'pointer',
+  fontSize: 11, padding: '2px 5px', lineHeight: 1.4,
+};
+
+function MissionBlockEditor({ missionId, campColor, blocks, setBlocks }) {
+  const [showCode, setShowCode] = useState(false);
+  const available = MISSION_PALETTE[missionId] || Object.keys(MBLOCK_DEFS);
+
+  const addBlock = (type) => {
+    const def = MBLOCK_DEFS[type];
+    const params = {};
+    (def.params || []).forEach(p => { params[p.key] = p.default; });
+    setBlocks(prev => [...prev, { id: Math.random().toString(36).slice(2), type, indent: 0, params }]);
+  };
+
+  const updateParam = (id, key, val) =>
+    setBlocks(prev => prev.map(b => b.id === id ? { ...b, params: { ...b.params, [key]: val } } : b));
+
+  const moveBlock = (idx, dir) => setBlocks(prev => {
+    const arr = [...prev];
+    const nIdx = idx + dir;
+    if (nIdx < 0 || nIdx >= arr.length) return arr;
+    [arr[idx], arr[nIdx]] = [arr[nIdx], arr[idx]];
+    return arr;
+  });
+
+  const changeIndent = (idx, delta) =>
+    setBlocks(prev => prev.map((b, i) => i === idx ? { ...b, indent: Math.max(0, Math.min(4, (b.indent || 0) + delta)) } : b));
+
+  const removeBlock = (id) => setBlocks(prev => prev.filter(b => b.id !== id));
+
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: 10, height: 380 }}>
+        {/* Palette */}
+        <div style={{ width: 148, flexShrink: 0, background: 'rgba(0,0,0,0.3)', borderRadius: 12, padding: '10px 8px', overflowY: 'auto', border: '1px solid rgba(255,255,255,0.08)' }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8, paddingLeft: 2 }}>Blocks</div>
+          {available.map(type => {
+            const def = MBLOCK_DEFS[type];
+            if (!def) return null;
+            return (
+              <button key={type} onClick={() => addBlock(type)} style={{
+                width: '100%', textAlign: 'left', padding: '6px 8px',
+                background: def.color + '22', border: `1px solid ${def.color}44`,
+                borderRadius: 7, color: '#fff', cursor: 'pointer',
+                fontSize: 11, fontWeight: 600, marginBottom: 4,
+                display: 'flex', alignItems: 'center', gap: 5,
+              }}>
+                <span>{def.icon}</span>{def.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Workspace */}
+        <div style={{ flex: 1, background: 'rgba(0,0,0,0.2)', borderRadius: 12, padding: 10, overflowY: 'auto', border: '1px solid rgba(255,255,255,0.07)' }}>
+          {blocks.length === 0 && (
+            <div style={{ color: 'rgba(255,255,255,0.2)', fontSize: 13, textAlign: 'center', marginTop: 60 }}>
+              ← Click blocks on the left to add them!
+            </div>
+          )}
+          {blocks.map((block, idx) => {
+            const def = MBLOCK_DEFS[block.type];
+            if (!def) return null;
+            return (
+              <div key={block.id} style={{
+                marginLeft: (block.indent || 0) * 20,
+                marginBottom: 3,
+                background: def.color + '18',
+                border: `1px solid ${def.color}45`,
+                borderLeft: `3px solid ${def.color}`,
+                borderRadius: 7,
+                padding: '5px 8px',
+                display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap',
+              }}>
+                <span style={{ fontSize: 12 }}>{def.icon}</span>
+                <span style={{ fontSize: 11, fontWeight: 700, color: def.color, minWidth: 72, flexShrink: 0 }}>{def.label}</span>
+                {(def.params || []).map(param => (
+                  <div key={param.key} style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                    <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', flexShrink: 0 }}>{param.label}:</span>
+                    <input
+                      value={block.params?.[param.key] ?? param.default}
+                      onChange={e => updateParam(block.id, param.key, e.target.value)}
+                      style={{
+                        width: ['message', 'cond', 'value'].includes(param.key) ? 130 : 52,
+                        background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.15)',
+                        borderRadius: 4, color: '#e2e8f0', fontSize: 10, padding: '2px 5px',
+                        fontFamily: 'monospace', outline: 'none',
+                      }}
+                    />
+                  </div>
+                ))}
+                <div style={{ marginLeft: 'auto', display: 'flex', gap: 2, flexShrink: 0 }}>
+                  <button onClick={() => changeIndent(idx, 1)} title="Indent right" style={MB_BTN}>→</button>
+                  <button onClick={() => changeIndent(idx, -1)} title="Indent left" style={MB_BTN}>←</button>
+                  <button onClick={() => moveBlock(idx, -1)} title="Move up" style={MB_BTN}>↑</button>
+                  <button onClick={() => moveBlock(idx, 1)} title="Move down" style={MB_BTN}>↓</button>
+                  <button onClick={() => removeBlock(block.id)} title="Delete" style={{ ...MB_BTN, color: '#f87171' }}>✕</button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Code preview */}
+      <details style={{ marginTop: 8 }} onToggle={e => setShowCode(e.target.open)}>
+        <summary style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, cursor: 'pointer', userSelect: 'none', padding: '4px 0' }}>
+          🐍 See the Python code your blocks generate
+        </summary>
+        <pre style={{
+          marginTop: 6, background: '#0d0d1a', border: '1px solid rgba(255,255,255,0.1)',
+          borderRadius: 8, padding: '10px 14px', color: '#86efac',
+          fontFamily: 'monospace', fontSize: 11, lineHeight: 1.7, overflowX: 'auto', margin: '6px 0 0',
+        }}>{genPyFromBlocks(blocks)}</pre>
+      </details>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 function CertificateModal({ campaign, studentName, onClose }) {
   const canvasRef = useRef(null);
@@ -432,13 +875,13 @@ export default function MissionMode({ onNavigate }) {
   const [activeMission, setActiveMission] = useState(null);
   const [showCert, setShowCert] = useState(null);
   const [justCompleted, setJustCompleted] = useState(null);
-  const [missionCode, setMissionCode] = useState('');
+  const [missionBlocks, setMissionBlocks] = useState([]);
   const [missionOutput, setMissionOutput] = useState([]);
   const [missionResult, setMissionResult] = useState(null);
 
   useEffect(() => {
     if (activeMission) {
-      setMissionCode(MISSION_CHECKS[activeMission.id]?.starter || '');
+      setMissionBlocks((MISSION_STARTERS[activeMission.id] || []).map(b => ({ ...b, id: Math.random().toString(36).slice(2) })));
       setMissionOutput([]);
       setMissionResult(null);
     }
@@ -472,10 +915,11 @@ export default function MissionMode({ onNavigate }) {
   const runAndCheck = (camp, mission) => {
     const check = MISSION_CHECKS[mission.id];
     if (!check) return;
-    const { output, errors } = runPython(missionCode);
+    const code = genPyFromBlocks(missionBlocks);
+    const { output, errors } = runPython(code);
     const outStr = [...output, ...errors].join('\n');
     setMissionOutput([...output.map(t => ({ type: 'output', text: t })), ...errors.map(t => ({ type: 'error', text: t }))]);
-    const result = check.check(missionCode, outStr);
+    const result = check.check(code, outStr);
     setMissionResult(result);
     if (result.ok) {
       setTimeout(() => completeM(camp, mission), 600);
@@ -533,33 +977,17 @@ export default function MissionMode({ onNavigate }) {
           <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13, marginTop: 12, marginBottom: 0, lineHeight: 1.7 }}>{mission.hint}</p>
         </details>
 
-        {/* Code Editor */}
+        {/* Block Editor */}
         {MISSION_CHECKS[mission.id] && (
           <div style={{ marginBottom: 24 }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>
-              💻 Write Your Code
+              🧩 Build Your Code
             </div>
-            <textarea
-              value={missionCode}
-              onChange={e => { setMissionCode(e.target.value); setMissionResult(null); }}
-              spellCheck={false}
-              style={{
-                width: '100%', boxSizing: 'border-box',
-                height: 220, background: '#0d0d1a', color: '#e2e8f0',
-                fontFamily: 'monospace', fontSize: 13, lineHeight: 1.7,
-                border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10,
-                padding: '12px 14px', resize: 'vertical', outline: 'none',
-                tabSize: 4,
-              }}
-              onKeyDown={e => {
-                if (e.key === 'Tab') {
-                  e.preventDefault();
-                  const s = e.target.selectionStart;
-                  const v = e.target.value;
-                  setMissionCode(v.substring(0, s) + '    ' + v.substring(e.target.selectionEnd));
-                  requestAnimationFrame(() => { e.target.selectionStart = e.target.selectionEnd = s + 4; });
-                }
-              }}
+            <MissionBlockEditor
+              missionId={mission.id}
+              campColor={camp.color}
+              blocks={missionBlocks}
+              setBlocks={setMissionBlocks}
             />
 
             {/* Run button */}
