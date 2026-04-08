@@ -2681,12 +2681,16 @@ export default function RobotPanel() {
       }
       addTerminal('✅ Step 3/6: UART service found', 'success');
 
-      addTerminal('📡 Step 4/6: Getting TX/RX characteristics…', 'info');
+      addTerminal('📡 Step 4/6: Discovering characteristics…', 'info');
       let txChar, rxChar;
       try {
-        txChar = await service.getCharacteristic(BLE_NUS_RX);  // browser writes TO micro:bit's RX char (6e400002)
-        rxChar = await service.getCharacteristic(BLE_NUS_TX);  // browser subscribes TO micro:bit's TX char (6e400003)
-        addTerminal('✅ Step 4/6: Characteristics found', 'success');
+        const allChars = await service.getCharacteristics();
+        allChars.forEach(c => addTerminal(`  char ${c.uuid} props: ${Object.keys(c.properties).filter(k => c.properties[k]).join(',')}`, 'info'));
+        // Auto-detect by property — don't hardcode which UUID is notify vs write
+        rxChar = allChars.find(c => c.properties.notify || c.properties.indicate);
+        txChar = allChars.find(c => c.properties.writeWithoutResponse || c.properties.write);
+        if (!rxChar || !txChar) throw new Error(`Missing notify or write characteristic`);
+        addTerminal(`✅ Step 4/6: notify=${rxChar.uuid.slice(4,8)} write=${txChar.uuid.slice(4,8)}`, 'success');
       } catch (e) {
         addTerminal(`❌ Step 4/6 FAILED: ${e.message}`, 'error');
         try { server.disconnect(); } catch (_) {}
