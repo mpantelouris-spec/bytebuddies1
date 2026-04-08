@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useUser } from '../contexts/UserContext';
 import { runPython } from '../utils/pythonRunner';
+import MissionBlockEditor, { nextUid } from './MissionBlockEditor';
 
 const CAMPAIGNS = [
   {
@@ -83,11 +84,23 @@ const CAMPAIGNS = [
 
 const MISSION_CHECKS = {
   'space-1': {
-    starter: `# 🔥 Launch Sequence\n# Print each step of your rocket launch\nprint("Systems check...")\nprint("Fuel loading...")\n# Add at least 3 more launch steps below!\n`,
-    check: (code, out) => {
-      if (out.includes('Error')) return { ok: false, msg: 'Fix the error in your code first!' };
-      const lines = out.split('\n').filter(l => l.trim());
-      if (lines.length < 5) return { ok: false, msg: `Need at least 5 steps! You have ${lines.length}. Add more print() statements.` };
+    availableBlocks: [
+      { id: 'countdown', label: '⏱️ countdown', output: 'Countdown initiated...' },
+      { id: 'ignite',    label: '🔥 ignite engines', output: 'Engines ignited!' },
+      { id: 'release',   label: '🔓 release clamps', output: 'Clamps released!' },
+      { id: 'go',        label: '🚀 go!', output: 'Liftoff!' },
+      { id: 'systems',   label: '🛰️ systems check', output: 'Systems check OK!' },
+      { id: 'fuel',      label: '⛽ fuel loading', output: 'Fuel loaded!' },
+      { id: 'comms',     label: '📡 comms check', output: 'Comms online!' },
+    ],
+    starterBlocks: [
+      { id: 'countdown', label: '⏱️ countdown', output: 'Countdown initiated...' },
+      { id: 'ignite',    label: '🔥 ignite engines', output: 'Engines ignited!' },
+    ],
+    check: (blocks) => {
+      if (blocks.length < 5) {
+        return { ok: false, msg: `Need at least 5 blocks! You have ${blocks.length}. Add more from the palette.` };
+      }
       return { ok: true, msg: '🚀 Launch sequence confirmed! Rocket is away!' };
     },
   },
@@ -433,12 +446,20 @@ export default function MissionMode({ onNavigate }) {
   const [showCert, setShowCert] = useState(null);
   const [justCompleted, setJustCompleted] = useState(null);
   const [missionCode, setMissionCode] = useState('');
+  const [missionBlocks, setMissionBlocks] = useState([]);
   const [missionOutput, setMissionOutput] = useState([]);
   const [missionResult, setMissionResult] = useState(null);
 
   useEffect(() => {
     if (activeMission) {
-      setMissionCode(MISSION_CHECKS[activeMission.id]?.starter || '');
+      const check = MISSION_CHECKS[activeMission.id];
+      if (check?.starterBlocks !== undefined) {
+        setMissionBlocks(check.starterBlocks.map(b => ({ ...b, uid: nextUid() })));
+        setMissionCode('');
+      } else {
+        setMissionCode(check?.starter || '');
+        setMissionBlocks([]);
+      }
       setMissionOutput([]);
       setMissionResult(null);
     }
@@ -472,13 +493,26 @@ export default function MissionMode({ onNavigate }) {
   const runAndCheck = (camp, mission) => {
     const check = MISSION_CHECKS[mission.id];
     if (!check) return;
-    const { output, errors } = runPython(missionCode);
-    const outStr = [...output, ...errors].join('\n');
-    setMissionOutput([...output.map(t => ({ type: 'output', text: t })), ...errors.map(t => ({ type: 'error', text: t }))]);
-    const result = check.check(missionCode, outStr);
-    setMissionResult(result);
-    if (result.ok) {
-      setTimeout(() => completeM(camp, mission), 600);
+
+    if (check.starterBlocks !== undefined) {
+      // Block-based mission
+      const outputLines = missionBlocks.map(b => b.output || b.label);
+      setMissionOutput(outputLines.map(t => ({ type: 'output', text: t })));
+      const result = check.check(missionBlocks, outputLines.join('\n'));
+      setMissionResult(result);
+      if (result.ok) {
+        setTimeout(() => completeM(camp, mission), 600);
+      }
+    } else {
+      // Python-based mission
+      const { output, errors } = runPython(missionCode);
+      const outStr = [...output, ...errors].join('\n');
+      setMissionOutput([...output.map(t => ({ type: 'output', text: t })), ...errors.map(t => ({ type: 'error', text: t }))]);
+      const result = check.check(missionCode, outStr);
+      setMissionResult(result);
+      if (result.ok) {
+        setTimeout(() => completeM(camp, mission), 600);
+      }
     }
   };
 
@@ -533,34 +567,43 @@ export default function MissionMode({ onNavigate }) {
           <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13, marginTop: 12, marginBottom: 0, lineHeight: 1.7 }}>{mission.hint}</p>
         </details>
 
-        {/* Code Editor */}
+        {/* Code / Block Editor */}
         {MISSION_CHECKS[mission.id] && (
           <div style={{ marginBottom: 24 }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>
-              💻 Write Your Code
+              {MISSION_CHECKS[mission.id].starterBlocks !== undefined ? '🧩 Build Your Sequence' : '💻 Write Your Code'}
             </div>
-            <textarea
-              value={missionCode}
-              onChange={e => { setMissionCode(e.target.value); setMissionResult(null); }}
-              spellCheck={false}
-              style={{
-                width: '100%', boxSizing: 'border-box',
-                height: 220, background: '#0d0d1a', color: '#e2e8f0',
-                fontFamily: 'monospace', fontSize: 13, lineHeight: 1.7,
-                border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10,
-                padding: '12px 14px', resize: 'vertical', outline: 'none',
-                tabSize: 4,
-              }}
-              onKeyDown={e => {
-                if (e.key === 'Tab') {
-                  e.preventDefault();
-                  const s = e.target.selectionStart;
-                  const v = e.target.value;
-                  setMissionCode(v.substring(0, s) + '    ' + v.substring(e.target.selectionEnd));
-                  requestAnimationFrame(() => { e.target.selectionStart = e.target.selectionEnd = s + 4; });
-                }
-              }}
-            />
+            {MISSION_CHECKS[mission.id].starterBlocks !== undefined ? (
+              <MissionBlockEditor
+                availableBlocks={MISSION_CHECKS[mission.id].availableBlocks}
+                workspace={missionBlocks}
+                onWorkspaceChange={(blocks) => { setMissionBlocks(blocks); setMissionResult(null); }}
+                campaignColor={camp.color}
+              />
+            ) : (
+              <textarea
+                value={missionCode}
+                onChange={e => { setMissionCode(e.target.value); setMissionResult(null); }}
+                spellCheck={false}
+                style={{
+                  width: '100%', boxSizing: 'border-box',
+                  height: 220, background: '#0d0d1a', color: '#e2e8f0',
+                  fontFamily: 'monospace', fontSize: 13, lineHeight: 1.7,
+                  border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10,
+                  padding: '12px 14px', resize: 'vertical', outline: 'none',
+                  tabSize: 4,
+                }}
+                onKeyDown={e => {
+                  if (e.key === 'Tab') {
+                    e.preventDefault();
+                    const s = e.target.selectionStart;
+                    const v = e.target.value;
+                    setMissionCode(v.substring(0, s) + '    ' + v.substring(e.target.selectionEnd));
+                    requestAnimationFrame(() => { e.target.selectionStart = e.target.selectionEnd = s + 4; });
+                  }
+                }}
+              />
+            )}
 
             {/* Run button */}
             <button
