@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useTheme } from '../contexts/ThemeContext';
 import { useUser } from '../contexts/UserContext';
 import { useProject } from '../contexts/ProjectContext';
@@ -17,6 +18,41 @@ const Logo = () => (
   </svg>
 );
 
+/* Renders a dropdown menu via portal so it escapes all parent overflow/stacking */
+function PortalDropdown({ anchorRef, onClose, children, width }) {
+  const [pos, setPos] = useState(null);
+
+  useEffect(() => {
+    if (!anchorRef.current) return;
+    const r = anchorRef.current.getBoundingClientRect();
+    setPos({ top: r.bottom + 6, right: window.innerWidth - r.right });
+  }, [anchorRef]);
+
+  if (!pos) return null;
+
+  return createPortal(
+    <>
+      <div style={{ position: 'fixed', inset: 0, zIndex: 9998 }} onClick={onClose} />
+      <div style={{
+        position: 'fixed',
+        top: pos.top,
+        right: pos.right,
+        zIndex: 9999,
+        background: 'var(--bg-card)',
+        border: '1px solid var(--border-color)',
+        borderRadius: 'var(--radius-md)',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+        minWidth: width || 180,
+        padding: 4,
+        animation: 'slideUp 0.15s ease',
+      }}>
+        {children}
+      </div>
+    </>,
+    document.body
+  );
+}
+
 export default function TopBar({ currentPage, onNavigate, onExport, onAuth }) {
   const { theme, toggleTheme } = useTheme();
   const { user } = useUser();
@@ -24,6 +60,8 @@ export default function TopBar({ currentPage, onNavigate, onExport, onAuth }) {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifs, setShowNotifs] = useState(false);
   const [readNotifs, setReadNotifs] = useState(new Set());
+  const avatarRef = useRef(null);
+  const bellRef = useRef(null);
 
   const notifications = [
     { id: 1, text: 'ByteNinja liked your Space Defender!', time: '2m ago', icon: '❤️' },
@@ -81,8 +119,7 @@ export default function TopBar({ currentPage, onNavigate, onExport, onAuth }) {
 
       <div className="topbar-spacer" />
 
-
-<div className="topbar-actions" style={{ flexShrink: 0 }}>
+      <div className="topbar-actions" style={{ flexShrink: 0 }}>
         <div className="xp-bar" title={`${user.xp} / ${user.xpToNext} XP`} style={{ gap: 4 }}>
           <span style={{ fontSize: 11, whiteSpace: 'nowrap' }}>⚡ Lv.{user.level}</span>
           <div className="xp-bar-fill" style={{ width: 60 }}>
@@ -95,48 +132,45 @@ export default function TopBar({ currentPage, onNavigate, onExport, onAuth }) {
         </div>
 
         {/* Notifications bell */}
-        <div style={{ position: 'relative' }}>
-          <button
-            className="btn btn-ghost btn-icon"
-            onClick={() => setShowNotifs(v => !v)}
-            title="Notifications"
-            style={{ position: 'relative' }}
-          >
-            🔔
-            {unreadCount > 0 && (
-              <span style={{
-                position: 'absolute', top: 2, right: 2,
-                background: '#ef4444', color: 'white',
-                fontSize: 9, fontWeight: 800,
-                width: 15, height: 15, borderRadius: '50%',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                lineHeight: 1, pointerEvents: 'none',
-              }}>{unreadCount}</span>
-            )}
-          </button>
-          {showNotifs && (
-            <>
-              <div style={{ position: 'fixed', inset: 0, zIndex: 9998 }} onClick={() => setShowNotifs(false)} />
-              <div className="dropdown-menu" style={{ zIndex: 9999, width: 300, right: 0, left: 'auto' }}>
-                <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontWeight: 700, fontSize: 14 }}>Notifications</span>
-                  <button className="btn btn-ghost btn-sm" style={{ fontSize: 11 }} onClick={() => setReadNotifs(new Set(notifications.map(n => n.id)))}>Mark all read</button>
-                </div>
-                {notifications.map(n => (
-                  <button key={n.id} className="dropdown-item" style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '10px 16px' }}
-                    onClick={() => setReadNotifs(prev => new Set([...prev, n.id]))}>
-                    <span style={{ fontSize: 16, flexShrink: 0 }}>{n.icon}</span>
-                    <div style={{ flex: 1, textAlign: 'left' }}>
-                      <div style={{ fontSize: 12, lineHeight: 1.4, color: readNotifs.has(n.id) ? 'var(--text-muted)' : 'var(--text-primary)', fontWeight: readNotifs.has(n.id) ? 400 : 600 }}>{n.text}</div>
-                      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{n.time}</div>
-                    </div>
-                    {!readNotifs.has(n.id) && <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#6366f1', flexShrink: 0, marginTop: 4 }} />}
-                  </button>
-                ))}
-              </div>
-            </>
+        <button
+          ref={bellRef}
+          className="btn btn-ghost btn-icon"
+          onClick={() => { setShowNotifs(v => !v); setShowUserMenu(false); }}
+          title="Notifications"
+          style={{ position: 'relative' }}
+        >
+          🔔
+          {unreadCount > 0 && (
+            <span style={{
+              position: 'absolute', top: 2, right: 2,
+              background: '#ef4444', color: 'white',
+              fontSize: 9, fontWeight: 800,
+              width: 15, height: 15, borderRadius: '50%',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              lineHeight: 1, pointerEvents: 'none',
+            }}>{unreadCount}</span>
           )}
-        </div>
+        </button>
+
+        {showNotifs && (
+          <PortalDropdown anchorRef={bellRef} onClose={() => setShowNotifs(false)} width={300}>
+            <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontWeight: 700, fontSize: 14 }}>Notifications</span>
+              <button className="btn btn-ghost btn-sm" style={{ fontSize: 11 }} onClick={() => setReadNotifs(new Set(notifications.map(n => n.id)))}>Mark all read</button>
+            </div>
+            {notifications.map(n => (
+              <button key={n.id} className="dropdown-item" style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '10px 16px' }}
+                onClick={() => setReadNotifs(prev => new Set([...prev, n.id]))}>
+                <span style={{ fontSize: 16, flexShrink: 0 }}>{n.icon}</span>
+                <div style={{ flex: 1, textAlign: 'left' }}>
+                  <div style={{ fontSize: 12, lineHeight: 1.4, color: readNotifs.has(n.id) ? 'var(--text-muted)' : 'var(--text-primary)', fontWeight: readNotifs.has(n.id) ? 400 : 600 }}>{n.text}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{n.time}</div>
+                </div>
+                {!readNotifs.has(n.id) && <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#6366f1', flexShrink: 0, marginTop: 4 }} />}
+              </button>
+            ))}
+          </PortalDropdown>
+        )}
 
         <button
           className="btn btn-ghost btn-icon"
@@ -146,36 +180,32 @@ export default function TopBar({ currentPage, onNavigate, onExport, onAuth }) {
           {theme === 'dark' ? '☀️' : '🌙'}
         </button>
 
-        <div className="dropdown" style={{position:'relative'}}>
-          <div
-            className="avatar cursor-pointer"
-            onClick={() => setShowUserMenu(!showUserMenu)}
-            style={{ fontSize: user.avatarEmoji ? 20 : undefined }}
-          >
-            {user.avatarEmoji || user.avatar}
-          </div>
-          {showUserMenu && (
-            <>
-              <div style={{position:'fixed',inset:0,zIndex:9998}} onClick={() => setShowUserMenu(false)} />
-              <div className="dropdown-menu" style={{zIndex:9999}}>
-                <div style={{padding:'12px 16px',borderBottom:'1px solid var(--border-color)'}}>
-                  <div style={{fontWeight:700,fontSize:14}}>{user.name}</div>
-                  <div style={{fontSize:11,color:'var(--text-muted)'}}>Level {user.level} • {user.badges.length} badges</div>
-                </div>
-                <button className="dropdown-item" onClick={() => { onNavigate('dashboard'); setShowUserMenu(false); }}>
-                  📊 My Dashboard
-                </button>
-                <button className="dropdown-item" onClick={() => { onNavigate('settings'); setShowUserMenu(false); }}>⚙️ Settings</button>
-                <button className="dropdown-item" onClick={() => { onNavigate('portfolio'); setShowUserMenu(false); }}>🏅 My Portfolio</button>
-                <button className="dropdown-item" onClick={() => { onNavigate('workspace'); setShowUserMenu(false); }}>📁 My Projects</button>
-                <button className="dropdown-item" onClick={() => { onNavigate('missions'); setShowUserMenu(false); }}>🗺️ Mission Mode</button>
-                <button className="dropdown-item" onClick={() => { onNavigate('parent'); setShowUserMenu(false); }}>👨‍👩‍👧 Parent View</button>
-                <div className="dropdown-divider" />
-                <button className="dropdown-item" onClick={onAuth}>🔑 Account</button>
-              </div>
-            </>
-          )}
+        {/* Avatar */}
+        <div
+          ref={avatarRef}
+          className="avatar cursor-pointer"
+          onClick={() => { setShowUserMenu(v => !v); setShowNotifs(false); }}
+          style={{ fontSize: user.avatarEmoji ? 20 : undefined }}
+        >
+          {user.avatarEmoji || user.avatar}
         </div>
+
+        {showUserMenu && (
+          <PortalDropdown anchorRef={avatarRef} onClose={() => setShowUserMenu(false)}>
+            <div style={{padding:'12px 16px',borderBottom:'1px solid var(--border-color)'}}>
+              <div style={{fontWeight:700,fontSize:14}}>{user.name}</div>
+              <div style={{fontSize:11,color:'var(--text-muted)'}}>Level {user.level} • {user.badges.length} badges</div>
+            </div>
+            <button className="dropdown-item" onClick={() => { onNavigate('dashboard'); setShowUserMenu(false); }}>📊 My Dashboard</button>
+            <button className="dropdown-item" onClick={() => { onNavigate('settings'); setShowUserMenu(false); }}>⚙️ Settings</button>
+            <button className="dropdown-item" onClick={() => { onNavigate('portfolio'); setShowUserMenu(false); }}>🏅 My Portfolio</button>
+            <button className="dropdown-item" onClick={() => { onNavigate('workspace'); setShowUserMenu(false); }}>📁 My Projects</button>
+            <button className="dropdown-item" onClick={() => { onNavigate('missions'); setShowUserMenu(false); }}>🗺️ Mission Mode</button>
+            <button className="dropdown-item" onClick={() => { onNavigate('parent'); setShowUserMenu(false); }}>👨‍👩‍👧 Parent View</button>
+            <div className="dropdown-divider" />
+            <button className="dropdown-item" onClick={onAuth}>🔑 Account</button>
+          </PortalDropdown>
+        )}
       </div>
     </div>
   );
