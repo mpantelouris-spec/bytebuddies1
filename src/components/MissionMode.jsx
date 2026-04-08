@@ -628,7 +628,7 @@ function MissionBlockEditor({ missionId, campColor, blocks, setBlocks }) {
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: 10, height: 380 }}>
+      <div style={{ display: 'flex', gap: 10, height: 360, maxHeight: 360 }}>
         {/* Palette */}
         <div style={{ width: 148, flexShrink: 0, background: 'rgba(0,0,0,0.3)', borderRadius: 12, padding: '10px 8px', overflowY: 'auto', border: '1px solid rgba(255,255,255,0.08)' }}>
           <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8, paddingLeft: 2 }}>Blocks</div>
@@ -826,7 +826,7 @@ export default function MissionMode({ onNavigate }) {
 
   useEffect(() => {
     if (activeMission) {
-      setMissionBlocks((MISSION_STARTERS[activeMission.id] || []).map(b => ({ ...b, id: Math.random().toString(36).slice(2) })));
+      setMissionBlocks([]);
       setMissionOutput([]);
       setMissionResult(null);
     }
