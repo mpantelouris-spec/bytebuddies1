@@ -2608,11 +2608,11 @@ export default function RobotPanel() {
     setConnecting(true);
     try {
       addTerminal('📡 Step 1/6: Opening device picker — select your micro:bit…', 'info');
-      // acceptAllDevices + optionalServices is the most compatible approach:
-      // it bypasses Chrome's advertisement-filter requirement and pre-authorizes
-      // access to the UART service UUID regardless of what the device advertises
       const device = await navigator.bluetooth.requestDevice({
-        acceptAllDevices: true,
+        filters: [
+          { name: 'ByteBuddies' },
+          { namePrefix: 'BBC micro:bit' },
+        ],
         optionalServices: [BLE_NUS_SERVICE],
       });
       addTerminal(`✅ Step 1/6: Device selected — "${device.name}"`, 'success');
