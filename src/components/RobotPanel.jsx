@@ -2607,9 +2607,7 @@ export default function RobotPanel() {
     }
     setConnecting(true);
     try {
-      // Show micro:bit devices by name — filtering by 128-bit service UUID is broken
-      // on Windows Chrome. Name filter catches both flashed ("ByteBuddies") and
-      // unflashed ("BBC micro:bit [XXXXX]") devices.
+      addTerminal('📡 Step 1/6: Opening device picker…', 'info');
       const device = await navigator.bluetooth.requestDevice({
         filters: [
           { name: 'ByteBuddies' },
@@ -2617,6 +2615,8 @@ export default function RobotPanel() {
         ],
         optionalServices: [BLE_NUS_SERVICE],
       });
+      addTerminal(`✅ Step 1/6: Device selected — "${device.name}"`, 'success');
+
       btDeviceRef.current = device;
       device.addEventListener('gattserverdisconnected', () => {
         btTxCharRef.current = null;
@@ -2628,85 +2628,90 @@ export default function RobotPanel() {
         setFirmwareOk(null);
         addTerminal('🔌 Bluetooth disconnected', 'info');
       });
-      addTerminal(`🔗 Connecting to ${device.name || 'micro:bit'}…`, 'info');
+
+      addTerminal('📡 Step 2/6: Connecting to GATT server…', 'info');
       const server = await device.gatt.connect();
+      addTerminal('✅ Step 2/6: GATT connected', 'success');
 
-      // Give the BLE stack time to complete service discovery before querying
-      await new Promise(r => setTimeout(r, 800));
+      await new Promise(r => setTimeout(r, 1000));
 
-      // Try to open the NUS service — only present if ByteBuddies firmware is flashed.
-      // Retry up to 3 times because GATT discovery can be slow on Windows.
+      addTerminal('📡 Step 3/6: Finding UART service…', 'info');
       let service = null;
-      for (let attempt = 1; attempt <= 3; attempt++) {
+      for (let attempt = 1; attempt <= 4; attempt++) {
         try {
           service = await server.getPrimaryService(BLE_NUS_SERVICE);
           break;
         } catch (e) {
-          addTerminal(`  (attempt ${attempt}/3 — ${e.message})`, 'info');
-          if (attempt < 3) await new Promise(r => setTimeout(r, 600));
+          addTerminal(`  attempt ${attempt}/4: ${e.message}`, 'info');
+          if (attempt < 4) await new Promise(r => setTimeout(r, 800));
         }
       }
       if (!service) {
-        addTerminal('⚠️ NUS service not found — is bytebuddies_ble.py flashed?', 'warn');
-        addTerminal('👉 Open Setup Guide → "📡 Bluetooth" section for flashing instructions.', 'info');
+        addTerminal('❌ Step 3/6 FAILED: UART service not found.', 'error');
+        addTerminal('👉 Make sure you flashed the MakeCode BLE program — see Setup Guide → Bluetooth.', 'info');
         try { server.disconnect(); } catch (_) {}
         return;
       }
+      addTerminal('✅ Step 3/6: UART service found', 'success');
 
+      addTerminal('📡 Step 4/6: Getting TX/RX characteristics…', 'info');
       let txChar, rxChar;
       try {
         txChar = await service.getCharacteristic(BLE_NUS_TX);
         rxChar = await service.getCharacteristic(BLE_NUS_RX);
+        addTerminal('✅ Step 4/6: Characteristics found', 'success');
       } catch (e) {
-        addTerminal(`⚠️ Could not access UART characteristics: ${e.message}`, 'warn');
+        addTerminal(`❌ Step 4/6 FAILED: ${e.message}`, 'error');
         try { server.disconnect(); } catch (_) {}
         return;
       }
+
+      addTerminal('📡 Step 5/6: Starting notifications…', 'info');
+      try {
+        await rxChar.startNotifications();
+        rxChar.addEventListener('characteristicvaluechanged', handleBleData);
+        addTerminal('✅ Step 5/6: Notifications active', 'success');
+      } catch (e) {
+        addTerminal(`❌ Step 5/6 FAILED: ${e.message}`, 'error');
+        try { server.disconnect(); } catch (_) {}
+        return;
+      }
+
       btTxCharRef.current = txChar;
-      await rxChar.startNotifications();
-      rxChar.addEventListener('characteristicvaluechanged', handleBleData);
       connectionTypeRef.current = 'bluetooth';
       connectedRef.current = true;
       setConnected(true);
 
-      if (robotType === 'microbit') {
-        const enc = new TextEncoder();
-        const bleWrite = async (data) => {
-          const bytes = typeof data === 'string' ? enc.encode(data) : data;
-          for (let i = 0; i < bytes.length; i += 20) {
-            await txChar.writeValueWithoutResponse(bytes.slice(i, i + 20));
-            if (i + 20 < bytes.length) await new Promise(r => setTimeout(r, 20));
-          }
-        };
-        try {
-          // Short pause after connection before sending
-          await new Promise(r => setTimeout(r, 800));
-          // Ping with \n — works with both bytebuddies_ble.py and MakeCode firmware
-          // Both respond with \x04\x04 when they receive a recognised command
-          addTerminal('🔍 Pinging ByteBuddies firmware…', 'info');
-          bleBufferRef.current = '';
-          rawReplDoneRef.current = null;
-          const pingDone = new Promise(resolve => {
-            rawReplDoneRef.current = () => { rawReplDoneRef.current = null; resolve(true); };
-            setTimeout(() => { if (rawReplDoneRef.current) { rawReplDoneRef.current = null; resolve(false); } }, 5000);
-          });
-          await bleWrite('display.show(Image.HAPPY)\n');
-          const pingOk = await pingDone;
-
-          if (!pingOk) {
-            setFirmwareOk(false); firmwareOkRef.current = false;
-            addTerminal('⚠️ No response from micro:bit.', 'warn');
-            addTerminal('👉 Make sure bytebuddies_ble.py is flashed — see Setup Guide → Bluetooth.', 'info');
-            return;
-          }
-          setFirmwareOk(true); firmwareOkRef.current = true;
-          addTerminal('✅ ByteBuddies BLE firmware ready!', 'success');
-          addTerminal(`🔬 micro:bit connected via Bluetooth! Press ▶ Run.`, 'success');
-        } catch (e) {
-          addTerminal(`⚠️ BLE setup error: ${e.message}`, 'warn');
+      addTerminal('📡 Step 6/6: Pinging micro:bit firmware…', 'info');
+      const enc = new TextEncoder();
+      const bleWrite = async (data) => {
+        const bytes = typeof data === 'string' ? enc.encode(data) : data;
+        for (let i = 0; i < bytes.length; i += 20) {
+          try { await txChar.writeValueWithoutResponse(bytes.slice(i, i + 20)); }
+          catch (e) { addTerminal(`  write error: ${e.message}`, 'warn'); }
+          if (i + 20 < bytes.length) await new Promise(r => setTimeout(r, 30));
         }
+      };
+      await new Promise(r => setTimeout(r, 600));
+      bleBufferRef.current = '';
+      rawReplDoneRef.current = null;
+      const pingDone = new Promise(resolve => {
+        rawReplDoneRef.current = () => { rawReplDoneRef.current = null; resolve(true); };
+        setTimeout(() => { if (rawReplDoneRef.current) { rawReplDoneRef.current = null; resolve(false); } }, 6000);
+      });
+      await bleWrite('display.show(Image.HAPPY)\n');
+      const pingOk = await pingDone;
+
+      if (!pingOk) {
+        addTerminal('⚠️ Step 6/6: No reply from micro:bit (ping timed out).', 'warn');
+        addTerminal('The micro:bit IS connected — try pressing ▶ Run anyway.', 'info');
+        setFirmwareOk(true); firmwareOkRef.current = true;
+      } else {
+        addTerminal('✅ Step 6/6: micro:bit responded! Ready to run.', 'success');
+        setFirmwareOk(true); firmwareOkRef.current = true;
       }
-      addTerminal(`✅ Connected via Bluetooth! (${device.name || 'micro:bit'})`, 'success');
+      addTerminal(`🤖 Bluetooth connected! Press ▶ Run to send your program.`, 'success');
+
     } catch (e) {
       if (e.name !== 'NotFoundError') addTerminal(`❌ ${e.message}`, 'error');
     } finally {
