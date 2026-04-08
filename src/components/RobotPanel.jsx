@@ -3139,24 +3139,25 @@ export default function RobotPanel() {
     const hasComplexFlow = orderedSteps.some(s => COMPLEX_IDS.has(s.id));
 
     if (robotType === 'microbit' && connectedRef.current && firmwareOkRef.current === true) {
-      // Always send the complete program (kit helpers + user code) as one Python script.
-      // This is more reliable than relying on pre-loaded kit functions from connect time.
-      const pythonCode = generateFullProgram(program, microbitKit);
       robotRef.current?.resetState();
-      const hasForever = orderedSteps.some(s => s.id === 'forever');
-      if (hasForever) {
-        // Forever programs never send \x04\x04 back — just fire-and-forget the code.
-        // Running executeBlocks(sim-only) in parallel would spin at JS speed (no serial wait)
-        // and freeze the browser. Let the micro:bit handle the loop natively.
-        await writeChunked(pythonCode + (connectionTypeRef.current === 'bluetooth' ? '\n' : '\x04'));
-        addTerminal('▶ Running forever — press Stop to interrupt', 'info');
-        // Park here until user clicks Stop
-        await new Promise(resolve => { const iv = setInterval(() => { if (!runningRef.current) { clearInterval(iv); resolve(); } }, 200); });
+      if (connectionTypeRef.current === 'bluetooth') {
+        // BLE mode: MakeCode bridge firmware expects one command at a time (fw/bk/lt/rt/sp)
+        // Send each block command individually and wait for \x04\x04 ack after each.
+        await executeBlocks(orderedSteps);
       } else {
-        await Promise.all([
-          sendMicrobitRaw(pythonCode),           // physical micro:bit runs the full script
-          executeBlocks(orderedSteps, true),     // simulator animates blocks (sim-only, no serial)
-        ]);
+        // USB/MicroPython: send the full program as one raw REPL exec.
+        const pythonCode = generateFullProgram(program, microbitKit);
+        const hasForever = orderedSteps.some(s => s.id === 'forever');
+        if (hasForever) {
+          await writeChunked(pythonCode + '\x04');
+          addTerminal('▶ Running forever — press Stop to interrupt', 'info');
+          await new Promise(resolve => { const iv = setInterval(() => { if (!runningRef.current) { clearInterval(iv); resolve(); } }, 200); });
+        } else {
+          await Promise.all([
+            sendMicrobitRaw(pythonCode),
+            executeBlocks(orderedSteps, true),
+          ]);
+        }
       }
     } else {
       await executeBlocks(orderedSteps);
@@ -3164,7 +3165,7 @@ export default function RobotPanel() {
     // Only send stop + "finished" if the program ran to completion naturally
     // (stopProgram already handles the user-stopped case)
     if (runningRef.current) {
-      if (connectedRef.current) await sendRaw(profile.buildCmd('stop', {}));
+      if (connectedRef.current && connectionTypeRef.current !== 'bluetooth') await sendRaw(profile.buildCmd('stop', {}));
       addTerminal('✅ Program finished', 'success');
     }
     runningRef.current = false;
