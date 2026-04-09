@@ -41,22 +41,23 @@ bluetooth.onUartDataReceived(serial.delimiters(Delimiters.NewLine), function () 
 // Packet: [register, direction, speed, 0]
 // register: 0x01=left motor, 0x02=right motor
 // direction: 1=one way, 2=other way   speed: 0-100
+// Note: send both motors back-to-back with no pause to avoid BLE event interleaving
 function cuteMotors(lDir: number, lSpd: number, rDir: number, rSpd: number): void {
-    let buf = pins.createBuffer(4)
-    buf[0] = 0x01; buf[1] = lDir; buf[2] = lSpd; buf[3] = 0
-    pins.i2cWriteBuffer(0x10, buf)
-    basic.pause(50)
-    buf[0] = 0x02; buf[1] = rDir; buf[2] = rSpd; buf[3] = 0
-    pins.i2cWriteBuffer(0x10, buf)
+    let l = pins.createBuffer(4)
+    l[0] = 0x01; l[1] = lDir; l[2] = lSpd; l[3] = 0
+    pins.i2cWriteBuffer(0x10, l)
+    let r = pins.createBuffer(4)
+    r[0] = 0x02; r[1] = rDir; r[2] = rSpd; r[3] = 0
+    pins.i2cWriteBuffer(0x10, r)
 }
 
 function cuteStop(): void {
-    let buf = pins.createBuffer(4)
-    buf[0] = 0x01; buf[1] = 2; buf[2] = 0; buf[3] = 0
-    pins.i2cWriteBuffer(0x10, buf)
-    basic.pause(50)
-    buf[0] = 0x02
-    pins.i2cWriteBuffer(0x10, buf)
+    let l = pins.createBuffer(4)
+    l[0] = 0x01; l[1] = 2; l[2] = 0; l[3] = 0
+    pins.i2cWriteBuffer(0x10, l)
+    let r = pins.createBuffer(4)
+    r[0] = 0x02; r[1] = 2; r[2] = 0; r[3] = 0
+    pins.i2cWriteBuffer(0x10, r)
 }
 
 function runCmd(cmd: string): void {
@@ -79,16 +80,16 @@ function runCmd(cmd: string): void {
 
     // Motors — Cutebot I2C: [register, dir, speed, 0]  0x01=left, 0x02=right
     } else if (fn === "fw") {
-        cuteMotors(2, 80, 2, 80)
+        cuteMotors(2, 100, 2, 100)
         if (a0 > 0) { basic.pause(a0); cuteStop() }
     } else if (fn === "bk") {
-        cuteMotors(1, 80, 1, 80)
+        cuteMotors(1, 100, 1, 100)
         if (a0 > 0) { basic.pause(a0); cuteStop() }
     } else if (fn === "lt") {
-        cuteMotors(1, 60, 2, 60)
+        cuteMotors(1, 80, 2, 80)
         if (a0 > 0) { basic.pause(a0); cuteStop() }
     } else if (fn === "rt") {
-        cuteMotors(2, 60, 1, 60)
+        cuteMotors(2, 80, 1, 80)
         if (a0 > 0) { basic.pause(a0); cuteStop() }
     } else if (fn === "sp") {
         cuteStop()
