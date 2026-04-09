@@ -2533,6 +2533,7 @@ export default function RobotPanel() {
   const firmwareOkRef = useRef(null); // mirrors firmwareOk state for use inside async closures
   const rawReplDoneRef = useRef(null); // resolves when micro:bit raw REPL sends \x04\x04 completion
   const serialSniffRef = useRef(null); // { pattern, resolve } — used for firmware detection
+  const bridgeModeRef  = useRef(false); // true when USB is connected to pxt bridge firmware (not MicroPython)
 
   // BLE (Bluetooth) — Nordic UART Service for wireless micro:bit connection
   // NUS standard: 6e400002 = TX of microbit (NOTIFY → browser reads)
@@ -2671,7 +2672,7 @@ export default function RobotPanel() {
         addTerminal('🔧 Check: did you follow ALL steps in Setup Guide → Bluetooth?', 'warn');
         addTerminal('   • Project Settings → Bluetooth → "No Pairing Required" ticked?', 'info');
         addTerminal('   • bluetooth extension added in MakeCode?', 'info');
-        addTerminal('   • Pasted the .js code in the JavaScript tab and downloaded the .hex?', 'info');
+        addTerminal('   • Did you flash the ByteBuddies hex? (click ⚡ Flash BLE Firmware via USB)', 'info');
         try { server.disconnect(); } catch (_) {}
         return;
       }
@@ -2879,14 +2880,29 @@ export default function RobotPanel() {
           }
 
           if (!gotRepl) {
-            // No MicroPython REPL found — likely MakeCode firmware
-            setFirmwareOk(false);
-            firmwareOkRef.current = false;
-            addTerminal('⚠️ MakeCode firmware detected. One-time setup needed:', 'warn');
-            addTerminal('1️⃣ Click 💾 .hex to download bytebuddies.hex', 'info');
-            addTerminal('2️⃣ Copy that file to the MICROBIT USB drive', 'info');
-            addTerminal('3️⃣ Disconnect + reconnect — then just press ▶ Run each time!', 'info');
-            return;
+            // No MicroPython REPL — check if it's the ByteBuddies bridge firmware (pxt)
+            // Bridge responds to ping()\n with \x04\x04
+            rawReplDoneRef.current = null;
+            const bridgeProbed = new Promise(resolve => {
+              rawReplDoneRef.current = () => { rawReplDoneRef.current = null; resolve(true); };
+              setTimeout(() => { if (rawReplDoneRef.current) { rawReplDoneRef.current = null; resolve(false); } }, 3000);
+            });
+            await writeChunked('ping()\n');
+            const isBridge = await bridgeProbed;
+
+            if (isBridge) {
+              bridgeModeRef.current = true;
+              setFirmwareOk(true); firmwareOkRef.current = true;
+              addTerminal('✅ ByteBuddies Bridge firmware detected!', 'success');
+              addTerminal('🤖 USB + Bluetooth in one hex. Press ▶ Run!', 'success');
+            } else {
+              setFirmwareOk(false);
+              firmwareOkRef.current = false;
+              addTerminal('⚠️ Unknown firmware. Flash the ByteBuddies hex first:', 'warn');
+              addTerminal('1️⃣ Click ⚡ Flash BLE Firmware via USB (or download .hex)', 'info');
+              addTerminal('2️⃣ After flashing: disconnect USB → re-plug → reconnect here', 'info');
+              return;
+            }
           }
 
           setFirmwareOk(true);
@@ -2938,6 +2954,7 @@ export default function RobotPanel() {
     connectionTypeRef.current = null;
     connectedRef.current = false;
     firmwareOkRef.current = null;
+    bridgeModeRef.current = false;
     setConnected(false);
     setFirmwareOk(null);
     setPortInfo(null);
@@ -2977,7 +2994,7 @@ export default function RobotPanel() {
         rawReplDoneRef.current = resolve;
         setTimeout(() => { rawReplDoneRef.current = null; reject(new Error('timeout')); }, 25000);
       });
-      const term = connectionTypeRef.current === 'bluetooth' ? '\n' : '\x04';
+      const term = (connectionTypeRef.current === 'bluetooth' || bridgeModeRef.current) ? '\n' : '\x04';
       await writeChunked(trimmed + term);
       await done;
       addTerminal(`→ ${trimmed}`, 'send');
@@ -3114,7 +3131,7 @@ export default function RobotPanel() {
   const runProgram = async () => {
     if (!program.length) return;
     if (connectedRef.current && robotType === 'microbit' && firmwareOkRef.current === false) {
-      addTerminal('⚠️ MicroPython not installed yet — download the .hex file first (see steps above), then reconnect.', 'warn');
+      addTerminal('⚠️ Flash the ByteBuddies hex first — click ⚡ Flash BLE Firmware via USB then reconnect.', 'warn');
       return;
     }
     setRunning(true);
@@ -3146,9 +3163,8 @@ export default function RobotPanel() {
 
     if (robotType === 'microbit' && connectedRef.current && firmwareOkRef.current === true) {
       robotRef.current?.resetState();
-      if (connectionTypeRef.current === 'bluetooth') {
-        // BLE mode: MakeCode bridge firmware expects one command at a time (fw/bk/lt/rt/sp)
-        // Send each block command individually and wait for \x04\x04 ack after each.
+      if (connectionTypeRef.current === 'bluetooth' || bridgeModeRef.current) {
+        // BLE or USB-bridge mode: send one command at a time, wait for \x04\x04 ack
         await executeBlocks(orderedSteps);
       } else {
         // USB/MicroPython: send the full program as one raw REPL exec.
@@ -3171,7 +3187,7 @@ export default function RobotPanel() {
     // Only send stop + "finished" if the program ran to completion naturally
     // (stopProgram already handles the user-stopped case)
     if (runningRef.current) {
-      if (connectedRef.current && connectionTypeRef.current !== 'bluetooth') await sendRaw(profile.buildCmd('stop', {}));
+      if (connectedRef.current && connectionTypeRef.current !== 'bluetooth' && !bridgeModeRef.current) await sendRaw(profile.buildCmd('stop', {}));
       addTerminal('✅ Program finished', 'success');
     }
     runningRef.current = false;
@@ -3185,7 +3201,7 @@ export default function RobotPanel() {
     setActiveBlockUid(null);
     if (connectedRef.current) {
       if (robotType === 'microbit' && firmwareOkRef.current === true) {
-        if (connectionTypeRef.current === 'bluetooth') {
+        if (connectionTypeRef.current === 'bluetooth' || bridgeModeRef.current) {
           await writeChunked('sp()\n');
         } else {
           // USB: interrupt running program with Ctrl+C, then stop motors
