@@ -54,11 +54,11 @@ function cuteMotors(lDir: number, lSpd: number, rDir: number, rSpd: number): voi
 
 function cuteStop(): void {
     let l = pins.createBuffer(4)
-    l[0] = 0x01; l[1] = 0; l[2] = 0; l[3] = 0
+    l[0] = 0x01; l[1] = 2; l[2] = 0; l[3] = 0
     pins.i2cWriteBuffer(0x10, l)
     basic.pause(100)
     let r = pins.createBuffer(4)
-    r[0] = 0x02; r[1] = 0; r[2] = 0; r[3] = 0
+    r[0] = 0x02; r[1] = 2; r[2] = 0; r[3] = 0
     pins.i2cWriteBuffer(0x10, r)
 }
 
