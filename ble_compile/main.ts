@@ -1,28 +1,16 @@
 // ByteBuddies BLE Bridge for micro:bit v2 — DFRobot Cutebot
-// One hex for everything: works over USB serial AND Bluetooth.
+// BLE-only bridge (no USB serial handler — avoids UARTE/TWIM DMA bus conflict)
 // ─────────────────────────────────────────────────────────
 // Motor control: I2C address 0x10 (Cutebot onboard STM8 chip)
 //   Protocol: 4-byte packet [register, direction, speed, 0]
 //   Left motor register:  0x01  Right motor register: 0x02
-//   Direction: 1=one way, 2=other way   Speed: 0-100
-//   fw/bk: both motors same dir @80
-//   lt: left=1, right=2 @60    rt: left=2, right=1 @60
+//   Direction: 1=backward, 2=forward   Speed: 0-100
+//   Stop: direction=2, speed=0 (direction=0 is INVALID for STM8)
 // Headlights: I2C registers 0x04=left, 0x08=right, [reg,R,G,B]
 // ─────────────────────────────────────────────────────────
 
 bluetooth.startUartService()
 basic.showString("B")
-
-// USB serial handler — same command format as BLE
-// Website sends ping()\n on connect to detect bridge firmware
-serial.onDataReceived(serial.delimiters(Delimiters.NewLine), function () {
-    let line = serial.readUntil(serial.delimiters(Delimiters.NewLine))
-    let cmd = line.trim()
-    if (cmd.length > 0) {
-        runCmd(cmd)
-        serial.writeString("\u0004\u0004")
-    }
-})
 
 bluetooth.onBluetoothConnected(function () {
     basic.showIcon(IconNames.Happy)
@@ -40,18 +28,21 @@ bluetooth.onUartDataReceived(serial.delimiters(Delimiters.NewLine), function () 
 // Send motor command to Cutebot via I2C
 // Packet: [register, direction, speed, 0]
 // register: 0x01=left motor, 0x02=right motor
-// direction: 1=one way, 2=other way   speed: 0-100
-// STM8 needs a pause between M1 and M2 commands to process each packet
+// direction: 1=backward, 2=forward   speed: 0-100
+// STM8 needs 100ms pause between M1 and M2 writes
 function cuteMotors(lDir: number, lSpd: number, rDir: number, rSpd: number): void {
     let l = pins.createBuffer(4)
     l[0] = 0x01; l[1] = lDir; l[2] = lSpd; l[3] = 0
-    pins.i2cWriteBuffer(0x10, l)
+    let e1 = pins.i2cWriteBuffer(0x10, l)
+    if (e1 !== 0) { basic.showNumber(e1) }
     basic.pause(100)
     let r = pins.createBuffer(4)
     r[0] = 0x02; r[1] = rDir; r[2] = rSpd; r[3] = 0
-    pins.i2cWriteBuffer(0x10, r)
+    let e2 = pins.i2cWriteBuffer(0x10, r)
+    if (e2 !== 0) { basic.showNumber(10 + e2) }
 }
 
+// Stop: direction=2 speed=0 (NOT direction=0 which locks STM8)
 function cuteStop(): void {
     let l = pins.createBuffer(4)
     l[0] = 0x01; l[1] = 2; l[2] = 0; l[3] = 0
@@ -75,23 +66,21 @@ function runCmd(cmd: string): void {
     let a1 = parts.length > 1 ? parseInt(parts[1].trim()) : 0
     let a2 = parts.length > 2 ? parseInt(parts[2].trim()) : 0
 
-    // Bridge firmware probe — website sends ping() to detect this firmware
     if (fn === "ping") {
-        // response is just \x04\x04 (sent by caller after runCmd returns)
         return
 
-    // Motors — Cutebot I2C: [register, dir, speed, 0]  0x01=left, 0x02=right
+    // Motors — Cutebot I2C: left=0x01, right=0x02, dir: 1=bk 2=fw
     } else if (fn === "fw") {
-        cuteMotors(2, 100, 2, 100)
+        cuteMotors(2, 80, 2, 80)
         if (a0 > 0) { basic.pause(a0); cuteStop() }
     } else if (fn === "bk") {
-        cuteMotors(1, 100, 1, 100)
+        cuteMotors(1, 80, 1, 80)
         if (a0 > 0) { basic.pause(a0); cuteStop() }
     } else if (fn === "lt") {
-        cuteMotors(1, 80, 2, 80)
+        cuteMotors(1, 60, 2, 60)
         if (a0 > 0) { basic.pause(a0); cuteStop() }
     } else if (fn === "rt") {
-        cuteMotors(2, 80, 1, 80)
+        cuteMotors(2, 60, 1, 60)
         if (a0 > 0) { basic.pause(a0); cuteStop() }
     } else if (fn === "sp") {
         cuteStop()
