@@ -2682,10 +2682,16 @@ export default function RobotPanel() {
       try {
         const allChars = await service.getCharacteristics();
         allChars.forEach(c => addTerminal(`  char ${c.uuid} props: ${Object.keys(c.properties).filter(k => c.properties[k]).join(',')}`, 'info'));
-        // Auto-detect by property — don't hardcode which UUID is notify vs write
+        // Try property-based detection first
         rxChar = allChars.find(c => c.properties.notify || c.properties.indicate);
         txChar = allChars.find(c => c.properties.writeWithoutResponse || c.properties.write);
-        if (!rxChar || !txChar) throw new Error(`Missing notify or write characteristic`);
+        // Fallback: Windows/Chrome BLE cache bug returns empty properties — use NUS UUIDs directly
+        // NUS standard: 6e400003 = micro:bit TX (NOTIFY), 6e400002 = micro:bit RX (WRITE)
+        if (!rxChar) rxChar = allChars.find(c => c.uuid.toLowerCase().includes('6e400003'))
+                           || await service.getCharacteristic(BLE_NUS_RX);
+        if (!txChar) txChar = allChars.find(c => c.uuid.toLowerCase().includes('6e400002'))
+                           || await service.getCharacteristic(BLE_NUS_TX);
+        if (!rxChar || !txChar) throw new Error(`Missing NUS characteristics`);
         addTerminal(`✅ Step 4/6: notify=${rxChar.uuid.slice(4,8)} write=${txChar.uuid.slice(4,8)}`, 'success');
       } catch (e) {
         addTerminal(`❌ Step 4/6 FAILED: ${e.message}`, 'error');
