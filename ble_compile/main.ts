@@ -41,11 +41,12 @@ bluetooth.onUartDataReceived(serial.delimiters(Delimiters.NewLine), function () 
 // Packet: [register, direction, speed, 0]
 // register: 0x01=left motor, 0x02=right motor
 // direction: 1=one way, 2=other way   speed: 0-100
-// Note: send both motors back-to-back with no pause to avoid BLE event interleaving
+// STM8 needs a pause between M1 and M2 commands to process each packet
 function cuteMotors(lDir: number, lSpd: number, rDir: number, rSpd: number): void {
     let l = pins.createBuffer(4)
     l[0] = 0x01; l[1] = lDir; l[2] = lSpd; l[3] = 0
     pins.i2cWriteBuffer(0x10, l)
+    basic.pause(100)
     let r = pins.createBuffer(4)
     r[0] = 0x02; r[1] = rDir; r[2] = rSpd; r[3] = 0
     pins.i2cWriteBuffer(0x10, r)
@@ -53,10 +54,11 @@ function cuteMotors(lDir: number, lSpd: number, rDir: number, rSpd: number): voi
 
 function cuteStop(): void {
     let l = pins.createBuffer(4)
-    l[0] = 0x01; l[1] = 2; l[2] = 0; l[3] = 0
+    l[0] = 0x01; l[1] = 0; l[2] = 0; l[3] = 0
     pins.i2cWriteBuffer(0x10, l)
+    basic.pause(100)
     let r = pins.createBuffer(4)
-    r[0] = 0x02; r[1] = 2; r[2] = 0; r[3] = 0
+    r[0] = 0x02; r[1] = 0; r[2] = 0; r[3] = 0
     pins.i2cWriteBuffer(0x10, r)
 }
 
