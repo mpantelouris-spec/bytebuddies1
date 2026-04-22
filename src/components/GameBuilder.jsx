@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { BLOCK_DEFS, SIDEBAR_TO_TYPE, createBlockFromDrop, BlockContent } from '../utils/blocks';
+import { getBlockStyle, getCategoryVars } from '../utils/categoryColors';
 import { saveSubmissionToFirestore } from '../firebase';
 import { useUser } from '../contexts/UserContext';
 
@@ -1099,9 +1100,12 @@ loadImages(function(){
             onDragOver={(e) => e.preventDefault()}
             onDrop={handleBlockDrop}
           >
-            {selectedSprite && selectedSprite.blocks.map(block => (
+            {selectedSprite && selectedSprite.blocks.map(block => {
+              return (
               <div
                 key={block.id}
+                className="block"
+                data-category={block.category}
                 onMouseDown={(e) => handleBlockMouseDown(e, block)}
                 onMouseEnter={() => setHoveredBlock(block.id)}
                 onMouseLeave={() => setHoveredBlock(null)}
@@ -1109,22 +1113,9 @@ loadImages(function(){
                   position: 'absolute',
                   left: block.x,
                   top: block.y,
-                  background: block.color + '22',
-                  border: `2px solid ${block.color}`,
-                  borderRadius: 10,
-                  padding: '8px 30px 8px 12px',
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: 'var(--text-primary)',
-                  cursor: draggingBlock === block.id ? 'grabbing' : 'grab',
-                  userSelect: 'none',
-                  minWidth: 160,
-                  boxShadow: draggingBlock === block.id ? `0 4px 20px ${block.color}44` : 'none',
                   transform: draggingBlock === block.id ? 'scale(1.05)' : 'scale(1)',
                   transition: draggingBlock === block.id ? 'none' : 'transform 0.15s, box-shadow 0.15s',
                   zIndex: draggingBlock === block.id ? 100 : 1,
-                  whiteSpace: 'nowrap',
-                  display: 'flex', alignItems: 'center', gap: 2, lineHeight: '26px',
                 }}
               >
                 <BlockContent block={block} onParamChange={handleBlockParamChange} />
@@ -1148,7 +1139,8 @@ loadImages(function(){
                   {block.category}
                 </div>
               </div>
-            ))}
+            );
+            })}
 
             {(!selectedSprite || (selectedSprite.blocks || []).length === 0) && (
               <div className="empty-state" style={{ height: '100%', pointerEvents: 'none' }}>

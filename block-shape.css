@@ -4,94 +4,93 @@
 */
 
 /* Broad selectors to catch common block/code containers */
+/* Force all blocks to have a puzzle-piece shape with a top tab (hat) */
+
+/* Harmonized block shape and unique colors for all editors */
 :where([class*="block"], [class*="Block"], [class*="code"], [class*="Code"], .code-block, .snippet, pre, code, .scratchBlock, .blocklyBlockSvg, .sb-block) {
   position: relative;
-  border-radius: 10px;
-  padding: 12px 18px;
+  border-radius: 14px 14px 8px 8px !important;
+  padding: 16px 24px 16px 34px !important;
   overflow: visible;
   background-clip: padding-box;
-}
-
-/* Left connector / puzzle notch */
-:where([class*="block"], [class*="Block"], [class*="code"], [class*="Code"], .code-block, .snippet, pre, code, .scratchBlock, .blocklyBlockSvg, .sb-block)::before {
-  content: "";
-  position: absolute;
-  left: -12px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 26px;
-  height: 26px;
-  background: inherit;
-  border-radius: 0 12px 12px 0;
-  box-shadow: 0 1px 0 rgba(255,255,255,0.06) inset, 0 -1px 0 rgba(0,0,0,0.06) inset;
-  pointer-events: none;
-  z-index: 0;
-}
-
-/* Top tab */
-:where([class*="block"], [class*="Block"], [class*="code"], [class*="Code"], .code-block, .snippet, pre, code, .scratchBlock, .blocklyBlockSvg, .sb-block)::after {
-  content: "";
-  position: absolute;
-  left: 14px;
-  top: -10px;
-  width: 48px;
-  height: 18px;
-  background: inherit;
-  border-radius: 6px;
-  box-shadow: 0 1px 0 rgba(255,255,255,0.06) inset, 0 -1px 0 rgba(0,0,0,0.06) inset;
-  pointer-events: none;
-  z-index: 0;
-}
-
-/* Hat / event blocks - full rounded top (e.g., "When clicked") */
-:where([class*="block"][data-hat], [class*="Block"][data-hat], .hat, [data-category="events"], [data-category="event"]) {
-  border-radius: 18px 18px 8px 8px;
-  padding-top: 22px;
-}
-
-:where([class*="block"][data-hat], [class*="Block"][data-hat], .hat, [data-category="events"], [data-category="event"])::after {
-  left: 12px;
-  top: -18px;
-  width: calc(100% - 24px);
-  height: 26px;
-  border-radius: 12px 12px 0 0;
-  box-shadow: 0 1px 0 rgba(255,255,255,0.06) inset, 0 -1px 0 rgba(0,0,0,0.06) inset;
-}
-
-/* Ensure inner content sits above pseudo-elements */
-:where([class*="block"] > *, [class*="Block"] > *, [class*="code"] > *, [class*="Code"] > *, .code-block > *, .snippet > *, pre > *, code > *, .scratchBlock > *, .blocklyBlockSvg > *, .sb-block > *) {
-  position: relative;
-  z-index: 1;
-}
-
-/* Add left padding so text doesn't overlap the connector */
-:where([class*="block"], [class*="Block"], [class*="code"], [class*="Code"], .code-block, .snippet, pre, code, .scratchBlock, .blocklyBlockSvg, .sb-block) {
-  padding-left: 34px;
-}
-
-/* Small responsive tweak */
-@media (max-width: 480px) {
-  :where([class*="block"], [class*="Block"], [class*="code"], [class*="Code"], .code-block, .snippet, pre, code, .scratchBlock, .blocklyBlockSvg, .sb-block) {
-    padding: 10px 14px;
-  }
-  :where([class*="block"]::before, [class*="block"]::after) {
-    left: -10px;
-    width: 20px;
-    height: 20px;
-  }
-}
-
-/* Strong overrides to handle inline styles from React components
-   Keep colors and backgrounds (inherit), but enforce the puzzle-piece shape */
-:where([class*="block"], [class*="Block"], [class*="code"], [class*="Code"], .code-block, .snippet, pre, code, .scratchBlock, .blocklyBlockSvg, .sb-block) {
-  border-radius: 10px !important;
-  padding-left: 34px !important;
-  padding-top: 12px !important;
-  padding-bottom: 12px !important;
   min-height: 36px !important;
 }
 
-:where([class*="block"][data-hat], [class*="Block"][data-hat], .hat, [data-category="events"], [data-category="event"]) {
-  border-radius: 18px 18px 8px 8px !important;
-  padding-top: 28px !important;
+/* Category color variables for all block editors */
+.block[data-category="event"],
+.block[data-category="events"]      { --block-color: #FFD700; }
+.block[data-category="motion"]      { --block-color: #00D9FF; }
+.block[data-category="looks"]       { --block-color: #FF00FF; }
+.block[data-category="control"]     { --block-color: #FF6B35; }
+.block[data-category="sensing"]     { --block-color: #00FFAA; }
+.block[data-category="sound"]       { --block-color: #FF10F0; }
+.block[data-category="variable"],
+.block[data-category="variables"]   { --block-color: #FFB700; }
+.block[data-category="math"]        { --block-color: #00B4FF; }
+.block[data-category="game"]        { --block-color: #00FF41; }
+.block[data-category="physics"]     { --block-color: #00FFDD; }
+.block[data-category="ai"]          { --block-color: #FF3366; }
+.block[data-category="logic"]       { --block-color: #00D9FF; }
+.block[data-category="loop"]        { --block-color: #FF6B35; }
+.block[data-category="function"]    { --block-color: #00D9FF; }
+.block[data-category="sprite"]      { --block-color: #00D9FF; }
+.block[data-category="text"]        { --block-color: #00B4FF; }
+.block[data-category="list"]        { --block-color: #00B4FF; }
+.block[data-category="action"]      { --block-color: #FF3366; }
+.block[data-category="myblocks"]    { --block-color: #00D9FF; }
+
+/* Block shape and color for all blocks */
+.block {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 12px 18px;
+  margin: 10px 0;
+  border-radius: 12px;
+  background: linear-gradient(to bottom, color-mix(in srgb, var(--block-color, #4C97FF) 96%, #fff 4%), var(--block-color, #4C97FF) 90%);
+  box-shadow: 0 2px 0 rgba(0,0,0,0.2);
+  font-weight: 700;
+  font-size: 15px;
+  color: #fff;
+  user-select: none;
+  cursor: grab;
+  border: none;
+  outline: none;
+  transition: box-shadow 0.12s;
+}
+
+.block:active {
+  box-shadow: 0 1px 0 rgba(0,0,0,0.18);
+}
+
+/* Puzzle bottom notch */
+.block::after {
+  content: "";
+  position: absolute;
+  left: 28px;
+  bottom: -9px;
+  width: 36px;
+  height: 10px;
+  background: #e6ecfa;
+  border-radius: 0 0 8px 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.08) inset;
+  z-index: 1;
+}
+
+/* Inputs inside blocks */
+.block-input {
+  background: #dbeafe;
+  color: #3b4a6b;
+  border: none;
+  border-radius: 16px;
+  padding: 2px 14px;
+  margin: 0 4px;
+  font-size: 15px;
+  font-weight: 700;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.08);
+  outline: none;
+  min-width: 32px;
+  text-align: center;
 }

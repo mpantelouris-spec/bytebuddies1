@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback, useImperativeHandle, forwardRef } from 'react';
+import { getBlockStyle, getCategoryVars, getCategoryColor } from '../utils/categoryColors';
 
 // ─── micro:bit WebUSB direct-flash (works with ANY firmware) ─────────────────
 async function _idbCache(key, fetchFn) {
@@ -3588,19 +3589,21 @@ export default function RobotPanel() {
             <div style={{ fontSize: 10, color: 'var(--text-muted)', padding: '4px 10px 6px', fontStyle: 'italic' }}>
               Drag blocks onto the canvas →
             </div>
-            {ROBOT_COMMANDS.filter(c => c.cat === activeCat).map(cmd => (
+            {ROBOT_COMMANDS.filter(c => c.cat === activeCat).map(cmd => {
+              const blockStyle = getBlockStyle(cmd.cat);
+              return (
               <div
                 key={cmd.id}
+                className="palette-block"
+                data-category={cmd.cat}
                 draggable
                 onDragStart={e => e.dataTransfer.setData('robot-cmd', cmd.id)}
                 onClick={() => addBlock(cmd)}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 7,
-                  padding: '7px 10px', margin: '2px 4px', borderRadius: 8,
-                  border: `2px solid ${cmd.color}`,
-                  background: `${cmd.color}22`,
-                  color: 'var(--text-primary)', cursor: 'grab', fontSize: 12,
-                  fontWeight: 600, userSelect: 'none', transition: 'transform 0.1s, box-shadow 0.1s',
+                  padding: '8px 12px', margin: '3px 0', fontSize: 12,
+                  cursor: 'grab', userSelect: 'none', transition: 'transform 0.1s, box-shadow 0.1s',
+                  ...blockStyle,
                 }}
                 onMouseEnter={e => { e.currentTarget.style.transform = 'translateX(3px)'; e.currentTarget.style.boxShadow = `0 2px 12px ${cmd.color}44`; }}
                 onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = ''; }}
@@ -3609,7 +3612,8 @@ export default function RobotPanel() {
                 <span style={{ fontSize: 15 }}>{cmd.icon}</span>
                 <span style={{ flex: 1 }}>{cmd.label}</span>
               </div>
-            ))}
+            );
+            })}
           </div>
         </div>
 
@@ -3832,24 +3836,19 @@ export default function RobotPanel() {
               return (
                 <div
                   key={block.uid}
+                  className={`block${isDragging ? ' dragging' : ''}${isActive ? ' active' : ''}`}
+                  data-category={block.cat}
                   style={{
                     position: 'absolute', left: block.x, top: block.y,
-                    background: `${block.color}22`,
-                    border: `2px solid ${block.color}`,
-                    borderRadius: 10,
-                    padding: '7px 32px 7px 12px',
-                    fontSize: 13, fontWeight: 600,
-                    display: 'flex', alignItems: 'center', gap: 6,
-                    whiteSpace: 'nowrap', cursor: isDragging ? 'grabbing' : 'grab',
-                    userSelect: 'none', zIndex: isDragging ? 100 : isActive ? 100 : isSelected ? 50 : 1,
+                    transform: isDragging ? 'scale(1.04)' : isActive ? 'scale(1.03)' : 'scale(1)',
+                    transition: isDragging ? 'none' : 'box-shadow 0.15s, transform 0.15s, outline 0.15s',
+                    zIndex: isDragging ? 100 : isActive ? 100 : isSelected ? 50 : 1,
+                    outline: isActive ? '2px solid #fbbf24' : undefined,
                     boxShadow: isActive
                       ? '0 0 16px rgba(251,191,36,0.7), 0 0 32px rgba(251,191,36,0.3)'
                       : isSelected
                         ? `0 0 0 3px ${block.color}88, 0 4px 20px ${block.color}44`
                         : isDragging ? `0 6px 24px ${block.color}55` : 'none',
-                    outline: isActive ? '2px solid #fbbf24' : undefined,
-                    transform: isDragging ? 'scale(1.04)' : isActive ? 'scale(1.03)' : 'scale(1)',
-                    transition: isDragging ? 'none' : 'box-shadow 0.15s, transform 0.15s, outline 0.15s',
                   }}
                   onMouseDown={e => handleBlockMouseDown(e, block)}
                   onMouseEnter={() => setHoveredBlock(block.uid)}

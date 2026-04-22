@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { useProject } from '../contexts/ProjectContext';
 import { useUser } from '../contexts/UserContext';
+import { getBlockStyle, getCategoryVars } from '../utils/categoryColors';
 import CodeEditor from './CodeEditor';
 import AIAssistant from './AIAssistant';
 import StarterBlocks from './StarterBlocks';
@@ -406,7 +407,8 @@ function BlockCanvas({ code, onCodeChange, onBlockLineMap, activeCodeLine, onNav
         return (
           <div
             key={block.id}
-            className={`workspace-block${isSynced ? ' block-synced' : ''}`}
+            className={`block${isSynced ? ' block-synced' : ''}${isSelected ? ' active' : ''}`}
+            data-category={block.category}
             tabIndex={0}
             role="button"
             aria-label={`${block.label || block.type} block`}
@@ -419,27 +421,9 @@ function BlockCanvas({ code, onCodeChange, onBlockLineMap, activeCodeLine, onNav
               position: 'absolute',
               left: block.x,
               top: block.y,
-              background: block.color + '22',
-              border: `2px solid ${isSelected ? block.color : block.color}`,
-              borderRadius: 10,
-              padding: '8px 30px 8px 12px',
-              fontSize: 13,
-              fontWeight: 600,
-              color: 'var(--text-primary)',
-              cursor: dragging === block.id ? 'grabbing' : 'grab',
-              userSelect: 'none',
-              minWidth: 160,
-              boxShadow: isSelected
-                ? `0 0 0 3px ${block.color}88, 0 4px 20px ${block.color}44`
-                : dragging === block.id ? `0 4px 20px ${block.color}44` : 'none',
               transform: dragging === block.id ? 'scale(1.05)' : 'scale(1)',
               transition: dragging === block.id ? 'none' : 'transform 0.15s, box-shadow 0.15s',
               zIndex: dragging === block.id ? 100 : isSelected ? 50 : 1,
-              whiteSpace: 'nowrap',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 2,
-              lineHeight: '26px',
               outline: 'none',
             }}
           >
