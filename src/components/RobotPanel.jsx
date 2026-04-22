@@ -113,7 +113,7 @@ function sanitizeHexForWebUsb(rawHex) {
 /* ─── Robot command definitions ─── */
 const ROBOT_COMMANDS = [
   // Movement
-  { cat: 'Movement', id: 'forward',    icon: '⬆️',  label: 'Forward',        color: '#3b82f6', params: [{ key: 'amount',  label: 'steps',  default: '80',   type: 'number' }] },
+  { cat: 'Movement', id: 'forward',    icon: '⬆️',  label: 'Forward',        color: '#00D9FF', params: [{ key: 'amount',  label: 'steps',  default: '80',   type: 'number' }] },
   { cat: 'Movement', id: 'back',       icon: '⬇️',  label: 'Backward',       color: '#3b82f6', params: [{ key: 'amount',  label: 'steps', default: '80',   type: 'number' }] },
   { cat: 'Movement', id: 'move_left',  icon: '⬅️',  label: 'Move Left',      color: '#3b82f6', params: [{ key: 'amount',  label: 'steps',  default: '80',   type: 'number' }] },
   { cat: 'Movement', id: 'move_right', icon: '➡️',  label: 'Move Right',     color: '#3b82f6', params: [{ key: 'amount',  label: 'steps',  default: '80',   type: 'number' }] },
@@ -129,106 +129,106 @@ const ROBOT_COMMANDS = [
   { cat: 'Movement', id: 'motors',     icon: '⚙️',  label: 'Both Motors',    color: '#3b82f6', params: [{ key: 'left',    label: 'L%',  default: '50',   type: 'number' }, { key: 'right', label: 'R%', default: '50', type: 'number' }] },
 
   // Sensors
-  { cat: 'Sensors', id: 'if_dist',     icon: '📡',  label: 'If Distance <',  color: '#06b6d4', params: [{ key: 'cm',      label: 'cm',  default: '20',   type: 'number' }] },
-  { cat: 'Sensors', id: 'if_line',     icon: '〰️',  label: 'If Line Found',  color: '#06b6d4', params: [] },
-  { cat: 'Sensors', id: 'if_btn_a',    icon: '🔘',  label: 'If Button A',    color: '#06b6d4', params: [] },
-  { cat: 'Sensors', id: 'if_btn_b',    icon: '🔘',  label: 'If Button B',    color: '#06b6d4', params: [] },
-  { cat: 'Sensors', id: 'if_touch',    icon: '👆',  label: 'If Touch Pin',   color: '#06b6d4', params: [{ key: 'pin',     label: 'pin', default: '0',    type: 'number' }] },
-  { cat: 'Sensors', id: 'if_shake',    icon: '📳',  label: 'If Shaken',      color: '#06b6d4', params: [] },
-  { cat: 'Sensors', id: 'if_tilt',     icon: '📐',  label: 'If Tilted',      color: '#06b6d4', params: [{ key: 'dir', label: 'dir', default: 'left', type: 'select', options: ['left','right','forward','back'] }] },
-  { cat: 'Sensors', id: 'if_light',    icon: '☀️',  label: 'If Light <',     color: '#06b6d4', params: [{ key: 'val',     label: 'lux', default: '100',  type: 'number' }] },
-  { cat: 'Sensors', id: 'wait_dist',   icon: '⏳',  label: 'Wait Until Dist <', color: '#06b6d4', params: [{ key: 'cm',   label: 'cm',  default: '20',   type: 'number' }] },
-  { cat: 'Sensors', id: 'wait_line',   icon: '⏳',  label: 'Wait for Line',  color: '#06b6d4', params: [] },
-  { cat: 'Sensors', id: 'read_dist',   icon: '📏',  label: 'Read Distance → var', color: '#06b6d4', params: [{ key: 'var', label: 'var', default: 'dist', type: 'text' }] },
-  { cat: 'Sensors', id: 'read_light',  icon: '💡',  label: 'Read Light → var',   color: '#06b6d4', params: [{ key: 'var', label: 'var', default: 'light', type: 'text' }] },
-  { cat: 'Sensors', id: 'follow_line', icon: '🛤️',  label: 'Follow Line',    color: '#06b6d4', params: [{ key: 'secs',   label: 's',   default: '3',    type: 'number' }] },
-  { cat: 'Sensors', id: 'avoid_wall',  icon: '🧱',  label: 'Avoid Walls',    color: '#06b6d4', params: [{ key: 'secs',   label: 's',   default: '5',    type: 'number' }] },
-  { cat: 'Sensors', id: 'read_temp',   icon: '🌡️',  label: 'Read Temp → var',    color: '#06b6d4', params: [{ key: 'var', label: 'var', default: 'temp', type: 'text' }] },
-  { cat: 'Sensors', id: 'read_compass',icon: '🧭',  label: 'Read Compass → var', color: '#06b6d4', params: [{ key: 'var', label: 'var', default: 'heading', type: 'text' }] },
-  { cat: 'Sensors', id: 'read_accel',  icon: '📐',  label: 'Read Accel → var',   color: '#06b6d4', params: [{ key: 'var', label: 'var', default: 'ax', type: 'text' }, { key: 'axis', label: 'axis', default: 'x', type: 'select', options: ['x','y','z'] }] },
-  { cat: 'Sensors', id: 'read_btn_a',  icon: '🔘',  label: 'Read Button A → var',color: '#06b6d4', params: [{ key: 'var', label: 'var', default: 'btnA', type: 'text' }] },
-  { cat: 'Sensors', id: 'read_btn_b',  icon: '🔘',  label: 'Read Button B → var',color: '#06b6d4', params: [{ key: 'var', label: 'var', default: 'btnB', type: 'text' }] },
-  { cat: 'Sensors', id: 'if_temp',     icon: '🌡️',  label: 'If Temp >',      color: '#06b6d4', params: [{ key: 'val', label: '°C', default: '25', type: 'number' }] },
-  { cat: 'Sensors', id: 'if_compass',  icon: '🧭',  label: 'If Heading >',   color: '#06b6d4', params: [{ key: 'val', label: '°', default: '180', type: 'number' }] },
+  { cat: 'Sensors', id: 'if_dist',     icon: '📡',  label: 'If Distance <',  color: '#00FFAA', params: [{ key: 'cm',      label: 'cm',  default: '20',   type: 'number' }] },
+  { cat: 'Sensors', id: 'if_line',     icon: '〰️',  label: 'If Line Found',  color: '#00FFAA', params: [] },
+  { cat: 'Sensors', id: 'if_btn_a',    icon: '🔘',  label: 'If Button A',    color: '#00FFAA', params: [] },
+  { cat: 'Sensors', id: 'if_btn_b',    icon: '🔘',  label: 'If Button B',    color: '#00FFAA', params: [] },
+  { cat: 'Sensors', id: 'if_touch',    icon: '👆',  label: 'If Touch Pin',   color: '#00FFAA', params: [{ key: 'pin',     label: 'pin', default: '0',    type: 'number' }] },
+  { cat: 'Sensors', id: 'if_shake',    icon: '📳',  label: 'If Shaken',      color: '#00FFAA', params: [] },
+  { cat: 'Sensors', id: 'if_tilt',     icon: '📐',  label: 'If Tilted',      color: '#00FFAA', params: [{ key: 'dir', label: 'dir', default: 'left', type: 'select', options: ['left','right','forward','back'] }] },
+  { cat: 'Sensors', id: 'if_light',    icon: '☀️',  label: 'If Light <',     color: '#00FFAA', params: [{ key: 'val',     label: 'lux', default: '100',  type: 'number' }] },
+  { cat: 'Sensors', id: 'wait_dist',   icon: '⏳',  label: 'Wait Until Dist <', color: '#00FFAA', params: [{ key: 'cm',   label: 'cm',  default: '20',   type: 'number' }] },
+  { cat: 'Sensors', id: 'wait_line',   icon: '⏳',  label: 'Wait for Line',  color: '#00FFAA', params: [] },
+  { cat: 'Sensors', id: 'read_dist',   icon: '📏',  label: 'Read Distance → var', color: '#00FFAA', params: [{ key: 'var', label: 'var', default: 'dist', type: 'text' }] },
+  { cat: 'Sensors', id: 'read_light',  icon: '💡',  label: 'Read Light → var',   color: '#00FFAA', params: [{ key: 'var', label: 'var', default: 'light', type: 'text' }] },
+  { cat: 'Sensors', id: 'follow_line', icon: '🛤️',  label: 'Follow Line',    color: '#00FFAA', params: [{ key: 'secs',   label: 's',   default: '3',    type: 'number' }] },
+  { cat: 'Sensors', id: 'avoid_wall',  icon: '🧱',  label: 'Avoid Walls',    color: '#00FFAA', params: [{ key: 'secs',   label: 's',   default: '5',    type: 'number' }] },
+  { cat: 'Sensors', id: 'read_temp',   icon: '🌡️',  label: 'Read Temp → var',    color: '#00FFAA', params: [{ key: 'var', label: 'var', default: 'temp', type: 'text' }] },
+  { cat: 'Sensors', id: 'read_compass',icon: '🧭',  label: 'Read Compass → var', color: '#00FFAA', params: [{ key: 'var', label: 'var', default: 'heading', type: 'text' }] },
+  { cat: 'Sensors', id: 'read_accel',  icon: '📐',  label: 'Read Accel → var',   color: '#00FFAA', params: [{ key: 'var', label: 'var', default: 'ax', type: 'text' }, { key: 'axis', label: 'axis', default: 'x', type: 'select', options: ['x','y','z'] }] },
+  { cat: 'Sensors', id: 'read_btn_a',  icon: '🔘',  label: 'Read Button A → var',color: '#00FFAA', params: [{ key: 'var', label: 'var', default: 'btnA', type: 'text' }] },
+  { cat: 'Sensors', id: 'read_btn_b',  icon: '🔘',  label: 'Read Button B → var',color: '#00FFAA', params: [{ key: 'var', label: 'var', default: 'btnB', type: 'text' }] },
+  { cat: 'Sensors', id: 'if_temp',     icon: '🌡️',  label: 'If Temp >',      color: '#00FFAA', params: [{ key: 'val', label: '°C', default: '25', type: 'number' }] },
+  { cat: 'Sensors', id: 'if_compass',  icon: '🧭',  label: 'If Heading >',   color: '#00FFAA', params: [{ key: 'val', label: '°', default: '180', type: 'number' }] },
 
   // Math
-  { cat: 'Math', id: 'math_random',    icon: '🎲',  label: 'Random Number',  color: '#ef4444', params: [{ key: 'var', label: 'var', default: 'n', type: 'text' }, { key: 'min', label: 'min', default: '1', type: 'number' }, { key: 'max', label: 'max', default: '10', type: 'number' }] },
-  { cat: 'Math', id: 'math_abs',       icon: '±',   label: 'Abs Value',      color: '#ef4444', params: [{ key: 'var', label: 'result', default: 'x', type: 'text' }, { key: 'src', label: 'of', default: 'x', type: 'text' }] },
-  { cat: 'Math', id: 'math_map',       icon: '🗺️',  label: 'Map Value',      color: '#ef4444', params: [{ key: 'var', label: 'result', default: 'mapped', type: 'text' }, { key: 'src', label: 'from', default: 'x', type: 'text' }, { key: 'low1', label: 'lo1', default: '0', type: 'number' }, { key: 'hi1', label: 'hi1', default: '100', type: 'number' }, { key: 'low2', label: 'lo2', default: '0', type: 'number' }, { key: 'hi2', label: 'hi2', default: '1023', type: 'number' }] },
-  { cat: 'Math', id: 'math_constrain', icon: '📏',  label: 'Constrain',      color: '#ef4444', params: [{ key: 'var', label: 'var', default: 'x', type: 'text' }, { key: 'min', label: 'min', default: '0', type: 'number' }, { key: 'max', label: 'max', default: '100', type: 'number' }] },
-  { cat: 'Math', id: 'math_expr',      icon: '🧮',  label: 'Set var = expr', color: '#ef4444', params: [{ key: 'var', label: 'var', default: 'x', type: 'text' }, { key: 'expr', label: '=', default: 'x + 1', type: 'text' }] },
+  { cat: 'Math', id: 'math_random',    icon: '🎲',  label: 'Random Number',  color: '#00B4FF', params: [{ key: 'var', label: 'var', default: 'n', type: 'text' }, { key: 'min', label: 'min', default: '1', type: 'number' }, { key: 'max', label: 'max', default: '10', type: 'number' }] },
+  { cat: 'Math', id: 'math_abs',       icon: '±',   label: 'Abs Value',      color: '#00B4FF', params: [{ key: 'var', label: 'result', default: 'x', type: 'text' }, { key: 'src', label: 'of', default: 'x', type: 'text' }] },
+  { cat: 'Math', id: 'math_map',       icon: '🗺️',  label: 'Map Value',      color: '#00B4FF', params: [{ key: 'var', label: 'result', default: 'mapped', type: 'text' }, { key: 'src', label: 'from', default: 'x', type: 'text' }, { key: 'low1', label: 'lo1', default: '0', type: 'number' }, { key: 'hi1', label: 'hi1', default: '100', type: 'number' }, { key: 'low2', label: 'lo2', default: '0', type: 'number' }, { key: 'hi2', label: 'hi2', default: '1023', type: 'number' }] },
+  { cat: 'Math', id: 'math_constrain', icon: '📏',  label: 'Constrain',      color: '#00B4FF', params: [{ key: 'var', label: 'var', default: 'x', type: 'text' }, { key: 'min', label: 'min', default: '0', type: 'number' }, { key: 'max', label: 'max', default: '100', type: 'number' }] },
+  { cat: 'Math', id: 'math_expr',      icon: '🧮',  label: 'Set var = expr', color: '#00B4FF', params: [{ key: 'var', label: 'var', default: 'x', type: 'text' }, { key: 'expr', label: '=', default: 'x + 1', type: 'text' }] },
 
   // Control
-  { cat: 'Control', id: 'on_start',    icon: '🚀',  label: 'On Start',       color: '#059669', params: [] },
-  { cat: 'Control', id: 'wait',        icon: '⏱️',  label: 'Wait',           color: '#059669', params: [{ key: 'secs',   label: 's',   default: '1',    type: 'number' }] },
-  { cat: 'Control', id: 'forever',     icon: '♾️',  label: 'Forever',        color: '#059669', params: [] },
-  { cat: 'Control', id: 'repeat',      icon: '🔁',  label: 'Repeat',         color: '#059669', params: [{ key: 'times',  label: 'x',   default: '3',    type: 'number' }] },
-  { cat: 'Control', id: 'repeat_end',  icon: '🔚',  label: 'End Repeat',     color: '#059669', params: [] },
-  { cat: 'Control', id: 'while_do',    icon: '🔄',  label: 'While',          color: '#059669', params: [{ key: 'cond', label: 'var', default: 'x', type: 'text' }, { key: 'op', label: 'op', default: '<', type: 'select', options: ['<','>','=','!=','<=','>='] }, { key: 'val', label: 'val', default: '10', type: 'number' }] },
-  { cat: 'Control', id: 'while_end',   icon: '🔚',  label: 'End While',      color: '#059669', params: [] },
-  { cat: 'Control', id: 'for_range',   icon: '🔢',  label: 'Count',          color: '#059669', params: [{ key: 'var', label: 'var', default: 'i', type: 'text' }, { key: 'from', label: 'from', default: '0', type: 'number' }, { key: 'to', label: 'to', default: '5', type: 'number' }] },
-  { cat: 'Control', id: 'for_end',     icon: '🔚',  label: 'End Count',      color: '#059669', params: [] },
-  { cat: 'Control', id: 'if_then',     icon: '🔀',  label: 'If / Then',      color: '#059669', params: [{ key: 'cond',   label: 'var', default: 'dist',  type: 'text' }, { key: 'op', label: 'op', default: '<', type: 'select', options: ['<','>','=','!=','<=','>='] }, { key: 'val', label: 'val', default: '20', type: 'number' }] },
-  { cat: 'Control', id: 'else_branch', icon: '↔️',  label: 'Else',           color: '#059669', params: [] },
-  { cat: 'Control', id: 'else_if',     icon: '↔️',  label: 'Else If',        color: '#059669', params: [{ key: 'cond', label: 'var', default: 'x', type: 'text' }, { key: 'op', label: 'op', default: '<', type: 'select', options: ['<','>','=','!=','<=','>='] }, { key: 'val', label: 'val', default: '0', type: 'number' }] },
-  { cat: 'Control', id: 'if_end',      icon: '🔚',  label: 'End If',         color: '#059669', params: [] },
-  { cat: 'Control', id: 'break',       icon: '✋',  label: 'Break Loop',     color: '#059669', params: [] },
-  { cat: 'Control', id: 'stop_all',    icon: '🛑',  label: 'Stop Program',   color: '#059669', params: [] },
+  { cat: 'Control', id: 'on_start',    icon: '🚀',  label: 'On Start',       color: '#FF6B35', params: [] },
+  { cat: 'Control', id: 'wait',        icon: '⏱️',  label: 'Wait',           color: '#FF6B35', params: [{ key: 'secs',   label: 's',   default: '1',    type: 'number' }] },
+  { cat: 'Control', id: 'forever',     icon: '♾️',  label: 'Forever',        color: '#FF6B35', params: [] },
+  { cat: 'Control', id: 'repeat',      icon: '🔁',  label: 'Repeat',         color: '#FF6B35', params: [{ key: 'times',  label: 'x',   default: '3',    type: 'number' }] },
+  { cat: 'Control', id: 'repeat_end',  icon: '🔚',  label: 'End Repeat',     color: '#FF6B35', params: [] },
+  { cat: 'Control', id: 'while_do',    icon: '🔄',  label: 'While',          color: '#FF6B35', params: [{ key: 'cond', label: 'var', default: 'x', type: 'text' }, { key: 'op', label: 'op', default: '<', type: 'select', options: ['<','>','=','!=','<=','>='] }, { key: 'val', label: 'val', default: '10', type: 'number' }] },
+  { cat: 'Control', id: 'while_end',   icon: '🔚',  label: 'End While',      color: '#FF6B35', params: [] },
+  { cat: 'Control', id: 'for_range',   icon: '🔢',  label: 'Count',          color: '#FF6B35', params: [{ key: 'var', label: 'var', default: 'i', type: 'text' }, { key: 'from', label: 'from', default: '0', type: 'number' }, { key: 'to', label: 'to', default: '5', type: 'number' }] },
+  { cat: 'Control', id: 'for_end',     icon: '🔚',  label: 'End Count',      color: '#FF6B35', params: [] },
+  { cat: 'Control', id: 'if_then',     icon: '🔀',  label: 'If / Then',      color: '#FF6B35', params: [{ key: 'cond',   label: 'var', default: 'dist',  type: 'text' }, { key: 'op', label: 'op', default: '<', type: 'select', options: ['<','>','=','!=','<=','>='] }, { key: 'val', label: 'val', default: '20', type: 'number' }] },
+  { cat: 'Control', id: 'else_branch', icon: '↔️',  label: 'Else',           color: '#FF6B35', params: [] },
+  { cat: 'Control', id: 'else_if',     icon: '↔️',  label: 'Else If',        color: '#FF6B35', params: [{ key: 'cond', label: 'var', default: 'x', type: 'text' }, { key: 'op', label: 'op', default: '<', type: 'select', options: ['<','>','=','!=','<=','>='] }, { key: 'val', label: 'val', default: '0', type: 'number' }] },
+  { cat: 'Control', id: 'if_end',      icon: '🔚',  label: 'End If',         color: '#FF6B35', params: [] },
+  { cat: 'Control', id: 'break',       icon: '✋',  label: 'Break Loop',     color: '#FF6B35', params: [] },
+  { cat: 'Control', id: 'stop_all',    icon: '🛑',  label: 'Stop Program',   color: '#FF6B35', params: [] },
 
   // Outputs
-  { cat: 'Outputs', id: 'led',         icon: '💡',  label: 'LED Colour',     color: '#a855f7', params: [{ key: 'color',  label: 'col', default: 'red',  type: 'select', options: ['red','green','blue','yellow','cyan','magenta','white','off'] }] },
-  { cat: 'Outputs', id: 'led_bright',  icon: '🔆',  label: 'LED Brightness', color: '#a855f7', params: [{ key: 'pct',    label: '%',   default: '100',  type: 'number' }] },
-  { cat: 'Outputs', id: 'led_rgb',     icon: '🌈',  label: 'LED RGB',        color: '#a855f7', params: [{ key: 'r', label: 'R', default: '255', type: 'number' }, { key: 'g', label: 'G', default: '0', type: 'number' }, { key: 'b', label: 'B', default: '0', type: 'number' }] },
-  { cat: 'Outputs', id: 'buzz',        icon: '🔔',  label: 'Buzzer',         color: '#a855f7', params: [{ key: 'secs',   label: 's',   default: '0.5',  type: 'number' }] },
-  { cat: 'Outputs', id: 'play_note',   icon: '🎵',  label: 'Play Note',      color: '#a855f7', params: [{ key: 'note', label: 'note', default: 'C4', type: 'select', options: ['C3','D3','E3','F3','G3','A3','B3','C4','D4','E4','F4','G4','A4','B4','C5'] }, { key: 'secs', label: 's', default: '0.5', type: 'number' }] },
-  { cat: 'Outputs', id: 'play_melody', icon: '🎶',  label: 'Play Melody',    color: '#a855f7', params: [{ key: 'melody', label: 'tune', default: 'happy', type: 'select', options: ['happy','sad','power_up','siren','birthday','twinkle'] }] },
-  { cat: 'Outputs', id: 'display',     icon: '📟',  label: 'Show Text',      color: '#a855f7', params: [{ key: 'text',   label: 'text', default: 'Hi!',  type: 'text' }] },
-  { cat: 'Outputs', id: 'show_num',    icon: '🔢',  label: 'Show Number',    color: '#a855f7', params: [{ key: 'num',    label: 'val',  default: '42',   type: 'number' }] },
-  { cat: 'Outputs', id: 'show_icon',   icon: '😀',  label: 'Show Icon',      color: '#a855f7', params: [{ key: 'icon', label: 'icon', default: 'HAPPY', type: 'select', options: ['HAPPY','SAD','HEART','SURPRISED','ANGRY','YES','NO','ARROW_N','ARROW_S','ARROW_E','ARROW_W','ASLEEP','CONFUSED','SKULL','DIAMOND'] }] },
-  { cat: 'Outputs', id: 'clear_disp',  icon: '🧹',  label: 'Clear Display',  color: '#a855f7', params: [] },
+  { cat: 'Outputs', id: 'led',         icon: '💡',  label: 'LED Colour',     color: '#FF3366', params: [{ key: 'color',  label: 'col', default: 'red',  type: 'select', options: ['red','green','blue','yellow','cyan','magenta','white','off'] }] },
+  { cat: 'Outputs', id: 'led_bright',  icon: '🔆',  label: 'LED Brightness', color: '#FF3366', params: [{ key: 'pct',    label: '%',   default: '100',  type: 'number' }] },
+  { cat: 'Outputs', id: 'led_rgb',     icon: '🌈',  label: 'LED RGB',        color: '#FF3366', params: [{ key: 'r', label: 'R', default: '255', type: 'number' }, { key: 'g', label: 'G', default: '0', type: 'number' }, { key: 'b', label: 'B', default: '0', type: 'number' }] },
+  { cat: 'Outputs', id: 'buzz',        icon: '🔔',  label: 'Buzzer',         color: '#FF3366', params: [{ key: 'secs',   label: 's',   default: '0.5',  type: 'number' }] },
+  { cat: 'Outputs', id: 'play_note',   icon: '🎵',  label: 'Play Note',      color: '#FF3366', params: [{ key: 'note', label: 'note', default: 'C4', type: 'select', options: ['C3','D3','E3','F3','G3','A3','B3','C4','D4','E4','F4','G4','A4','B4','C5'] }, { key: 'secs', label: 's', default: '0.5', type: 'number' }] },
+  { cat: 'Outputs', id: 'play_melody', icon: '🎶',  label: 'Play Melody',    color: '#FF3366', params: [{ key: 'melody', label: 'tune', default: 'happy', type: 'select', options: ['happy','sad','power_up','siren','birthday','twinkle'] }] },
+  { cat: 'Outputs', id: 'display',     icon: '📟',  label: 'Show Text',      color: '#FF3366', params: [{ key: 'text',   label: 'text', default: 'Hi!',  type: 'text' }] },
+  { cat: 'Outputs', id: 'show_num',    icon: '🔢',  label: 'Show Number',    color: '#FF3366', params: [{ key: 'num',    label: 'val',  default: '42',   type: 'number' }] },
+  { cat: 'Outputs', id: 'show_icon',   icon: '😀',  label: 'Show Icon',      color: '#FF3366', params: [{ key: 'icon', label: 'icon', default: 'HAPPY', type: 'select', options: ['HAPPY','SAD','HEART','SURPRISED','ANGRY','YES','NO','ARROW_N','ARROW_S','ARROW_E','ARROW_W','ASLEEP','CONFUSED','SKULL','DIAMOND'] }] },
+  { cat: 'Outputs', id: 'clear_disp',  icon: '🧹',  label: 'Clear Display',  color: '#FF3366', params: [] },
 
   // Servo & Actuators
-  { cat: 'Servo', id: 'servo',         icon: '🔧',  label: 'Servo Angle',    color: '#059669', params: [{ key: 'pin', label: 'pin', default: '0', type: 'number' }, { key: 'angle', label: '°', default: '90', type: 'number' }] },
-  { cat: 'Servo', id: 'servo_sweep',   icon: '↔️',  label: 'Servo Sweep',    color: '#059669', params: [{ key: 'pin', label: 'pin', default: '0', type: 'number' }, { key: 'from', label: 'from°', default: '0', type: 'number' }, { key: 'to', label: 'to°', default: '180', type: 'number' }] },
-  { cat: 'Servo', id: 'servo_stop',    icon: '🔧',  label: 'Servo Stop',     color: '#059669', params: [{ key: 'pin', label: 'pin', default: '0', type: 'number' }] },
-  { cat: 'Servo', id: 'pin_high',      icon: '⬆️',  label: 'Pin HIGH',       color: '#059669', params: [{ key: 'pin', label: 'pin', default: '0', type: 'number' }] },
-  { cat: 'Servo', id: 'pin_low',       icon: '⬇️',  label: 'Pin LOW',        color: '#059669', params: [{ key: 'pin', label: 'pin', default: '0', type: 'number' }] },
-  { cat: 'Servo', id: 'pwm',           icon: '〰️',  label: 'Set PWM',        color: '#059669', params: [{ key: 'pin', label: 'pin', default: '0', type: 'number' }, { key: 'val', label: '0-255', default: '128', type: 'number' }] },
+  { cat: 'Servo', id: 'servo',         icon: '🔧',  label: 'Servo Angle',    color: '#FF6B35', params: [{ key: 'pin', label: 'pin', default: '0', type: 'number' }, { key: 'angle', label: '°', default: '90', type: 'number' }] },
+  { cat: 'Servo', id: 'servo_sweep',   icon: '↔️',  label: 'Servo Sweep',    color: '#FF6B35', params: [{ key: 'pin', label: 'pin', default: '0', type: 'number' }, { key: 'from', label: 'from°', default: '0', type: 'number' }, { key: 'to', label: 'to°', default: '180', type: 'number' }] },
+  { cat: 'Servo', id: 'servo_stop',    icon: '🔧',  label: 'Servo Stop',     color: '#FF6B35', params: [{ key: 'pin', label: 'pin', default: '0', type: 'number' }] },
+  { cat: 'Servo', id: 'pin_high',      icon: '⬆️',  label: 'Pin HIGH',       color: '#FF6B35', params: [{ key: 'pin', label: 'pin', default: '0', type: 'number' }] },
+  { cat: 'Servo', id: 'pin_low',       icon: '⬇️',  label: 'Pin LOW',        color: '#FF6B35', params: [{ key: 'pin', label: 'pin', default: '0', type: 'number' }] },
+  { cat: 'Servo', id: 'pwm',           icon: '〰️',  label: 'Set PWM',        color: '#FF6B35', params: [{ key: 'pin', label: 'pin', default: '0', type: 'number' }, { key: 'val', label: '0-255', default: '128', type: 'number' }] },
 
   // Variables
-  { cat: 'Variables', id: 'var_set',   icon: '📦',  label: 'Set Variable',   color: '#f97316', params: [{ key: 'name', label: 'name', default: 'x', type: 'text' }, { key: 'val', label: 'val', default: '0', type: 'number' }] },
-  { cat: 'Variables', id: 'var_inc',   icon: '📈',  label: 'Increase Var',   color: '#f97316', params: [{ key: 'name', label: 'name', default: 'x', type: 'text' }, { key: 'val', label: 'by',  default: '1', type: 'number' }] },
-  { cat: 'Variables', id: 'var_dec',   icon: '📉',  label: 'Decrease Var',   color: '#f97316', params: [{ key: 'name', label: 'name', default: 'x', type: 'text' }, { key: 'val', label: 'by',  default: '1', type: 'number' }] },
-  { cat: 'Variables', id: 'var_show',  icon: '📊',  label: 'Show Variable',  color: '#f97316', params: [{ key: 'name', label: 'name', default: 'x', type: 'text' }] },
+  { cat: 'Variables', id: 'var_set',   icon: '📦',  label: 'Set Variable',   color: '#FFB700', params: [{ key: 'name', label: 'name', default: 'x', type: 'text' }, { key: 'val', label: 'val', default: '0', type: 'number' }] },
+  { cat: 'Variables', id: 'var_inc',   icon: '📈',  label: 'Increase Var',   color: '#FFB700', params: [{ key: 'name', label: 'name', default: 'x', type: 'text' }, { key: 'val', label: 'by',  default: '1', type: 'number' }] },
+  { cat: 'Variables', id: 'var_dec',   icon: '📉',  label: 'Decrease Var',   color: '#FFB700', params: [{ key: 'name', label: 'name', default: 'x', type: 'text' }, { key: 'val', label: 'by',  default: '1', type: 'number' }] },
+  { cat: 'Variables', id: 'var_show',  icon: '📊',  label: 'Show Variable',  color: '#FFB700', params: [{ key: 'name', label: 'name', default: 'x', type: 'text' }] },
 
   // Communication
-  { cat: 'Comms', id: 'send_msg',      icon: '📤',  label: 'Send Message',   color: '#a855f7', params: [{ key: 'msg', label: 'text', default: 'hello', type: 'text' }] },
-  { cat: 'Comms', id: 'radio_send',    icon: '📻',  label: 'Radio Send',     color: '#a855f7', params: [{ key: 'msg', label: 'text', default: 'go',    type: 'text' }] },
-  { cat: 'Comms', id: 'radio_group',   icon: '📡',  label: 'Radio Group',    color: '#a855f7', params: [{ key: 'grp', label: 'grp',  default: '1',     type: 'number' }] },
-  { cat: 'Comms', id: 'radio_recv',    icon: '📥',  label: 'Read Radio → var', color: '#a855f7', params: [{ key: 'var', label: 'var', default: 'msg', type: 'text' }] },
-  { cat: 'Comms', id: 'log',           icon: '🖨️',  label: 'Log to Serial',  color: '#a855f7', params: [{ key: 'msg', label: 'text', default: 'hello', type: 'text' }] },
+  { cat: 'Comms', id: 'send_msg',      icon: '📤',  label: 'Send Message',   color: '#FF3366', params: [{ key: 'msg', label: 'text', default: 'hello', type: 'text' }] },
+  { cat: 'Comms', id: 'radio_send',    icon: '📻',  label: 'Radio Send',     color: '#FF3366', params: [{ key: 'msg', label: 'text', default: 'go',    type: 'text' }] },
+  { cat: 'Comms', id: 'radio_group',   icon: '📡',  label: 'Radio Group',    color: '#FF3366', params: [{ key: 'grp', label: 'grp',  default: '1',     type: 'number' }] },
+  { cat: 'Comms', id: 'radio_recv',    icon: '📥',  label: 'Read Radio → var', color: '#FF3366', params: [{ key: 'var', label: 'var', default: 'msg', type: 'text' }] },
+  { cat: 'Comms', id: 'log',           icon: '🖨️',  label: 'Log to Serial',  color: '#FF3366', params: [{ key: 'msg', label: 'text', default: 'hello', type: 'text' }] },
 
   // Lights — NeoPixel / WS2812B strips and robot headlights
-  { cat: 'Lights', id: 'neo_init',     icon: '💡',  label: 'NeoPixel Setup', color: '#a855f7', params: [{ key: 'pin', label: 'pin', default: '0', type: 'number' }, { key: 'n', label: 'LEDs', default: '8', type: 'number' }] },
-  { cat: 'Lights', id: 'neo_color',    icon: '🎨',  label: 'Set LED Color',  color: '#a855f7', params: [{ key: 'idx', label: 'LED#', default: '0', type: 'number' }, { key: 'color', label: 'colour', default: 'red', type: 'select', options: ['red','green','blue','yellow','cyan','magenta','white','off'] }] },
-  { cat: 'Lights', id: 'neo_rgb',      icon: '🌈',  label: 'Set LED RGB',    color: '#a855f7', params: [{ key: 'idx', label: 'LED#', default: '0', type: 'number' }, { key: 'r', label: 'R', default: '255', type: 'number' }, { key: 'g', label: 'G', default: '0', type: 'number' }, { key: 'b', label: 'B', default: '0', type: 'number' }] },
-  { cat: 'Lights', id: 'neo_all',      icon: '✨',  label: 'Set All LEDs',   color: '#a855f7', params: [{ key: 'r', label: 'R', default: '0', type: 'number' }, { key: 'g', label: 'G', default: '0', type: 'number' }, { key: 'b', label: 'B', default: '0', type: 'number' }] },
-  { cat: 'Lights', id: 'neo_show',     icon: '▶️',  label: 'NeoPixel Show',  color: '#a855f7', params: [] },
-  { cat: 'Lights', id: 'neo_clear',    icon: '🗑️',  label: 'NeoPixel Off',   color: '#a855f7', params: [] },
-  { cat: 'Lights', id: 'neo_bright',   icon: '🔆',  label: 'NeoPixel Brightness', color: '#a855f7', params: [{ key: 'pct', label: '%', default: '50', type: 'number' }] },
-  { cat: 'Lights', id: 'headlight',    icon: '🔦',  label: 'Headlights Color', color: '#a855f7', params: [{ key: 'r', label: 'R', default: '255', type: 'number' }, { key: 'g', label: 'G', default: '255', type: 'number' }, { key: 'b', label: 'B', default: '255', type: 'number' }] },
-  { cat: 'Lights', id: 'headlight_l',  icon: '◀️',  label: 'Left Headlight', color: '#a855f7', params: [{ key: 'r', label: 'R', default: '255', type: 'number' }, { key: 'g', label: 'G', default: '0', type: 'number' }, { key: 'b', label: 'B', default: '0', type: 'number' }] },
-  { cat: 'Lights', id: 'headlight_r',  icon: '▶️',  label: 'Right Headlight',color: '#a855f7', params: [{ key: 'r', label: 'R', default: '0', type: 'number' }, { key: 'g', label: 'G', default: '0', type: 'number' }, { key: 'b', label: 'B', default: '255', type: 'number' }] },
-  { cat: 'Lights', id: 'disp_pixel',   icon: '🔲',  label: 'Set Pixel',      color: '#a855f7', params: [{ key: 'x', label: 'x', default: '2', type: 'number' }, { key: 'y', label: 'y', default: '2', type: 'number' }, { key: 'bright', label: 'brightness', default: '9', type: 'number' }] },
-  { cat: 'Lights', id: 'disp_image',   icon: '🖼️',  label: 'Show Image',     color: '#a855f7', params: [{ key: 'icon', label: 'icon', default: 'HAPPY', type: 'select', options: ['HAPPY','SAD','HEART','SURPRISED','ANGRY','YES','NO','ARROW_N','ARROW_S','ARROW_E','ARROW_W','ASLEEP','CONFUSED','SKULL','DIAMOND','SNAKE','RABBIT','COW','DUCK','TORTOISE','BUTTERFLY','STICKFIGURE','GHOST','SWORD','TARGET','PITCHFORK','PACMAN','ROLLERSKATE','HOUSE','TSHIRT','ROLLERSKATE','CHESSBOARD','XMAS','UMBRELLA'] }] },
-  { cat: 'Lights', id: 'disp_scroll',  icon: '📜',  label: 'Scroll Text',    color: '#a855f7', params: [{ key: 'text', label: 'text', default: 'Hello!', type: 'text' }] },
-  { cat: 'Lights', id: 'disp_show',    icon: '📟',  label: 'Show Value',     color: '#a855f7', params: [{ key: 'val', label: 'value', default: '42', type: 'text' }] },
-  { cat: 'Lights', id: 'disp_clear',   icon: '🧹',  label: 'Clear Screen',   color: '#a855f7', params: [] },
+  { cat: 'Lights', id: 'neo_init',     icon: '💡',  label: 'NeoPixel Setup', color: '#FF3366', params: [{ key: 'pin', label: 'pin', default: '0', type: 'number' }, { key: 'n', label: 'LEDs', default: '8', type: 'number' }] },
+  { cat: 'Lights', id: 'neo_color',    icon: '🎨',  label: 'Set LED Color',  color: '#FF3366', params: [{ key: 'idx', label: 'LED#', default: '0', type: 'number' }, { key: 'color', label: 'colour', default: 'red', type: 'select', options: ['red','green','blue','yellow','cyan','magenta','white','off'] }] },
+  { cat: 'Lights', id: 'neo_rgb',      icon: '🌈',  label: 'Set LED RGB',    color: '#FF3366', params: [{ key: 'idx', label: 'LED#', default: '0', type: 'number' }, { key: 'r', label: 'R', default: '255', type: 'number' }, { key: 'g', label: 'G', default: '0', type: 'number' }, { key: 'b', label: 'B', default: '0', type: 'number' }] },
+  { cat: 'Lights', id: 'neo_all',      icon: '✨',  label: 'Set All LEDs',   color: '#FF3366', params: [{ key: 'r', label: 'R', default: '0', type: 'number' }, { key: 'g', label: 'G', default: '0', type: 'number' }, { key: 'b', label: 'B', default: '0', type: 'number' }] },
+  { cat: 'Lights', id: 'neo_show',     icon: '▶️',  label: 'NeoPixel Show',  color: '#FF3366', params: [] },
+  { cat: 'Lights', id: 'neo_clear',    icon: '🗑️',  label: 'NeoPixel Off',   color: '#FF3366', params: [] },
+  { cat: 'Lights', id: 'neo_bright',   icon: '🔆',  label: 'NeoPixel Brightness', color: '#FF3366', params: [{ key: 'pct', label: '%', default: '50', type: 'number' }] },
+  { cat: 'Lights', id: 'headlight',    icon: '🔦',  label: 'Headlights Color', color: '#FF3366', params: [{ key: 'r', label: 'R', default: '255', type: 'number' }, { key: 'g', label: 'G', default: '255', type: 'number' }, { key: 'b', label: 'B', default: '255', type: 'number' }] },
+  { cat: 'Lights', id: 'headlight_l',  icon: '◀️',  label: 'Left Headlight', color: '#FF3366', params: [{ key: 'r', label: 'R', default: '255', type: 'number' }, { key: 'g', label: 'G', default: '0', type: 'number' }, { key: 'b', label: 'B', default: '0', type: 'number' }] },
+  { cat: 'Lights', id: 'headlight_r',  icon: '▶️',  label: 'Right Headlight',color: '#FF3366', params: [{ key: 'r', label: 'R', default: '0', type: 'number' }, { key: 'g', label: 'G', default: '0', type: 'number' }, { key: 'b', label: 'B', default: '255', type: 'number' }] },
+  { cat: 'Lights', id: 'disp_pixel',   icon: '🔲',  label: 'Set Pixel',      color: '#FF3366', params: [{ key: 'x', label: 'x', default: '2', type: 'number' }, { key: 'y', label: 'y', default: '2', type: 'number' }, { key: 'bright', label: 'brightness', default: '9', type: 'number' }] },
+  { cat: 'Lights', id: 'disp_image',   icon: '🖼️',  label: 'Show Image',     color: '#FF3366', params: [{ key: 'icon', label: 'icon', default: 'HAPPY', type: 'select', options: ['HAPPY','SAD','HEART','SURPRISED','ANGRY','YES','NO','ARROW_N','ARROW_S','ARROW_E','ARROW_W','ASLEEP','CONFUSED','SKULL','DIAMOND','SNAKE','RABBIT','COW','DUCK','TORTOISE','BUTTERFLY','STICKFIGURE','GHOST','SWORD','TARGET','PITCHFORK','PACMAN','ROLLERSKATE','HOUSE','TSHIRT','ROLLERSKATE','CHESSBOARD','XMAS','UMBRELLA'] }] },
+  { cat: 'Lights', id: 'disp_scroll',  icon: '📜',  label: 'Scroll Text',    color: '#FF3366', params: [{ key: 'text', label: 'text', default: 'Hello!', type: 'text' }] },
+  { cat: 'Lights', id: 'disp_show',    icon: '📟',  label: 'Show Value',     color: '#FF3366', params: [{ key: 'val', label: 'value', default: '42', type: 'text' }] },
+  { cat: 'Lights', id: 'disp_clear',   icon: '🧹',  label: 'Clear Screen',   color: '#FF3366', params: [] },
 
   // Sensors extras — line following, sonar read
-  { cat: 'Sensors', id: 'read_line_l', icon: '◀️',  label: 'Read Left Line Sensor', color: '#06b6d4', params: [{ key: 'var', label: 'var', default: 'lineL', type: 'text' }] },
-  { cat: 'Sensors', id: 'read_line_r', icon: '▶️',  label: 'Read Right Line Sensor', color: '#06b6d4', params: [{ key: 'var', label: 'var', default: 'lineR', type: 'text' }] },
-  { cat: 'Sensors', id: 'read_sonar',  icon: '📡',  label: 'Read Sonar (cm) → var',  color: '#06b6d4', params: [{ key: 'var', label: 'var', default: 'dist', type: 'text' }] },
+  { cat: 'Sensors', id: 'read_line_l', icon: '◀️',  label: 'Read Left Line Sensor', color: '#00FFAA', params: [{ key: 'var', label: 'var', default: 'lineL', type: 'text' }] },
+  { cat: 'Sensors', id: 'read_line_r', icon: '▶️',  label: 'Read Right Line Sensor', color: '#00FFAA', params: [{ key: 'var', label: 'var', default: 'lineR', type: 'text' }] },
+  { cat: 'Sensors', id: 'read_sonar',  icon: '📡',  label: 'Read Sonar (cm) → var',  color: '#00FFAA', params: [{ key: 'var', label: 'var', default: 'dist', type: 'text' }] },
 ];
 
 /* ─── Supported robot profiles ─── */
@@ -633,9 +633,9 @@ const MICROBIT_KIT_SETUPS = {
 /* ─── Sim robot type definitions ─── */
 const SIM_ROBOTS = [
   { id: 'rover',    label: 'Rover',     icon: '🚗', color: '#6366f1', desc: 'Wheeled explorer robot' },
-  { id: 'tank',     label: 'Tank Bot',  icon: '🪖', color: '#84cc16', desc: 'Heavy tracked vehicle' },
+  { id: 'tank',     label: 'Tank Bot',  icon: '🪖', color: '#FF10F0', desc: 'Heavy tracked vehicle' },
   { id: 'drone',    label: 'Drone',     icon: '🚁', color: '#22d3ee', desc: 'Flying quadcopter' },
-  { id: 'spider',   label: 'Spider',    icon: '🕷️', color: '#f97316', desc: 'Six-legged walker' },
+  { id: 'spider',   label: 'Spider',    icon: '🕷️', color: '#FFB700', desc: 'Six-legged walker' },
   { id: 'humanoid', label: 'Humanoid',  icon: '🤖', color: '#ec4899', desc: 'Bipedal walking robot' },
   { id: 'arm',      label: 'Robot Arm', icon: '🦾', color: '#f59e0b', desc: 'Articulated arm (fixed base)' },
 ];
@@ -645,7 +645,7 @@ function drawRover(ctx, state) {
   const { ledOn, tick, moving, headlightL, headlightR } = state;
   const wa = (tick || 0) * (moving ? 0.13 : 0);
   const hlL = headlightL ? `rgb(${headlightL.r},${headlightL.g},${headlightL.b})` : '#22d3ee';
-  const hlR = headlightR ? `rgb(${headlightR.r},${headlightR.g},${headlightR.b})` : '#ef4444';
+  const hlR = headlightR ? `rgb(${headlightR.r},${headlightR.g},${headlightR.b})` : '#00B4FF';
   const hlGlow = (c) => c ? (c.r + c.g + c.b > 30) : ledOn;
 
   // Drop shadow ellipse
@@ -871,7 +871,7 @@ function drawTank(ctx, state) {
       ctx.beginPath(); ctx.arc(tx+Math.cos(ta)*7, -12+Math.sin(ta)*7, 1.5, 0, Math.PI*2); ctx.fill();
     }
     const sg2 = ctx.createRadialGradient(tx-3,10,0.8, tx,12,7.5);
-    sg2.addColorStop(0,'#84cc16'); sg2.addColorStop(0.5,'#3a5c0e'); sg2.addColorStop(1,'#0d1a02');
+    sg2.addColorStop(0,'#FF10F0'); sg2.addColorStop(0.5,'#3a5c0e'); sg2.addColorStop(1,'#0d1a02');
     ctx.fillStyle = sg2; ctx.beginPath(); ctx.arc(tx,12,7.5,0,Math.PI*2); ctx.fill();
     ctx.strokeStyle = 'rgba(77,124,15,0.6)'; ctx.lineWidth = 1; ctx.stroke();
     // Specular on top sprocket
@@ -1073,7 +1073,7 @@ function drawDrone(ctx, state) {
     ctx.restore();
 
     // LED status dot
-    const ledColors = ['#ef4444','#22c55e','#22c55e','#ef4444'];
+    const ledColors = ['#00B4FF','#22c55e','#22c55e','#00B4FF'];
     if (ledOn) {
       ctx.save(); ctx.shadowBlur = 8; ctx.shadowColor = '#fbbf24';
       ctx.fillStyle = '#fef08a';
@@ -1265,7 +1265,7 @@ function drawSpider(ctx, state) {
   ctx.shadowBlur = 10; ctx.shadowColor = 'rgba(0,0,0,0.45)';
   const cg = ctx.createRadialGradient(-4,2,1, 1,7,16);
   cg.addColorStop(0,'#fed7aa');
-  cg.addColorStop(0.25,'#f97316');
+  cg.addColorStop(0.25,'#FFB700');
   cg.addColorStop(0.55,'#c2410c');
   cg.addColorStop(0.8,'#7c1d06');
   cg.addColorStop(1,'#280702');
@@ -1752,7 +1752,7 @@ function drawTrack(ctx, trackId) {
     ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2; ctx.setLineDash([]);
     ctx.strokeRect(145, 98, 30, 44);
     // Start marker
-    ctx.fillStyle = '#ef4444'; ctx.beginPath(); ctx.arc(100, 55, 5, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#00B4FF'; ctx.beginPath(); ctx.arc(100, 55, 5, 0, Math.PI*2); ctx.fill();
   }
 
   else if (trackId === 'linefollow') {
@@ -1771,7 +1771,7 @@ function drawTrack(ctx, trackId) {
     // Start dot
     ctx.fillStyle = '#22c55e'; ctx.beginPath(); ctx.arc(30, 120, 8, 0, Math.PI*2); ctx.fill();
     // End dot
-    ctx.fillStyle = '#ef4444'; ctx.beginPath(); ctx.arc(290, 120, 8, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#00B4FF'; ctx.beginPath(); ctx.arc(290, 120, 8, 0, Math.PI*2); ctx.fill();
     // labels
     ctx.fillStyle = '#64748b'; ctx.font = 'bold 10px monospace'; ctx.textAlign = 'center';
     ctx.fillText('START', 30, 108); ctx.fillText('END', 290, 108);
@@ -1816,9 +1816,9 @@ function drawTrack(ctx, trackId) {
     for (let y = 0; y < 240; y += 40) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(320,y); ctx.stroke(); }
     // Obstacles
     const obs = [
-      [100,60,18,'#ef4444'],[200,80,14,'#ef4444'],[80,160,16,'#ef4444'],
-      [240,160,18,'#ef4444'],[160,120,12,'#f97316'],[130,200,14,'#ef4444'],
-      [260,50,10,'#f97316'],[50,100,12,'#dc2626'],[290,190,16,'#ef4444'],
+      [100,60,18,'#00B4FF'],[200,80,14,'#00B4FF'],[80,160,16,'#00B4FF'],
+      [240,160,18,'#00B4FF'],[160,120,12,'#FFB700'],[130,200,14,'#00B4FF'],
+      [260,50,10,'#FFB700'],[50,100,12,'#dc2626'],[290,190,16,'#00B4FF'],
     ];
     obs.forEach(([x,y,r,c]) => {
       const g = ctx.createRadialGradient(x-r*0.3,y-r*0.3,1,x,y,r);
@@ -1888,7 +1888,7 @@ function drawTrack(ctx, trackId) {
     ctx.font='bold 9px monospace'; ctx.textAlign='center';
     ctx.fillStyle='#22c55e'; ctx.fillText('SLOW',65,235);
     ctx.fillStyle='#f59e0b'; ctx.fillText('MEDIUM',160,235);
-    ctx.fillStyle='#ef4444'; ctx.fillText('FAST',255,235);
+    ctx.fillStyle='#00B4FF'; ctx.fillText('FAST',255,235);
     // Ramps (trapezoid shapes)
     const ramps = [[50,120,70,20,'#6b7280'],[180,80,80,20,'#6b7280'],[220,160,70,20,'#6b7280']];
     ramps.forEach(([x,y,w,h,c]) => {
@@ -1900,7 +1900,7 @@ function drawTrack(ctx, trackId) {
     // Speed limit signs
     [[100,30,'30'],[200,30,'60'],[300,30,'90']].forEach(([x,y,v]) => {
       ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(x,y,9,0,Math.PI*2); ctx.fill();
-      ctx.strokeStyle='#ef4444'; ctx.lineWidth=2; ctx.stroke();
+      ctx.strokeStyle='#00B4FF'; ctx.lineWidth=2; ctx.stroke();
       ctx.fillStyle='#000'; ctx.font='bold 7px monospace'; ctx.textAlign='center'; ctx.fillText(v,x,y+3);
     });
     // Kerb lines
@@ -3452,7 +3452,7 @@ export default function RobotPanel() {
           </div>
 
           {connected
-            ? <button style={s.btn('#ef4444')} onClick={disconnect}>Disconnect</button>
+            ? <button style={s.btn('#00B4FF')} onClick={disconnect}>Disconnect</button>
             : robotType === 'microbit'
               ? <span style={{ display:'flex', gap:6 }}>
                   <button style={s.btn('#6366f1')} onClick={connect} disabled={connecting} title="Connect via USB cable">
@@ -3927,7 +3927,7 @@ export default function RobotPanel() {
                     style={{
                       position: 'absolute', top: 3, right: 3, width: 20, height: 20,
                       borderRadius: '50%', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700,
-                      background: hoveredBlock === block.uid ? '#ef4444' : 'transparent',
+                      background: hoveredBlock === block.uid ? '#00B4FF' : 'transparent',
                       color: hoveredBlock === block.uid ? '#fff' : 'transparent',
                       transition: 'all 0.15s', display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}
@@ -3941,7 +3941,7 @@ export default function RobotPanel() {
 
           <div style={s.runBar}>
             {running
-              ? <button style={s.btn('#ef4444')} onClick={stopProgram}>⏹ Stop</button>
+              ? <button style={s.btn('#00B4FF')} onClick={stopProgram}>⏹ Stop</button>
               : <button style={{ ...s.btn('#22c55e'), opacity: program.length === 0 ? 0.4 : 1 }} onClick={runProgram} disabled={program.length === 0}>
                   ▶ Run
                 </button>
@@ -4097,7 +4097,7 @@ export default function RobotPanel() {
                       style={{
                         width: 56, height: 56, borderRadius: '50%', border: 'none',
                         background: running
-                          ? 'linear-gradient(135deg,#ef4444,#b91c1c)'
+                          ? 'linear-gradient(135deg,#00B4FF,#b91c1c)'
                           : 'linear-gradient(135deg,#22c55e,#16a34a)',
                         color: '#fff', fontSize: 24, cursor: 'pointer',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -4144,13 +4144,13 @@ export default function RobotPanel() {
                     <div /><div />
                     {/* Row 2: turn-left, strafe-left, stop, strafe-right, turn-right */}
                     <button title="Turn Left" style={{ ...s.btn('#3b82f6'), justifyContent: 'center', padding: '7px 0' }} onClick={() => { robotRef.current?.execute({ id: 'left', params: { degrees: 45 } }); if (connected) sendRaw(profile.buildCmd('left', { degrees: 45 })); }}>↺</button>
-                    <button title="Move Left" style={{ ...s.btn('#06b6d4'), justifyContent: 'center', padding: '7px 0' }} onClick={() => robotRef.current?.execute({ id: 'move_left', params: { amount: 40 } })}>⬅️</button>
+                    <button title="Move Left" style={{ ...s.btn('#00FFAA'), justifyContent: 'center', padding: '7px 0' }} onClick={() => robotRef.current?.execute({ id: 'move_left', params: { amount: 40 } })}>⬅️</button>
                     <button title="Stop" style={{ ...s.btn('#f59e0b'), justifyContent: 'center', padding: '7px 0' }} onClick={() => { if (connected) sendRaw(profile.buildCmd('stop', {})); }}>⏹</button>
-                    <button title="Move Right" style={{ ...s.btn('#06b6d4'), justifyContent: 'center', padding: '7px 0' }} onClick={() => robotRef.current?.execute({ id: 'move_right', params: { amount: 40 } })}>➡️</button>
-                    <button title="Turn Right" style={{ ...s.btn('#a855f7'), justifyContent: 'center', padding: '7px 0' }} onClick={() => { robotRef.current?.execute({ id: 'right', params: { degrees: 45 } }); if (connected) sendRaw(profile.buildCmd('right', { degrees: 45 })); }}>↻</button>
+                    <button title="Move Right" style={{ ...s.btn('#00FFAA'), justifyContent: 'center', padding: '7px 0' }} onClick={() => robotRef.current?.execute({ id: 'move_right', params: { amount: 40 } })}>➡️</button>
+                    <button title="Turn Right" style={{ ...s.btn('#FF3366'), justifyContent: 'center', padding: '7px 0' }} onClick={() => { robotRef.current?.execute({ id: 'right', params: { degrees: 45 } }); if (connected) sendRaw(profile.buildCmd('right', { degrees: 45 })); }}>↻</button>
                     {/* Row 3: empty, empty, down, empty, empty */}
                     <div /><div />
-                    <button title="Backward" style={{ ...s.btn('#ef4444'), justifyContent: 'center', padding: '7px 0' }} onClick={() => { robotRef.current?.execute({ id: 'back', params: { amount: 40 } }); if (connected) sendRaw(profile.buildCmd('back', { amount: 40 })); }}>⬇️</button>
+                    <button title="Backward" style={{ ...s.btn('#00B4FF'), justifyContent: 'center', padding: '7px 0' }} onClick={() => { robotRef.current?.execute({ id: 'back', params: { amount: 40 } }); if (connected) sendRaw(profile.buildCmd('back', { amount: 40 })); }}>⬇️</button>
                     <div /><div />
                   </div>
                   <div style={{ textAlign: 'center', fontSize: 10, color: 'var(--text-muted)', marginTop: 5 }}>
