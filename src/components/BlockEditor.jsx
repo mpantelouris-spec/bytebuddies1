@@ -356,41 +356,42 @@ function BlockShape({ color, hat, children, isC, innerBlocks, onAddInside, param
       {/* top slot shadow (female connector) */}
       {!hat && (
         <div style={{ position: 'absolute', top: -NUB_H, left: NUB_X, width: NUB_W, height: NUB_H,
-          background: 'rgba(0,0,0,0.35)', borderRadius: '4px 4px 0 0', zIndex: 0 }} />
+          background: '#f59e0b', borderRadius: '4px 4px 0 0', zIndex: 0 }} />
       )}
 
       {/* main block body */}
       <div style={{
-        background: `linear-gradient(180deg, ${color} 0%, ${darken(color, 20)} 100%)`,
-        borderRadius: hat ? '16px 16px 4px 4px' : '4px',
-        padding: '9px 36px 9px 14px',
+        background: '#f59e0b',
+        borderRadius: hat ? '14px 14px 4px 4px' : '10px',
+        padding: '10px 36px 10px 14px',
         display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap',
         color: '#fff', fontWeight: 700, fontSize: 13,
-        boxShadow: `0 3px 0 ${dark}, inset 0 1px 0 rgba(255,255,255,0.25)`,
+        boxShadow: '0 4px 6px rgba(0,0,0,0.15)',
         position: 'relative', zIndex: 1, minHeight: 36,
         cursor: 'grab',
       }}>
         {children}
         <button onClick={() => onDelete(blockId)}
           style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
-            background: 'rgba(0,0,0,0.25)', border: 'none', borderRadius: 4,
-            color: 'rgba(255,255,255,0.7)', cursor: 'pointer', fontSize: 11,
-            width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: 'rgba(255,255,255,0.3)', border: 'none', borderRadius: 6,
+            color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 'bold',
+            width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            hover: { background: 'rgba(255,255,255,0.5)' }
           }}>✕</button>
       </div>
 
       {/* C-block mouth */}
       {isC && (
         <div style={{
-          marginLeft: NUB_X + 4, borderLeft: `4px solid ${dark}`,
-          borderBottom: `4px solid ${dark}`, borderRadius: '0 0 0 4px',
+          marginLeft: NUB_X + 4, borderLeft: `4px solid #f59e0b`,
+          borderBottom: `4px solid #f59e0b`, borderRadius: '0 0 0 4px',
           minHeight: 32, paddingLeft: 8, paddingTop: 4, paddingBottom: 4,
-          background: 'rgba(0,0,0,0.15)',
+          background: 'rgba(245, 158, 11, 0.08)',
         }}>
           {innerBlocks}
           <button onClick={onAddInside} style={{
-            fontSize: 11, color, background: `${color}20`,
-            border: `1.5px dashed ${color}80`, borderRadius: 6,
+            fontSize: 11, color: '#f59e0b', background: 'rgba(245, 158, 11, 0.15)',
+            border: `1.5px dashed rgba(245, 158, 11, 0.5)`, borderRadius: 6,
             padding: '3px 12px', cursor: 'pointer', marginTop: 4, display: 'block',
           }}>+ block inside</button>
         </div>
