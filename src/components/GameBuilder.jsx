@@ -1135,9 +1135,6 @@ loadImages(function(){
                   title="Delete block"
                 >×</button>
 
-                <div style={{ position: 'absolute', bottom: -2, left: 12, fontSize: 9, color: 'var(--text-muted)' }}>
-                  {block.category}
-                </div>
               </div>
             );
             })}

@@ -198,14 +198,21 @@ function BlockPalette({ onAdd }) {
       {/* Blocks in selected category */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '6px 6px', display: 'flex', flexDirection: 'column', gap: 4 }}>
         {blocks.map(([type, def]) => (
-          <button key={type} onClick={() => onAdd(type)} style={{
-            padding: '6px 8px', borderRadius: 8, border: `1.5px solid ${cat.color}50`,
-            background: `${cat.color}18`, color: 'var(--text-primary)', cursor: 'pointer',
-            textAlign: 'left', fontSize: 11, fontWeight: 600, lineHeight: 1.4,
-          }}
-          onMouseEnter={e => e.currentTarget.style.background = `${cat.color}35`}
-          onMouseLeave={e => e.currentTarget.style.background = `${cat.color}18`}
-          >{def.icon} {def.label}</button>
+          <button
+            key={type}
+            className="palette-block"
+            data-category={activeCat}
+            onClick={() => onAdd(type)}
+            style={{
+              textAlign: 'left',
+              fontSize: 12,
+              lineHeight: 1.35,
+              margin: '0 0 12px 0',
+              padding: '8px 12px',
+            }}
+          >
+            {def.icon} {def.label}
+          </button>
         ))}
       </div>
     </div>
@@ -443,9 +450,6 @@ function BlockCanvas({ code, onCodeChange, onBlockLineMap, activeCodeLine, onNav
               title="Delete block"
             >×</button>
 
-            <div style={{ position: 'absolute', bottom: -2, left: 12, fontSize: 9, color: 'var(--text-muted)' }}>
-              {block.category}
-            </div>
           </div>
         );
       })}

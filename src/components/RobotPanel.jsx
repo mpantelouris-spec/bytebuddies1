@@ -3874,11 +3874,6 @@ export default function RobotPanel() {
                       ▶ Running
                     </div>
                   )}
-                  {/* Block notch top */}
-                  <div style={{ position: 'absolute', top: -6, left: 16, width: 24, height: 6, background: `${block.color}`, borderRadius: '4px 4px 0 0' }} />
-                  {/* Block notch bottom */}
-                  <div style={{ position: 'absolute', bottom: -6, left: 16, width: 24, height: 6, background: `${block.color}`, borderRadius: '0 0 4px 4px' }} />
-
                   {/* Step order badge */}
                   <span style={{
                     position: 'absolute', top: -10, left: -8,
@@ -3889,7 +3884,7 @@ export default function RobotPanel() {
                   }}>{stepNum}</span>
 
                   <span style={{ fontSize: 16 }}>{block.icon}</span>
-                  <span style={{ color: block.color, marginRight: 2 }}>{block.label}</span>
+                  <span style={{ color: '#fff', marginRight: 2 }}>{block.label}</span>
 
                   {/* Inline param inputs */}
                   {cmdDef?.params.map(p => (
@@ -3900,7 +3895,7 @@ export default function RobotPanel() {
                           onChange={e => updateParam(block.uid, p.key, e.target.value)}
                           onMouseDown={e => e.stopPropagation()}
                           onClick={e => e.stopPropagation()}
-                          style={{ background: 'rgba(0,0,0,0.35)', border: `1px solid ${block.color}88`, borderRadius: 4, color: '#fff', fontSize: 12, fontWeight: 700, padding: '1px 4px', fontFamily: 'var(--font-mono)' }}
+                          style={{ background: 'rgba(138,83,8,0.45)', border: '1px solid rgba(255,219,157,0.75)', borderRadius: 6, color: '#fff', fontSize: 12, fontWeight: 700, padding: '1px 4px', fontFamily: 'var(--font-mono)' }}
                         >
                           {p.options.map(o => <option key={o} value={o}>{o}</option>)}
                         </select>
@@ -3911,15 +3906,12 @@ export default function RobotPanel() {
                           onChange={e => updateParam(block.uid, p.key, e.target.value)}
                           onMouseDown={e => e.stopPropagation()}
                           onClick={e => e.stopPropagation()}
-                          style={{ background: 'rgba(0,0,0,0.35)', border: `1px solid ${block.color}88`, borderRadius: 4, color: '#fff', fontSize: 12, fontWeight: 700, fontFamily: 'var(--font-mono)', padding: '1px 5px', width: p.type === 'text' ? 64 : 48, outline: 'none', margin: '0 2px', verticalAlign: 'middle' }}
+                          style={{ background: 'rgba(138,83,8,0.45)', border: '1px solid rgba(255,219,157,0.75)', borderRadius: 6, color: '#fff', fontSize: 12, fontWeight: 700, fontFamily: 'var(--font-mono)', padding: '1px 5px', width: p.type === 'text' ? 64 : 48, outline: 'none', margin: '0 2px', verticalAlign: 'middle' }}
                         />
                       )}
-                      <span style={{ fontSize: 10, color: `${block.color}cc` }}>{p.label}</span>
+                      <span style={{ fontSize: 10, color: 'rgba(255, 248, 235, 0.9)' }}>{p.label}</span>
                     </span>
                   ))}
-
-                  {/* Category label */}
-                  <span style={{ position: 'absolute', bottom: 1, left: 12, fontSize: 9, color: 'var(--text-muted)' }}>{block.cat}</span>
 
                   {/* Delete button */}
                   <button
