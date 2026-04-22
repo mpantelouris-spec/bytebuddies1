@@ -362,16 +362,10 @@ const NUB_W = 24, NUB_X = 18, NUB_H = 8;
 function BlockShape({ color, hat, children, isC, innerBlocks, onAddInside, paramsByKey, onParam, onDelete, blockId }) {
   const dark = darken(color, 50);
   return (
-    <div data-hat={hat ? 'true' : undefined} style={{ position: 'relative', marginTop: hat ? 4 : NUB_H + 2, userSelect: 'none' }}>
-      {/* top slot shadow (female connector) */}
-      {!hat && (
-        <div style={{ position: 'absolute', top: -NUB_H, left: NUB_X, width: NUB_W, height: NUB_H,
-          background: '#f59e0b', borderRadius: '4px 4px 0 0', zIndex: 0 }} />
-      )}
-
+    <div data-hat={hat ? 'true' : undefined} style={{ position: 'relative', marginTop: 4, userSelect: 'none' }}>
       {/* main block body */}
       <div style={{
-        background: '#f59e0b',
+        background: `linear-gradient(180deg, ${darken(color, -10)} 0%, ${color} 100%)`,
         borderRadius: hat ? '14px 14px 4px 4px' : '10px',
         padding: '10px 36px 10px 14px',
         display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap',
@@ -393,15 +387,15 @@ function BlockShape({ color, hat, children, isC, innerBlocks, onAddInside, param
       {/* C-block mouth */}
       {isC && (
         <div style={{
-          marginLeft: NUB_X + 4, borderLeft: `4px solid #f59e0b`,
-          borderBottom: `4px solid #f59e0b`, borderRadius: '0 0 0 4px',
+          marginLeft: NUB_X + 4, borderLeft: `4px solid ${color}`,
+          borderBottom: `4px solid ${color}`, borderRadius: '0 0 0 4px',
           minHeight: 32, paddingLeft: 8, paddingTop: 4, paddingBottom: 4,
-          background: 'rgba(245, 158, 11, 0.08)',
+          background: `${color}18`,
         }}>
           {innerBlocks}
           <button onClick={onAddInside} style={{
-            fontSize: 11, color: '#f59e0b', background: 'rgba(245, 158, 11, 0.15)',
-            border: `1.5px dashed rgba(245, 158, 11, 0.5)`, borderRadius: 6,
+            fontSize: 11, color: color, background: `${color}20`,
+            border: `1.5px dashed ${color}66`, borderRadius: 6,
             padding: '3px 12px', cursor: 'pointer', marginTop: 4, display: 'block',
           }}>+ block inside</button>
         </div>
@@ -421,34 +415,27 @@ function BlockShape({ color, hat, children, isC, innerBlocks, onAddInside, param
 }
 
 // ── WorkspaceBlock (renders a block instance) ────────────────────────
+import BlockShapeSVG from './BlockShapeSVG';
+
 function WorkspaceBlock({ block, catMap, palMap, onParamChange, onDelete, onAddInside }) {
   const catId = palMap[block.type]?.catId;
-  const cat = catMap[catId] || { color: '#6366f1' };
+  const cat = catMap[catId] || { color: '#6366f1', id: 'motion' };
   const def = palMap[block.type];
   if (!def) return null;
 
+  // Compose label from parts (string only for now)
   const params = block.params || {};
-
-  const content = (def.parts || []).map((part, i) => {
-    if (typeof part === 'string') return <span key={i} style={{ whiteSpace: 'nowrap' }}>{part}</span>;
-    return (
-      <PI key={i} val={params[part.k] ?? part.v} t={part.t} w={part.w} color={cat.color}
-        onChange={v => onParamChange(block.id, part.k, v)} />
-    );
-  });
+  const label = (def.parts || []).map(part => typeof part === 'string' ? part : '').join(' ');
 
   return (
-    <BlockShape
-      color={cat.color} hat={def.hat} isC={def.isC} blockId={block.id}
-      onDelete={onDelete}
-      onAddInside={() => onAddInside(block.id)}
-      innerBlocks={(block.children || []).map(child => (
-        <WorkspaceBlock key={child.id} block={child} catMap={catMap} palMap={palMap}
-          onParamChange={onParamChange} onDelete={onDelete} onAddInside={onAddInside} />
-      ))}
-    >
-      {content}
-    </BlockShape>
+    <BlockShapeSVG
+      category={cat.id}
+      label={label || def.label || def.type}
+      icon={def.icon}
+      width={180}
+      height={44}
+      style={{ margin: 8 }}
+    />
   );
 }
 

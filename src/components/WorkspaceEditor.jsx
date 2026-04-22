@@ -103,6 +103,7 @@ function ParamInput({ value, onChange, width, color }) {
 }
 
 function BlockContent({ block, onParamChange }) {
+  block = { ...block, icon: '' };
   const p = block.params || {};
   const PI = (paramKey, w) => (
     <ParamInput
@@ -237,6 +238,22 @@ function BlockCanvas({ code, onCodeChange, onBlockLineMap, activeCodeLine, onNav
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [hoveredBlock, setHoveredBlock] = useState(null);
   const [selectedBlock, setSelectedBlock] = useState(null);
+  const STACK_X = 40;
+  const STACK_START_Y = 40;
+  const STACK_GAP = 56;
+  const normalizeStack = (list) =>
+    [...list]
+      .sort((a, b) => a.y - b.y)
+      .map((b, i) => ({ ...b, x: STACK_X, y: STACK_START_Y + (i * STACK_GAP) }));
+  const reorderStackForDrop = (list, movingId) => {
+    const moving = list.find(b => b.id === movingId);
+    if (!moving) return normalizeStack(list);
+    const ordered = list.filter(b => b.id !== movingId).sort((a, b) => a.y - b.y);
+    const rawIndex = Math.round((moving.y - STACK_START_Y) / STACK_GAP);
+    const insertIndex = Math.max(0, Math.min(ordered.length, rawIndex));
+    ordered.splice(insertIndex, 0, moving);
+    return ordered.map((b, i) => ({ ...b, x: STACK_X, y: STACK_START_Y + (i * STACK_GAP) }));
+  };
 
   /* Generate code from blocks + build blockLineMap */
   useEffect(() => {
@@ -292,9 +309,12 @@ function BlockCanvas({ code, onCodeChange, onBlockLineMap, activeCodeLine, onNav
     const def = BLOCK_DEFS[type];
     if (!def) return;
     const id = Date.now();
-    const newBlock = { id, type, ...def, params: { ...def.params }, x: 40 + Math.random() * 60, y: 40 + (blocks.length * 65) % 400, connected: [] };
+    const lastBlock = blocks.length ? [...blocks].sort((a, b) => b.y - a.y)[0] : null;
+    const nextX = STACK_X;
+    const nextY = lastBlock ? lastBlock.y + STACK_GAP : STACK_START_Y;
+    const newBlock = { id, type, ...def, params: { ...def.params }, x: nextX, y: nextY, connected: [] };
     setBlocks(prev => [...prev, newBlock]);
-  }, [blocks.length]);
+  }, [blocks]);
 
   const deleteBlock = useCallback((blockId) => {
     setBlocks(prev => {
@@ -327,8 +347,26 @@ function BlockCanvas({ code, onCodeChange, onBlockLineMap, activeCodeLine, onNav
   }, [dragging, dragOffset]);
 
   const handleMouseUp = useCallback(() => {
+    if (!dragging) return;
+    setBlocks(prev => {
+      const moving = prev.find(b => b.id === dragging);
+      if (!moving) return prev;
+      const snapTarget = prev
+        .filter(b => b.id !== dragging)
+        .map(b => ({
+          block: b,
+          dx: Math.abs(b.x - moving.x),
+          dy: Math.abs((b.y + STACK_GAP) - moving.y),
+        }))
+        .filter(s => s.dx <= 80 && s.dy <= 50)
+        .sort((a, b) => (a.dx + a.dy) - (b.dx + b.dy))[0]?.block;
+      if (!snapTarget) return prev;
+      return prev.map(b =>
+        b.id === dragging ? { ...b, x: snapTarget.x, y: snapTarget.y + STACK_GAP } : b
+      );
+    });
     setDragging(null);
-  }, []);
+  }, [dragging]);
 
   const handleDrop = (e) => {
     e.preventDefault();
@@ -336,7 +374,12 @@ function BlockCanvas({ code, onCodeChange, onBlockLineMap, activeCodeLine, onNav
     if (!text || !canvasRef.current) return;
     const rect = canvasRef.current.getBoundingClientRect();
     const newBlock = createBlockFromDrop(text, e.clientX - rect.left - 80, e.clientY - rect.top - 20);
-    setBlocks(prev => [...prev, newBlock]);
+    setBlocks(prev => {
+      const lastBlock = prev.length ? [...prev].sort((a, b) => b.y - a.y)[0] : null;
+      const x = lastBlock ? lastBlock.x : STACK_X;
+      const y = lastBlock ? lastBlock.y + STACK_GAP : STACK_START_Y;
+      return [...prev, { ...newBlock, x, y }];
+    });
   };
 
   // Keyboard navigation for blocks

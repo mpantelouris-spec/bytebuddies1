@@ -3326,17 +3326,44 @@ export default function RobotPanel() {
   /* ─── Program: array of block objects with x,y positions ─── */
   // program items: { uid, id, label, icon, color, cat, params, x, y }
 
-  const createBlock = (cmd, x = 60, y = 60) => {
+  const createBlock = (cmd, x = 60, y = 40) => {
     const params = {};
     cmd.params.forEach(p => { params[p.key] = p.default; });
-    // Stack below existing blocks
-    const maxY = program.reduce((m, b) => Math.max(m, b.y), 0);
-    return { uid: Date.now() + Math.random(), id: cmd.id, label: cmd.label, icon: cmd.icon, color: cmd.color, cat: cmd.cat, params, x, y: program.length ? maxY + 52 : 40 };
+    return { uid: Date.now() + Math.random(), id: cmd.id, label: cmd.label, icon: cmd.icon, color: cmd.color, cat: cmd.cat, params, x, y };
   };
 
-  const addBlock = (cmd) => setProgram(prev => [...prev, createBlock(cmd)]);
+  const STACK_X = 60;
+  const STACK_START_Y = 40;
+  const STACK_GAP = 56;
+  const normalizeProgramStack = (blocks) =>
+    [...blocks]
+      .sort((a, b) => a.y - b.y)
+      .map((b, i) => ({ ...b, x: STACK_X, y: STACK_START_Y + (i * STACK_GAP) }));
+  const reorderProgramForDrop = (blocks, movingUid) => {
+    const moving = blocks.find(b => b.uid === movingUid);
+    if (!moving) return normalizeProgramStack(blocks);
+    const ordered = blocks.filter(b => b.uid !== movingUid).sort((a, b) => a.y - b.y);
+    const rawIndex = Math.round((moving.y - STACK_START_Y) / STACK_GAP);
+    const insertIndex = Math.max(0, Math.min(ordered.length, rawIndex));
+    ordered.splice(insertIndex, 0, moving);
+    return ordered.map((b, i) => ({ ...b, x: STACK_X, y: STACK_START_Y + (i * STACK_GAP) }));
+  };
 
-  const removeBlock = (uid) => { setProgram(prev => prev.filter(b => b.uid !== uid)); if (selectedBlock === uid) setSelectedBlock(null); };
+  const getStackPlacement = (blocks) => {
+    if (!blocks.length) return { x: STACK_X, y: STACK_START_Y };
+    const bottomBlock = [...blocks].sort((a, b) => b.y - a.y)[0];
+    return { x: STACK_X, y: bottomBlock.y + STACK_GAP };
+  };
+
+  const addBlock = (cmd) => setProgram(prev => {
+    const { x, y } = getStackPlacement(prev);
+    return [...prev, createBlock(cmd, x, y)];
+  });
+
+  const removeBlock = (uid) => {
+    setProgram(prev => prev.filter(b => b.uid !== uid));
+    if (selectedBlock === uid) setSelectedBlock(null);
+  };
 
   const updateParam = (uid, key, val) => setProgram(prev => prev.map(b => b.uid === uid ? { ...b, params: { ...b.params, [key]: val } } : b));
 
@@ -3358,20 +3385,38 @@ export default function RobotPanel() {
     setProgram(prev => prev.map(b => b.uid === draggingBlock ? { ...b, x, y } : b));
   }, [draggingBlock, dragOffset]);
 
-  const handleCanvasMouseUp = () => setDraggingBlock(null);
+  const handleCanvasMouseUp = () => {
+    if (!draggingBlock) return;
+    setProgram(prev => {
+      const moving = prev.find(b => b.uid === draggingBlock);
+      if (!moving) return prev;
+      const snap = prev
+        .filter(b => b.uid !== draggingBlock)
+        .map(b => ({
+          block: b,
+          dx: Math.abs(b.x - moving.x),
+          dy: Math.abs((b.y + STACK_GAP) - moving.y),
+        }))
+        .filter(s => s.dx <= 80 && s.dy <= 50)
+        .sort((a, b) => (a.dx + a.dy) - (b.dx + b.dy))[0]?.block;
+      if (!snap) return prev;
+      return prev.map(b =>
+        b.uid === draggingBlock ? { ...b, x: snap.x, y: snap.y + STACK_GAP } : b
+      );
+    });
+    setDraggingBlock(null);
+  };
 
   /* ─── Drop from sidebar ─── */
   const handleCanvasDrop = (e) => {
     e.preventDefault();
     const cmdId = e.dataTransfer.getData('robot-cmd');
     const cmd = ROBOT_COMMANDS.find(c => c.id === cmdId);
-    if (!cmd || !canvasAreaRef.current) return;
-    const rect = canvasAreaRef.current.getBoundingClientRect();
-    const x = Math.max(0, e.clientX - rect.left - 80);
-    const y = Math.max(0, e.clientY - rect.top - 20);
-    const params = {};
-    cmd.params.forEach(p => { params[p.key] = p.default; });
-    setProgram(prev => [...prev, { uid: Date.now() + Math.random(), id: cmd.id, label: cmd.label, icon: cmd.icon, color: cmd.color, cat: cmd.cat, params, x, y }]);
+    if (!cmd) return;
+    setProgram(prev => {
+      const { x, y } = getStackPlacement(prev);
+      return [...prev, createBlock(cmd, x, y)];
+    });
   };
 
   /* ─── Run program uses blocks sorted by Y ─── */
@@ -3693,7 +3738,7 @@ export default function RobotPanel() {
                   x: 60, y: 30 + i * 60,
                 };
               }).filter(Boolean);
-              setProgram(newBlocks);
+              setProgram(normalizeProgramStack(newBlocks));
               setShowRecipe(false);
             };
 
@@ -3802,20 +3847,6 @@ export default function RobotPanel() {
                   );
                 });
               })()}
-              {/* Connection lines */}
-              {sortedProgram.map((block, i) => {
-                if (i === 0) return null;
-                const prev = sortedProgram[i - 1];
-                const x1 = prev.x + 90, y1 = prev.y + 36;
-                const x2 = block.x + 90, y2 = block.y;
-                return (
-                  <path key={block.uid}
-                    d={`M${x1},${y1} C${x1},${y1 + 20} ${x2},${y2 - 20} ${x2},${y2}`}
-                    fill="none" stroke={block.color} strokeWidth="2"
-                    strokeDasharray="5,4" opacity="0.5"
-                  />
-                );
-              })}
             </svg>
 
             {program.length === 0 && (
@@ -3862,27 +3893,6 @@ export default function RobotPanel() {
                     if (e.key === 'ArrowRight') setProgram(p => p.map(b => b.uid === block.uid ? { ...b, x: b.x + 8 } : b));
                   }}
                 >
-                  {/* Active block "Running" badge */}
-                  {isActive && (
-                    <div style={{
-                      position: 'absolute', top: -18, left: '50%', transform: 'translateX(-50%)',
-                      background: '#fbbf24', color: '#000', fontSize: 10, fontWeight: 800,
-                      borderRadius: 999, padding: '2px 8px', whiteSpace: 'nowrap',
-                      animation: 'cv-running-pulse 0.8s ease-in-out infinite alternate',
-                      zIndex: 101,
-                    }}>
-                      ▶ Running
-                    </div>
-                  )}
-                  {/* Step order badge */}
-                  <span style={{
-                    position: 'absolute', top: -10, left: -8,
-                    background: block.color, color: '#fff',
-                    borderRadius: '50%', width: 18, height: 18,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 10, fontWeight: 800, boxShadow: '0 1px 4px rgba(0,0,0,0.4)',
-                  }}>{stepNum}</span>
-
                   <span style={{ fontSize: 16 }}>{block.icon}</span>
                   <span style={{ color: '#fff', marginRight: 2 }}>{block.label}</span>
 

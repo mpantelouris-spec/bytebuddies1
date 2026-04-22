@@ -203,6 +203,7 @@ export function ParamInput({ value, onChange, width, color }) {
 
 /* ─── Render block content with inline inputs ─── */
 export function BlockContent({ block, onParamChange }) {
+  block = { ...block, icon: '' };
   const p = block.params || {};
   const PI = (paramKey, w) => (
     <ParamInput

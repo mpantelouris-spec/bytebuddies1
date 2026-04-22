@@ -939,6 +939,23 @@ loadImages(function(){
   };
 
   /* ─── Block editing for selected sprite ─── */
+  const STACK_X = 30;
+  const STACK_START_Y = 20;
+  const STACK_GAP = 56;
+  const normalizeStack = (blocks) =>
+    [...blocks]
+      .sort((a, b) => a.y - b.y)
+      .map((b, i) => ({ ...b, x: STACK_X, y: STACK_START_Y + (i * STACK_GAP) }));
+  const reorderStackForDrop = (blocks, movingId) => {
+    const moving = blocks.find(b => b.id === movingId);
+    if (!moving) return normalizeStack(blocks);
+    const ordered = blocks.filter(b => b.id !== movingId).sort((a, b) => a.y - b.y);
+    const rawIndex = Math.round((moving.y - STACK_START_Y) / STACK_GAP);
+    const insertIndex = Math.max(0, Math.min(ordered.length, rawIndex));
+    ordered.splice(insertIndex, 0, moving);
+    return ordered.map((b, i) => ({ ...b, x: STACK_X, y: STACK_START_Y + (i * STACK_GAP) }));
+  };
+
   const handleBlockParamChange = useCallback((blockId, paramKey, value) => {
     setSprites(prev => prev.map(s => {
       if (s.id !== selected) return s;
@@ -971,17 +988,43 @@ loadImages(function(){
     }));
   }, [draggingBlock, blockDragOffset, selected]);
 
-  const handleBlockMouseUp = useCallback(() => { setDraggingBlock(null); }, []);
+  const handleBlockMouseUp = useCallback(() => {
+    if (!draggingBlock) return;
+    setSprites(prev => prev.map(s => {
+      if (s.id !== selected) return s;
+      const moving = s.blocks.find(b => b.id === draggingBlock);
+      if (!moving) return s;
+      const snap = s.blocks
+        .filter(b => b.id !== draggingBlock)
+        .map(b => ({
+          block: b,
+          dx: Math.abs(b.x - moving.x),
+          dy: Math.abs((b.y + STACK_GAP) - moving.y),
+        }))
+        .filter(t => t.dx <= 80 && t.dy <= 50)
+        .sort((a, b) => (a.dx + a.dy) - (b.dx + b.dy))[0]?.block;
+      if (!snap) return s;
+      return {
+        ...s,
+        blocks: s.blocks.map(b =>
+          b.id === draggingBlock ? { ...b, x: snap.x, y: snap.y + STACK_GAP } : b
+        ),
+      };
+    }));
+    setDraggingBlock(null);
+  }, [draggingBlock, selected]);
 
   const handleBlockDrop = (e) => {
     e.preventDefault();
     const text = e.dataTransfer.getData('text/plain');
     if (!text || !blockAreaRef.current) return;
-    const rect = blockAreaRef.current.getBoundingClientRect();
-    const newBlock = createBlockFromDrop(text, e.clientX - rect.left - 80, e.clientY - rect.top - 20);
+    const newBlock = createBlockFromDrop(text, 30, 20);
     setSprites(prev => prev.map(s => {
       if (s.id !== selected) return s;
-      return { ...s, blocks: [...s.blocks, newBlock] };
+      const lastBlock = s.blocks.length ? [...s.blocks].sort((a, b) => b.y - a.y)[0] : null;
+      const x = lastBlock ? lastBlock.x : STACK_X;
+      const y = lastBlock ? lastBlock.y + STACK_GAP : STACK_START_Y;
+      return { ...s, blocks: [...s.blocks, { ...newBlock, x, y }] };
     }));
   };
 

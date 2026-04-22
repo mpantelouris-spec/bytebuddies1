@@ -1,7 +1,7 @@
 :root {
-  --bb-block-orange: #f59e0b;
-  --bb-block-orange-hi: #fbbf24;
-  --bb-block-orange-shadow: #d97706;
+  --bb-block-base: #f59e0b;
+  --bb-block-hi: #fbbf24;
+  --bb-block-shadow: #d97706;
 }
 
 div.block,
@@ -21,8 +21,8 @@ div.palette-block {
   user-select: none !important;
   cursor: grab !important;
   transition: transform 0.1s ease, box-shadow 0.1s ease !important;
-  background: linear-gradient(180deg, var(--bb-block-orange-hi), var(--bb-block-orange)) !important;
-  box-shadow: 0 3px 0 var(--bb-block-orange-shadow), 0 4px 10px rgba(0, 0, 0, 0.35) !important;
+  background: linear-gradient(180deg, var(--bb-block-hi), var(--bb-block-base)) !important;
+  box-shadow: 0 3px 0 var(--bb-block-shadow), 0 4px 10px rgba(0, 0, 0, 0.35) !important;
 }
 
 div.palette-block {
@@ -30,29 +30,35 @@ div.palette-block {
   margin: 4px 0 !important;
 }
 
-div.block::before,
-div.palette-block::before {
-  content: "" !important;
-  position: absolute !important;
-  top: -7px !important;
-  left: 16px !important;
-  width: 26px !important;
-  height: 7px !important;
-  border-radius: 5px 5px 0 0 !important;
-  background: var(--bb-block-orange) !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+/* Force-disable any legacy left/top connector styles from older CSS */
+body div.block::before,
+body div.palette-block::before {
+  content: none !important;
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  left: auto !important;
+  right: auto !important;
+  top: auto !important;
+  bottom: auto !important;
+  background: transparent !important;
+  box-shadow: none !important;
 }
 
-div.block::after,
-div.palette-block::after {
+body div.block::after,
+body div.palette-block::after {
   content: "" !important;
   position: absolute !important;
-  bottom: -7px !important;
+  bottom: -8px !important;
   left: 16px !important;
-  width: 26px !important;
-  height: 7px !important;
-  border-radius: 0 0 5px 5px !important;
-  background: var(--bb-block-orange-shadow) !important;
+  width: 30px !important;
+  height: 9px !important;
+  border-radius: 0 0 6px 6px !important;
+  background: var(--bb-block-shadow) !important;
+  box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.35), 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+  top: auto !important;
+  right: auto !important;
+  transform: none !important;
 }
 
 div.block:hover,
@@ -74,4 +80,146 @@ div.palette-block select {
   border-radius: 6px !important;
   color: #fff !important;
   font-weight: 700 !important;
+}
+
+[data-category="event"],
+[data-category="events"] {
+  --bb-block-base: #f59e0b;
+  --bb-block-hi: #fbbf24;
+  --bb-block-shadow: #d97706;
+}
+
+[data-category="motion"],
+[data-category="sprite"] {
+  --bb-block-base: #3b82f6;
+  --bb-block-hi: #60a5fa;
+  --bb-block-shadow: #2563eb;
+}
+
+[data-category="looks"] {
+  --bb-block-base: #8b5cf6;
+  --bb-block-hi: #a78bfa;
+  --bb-block-shadow: #6d28d9;
+}
+
+[data-category="control"],
+[data-category="loop"] {
+  --bb-block-base: #f97316;
+  --bb-block-hi: #fb923c;
+  --bb-block-shadow: #ea580c;
+}
+
+[data-category="sensing"] {
+  --bb-block-base: #14b8a6;
+  --bb-block-hi: #2dd4bf;
+  --bb-block-shadow: #0f766e;
+}
+
+[data-category="sound"] {
+  --bb-block-base: #d946ef;
+  --bb-block-hi: #e879f9;
+  --bb-block-shadow: #a21caf;
+}
+
+[data-category="variable"],
+[data-category="variables"] {
+  --bb-block-base: #f59e0b;
+  --bb-block-hi: #fbbf24;
+  --bb-block-shadow: #d97706;
+}
+
+[data-category="math"],
+[data-category="operators"] {
+  --bb-block-base: #22c55e;
+  --bb-block-hi: #4ade80;
+  --bb-block-shadow: #15803d;
+}
+
+[data-category="logic"] {
+  --bb-block-base: #0ea5e9;
+  --bb-block-hi: #38bdf8;
+  --bb-block-shadow: #0284c7;
+}
+
+[data-category="function"],
+[data-category="functions"],
+[data-category="myblocks"] {
+  --bb-block-base: #6366f1;
+  --bb-block-hi: #818cf8;
+  --bb-block-shadow: #4338ca;
+}
+
+[data-category="text"],
+[data-category="list"] {
+  --bb-block-base: #06b6d4;
+  --bb-block-hi: #22d3ee;
+  --bb-block-shadow: #0e7490;
+}
+
+[data-category="action"],
+[data-category="ai"] {
+  --bb-block-base: #ec4899;
+  --bb-block-hi: #f472b6;
+  --bb-block-shadow: #be185d;
+}
+
+[data-category="physics"] {
+  --bb-block-base: #14b8a6;
+  --bb-block-hi: #2dd4bf;
+  --bb-block-shadow: #0f766e;
+}
+
+[data-category="game"] {
+  --bb-block-base: #10b981;
+  --bb-block-hi: #34d399;
+  --bb-block-shadow: #047857;
+}
+
+[data-category="Movement"] {
+  --bb-block-base: #3b82f6;
+  --bb-block-hi: #60a5fa;
+  --bb-block-shadow: #2563eb;
+}
+
+[data-category="Sensors"] {
+  --bb-block-base: #14b8a6;
+  --bb-block-hi: #2dd4bf;
+  --bb-block-shadow: #0f766e;
+}
+
+[data-category="Control"] {
+  --bb-block-base: #f97316;
+  --bb-block-hi: #fb923c;
+  --bb-block-shadow: #ea580c;
+}
+
+[data-category="Math"] {
+  --bb-block-base: #22c55e;
+  --bb-block-hi: #4ade80;
+  --bb-block-shadow: #15803d;
+}
+
+[data-category="Outputs"],
+[data-category="Lights"] {
+  --bb-block-base: #d946ef;
+  --bb-block-hi: #e879f9;
+  --bb-block-shadow: #a21caf;
+}
+
+[data-category="Servo"] {
+  --bb-block-base: #8b5cf6;
+  --bb-block-hi: #a78bfa;
+  --bb-block-shadow: #6d28d9;
+}
+
+[data-category="Variables"] {
+  --bb-block-base: #f59e0b;
+  --bb-block-hi: #fbbf24;
+  --bb-block-shadow: #d97706;
+}
+
+[data-category="Comms"] {
+  --bb-block-base: #ec4899;
+  --bb-block-hi: #f472b6;
+  --bb-block-shadow: #be185d;
 }
