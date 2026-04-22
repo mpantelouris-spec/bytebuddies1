@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Puff the Blob (monster) - layered SVG with simple rigging groups -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <metadata>{"joints":{"root":[256,320]}}</metadata>
+  <g id="shadow"><ellipse cx="256" cy="452" rx="110" ry="28" fill="#06060a" opacity="0.5"/></g>
+  <g id="body">
+    <ellipse id="base_blob" cx="256" cy="300" rx="120" ry="100" fill="#c19aff"/>
+    <path id="smile" d="M210 320 Q256 360 302 320" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round"/>
+  </g>
+  <g id="eye_left"><circle cx="220" cy="270" r="18" fill="#fff"/><circle cx="220" cy="276" r="7" fill="#111"/></g>
+  <g id="eye_right"><circle cx="292" cy="270" r="22" fill="#fff"/><circle cx="292" cy="276" r="7" fill="#111"/></g>
+  <g id="accessories"><path d="M184 220 q12 -16 32 -8" stroke="#FFD7C4" stroke-width="6" fill="none" stroke-linecap="round"/></g>
+</svg>

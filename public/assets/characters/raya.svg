@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Raya the Coder - layered SVG for rigging -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 512 512" role="img" aria-label="Raya the Coder">
+  <!-- metadata: layers / pivot points -->
+  <metadata>{"origin_point":[256,480], "joints":{"head":[256,140],"shoulder_left":[206,200],"shoulder_right":[306,200],"hip":[256,340]}}</metadata>
+  <g id="shadow_ground" opacity="0.55">
+    <ellipse cx="256" cy="472" rx="120" ry="30" fill="#07080a" />
+  </g>
+  <g id="body">
+    <path id="torso_base" d="M180 260 Q256 220 332 260 L332 340 Q256 380 180 340 Z" fill="#2b2f7a" />
+    <path id="torso_clothes_front" d="M190 270 Q256 235 322 270 L322 330 Q256 365 190 330 Z" fill="#6366F1" />
+    <path id="torso_highlights" d="M210 280 Q256 250 302 280" fill="#8b5cf6" opacity="0.18"/>
+  </g>
+  <g id="head">
+    <circle id="head_base" cx="256" cy="140" r="60" fill="#FFD7C4" />
+    <g id="hair_back">
+      <path d="M200 120 Q256 80 312 120 Q290 60 222 78 Z" fill="#2e2a3a" />
+    </g>
+    <g id="face_base">
+      <ellipse id="eye_left" cx="236" cy="140" rx="12" ry="16" fill="#fff"/>
+      <ellipse id="eye_right" cx="276" cy="140" rx="12" ry="16" fill="#fff"/>
+      <circle id="pupil_left" cx="236" cy="142" r="5" fill="#111"/>
+      <circle id="pupil_right" cx="276" cy="142" r="5" fill="#111"/>
+      <path id="mouth_smile" d="M238 164 Q256 176 274 164" stroke="#6b3" stroke-width="3" fill="none" stroke-linecap="round"/>
+    </g>
+    <g id="hair_front">
+      <path d="M210 110 Q256 92 302 110" fill="#3b2f4a" opacity="0.95"/>
+    </g>
+  </g>
+  <g id="arms">
+    <g id="arm_left_upper">
+      <rect x="150" y="240" width="28" height="70" rx="12" fill="#2b2f7a" transform="rotate(-6 164 275)"/>
+    </g>
+    <g id="arm_right_upper">
+      <rect x="334" y="240" width="28" height="70" rx="12" fill="#2b2f7a" transform="rotate(6 348 275)"/>
+    </g>
+  </g>
+  <g id="legs">
+    <rect id="leg_left_upper" x="200" y="340" width="34" height="80" rx="10" fill="#1f2340"/>
+    <rect id="leg_right_upper" x="278" y="340" width="34" height="80" rx="10" fill="#1f2340"/>
+  </g>
+  <g id="accessories">
+    <rect id="prop_laptop" x="316" y="220" width="44" height="28" rx="4" fill="#0ea5e9" transform="rotate(-10 338 234)"/>
+    <g id="robot_buddy" transform="translate(180,200)">
+      <rect x="0" y="0" width="22" height="18" rx="4" fill="#06B6D4"/>
+      <circle cx="11" cy="9" r="4" fill="#fff"/>
+    </g>
+  </g>
+</svg>

@@ -1,0 +1,23 @@
+{
+  "meta": {
+    "name": "bytebuddies_characters_atlas",
+    "scale": 1
+  },
+  "frames": {
+    "raya_thumb": { "file": "characters/raya_thumb.svg", "w":512, "h":512 },
+    "lumi_thumb": { "file": "characters/lumi_thumb.svg", "w":512, "h":512 },
+    "nyx_thumb": { "file": "characters/nyx_thumb.svg", "w":512, "h":512 },
+    "puff_thumb": { "file": "characters/puff_thumb.svg", "w":512, "h":512 },
+    "raya_idle": { "file": "characters/raya_idle.svg", "w":512, "h":512 },
+    "tynker_witch": { "file": "characters/tynker_witch.svg", "w":640, "h":640 },
+    "tynker_witch_thumb": { "file": "characters/tynker_witch_thumb.svg", "w":256, "h":256 },
+    "tynker_knight": { "file": "characters/tynker_knight.svg", "w":640, "h":640 },
+    "tynker_knight_thumb": { "file": "characters/tynker_knight_thumb.svg", "w":256, "h":256 },
+    "tynker_fairy": { "file": "characters/tynker_fairy.svg", "w":640, "h":640 },
+    "tynker_fairy_thumb": { "file": "characters/tynker_fairy_thumb.svg", "w":256, "h":256 },
+    "tynker_alien": { "file": "characters/tynker_alien.svg", "w":640, "h":640 },
+    "tynker_alien_thumb": { "file": "characters/tynker_alien_thumb.svg", "w":256, "h":256 },
+    "tynker_princess": { "file": "characters/tynker_princess.svg", "w":640, "h":640 },
+    "tynker_princess_thumb": { "file": "characters/tynker_princess_thumb.svg", "w":256, "h":256 }
+  }
+}
