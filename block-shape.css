@@ -1,0 +1,97 @@
+/* block-shape.css
+   Global block shape override — preserves existing colors and layout.
+   Drop this file into your site's root and include it after your main styles.
+*/
+
+/* Broad selectors to catch common block/code containers */
+:where([class*="block"], [class*="Block"], [class*="code"], [class*="Code"], .code-block, .snippet, pre, code, .scratchBlock, .blocklyBlockSvg, .sb-block) {
+  position: relative;
+  border-radius: 10px;
+  padding: 12px 18px;
+  overflow: visible;
+  background-clip: padding-box;
+}
+
+/* Left connector / puzzle notch */
+:where([class*="block"], [class*="Block"], [class*="code"], [class*="Code"], .code-block, .snippet, pre, code, .scratchBlock, .blocklyBlockSvg, .sb-block)::before {
+  content: "";
+  position: absolute;
+  left: -12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 26px;
+  height: 26px;
+  background: inherit;
+  border-radius: 0 12px 12px 0;
+  box-shadow: 0 1px 0 rgba(255,255,255,0.06) inset, 0 -1px 0 rgba(0,0,0,0.06) inset;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Top tab */
+:where([class*="block"], [class*="Block"], [class*="code"], [class*="Code"], .code-block, .snippet, pre, code, .scratchBlock, .blocklyBlockSvg, .sb-block)::after {
+  content: "";
+  position: absolute;
+  left: 14px;
+  top: -10px;
+  width: 48px;
+  height: 18px;
+  background: inherit;
+  border-radius: 6px;
+  box-shadow: 0 1px 0 rgba(255,255,255,0.06) inset, 0 -1px 0 rgba(0,0,0,0.06) inset;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Hat / event blocks - full rounded top (e.g., "When clicked") */
+:where([class*="block"][data-hat], [class*="Block"][data-hat], .hat, [data-category="events"], [data-category="event"]) {
+  border-radius: 18px 18px 8px 8px;
+  padding-top: 22px;
+}
+
+:where([class*="block"][data-hat], [class*="Block"][data-hat], .hat, [data-category="events"], [data-category="event"])::after {
+  left: 12px;
+  top: -18px;
+  width: calc(100% - 24px);
+  height: 26px;
+  border-radius: 12px 12px 0 0;
+  box-shadow: 0 1px 0 rgba(255,255,255,0.06) inset, 0 -1px 0 rgba(0,0,0,0.06) inset;
+}
+
+/* Ensure inner content sits above pseudo-elements */
+:where([class*="block"] > *, [class*="Block"] > *, [class*="code"] > *, [class*="Code"] > *, .code-block > *, .snippet > *, pre > *, code > *, .scratchBlock > *, .blocklyBlockSvg > *, .sb-block > *) {
+  position: relative;
+  z-index: 1;
+}
+
+/* Add left padding so text doesn't overlap the connector */
+:where([class*="block"], [class*="Block"], [class*="code"], [class*="Code"], .code-block, .snippet, pre, code, .scratchBlock, .blocklyBlockSvg, .sb-block) {
+  padding-left: 34px;
+}
+
+/* Small responsive tweak */
+@media (max-width: 480px) {
+  :where([class*="block"], [class*="Block"], [class*="code"], [class*="Code"], .code-block, .snippet, pre, code, .scratchBlock, .blocklyBlockSvg, .sb-block) {
+    padding: 10px 14px;
+  }
+  :where([class*="block"]::before, [class*="block"]::after) {
+    left: -10px;
+    width: 20px;
+    height: 20px;
+  }
+}
+
+/* Strong overrides to handle inline styles from React components
+   Keep colors and backgrounds (inherit), but enforce the puzzle-piece shape */
+:where([class*="block"], [class*="Block"], [class*="code"], [class*="Code"], .code-block, .snippet, pre, code, .scratchBlock, .blocklyBlockSvg, .sb-block) {
+  border-radius: 10px !important;
+  padding-left: 34px !important;
+  padding-top: 12px !important;
+  padding-bottom: 12px !important;
+  min-height: 36px !important;
+}
+
+:where([class*="block"][data-hat], [class*="Block"][data-hat], .hat, [data-category="events"], [data-category="event"]) {
+  border-radius: 18px 18px 8px 8px !important;
+  padding-top: 28px !important;
+}

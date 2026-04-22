@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { getCategoryColor, initializeCategories } from '../utils/categoryColors';
 
 let _uid = 0;
 const uid = () => String(++_uid);
@@ -145,19 +146,28 @@ const BACKGROUNDS = [
 ];
 
 // ── Block category definitions ────────────────────────────────────────
-const CATS = [
-  { id: 'event',    label: 'Events',    color: '#f59e0b', icon: '⚡' },
-  { id: 'motion',   label: 'Motion',    color: '#3b82f6', icon: '🏃' },
-  { id: 'looks',    label: 'Looks',     color: '#9333ea', icon: '👁️' },
-  { id: 'control',  label: 'Control',   color: '#059669', icon: '🔄' },
-  { id: 'sensing',  label: 'Sensing',   color: '#06b6d4', icon: '🔍' },
-  { id: 'sound',    label: 'Sound',     color: '#84cc16', icon: '🔊' },
-  { id: 'variable', label: 'Variables', color: '#f97316', icon: '📦' },
-  { id: 'math',     label: 'Math',      color: '#ef4444', icon: '🔢' },
-  { id: 'game',     label: 'Game',      color: '#e11d48', icon: '🎮' },
-  { id: 'physics',  label: 'Physics',   color: '#1abc9c', icon: '💨' },
-  { id: 'ai',       label: 'AI',        color: '#a855f7', icon: '🤖' },
-];
+// Initialize categories with consistent color assignment
+const CATEGORY_IDS = ['event', 'motion', 'looks', 'control', 'sensing', 'sound', 'variable', 'math', 'game', 'physics', 'ai'];
+initializeCategories(CATEGORY_IDS);
+
+const CATS = CATEGORY_IDS.map(id => {
+  const labels = {
+    event: 'Events', motion: 'Motion', looks: 'Looks', control: 'Control',
+    sensing: 'Sensing', sound: 'Sound', variable: 'Variables', math: 'Math',
+    game: 'Game', physics: 'Physics', ai: 'AI'
+  };
+  const icons = {
+    event: '⚡', motion: '🏃', looks: '👁️', control: '🔄',
+    sensing: '🔍', sound: '🔊', variable: '📦', math: '🔢',
+    game: '🎮', physics: '💨', ai: '🤖'
+  };
+  return {
+    id,
+    label: labels[id] || id,
+    color: getCategoryColor(id, 75, 52),
+    icon: icons[id] || '📦'
+  };
+});
 
 // ── Block palette definitions ─────────────────────────────────────────
 const PALETTE = {
@@ -352,7 +362,7 @@ const NUB_W = 24, NUB_X = 18, NUB_H = 8;
 function BlockShape({ color, hat, children, isC, innerBlocks, onAddInside, paramsByKey, onParam, onDelete, blockId }) {
   const dark = darken(color, 50);
   return (
-    <div style={{ position: 'relative', marginTop: hat ? 4 : NUB_H + 2, userSelect: 'none' }}>
+    <div data-hat={hat ? 'true' : undefined} style={{ position: 'relative', marginTop: hat ? 4 : NUB_H + 2, userSelect: 'none' }}>
       {/* top slot shadow (female connector) */}
       {!hat && (
         <div style={{ position: 'absolute', top: -NUB_H, left: NUB_X, width: NUB_W, height: NUB_H,

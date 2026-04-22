@@ -1,6 +1,8 @@
 /* ============================================
-   ByteBuddies — Global Styles & Design System
-   ============================================ */
+  ByteBuddies — Global Styles & Design System
+  ============================================ */
+
+@import "../block-shape.css";
 
 :root {
   /* Colors - Dark Theme (default) */
@@ -1404,4 +1406,386 @@ textarea.input {
 @media (max-width: 480px) {
   .grid-4 { grid-template-columns: 1fr !important; }
   .grid-3 { grid-template-columns: 1fr !important; }
+}
+/* ═══════════════════════════════════════════════════════════════════
+   SCRATCH-STYLE MATTE BLOCKS WITH INWARD SOCKET CONNECTORS
+   Proper socket/notch indentation like PictoBlox
+   ═══════════════════════════════════════════════════════════════════ */
+
+:root {
+  --block-radius: 8px !important;
+  --connector-size: 14px !important;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   BASE BLOCK STYLING - MATTE FLAT APPEARANCE
+   ───────────────────────────────────────────────────────────────── */
+
+div.block {
+  position: relative !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 8px 12px 8px 24px !important;
+  margin: 4px 0 !important;
+  border-radius: 8px !important;
+  font-weight: 700 !important;
+  font-size: 13px !important;
+  color: #fff !important;
+  user-select: none !important;
+  cursor: grab !important;
+  transition: transform 0.1s ease, box-shadow 0.1s ease !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3) !important;
+  line-height: 1.2 !important;
+  background: #4C97FF !important;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   LEFT SIDE INWARD SOCKET CONNECTOR (::before)
+   Notch/indentation cut into the left side
+   ───────────────────────────────────────────────────────────────── */
+
+div.block::before {
+  content: '' !important;
+  position: absolute !important;
+  left: 2px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  width: 14px !important;
+  height: 14px !important;
+  border-radius: 0 6px 6px 0 !important;
+  background: rgba(0, 0, 0, 0.3) !important;
+  box-shadow:
+    inset 1px 1px 2px rgba(0, 0, 0, 0.4),
+    inset 0 -1px 1px rgba(255, 255, 255, 0.1) !important;
+  display: block !important;
+  z-index: 0 !important;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   RIGHT SIDE PLUG CONNECTOR (::after)
+   Small protrusion on right
+   ───────────────────────────────────────────────────────────────── */
+
+div.block::after {
+  content: '' !important;
+  position: absolute !important;
+  right: -4px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  width: 10px !important;
+  height: 12px !important;
+  border-radius: 0 3px 3px 0 !important;
+  background: rgba(255, 255, 255, 0.12) !important;
+  box-shadow:
+    inset -1px 1px 1px rgba(255, 255, 255, 0.2),
+    inset -1px -1px 1px rgba(0, 0, 0, 0.25),
+    -1px 0 1px rgba(0, 0, 0, 0.2) !important;
+  display: block !important;
+  z-index: 1 !important;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   HOVER STATE
+   ───────────────────────────────────────────────────────────────── */
+
+div.block:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.35) !important;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   ACTIVE/SELECTED STATE
+   ───────────────────────────────────────────────────────────────── */
+
+div.block.active,
+div.block.dragging {
+  transform: scale(1.02) !important;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.35) !important;
+}
+
+div.block:active {
+  cursor: grabbing !important;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   PALETTE BLOCKS (Sidebar) - MATTE FLAT
+   ───────────────────────────────────────────────────────────────── */
+
+div.palette-block {
+  position: relative !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 7px 10px 7px 24px !important;
+  margin: 3px 4px !important;
+  border-radius: 8px !important;
+  font-weight: 700 !important;
+  font-size: 12px !important;
+  color: #fff !important;
+  cursor: grab !important;
+  transition: all 0.08s ease !important;
+  user-select: none !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3) !important;
+  background: #4C97FF !important;
+}
+
+div.palette-block::before {
+  content: '' !important;
+  position: absolute !important;
+  left: -6px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  width: 14px !important;
+  height: 14px !important;
+  border-radius: 3px 0 0 3px !important;
+  background: rgba(0, 0, 0, 0.25) !important;
+  box-shadow: inset 1px 0 0 rgba(0, 0, 0, 0.3) !important;
+  display: block !important;
+}
+
+div.palette-block:hover {
+  transform: translateX(2px) !important;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3) !important;
+}
+
+div.palette-block:active {
+  cursor: grabbing !important;
+  transform: translateX(1px) scale(0.98) !important;
+}
+
+/* ═════════════════════════════════════════════════════════════════
+   MATTE COLOR PALETTE - DIFFERENT FOR EACH CATEGORY
+   Soft, desaturated, flat colors (NO gradients)
+   ═════════════════════════════════════════════════════════════════ */
+
+/* EVENTS - Orange */
+[data-category="events"],
+[data-category="event"] {
+  background: #FF9F1C !important;
+}
+
+/* MOTION - Blue */
+[data-category="motion"] {
+  background: #4C97FF !important;
+}
+
+/* LOOKS - Purple */
+[data-category="looks"] {
+  background: #9966FF !important;
+}
+
+/* SOUND - Magenta */
+[data-category="sound"] {
+  background: #CF63CF !important;
+}
+
+/* CONTROL/LOOPS - Amber */
+[data-category="control"],
+[data-category="loop"] {
+  background: #FFAB19 !important;
+}
+
+/* SENSING - Teal/Cyan */
+[data-category="sensing"] {
+  background: #2CB1BC !important;
+}
+
+/* OPERATORS/MATH - Green */
+[data-category="operators"],
+[data-category="math"] {
+  background: #59C059 !important;
+}
+
+/* VARIABLES - Orange-brown */
+[data-category="variables"],
+[data-category="variable"] {
+  background: #FF8C1A !important;
+}
+
+/* FUNCTIONS/MYBLOCKS - Purple-gray */
+[data-category="functions"],
+[data-category="myblocks"] {
+  background: #6B5B95 !important;
+}
+
+/* PHYSICS - Cyan */
+[data-category="physics"] {
+  background: #00BCD4 !important;
+}
+
+/* GAME - Coral red */
+[data-category="game"] {
+  background: #FF6B6B !important;
+}
+
+/* AI - Deep purple */
+[data-category="ai"] {
+  background: #9C27B0 !important;
+}
+
+/* ACTION - Pink */
+[data-category="action"] {
+  background: #FF5C99 !important;
+}
+
+/* LOGIC - Blue */
+[data-category="logic"] {
+  background: #4C97FF !important;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   CATEGORY SIDEBAR ITEMS
+   ───────────────────────────────────────────────────────────────── */
+
+.category-item {
+  position: relative !important;
+  padding: 10px 12px 10px 16px !important;
+  border-radius: 8px !important;
+  cursor: pointer !important;
+  font-weight: 600 !important;
+  font-size: 13px !important;
+  user-select: none !important;
+  transition: all 0.2s ease !important;
+  border-left: 4px solid transparent !important;
+  color: #666 !important;
+}
+
+.category-item::before {
+  content: '' !important;
+  display: inline-block !important;
+  width: 10px !important;
+  height: 10px !important;
+  border-radius: 50% !important;
+  margin-right: 8px !important;
+  vertical-align: middle !important;
+}
+
+/* Category colors for sidebar indicators */
+.category-item[data-category="events"]::before,
+.category-item[data-category="event"]::before {
+  background-color: #FF9F1C !important;
+}
+
+.category-item[data-category="motion"]::before {
+  background-color: #4C97FF !important;
+}
+
+.category-item[data-category="looks"]::before {
+  background-color: #9966FF !important;
+}
+
+.category-item[data-category="sound"]::before {
+  background-color: #CF63CF !important;
+}
+
+.category-item[data-category="control"]::before,
+.category-item[data-category="loop"]::before {
+  background-color: #FFAB19 !important;
+}
+
+.category-item[data-category="sensing"]::before {
+  background-color: #2CB1BC !important;
+}
+
+.category-item[data-category="operators"]::before,
+.category-item[data-category="math"]::before {
+  background-color: #59C059 !important;
+}
+
+.category-item[data-category="variables"]::before,
+.category-item[data-category="variable"]::before {
+  background-color: #FF8C1A !important;
+}
+
+.category-item[data-category="functions"]::before,
+.category-item[data-category="myblocks"]::before {
+  background-color: #6B5B95 !important;
+}
+
+.category-item[data-category="physics"]::before {
+  background-color: #00BCD4 !important;
+}
+
+.category-item[data-category="game"]::before {
+  background-color: #FF6B6B !important;
+}
+
+.category-item[data-category="ai"]::before {
+  background-color: #9C27B0 !important;
+}
+
+/* ACTIVE STATE - Light tint background matching color */
+.category-item.active {
+  font-weight: 700 !important;
+  color: #1a1a1a !important;
+}
+
+.category-item.active[data-category="events"],
+.category-item.active[data-category="event"] {
+  background: rgba(255, 159, 28, 0.15) !important;
+  border-left-color: #FF9F1C !important;
+}
+
+.category-item.active[data-category="motion"] {
+  background: rgba(76, 151, 255, 0.15) !important;
+  border-left-color: #4C97FF !important;
+}
+
+.category-item.active[data-category="looks"] {
+  background: rgba(153, 102, 255, 0.15) !important;
+  border-left-color: #9966FF !important;
+}
+
+.category-item.active[data-category="sound"] {
+  background: rgba(207, 99, 207, 0.15) !important;
+  border-left-color: #CF63CF !important;
+}
+
+.category-item.active[data-category="control"],
+.category-item.active[data-category="loop"] {
+  background: rgba(255, 171, 25, 0.15) !important;
+  border-left-color: #FFAB19 !important;
+}
+
+.category-item.active[data-category="sensing"] {
+  background: rgba(44, 177, 188, 0.15) !important;
+  border-left-color: #2CB1BC !important;
+}
+
+.category-item.active[data-category="operators"],
+.category-item.active[data-category="math"] {
+  background: rgba(89, 192, 89, 0.15) !important;
+  border-left-color: #59C059 !important;
+}
+
+.category-item.active[data-category="variables"],
+.category-item.active[data-category="variable"] {
+  background: rgba(255, 140, 26, 0.15) !important;
+  border-left-color: #FF8C1A !important;
+}
+
+.category-item.active[data-category="functions"],
+.category-item.active[data-category="myblocks"] {
+  background: rgba(107, 91, 149, 0.15) !important;
+  border-left-color: #6B5B95 !important;
+}
+
+.category-item.active[data-category="physics"] {
+  background: rgba(0, 188, 212, 0.15) !important;
+  border-left-color: #00BCD4 !important;
+}
+
+.category-item.active[data-category="game"] {
+  background: rgba(255, 107, 107, 0.15) !important;
+  border-left-color: #FF6B6B !important;
+}
+
+.category-item.active[data-category="ai"] {
+  background: rgba(156, 39, 176, 0.15) !important;
+  border-left-color: #9C27B0 !important;
+}
+
+.category-item:hover:not(.active) {
+  background: rgba(0, 0, 0, 0.04) !important;
 }
