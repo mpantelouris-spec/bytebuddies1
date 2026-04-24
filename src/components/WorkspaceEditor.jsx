@@ -385,13 +385,12 @@ function BlockCanvas({ code, onCodeChange, onBlockLineMap, activeCodeLine, onNav
   const handleMouseMove = useCallback((e) => {
     if (!dragging || !canvasRef.current) return;
     const rect = canvasRef.current.getBoundingClientRect();
-    const x = STACK_X;
+    const x = Math.max(0, e.clientX - rect.left - dragOffset.x);
     const y = Math.max(0, e.clientY - rect.top - dragOffset.y);
     setBlocks(prev => prev.map(b => b.id === dragging ? { ...b, x, y } : b));
   }, [dragging, dragOffset]);
 
   const handleMouseUp = useCallback(() => {
-    setBlocks(prev => normalizeStack(prev));
     setDragging(null);
   }, []);
 
@@ -411,10 +410,16 @@ function BlockCanvas({ code, onCodeChange, onBlockLineMap, activeCodeLine, onNav
       deleteBlock(block.id);
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
-      setBlocks(prev => normalizeStack(prev.map(b => b.id === block.id ? { ...b, y: Math.max(0, b.y - STEP) } : b)));
+      setBlocks(prev => prev.map(b => b.id === block.id ? { ...b, y: Math.max(0, b.y - STEP) } : b));
     } else if (e.key === 'ArrowDown') {
       e.preventDefault();
-      setBlocks(prev => normalizeStack(prev.map(b => b.id === block.id ? { ...b, y: b.y + STEP } : b)));
+      setBlocks(prev => prev.map(b => b.id === block.id ? { ...b, y: b.y + STEP } : b));
+    } else if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      setBlocks(prev => prev.map(b => b.id === block.id ? { ...b, x: Math.max(0, b.x - STEP) } : b));
+    } else if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      setBlocks(prev => prev.map(b => b.id === block.id ? { ...b, x: b.x + STEP } : b));
     } else if (e.key === 'Escape') {
       setSelectedBlock(null);
     }
