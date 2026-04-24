@@ -79,6 +79,7 @@ export default function ExtensionsModal({ open, onClose, enabledIds, onToggleExt
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
+      style={{ position: 'fixed', inset: 0, zIndex: 10000, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
     >
       <div
         className="modal extensions-modal-wide"
