@@ -10,6 +10,8 @@ If your Cutebot isn't working over Bluetooth, follow these steps:
 
 The best way to get a fully working Cutebot Bluetooth firmware is to use the **MicroPython online editor**.
 
+**Important:** If Bluetooth connects but Run does not move the robot, re-flash using the **latest** `bytebuddies_cutebot_bluetooth.py` from this project. Older firmware split incoming data on newlines, which broke the multi-line Cutebot setup the app sends over BLE. Current firmware uses **Ctrl-D (ASCII 4) only** as the end-of-message marker so full setup scripts run correctly.
+
 **Steps:**
 1. Download the firmware source: `bytebuddies_cutebot_bluetooth.py`
 2. Go to https://python.microbit.org/v/3 (MicroPython editor for micro:bit v2)
@@ -57,6 +59,15 @@ When flashing the firmware, you'll see codes on the micro:bit display:
 - **Chrome or Edge browser** (Firefox and Safari don't support Web Bluetooth)
 
 ## Troubleshooting
+
+### Issue: The editor doesn’t recognise `bluetooth` / shows a red error
+
+**What’s going on:** The firmware uses the **official micro:bit v2** form: `from bluetooth import BLE, UUID` (same idea as the [BBC micro:bit BLE docs](https://microbit-micropython.readthedocs.io/en/v2-docs/ble.html)). That only exists on **micro:bit v2** MicroPython. Desktop / web editors often still check against **normal** Python, so they may underline `bluetooth` even though the script is valid on the board.
+
+**What to do:**
+1. In **https://python.microbit.org/v/3**, set the project to **micro:bit v2**, not v1 (**v1 has no BLE** in MicroPython).
+2. Flash with **Download** and watch the display: you should see **S → 1 → 2 → …** If the editor still complains but the micro:bit reaches **1**, you can ignore the squiggle.
+3. A **sad face** and scrolling text is a **real** error on the device — read the message (wrong board, v1, or a bug in the script).
 
 ### Issue: Motors make clicking noises instead of smooth movement
 

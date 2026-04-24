@@ -1,11 +1,33 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { BLOCK_DEFS, SIDEBAR_TO_TYPE, createBlockFromDrop, BlockContent } from '../utils/blocks';
-import { getBlockStyle, getCategoryVars } from '../utils/categoryColors';
 import { saveSubmissionToFirestore } from '../firebase';
 import { useUser } from '../contexts/UserContext';
+import ScratchStyleBlock from './ScratchStyleBlock';
+import { BLOCK_STACK_GAP, columnizeBlocks } from '../utils/blockStack';
+import { snapCanvasStack } from '../utils/blockSnap';
+import ExtensionsModal from './ExtensionsModal';
+import { readEnabledExtensionIds, writeEnabledExtensionIds } from '../data/extensionsCatalog';
+import { BB_OPEN_EXTENSIONS } from '../utils/blockLibraryEvents';
 
 const STAGE_W = 480;
 const STAGE_H = 360;
+const BLOCK_LANE_X = 30;
+const BLOCK_START_Y = 20;
+
+function normalizeSpriteBlocks(blocks) {
+  return columnizeBlocks(blocks || [], {
+    laneX: BLOCK_LANE_X,
+    startY: BLOCK_START_Y,
+    gap: BLOCK_STACK_GAP,
+  });
+}
+
+function normalizeSpritesBlockStacks(sprites) {
+  return (sprites || []).map((sprite) => ({
+    ...sprite,
+    blocks: normalizeSpriteBlocks(sprite.blocks),
+  }));
+}
 
 /* ─── Sprite Library (SVG-based characters) ─── */
 const SPRITE_LIBRARY = [
@@ -257,10 +279,42 @@ export default function GameBuilder() {
   const canvasRef = useRef(null);
   const blockAreaRef = useRef(null);
   const [sprites, setSprites] = useState(() => {
-    try { const s = localStorage.getItem('cv_gamebuilder_sprites'); return s ? JSON.parse(s) : defaultSprites; } catch { return defaultSprites; }
+    try {
+      const s = localStorage.getItem('cv_gamebuilder_sprites');
+      return normalizeSpritesBlockStacks(s ? JSON.parse(s) : defaultSprites);
+    } catch {
+      return normalizeSpritesBlockStacks(defaultSprites);
+    }
   });
   const [selected, setSelected] = useState(1);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [extensionsOpen, setExtensionsOpen] = useState(false);
+  const [enabledExtensions, setEnabledExtensions] = useState(() => readEnabledExtensionIds());
+
+  const toggleExtension = useCallback((id) => {
+    setEnabledExtensions(prev => {
+      const set = new Set(prev);
+      if (set.has(id)) set.delete(id);
+      else set.add(id);
+      const next = Array.from(set);
+      writeEnabledExtensionIds(next);
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    const handleExtensionsChanged = () => {
+      setEnabledExtensions(readEnabledExtensionIds());
+    };
+    const openExt = () => setExtensionsOpen(true);
+    window.addEventListener(BB_OPEN_EXTENSIONS, openExt);
+    window.addEventListener('bb-extensions-changed', handleExtensionsChanged);
+    return () => {
+      window.removeEventListener(BB_OPEN_EXTENSIONS, openExt);
+      window.removeEventListener('bb-extensions-changed', handleExtensionsChanged);
+    };
+  }, []);
+
   const [background, setBackground] = useState(() => {
     try { return localStorage.getItem('cv_gamebuilder_bg') || 'Space'; } catch { return 'Space'; }
   });
@@ -939,23 +993,6 @@ loadImages(function(){
   };
 
   /* ─── Block editing for selected sprite ─── */
-  const STACK_X = 30;
-  const STACK_START_Y = 20;
-  const STACK_GAP = 56;
-  const normalizeStack = (blocks) =>
-    [...blocks]
-      .sort((a, b) => a.y - b.y)
-      .map((b, i) => ({ ...b, x: STACK_X, y: STACK_START_Y + (i * STACK_GAP) }));
-  const reorderStackForDrop = (blocks, movingId) => {
-    const moving = blocks.find(b => b.id === movingId);
-    if (!moving) return normalizeStack(blocks);
-    const ordered = blocks.filter(b => b.id !== movingId).sort((a, b) => a.y - b.y);
-    const rawIndex = Math.round((moving.y - STACK_START_Y) / STACK_GAP);
-    const insertIndex = Math.max(0, Math.min(ordered.length, rawIndex));
-    ordered.splice(insertIndex, 0, moving);
-    return ordered.map((b, i) => ({ ...b, x: STACK_X, y: STACK_START_Y + (i * STACK_GAP) }));
-  };
-
   const handleBlockParamChange = useCallback((blockId, paramKey, value) => {
     setSprites(prev => prev.map(s => {
       if (s.id !== selected) return s;
@@ -966,7 +1003,7 @@ loadImages(function(){
   const deleteBlock = useCallback((blockId) => {
     setSprites(prev => prev.map(s => {
       if (s.id !== selected) return s;
-      return { ...s, blocks: s.blocks.filter(b => b.id !== blockId) };
+      return { ...s, blocks: normalizeSpriteBlocks(s.blocks.filter(b => b.id !== blockId)) };
     }));
   }, [selected]);
 
@@ -980,7 +1017,7 @@ loadImages(function(){
   const handleBlockMouseMove = useCallback((e) => {
     if (!draggingBlock || !blockAreaRef.current) return;
     const rect = blockAreaRef.current.getBoundingClientRect();
-    const x = Math.max(0, e.clientX - rect.left - blockDragOffset.x);
+    const x = BLOCK_LANE_X;
     const y = Math.max(0, e.clientY - rect.top - blockDragOffset.y);
     setSprites(prev => prev.map(s => {
       if (s.id !== selected) return s;
@@ -990,27 +1027,26 @@ loadImages(function(){
 
   const handleBlockMouseUp = useCallback(() => {
     if (!draggingBlock) return;
-    setSprites(prev => prev.map(s => {
-      if (s.id !== selected) return s;
-      const moving = s.blocks.find(b => b.id === draggingBlock);
-      if (!moving) return s;
-      const snap = s.blocks
-        .filter(b => b.id !== draggingBlock)
-        .map(b => ({
-          block: b,
-          dx: Math.abs(b.x - moving.x),
-          dy: Math.abs((b.y + STACK_GAP) - moving.y),
-        }))
-        .filter(t => t.dx <= 80 && t.dy <= 50)
-        .sort((a, b) => (a.dx + a.dy) - (b.dx + b.dy))[0]?.block;
-      if (!snap) return s;
-      return {
-        ...s,
-        blocks: s.blocks.map(b =>
-          b.id === draggingBlock ? { ...b, x: snap.x, y: snap.y + STACK_GAP } : b
-        ),
-      };
-    }));
+    setSprites((prev) =>
+      prev.map((s) => {
+        if (s.id !== selected) return s;
+        const dragged = s.blocks.find((b) => b.id === draggingBlock);
+        if (!dragged) return { ...s, blocks: normalizeSpriteBlocks(s.blocks) };
+        const snapped = snapCanvasStack({
+          draggedId: dragged.id,
+          x: BLOCK_LANE_X,
+          y: dragged.y,
+          blocks: s.blocks,
+          getId: (b) => b.id,
+          minX: BLOCK_LANE_X,
+          minY: 0,
+        });
+        const withSnap = s.blocks.map((b) =>
+          b.id === draggingBlock ? { ...b, x: snapped.x, y: snapped.y } : b
+        );
+        return { ...s, blocks: normalizeSpriteBlocks(withSnap) };
+      })
+    );
     setDraggingBlock(null);
   }, [draggingBlock, selected]);
 
@@ -1018,13 +1054,11 @@ loadImages(function(){
     e.preventDefault();
     const text = e.dataTransfer.getData('text/plain');
     if (!text || !blockAreaRef.current) return;
-    const newBlock = createBlockFromDrop(text, 30, 20);
+    const rect = blockAreaRef.current.getBoundingClientRect();
+    const newBlock = createBlockFromDrop(text, BLOCK_LANE_X, e.clientY - rect.top - 20);
     setSprites(prev => prev.map(s => {
       if (s.id !== selected) return s;
-      const lastBlock = s.blocks.length ? [...s.blocks].sort((a, b) => b.y - a.y)[0] : null;
-      const x = lastBlock ? lastBlock.x : STACK_X;
-      const y = lastBlock ? lastBlock.y + STACK_GAP : STACK_START_Y;
-      return { ...s, blocks: [...s.blocks, { ...newBlock, x, y }] };
+      return { ...s, blocks: normalizeSpriteBlocks([...s.blocks, newBlock]) };
     }));
   };
 
@@ -1079,6 +1113,13 @@ loadImages(function(){
         <span style={{ fontWeight: 700, fontSize: 14 }}>🎮 Game Builder</span>
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 6, alignItems: 'center' }}>
           {isPlaying && <span className="tag tag-warning" style={{ fontSize: 12 }}>Score: {score}</span>}
+          <button
+            onClick={() => setExtensionsOpen(true)}
+            style={{ background: '#6366f1', color: '#fff', border: 'none', borderRadius: 6, padding: '5px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+            title="Add Extensions"
+          >
+            🧩 Extensions
+          </button>
           <button
             onClick={saveProject}
             style={{ background: savedFlash ? '#22c55e' : '#334155', color: '#fff', border: 'none', borderRadius: 6, padding: '5px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'background 0.3s', minWidth: 80 }}
@@ -1143,12 +1184,10 @@ loadImages(function(){
             onDragOver={(e) => e.preventDefault()}
             onDrop={handleBlockDrop}
           >
-            {selectedSprite && selectedSprite.blocks.map(block => {
-              return (
-              <div
+            {selectedSprite && selectedSprite.blocks.map(block => (
+              <ScratchStyleBlock
                 key={block.id}
-                className="block"
-                data-category={block.category}
+                block={block}
                 onMouseDown={(e) => handleBlockMouseDown(e, block)}
                 onMouseEnter={() => setHoveredBlock(block.id)}
                 onMouseLeave={() => setHoveredBlock(null)}
@@ -1156,9 +1195,9 @@ loadImages(function(){
                   position: 'absolute',
                   left: block.x,
                   top: block.y,
-                  transform: draggingBlock === block.id ? 'scale(1.05)' : 'scale(1)',
-                  transition: draggingBlock === block.id ? 'none' : 'transform 0.15s, box-shadow 0.15s',
-                  zIndex: draggingBlock === block.id ? 100 : 1,
+                  transform: 'none',
+                  transition: 'none',
+                  zIndex: draggingBlock === block.id ? 20000 : 10000 - Math.round(block.y || 0),
                 }}
               >
                 <BlockContent block={block} onParamChange={handleBlockParamChange} />
@@ -1167,21 +1206,19 @@ loadImages(function(){
                 <button
                   onMouseDown={(e) => { e.stopPropagation(); deleteBlock(block.id); }}
                   style={{
-                    position: 'absolute', top: 3, right: 3,
-                    width: 20, height: 20, borderRadius: '50%', border: 'none',
+                    position: 'absolute', top: 5, right: 5,
+                    width: 18, height: 18, borderRadius: '50%', border: 'none',
                     background: hoveredBlock === block.id ? '#ef4444' : 'transparent',
                     color: hoveredBlock === block.id ? '#fff' : 'transparent',
-                    fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                    fontSize: 11, fontWeight: 700, cursor: 'pointer',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     transition: 'all 0.15s', lineHeight: 1, padding: 0,
+                    pointerEvents: 'auto',
                   }}
                   title="Delete block"
                 >×</button>
-
-              </div>
-            );
-            })}
-
+              </ScratchStyleBlock>
+            ))}
             {(!selectedSprite || (selectedSprite.blocks || []).length === 0) && (
               <div className="empty-state" style={{ height: '100%', pointerEvents: 'none' }}>
                 <div className="empty-state-icon">🧩</div>
@@ -1467,6 +1504,14 @@ loadImages(function(){
           </div>
         </div>
       )}
+      
+      {/* Extensions Modal */}
+      <ExtensionsModal
+        open={extensionsOpen}
+        onClose={() => setExtensionsOpen(false)}
+        enabledIds={enabledExtensions}
+        onToggleExtension={toggleExtension}
+      />
     </div>
   );
 }

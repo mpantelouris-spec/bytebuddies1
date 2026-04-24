@@ -298,8 +298,9 @@ export default function AuthModal({ onClose, initialRole }) {
       const displayName = selectedRole === 'student' ? (userData.email?.split('@')[0] || 'Student') : userData.name;
       proceedAfterSignIn({ name: displayName, avatar: displayName.slice(0, 2).toUpperCase(), email: userData.email });
     } catch (e) {
+      console.error('[Auth] Google sign-in error:', e);
       if (e.code !== 'auth/popup-closed-by-user') {
-        setError('Google sign-in failed. Make sure Google is enabled in Firebase.');
+        setError(`Google sign-in failed: ${e.message || e.code || 'Unknown error'}`);
       }
     } finally {
       setGoogleLoading(false);

@@ -3,22 +3,23 @@
 # Flash via: https://python.microbit.org/v/3
 
 from microbit import *
-import bluetooth
 
 # Show startup status
 display.show('S')
 
 try:
+    from bluetooth import BLE, UUID
+
     # Initialize Bluetooth
-    ble = bluetooth.BLE()
+    ble = BLE()
     ble.active(True)
     display.show('B')
 
     # Register Nordic UART Service
     ((tx_h, rx_h),) = ble.gatts_register_services(((
-        bluetooth.UUID('6e400001-b5b3-f393-e0a9-e50e24dcca9e'), (
-            (bluetooth.UUID('6e400003-b5b3-f393-e0a9-e50e24dcca9e'), 0x0010),
-            (bluetooth.UUID('6e400002-b5b3-f393-e0a9-e50e24dcca9e'), 0x0004),
+        UUID('6e400001-b5b3-f393-e0a9-e50e24dcca9e'), (
+            (UUID('6e400003-b5b3-f393-e0a9-e50e24dcca9e'), 0x0010),
+            (UUID('6e400002-b5b3-f393-e0a9-e50e24dcca9e'), 0x0004),
         )
     ),))
 
@@ -127,22 +128,12 @@ try:
     def _recv(chunk):
         global _buf
         _buf += chunk
-
-        while '\n' in _buf or '\x04' in _buf:
-            idx = -1
-            if '\n' in _buf:
-                idx = _buf.index('\n')
-            if '\x04' in _buf:
-                idx2 = _buf.index('\x04')
-                if idx < 0 or idx2 < idx:
-                    idx = idx2
-
+        while True:
+            idx = _buf.find('\x04')
             if idx < 0:
                 break
-
             cmd = _buf[:idx].strip()
-            _buf = _buf[idx+1:]
-
+            _buf = _buf[idx + 1:]
             if cmd:
                 try:
                     exec(cmd)

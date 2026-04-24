@@ -1,70 +1,50 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useProject } from '../contexts/ProjectContext';
 import { useUser } from '../contexts/UserContext';
-
-const blockCategories = [
-  { name: 'Motion',    icon: '🏃', color: '#4a9eff', blocks: ['move steps','turn degrees','glide to','go to x,y','set X to','set Y to','change X by','change Y by','point toward mouse','point in direction','bounce off edges','set speed'] },
-  { name: 'Looks',     icon: '👀', color: '#9b59b6', blocks: ['say','think','show / hide','switch costume','next costume','set size','grow by','shrink by','color effect','ghost effect','clear effects','go to front','go to back'] },
-  { name: 'Sound',     icon: '🔊', color: '#e91e8c', blocks: ['play sound','stop sounds','set volume','play note'] },
-  { name: 'Events',    icon: '⚡', color: '#ffab19', blocks: ['on start','on key press','on click','on collision','on message','broadcast'] },
-  { name: 'Control',   icon: '🔧', color: '#ff8c1a', blocks: ['wait','repeat N times','forever','if / else','while condition','stop all','for each in list'] },
-  { name: 'Sensing',   icon: '🔍', color: '#5bc0de', blocks: ['touching edge?','touching sprite?','key pressed?','mouse X','mouse Y','distance to mouse','timer','reset timer'] },
-  { name: 'Operators', icon: '➕', color: '#59c059', blocks: ['add / subtract','multiply / divide','random number','round / abs','compare (=, <, >)','and / or / not','modulo'] },
-  { name: 'Variables', icon: '📦', color: '#ff8c1a', blocks: ['create variable','set variable','change by','show variable','create list','add to list','get item #'] },
-  { name: 'My Blocks', icon: '🧩', color: '#ff6680', blocks: ['define my block','run my block','define function','call function','with parameters','return value'] },
-  { name: 'Physics',   icon: '💨', color: '#1abc9c', blocks: ['set velocity','set gravity','bounce off edges','jump','set friction','push'] },
-  { name: 'Game',      icon: '🎮', color: '#e74c3c', blocks: ['add to score','set score','lose a life','set lives','game over','you win','next level','spawn clone','destroy','pause game'] },
-  { name: 'AI',        icon: '🤖', color: '#f97316', blocks: ['AI classify','AI generate text','AI detect object','AI translate','train model'] },
-];
-
-const starterCategories = [
-  {
-    name: 'Move',
-    icon: '➡️',
-    color: '#6366f1',
-    blocks: ['move forward', 'move back', 'turn left', 'turn right'],
-  },
-  {
-    name: 'Repeat',
-    icon: '🔁',
-    color: '#8b5cf6',
-    blocks: ['repeat 2 times', 'repeat 3 times', 'repeat 5 times', 'repeat 10 times'],
-  },
-  {
-    name: 'Look',
-    icon: '👁️',
-    color: '#06b6d4',
-    blocks: ['show', 'hide', 'say hello', 'say goodbye'],
-  },
-  {
-    name: 'Sound',
-    icon: '🔊',
-    color: '#10b981',
-    blocks: ['play sound', 'celebrate', 'play note', 'stop sounds'],
-  },
-];
-
-const gameAssets = [
-  { category: 'Characters', items: ['🧑‍🚀 Astronaut', '🦊 Fox', '🤖 Robot', '🧙 Wizard', '🦸 Hero', '👾 Alien'] },
-  { category: 'Objects', items: ['⭐ Star', '💎 Gem', '🗝️ Key', '🎁 Gift', '💣 Bomb', '🏆 Trophy'] },
-  { category: 'Backgrounds', items: ['🌌 Space', '🏔️ Mountains', '🌊 Ocean', '🏙️ City', '🌲 Forest', '🏜️ Desert'] },
-  { category: 'Sounds', items: ['🔔 Bell', '💥 Explosion', '🎵 Music', '👏 Clap', '🎮 Game Over', '✨ Magic'] },
-];
+import { buildLibraryCategories } from '../data/blockLibraryCategories';
+import { readEnabledExtensionIds } from '../data/extensionsCatalog';
+import { BB_EXTENSIONS_CHANGED } from '../utils/blockLibraryEvents';
 
 export default function Sidebar({ currentPage }) {
   const [activeCategory, setActiveCategory] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [extVersion, setExtVersion] = useState(0);
   const { projects, activeProject, setActiveProject, createProject } = useProject();
   const { user } = useUser();
 
   const isStarter = user?.ageMode === 'starter';
 
-  const categories = currentPage === 'gamebuilder'
-    ? [...blockCategories, ...gameAssets.map(a => ({ name: a.category, icon: '🎨', color: '#f59e0b', blocks: a.items }))]
-    : isStarter ? starterCategories : blockCategories;
+  const refreshExtensions = useCallback(() => {
+    setExtVersion((v) => v + 1);
+  }, []);
+
+  useEffect(() => {
+    const onExtChange = () => refreshExtensions();
+    window.addEventListener(BB_EXTENSIONS_CHANGED, onExtChange);
+    const onStorage = (e) => {
+      if (e.key === 'bb_enabled_extensions_v1') refreshExtensions();
+    };
+    window.addEventListener('storage', onStorage);
+    return () => {
+      window.removeEventListener(BB_EXTENSIONS_CHANGED, onExtChange);
+      window.removeEventListener('storage', onStorage);
+    };
+  }, [refreshExtensions]);
+
+  const categories = useMemo(() => {
+    return buildLibraryCategories({
+      currentPage,
+      isStarter,
+      enabledExtensionIds: readEnabledExtensionIds(),
+    });
+  }, [currentPage, isStarter, extVersion]);
 
   const filtered = searchTerm
-    ? categories.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()) || c.blocks.some(b => b.toLowerCase().includes(searchTerm.toLowerCase())))
+    ? categories.filter(
+        (c) =>
+          c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (c.blocks || []).some((b) => String(b).toLowerCase().includes(searchTerm.toLowerCase())),
+      )
     : categories;
 
   return (
@@ -115,8 +95,8 @@ export default function Sidebar({ currentPage }) {
           <div className="sidebar-section-title">
             {currentPage === 'gamebuilder' ? 'Assets & Blocks' : 'Blocks'}
           </div>
-          {filtered.map(cat => (
-            <div key={cat.name}>
+          {filtered.map((cat) => (
+            <div key={cat.extensionId || cat.name}>
               <button
                 className={`sidebar-item ${activeCategory === cat.name ? 'active' : ''}`}
                 onClick={() => setActiveCategory(activeCategory === cat.name ? null : cat.name)}
@@ -132,10 +112,10 @@ export default function Sidebar({ currentPage }) {
                 </span>
               </button>
               {activeCategory === cat.name && (
-                <div style={{paddingLeft: 16, marginBottom: 8}}>
-                  {cat.blocks.map(block => (
+                <div style={{ paddingLeft: 16, marginBottom: 8 }}>
+                  {(cat.blocks || []).map((block, bi) => (
                     <div
-                      key={block}
+                      key={`${cat.name}-${bi}-${String(block).slice(0, 32)}`}
                       className="sidebar-item"
                       draggable
                       onDragStart={(e) => e.dataTransfer.setData('text/plain', block)}

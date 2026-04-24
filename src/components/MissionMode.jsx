@@ -627,10 +627,26 @@ function MissionBlockEditor({ missionId, campColor, blocks, setBlocks }) {
   const removeBlock = (id) => setBlocks(prev => prev.filter(b => b.id !== id));
 
   return (
-    <div>
+    <div
+      style={{
+        background: `${campColor}12`,
+        border: `1px solid ${campColor}3d`,
+        borderRadius: 14,
+        padding: 10,
+      }}
+    >
       <div style={{ display: 'flex', gap: 10, minHeight: 180 }}>
         {/* Palette */}
-        <div style={{ width: 148, flexShrink: 0, background: 'rgba(0,0,0,0.3)', borderRadius: 12, padding: '10px 8px', border: '1px solid rgba(255,255,255,0.08)' }}>
+        <div
+          style={{
+            width: 148,
+            flexShrink: 0,
+            background: 'rgba(255,255,255,0.06)',
+            borderRadius: 12,
+            padding: '10px 8px',
+            border: '1px solid rgba(255,255,255,0.14)',
+          }}
+        >
           <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8, paddingLeft: 2 }}>Blocks</div>
           {available.map(type => {
             const def = MBLOCK_DEFS[type];
@@ -650,7 +666,16 @@ function MissionBlockEditor({ missionId, campColor, blocks, setBlocks }) {
         </div>
 
         {/* Workspace */}
-        <div style={{ flex: 1, background: 'rgba(0,0,0,0.2)', borderRadius: 12, padding: 10, minHeight: 180, border: '1px solid rgba(255,255,255,0.07)' }}>
+        <div
+          style={{
+            flex: 1,
+            background: 'rgba(255,255,255,0.05)',
+            borderRadius: 12,
+            padding: 10,
+            minHeight: 180,
+            border: '1px solid rgba(255,255,255,0.14)',
+          }}
+        >
           {blocks.length === 0 && (
             <div style={{ color: 'rgba(255,255,255,0.2)', fontSize: 13, textAlign: 'center', marginTop: 60 }}>
               ← Click blocks on the left to add them!
@@ -706,7 +731,7 @@ function MissionBlockEditor({ missionId, campColor, blocks, setBlocks }) {
           🐍 See the Python code your blocks generate
         </summary>
         <pre style={{
-          marginTop: 6, background: '#0d0d1a', border: '1px solid rgba(255,255,255,0.1)',
+          marginTop: 6, background: 'rgba(10,18,58,0.65)', border: '1px solid rgba(255,255,255,0.16)',
           borderRadius: 8, padding: '10px 14px', color: '#86efac',
           fontFamily: 'monospace', fontSize: 11, lineHeight: 1.7, overflowX: 'auto', margin: '6px 0 0',
         }}>{genPyFromBlocks(blocks)}</pre>
@@ -896,7 +921,18 @@ export default function MissionMode({ onNavigate }) {
     const mIdx = camp.missions.findIndex(m => m.id === mission.id);
     const done = isMissionDone(camp.id, mission.id);
     return (
-      <div style={{ minHeight: '100vh', background: camp.bg, padding: '32px 24px', maxWidth: 800, margin: '0 auto' }}>
+      <div
+        style={{
+          width: '100%',
+          minHeight: '100%',
+          backgroundColor: '#0b102f',
+          backgroundImage: camp.bg,
+          backgroundRepeat: 'no-repeat',
+          backgroundSize: 'cover',
+          padding: '32px 0',
+        }}
+      >
+      <div style={{ maxWidth: 800, margin: '0 auto', padding: '0 24px' }}>
         <button onClick={() => setActiveMission(null)} style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 8, padding: '8px 16px', color: '#fff', cursor: 'pointer', marginBottom: 24, fontSize: 13, fontWeight: 600 }}>
           ← Back to {camp.title}
         </button>
@@ -1006,6 +1042,7 @@ export default function MissionMode({ onNavigate }) {
           )}
         </div>
       </div>
+      </div>
     );
   }
 
@@ -1015,7 +1052,18 @@ export default function MissionMode({ onNavigate }) {
     const cp = getCampaignProgress(camp.id);
     const pct = Math.round((cp.completed.length / camp.missions.length) * 100);
     return (
-      <div style={{ minHeight: '100vh', background: camp.bg, padding: '32px 24px', maxWidth: 900, margin: '0 auto' }}>
+      <div
+        style={{
+          width: '100%',
+          minHeight: '100%',
+          backgroundColor: '#0b102f',
+          backgroundImage: camp.bg,
+          backgroundRepeat: 'no-repeat',
+          backgroundSize: 'cover',
+          padding: '32px 0',
+        }}
+      >
+      <div style={{ maxWidth: 900, margin: '0 auto', padding: '0 24px' }}>
         <button onClick={() => setActiveCampaign(null)} style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 8, padding: '8px 16px', color: '#fff', cursor: 'pointer', marginBottom: 24, fontSize: 13, fontWeight: 600 }}>
           ← All Campaigns
         </button>
@@ -1085,6 +1133,7 @@ export default function MissionMode({ onNavigate }) {
         </div>
 
         {showCert && <CertificateModal campaign={showCert} studentName={user.name} onClose={() => setShowCert(null)} />}
+      </div>
       </div>
     );
   }

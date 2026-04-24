@@ -1,35 +1,42 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useProject } from '../contexts/ProjectContext';
 import { useUser } from '../contexts/UserContext';
-import { getBlockStyle, getCategoryVars } from '../utils/categoryColors';
 import CodeEditor from './CodeEditor';
-import AIAssistant from './AIAssistant';
 import StarterBlocks from './StarterBlocks';
 import { runPython } from '../utils/pythonRunner';
+import ScratchStyleBlock, { getCategoryColor } from './ScratchStyleBlock';
+import { BLOCK_STACK_GAP } from '../utils/blockStack';
+import ExtensionsModal from './ExtensionsModal';
+import { readEnabledExtensionIds, writeEnabledExtensionIds, getExtensionSidebarCategories } from '../data/extensionsCatalog';
+import { BB_OPEN_EXTENSIONS } from '../utils/blockLibraryEvents';
+
+const STACK_X = 40;
+const STACK_START_Y = 30;
+const STACK_STEP = BLOCK_STACK_GAP;
 
 /* ─── Block type definitions ─── */
 const BLOCK_DEFS = {
-  'event-start':      { label: 'When program starts', icon: '🚩', color: '#FFD700', category: 'event', params: {} },
-  'event-keypress':   { label: 'On key press', icon: '🎯', color: '#FFD700', category: 'event', params: { key: 'space' } },
-  'event-click':      { label: 'On click', icon: '🎯', color: '#FFD700', category: 'event', params: {} },
-  'event-message':    { label: 'On message', icon: '🎯', color: '#FFD700', category: 'event', params: { message: 'go' } },
-  'event-broadcast':  { label: 'Broadcast', icon: '🎯', color: '#FFD700', category: 'event', params: { message: 'go' } },
-  'var-create':       { label: 'Create variable', icon: '📦', color: '#FFB700', category: 'variable', params: { name: 'myVar', value: '0' } },
-  'var-set':          { label: 'Set', icon: '📦', color: '#FFB700', category: 'variable', params: { name: 'myVar', value: '0' } },
-  'var-change':       { label: 'Change', icon: '📦', color: '#FFB700', category: 'variable', params: { name: 'myVar', amount: '1' } },
-  'var-show':         { label: 'Show variable', icon: '📦', color: '#FFB700', category: 'variable', params: { name: 'myVar' } },
-  'logic-if':         { label: 'If', icon: '🧠', color: '#00D9FF', category: 'logic', params: { condition: 'x > 5' } },
-  'logic-and':        { label: 'And / Or', icon: '🧠', color: '#00D9FF', category: 'logic', params: { left: 'a', op: 'and', right: 'b' } },
-  'logic-compare':    { label: 'Compare', icon: '🧠', color: '#00D9FF', category: 'logic', params: { left: 'a', op: '=', right: 'b' } },
-  'logic-bool':       { label: 'Boolean', icon: '🧠', color: '#00D9FF', category: 'logic', params: { value: 'true' } },
-  'loop-repeat':      { label: 'Repeat', icon: '🔁', color: '#FF6B35', category: 'loop', params: { times: '10' } },
-  'loop-while':       { label: 'While', icon: '🔁', color: '#FF6B35', category: 'loop', params: { condition: 'true' } },
-  'loop-foreach':     { label: 'For each', icon: '🔁', color: '#FF6B35', category: 'loop', params: { item: 'item', list: 'myList' } },
-  'loop-break':       { label: 'Break', icon: '🔁', color: '#FF6B35', category: 'loop', params: {} },
-  'func-define':      { label: 'Define function', icon: '⚡', color: '#00D9FF', category: 'function', params: { name: 'myFunc' } },
-  'func-call':        { label: 'Call', icon: '⚡', color: '#00D9FF', category: 'function', params: { name: 'myFunc' } },
-  'func-return':      { label: 'Return', icon: '⚡', color: '#00D9FF', category: 'function', params: { value: '0' } },
-  'func-params':      { label: 'With parameters', icon: '⚡', color: '#00D9FF', category: 'function', params: { params: 'a, b' } },
+  'event-start':      { label: 'When program starts', icon: '🚩', color: '#f59e0b', category: 'event', params: {} },
+  'event-keypress':   { label: 'On key press', icon: '🎯', color: '#f59e0b', category: 'event', params: { key: 'space' } },
+  'event-click':      { label: 'On click', icon: '🎯', color: '#f59e0b', category: 'event', params: {} },
+  'event-message':    { label: 'On message', icon: '🎯', color: '#f59e0b', category: 'event', params: { message: 'go' } },
+  'event-broadcast':  { label: 'Broadcast', icon: '🎯', color: '#f59e0b', category: 'event', params: { message: 'go' } },
+  'var-create':       { label: 'Create variable', icon: '📦', color: '#06b6d4', category: 'variable', params: { name: 'myVar', value: '0' } },
+  'var-set':          { label: 'Set', icon: '📦', color: '#06b6d4', category: 'variable', params: { name: 'myVar', value: '0' } },
+  'var-change':       { label: 'Change', icon: '📦', color: '#06b6d4', category: 'variable', params: { name: 'myVar', amount: '1' } },
+  'var-show':         { label: 'Show variable', icon: '📦', color: '#06b6d4', category: 'variable', params: { name: 'myVar' } },
+  'logic-if':         { label: 'If', icon: '🧠', color: '#6366f1', category: 'logic', params: { condition: 'x > 5' } },
+  'logic-and':        { label: 'And / Or', icon: '🧠', color: '#6366f1', category: 'logic', params: { left: 'a', op: 'and', right: 'b' } },
+  'logic-compare':    { label: 'Compare', icon: '🧠', color: '#6366f1', category: 'logic', params: { left: 'a', op: '=', right: 'b' } },
+  'logic-bool':       { label: 'Boolean', icon: '🧠', color: '#6366f1', category: 'logic', params: { value: 'true' } },
+  'loop-repeat':      { label: 'Repeat', icon: '🔁', color: '#8b5cf6', category: 'loop', params: { times: '10' } },
+  'loop-while':       { label: 'While', icon: '🔁', color: '#8b5cf6', category: 'loop', params: { condition: 'true' } },
+  'loop-foreach':     { label: 'For each', icon: '🔁', color: '#8b5cf6', category: 'loop', params: { item: 'item', list: 'myList' } },
+  'loop-break':       { label: 'Break', icon: '🔁', color: '#8b5cf6', category: 'loop', params: {} },
+  'func-define':      { label: 'Define function', icon: '⚡', color: '#10b981', category: 'function', params: { name: 'myFunc' } },
+  'func-call':        { label: 'Call', icon: '⚡', color: '#10b981', category: 'function', params: { name: 'myFunc' } },
+  'func-return':      { label: 'Return', icon: '⚡', color: '#10b981', category: 'function', params: { value: '0' } },
+  'func-params':      { label: 'With parameters', icon: '⚡', color: '#10b981', category: 'function', params: { params: 'a, b' } },
   'action-print':     { label: 'Print', icon: '💬', color: '#a855f7', category: 'action', params: { message: '"Hello!"' } },
   'action-ask':       { label: 'Ask and wait', icon: '💬', color: '#a855f7', category: 'action', params: { prompt: '"What is your name?"' } },
   'action-alert':     { label: 'Alert', icon: '💬', color: '#a855f7', category: 'action', params: { message: '"Notice"' } },
@@ -37,20 +44,20 @@ const BLOCK_DEFS = {
   'math-mult':        { label: 'Multiply / Divide', icon: '🔢', color: '#ef4444', category: 'math', params: { a: '2', op: '×', b: '3' } },
   'math-random':      { label: 'Random number', icon: '🔢', color: '#ef4444', category: 'math', params: { min: '1', max: '100' } },
   'math-round':       { label: 'Round / Abs', icon: '🔢', color: '#ef4444', category: 'math', params: { op: 'round', value: '3.7' } },
-  'text-create':      { label: 'Create text', icon: '📝', color: '#00B4FF', category: 'text', params: { text: '"hello"' } },
-  'text-join':        { label: 'Join text', icon: '📝', color: '#00B4FF', category: 'text', params: { a: '"hello"', b: '" world"' } },
-  'text-length':      { label: 'Length of', icon: '📝', color: '#00B4FF', category: 'text', params: { text: '"hello"' } },
-  'list-create':      { label: 'Create list', icon: '📋', color: '#00B4FF', category: 'list', params: { name: 'myList' } },
-  'list-add':         { label: 'Add to list', icon: '📋', color: '#00B4FF', category: 'list', params: { list: 'myList', item: '"item"' } },
-  'list-get':         { label: 'Get item #', icon: '📋', color: '#00B4FF', category: 'list', params: { list: 'myList', index: '0' } },
-  'sprite-move':      { label: 'Move', icon: '🎭', color: '#00D9FF', category: 'sprite', params: { steps: '10' } },
-  'sprite-turn':      { label: 'Turn', icon: '🎭', color: '#00D9FF', category: 'sprite', params: { degrees: '90' } },
-  'sprite-goto':      { label: 'Go to', icon: '🎭', color: '#00D9FF', category: 'sprite', params: { x: '0', y: '0' } },
-  'sprite-say':       { label: 'Say', icon: '🎭', color: '#00D9FF', category: 'sprite', params: { text: '"Hi!"' } },
-  'sound-play':       { label: 'Play sound', icon: '🔊', color: '#FF10F0', category: 'sound', params: { sound: 'pop' } },
-  'sound-volume':     { label: 'Set volume', icon: '🔊', color: '#FF10F0', category: 'sound', params: { volume: '100' } },
-  'ai-classify':      { label: 'AI classify', icon: '🤖', color: '#FF3366', category: 'ai', params: { input: '"text"' } },
-  'ai-generate':      { label: 'AI generate text', icon: '🤖', color: '#FF3366', category: 'ai', params: { prompt: '"Write a poem"' } },
+  'text-create':      { label: 'Create text', icon: '📝', color: '#ec4899', category: 'text', params: { text: '"hello"' } },
+  'text-join':        { label: 'Join text', icon: '📝', color: '#ec4899', category: 'text', params: { a: '"hello"', b: '" world"' } },
+  'text-length':      { label: 'Length of', icon: '📝', color: '#ec4899', category: 'text', params: { text: '"hello"' } },
+  'list-create':      { label: 'Create list', icon: '📋', color: '#14b8a6', category: 'list', params: { name: 'myList' } },
+  'list-add':         { label: 'Add to list', icon: '📋', color: '#14b8a6', category: 'list', params: { list: 'myList', item: '"item"' } },
+  'list-get':         { label: 'Get item #', icon: '📋', color: '#14b8a6', category: 'list', params: { list: 'myList', index: '0' } },
+  'sprite-move':      { label: 'Move', icon: '🎭', color: '#06b6d4', category: 'sprite', params: { steps: '10' } },
+  'sprite-turn':      { label: 'Turn', icon: '🎭', color: '#06b6d4', category: 'sprite', params: { degrees: '90' } },
+  'sprite-goto':      { label: 'Go to', icon: '🎭', color: '#06b6d4', category: 'sprite', params: { x: '0', y: '0' } },
+  'sprite-say':       { label: 'Say', icon: '🎭', color: '#06b6d4', category: 'sprite', params: { text: '"Hi!"' } },
+  'sound-play':       { label: 'Play sound', icon: '🔊', color: '#84cc16', category: 'sound', params: { sound: 'pop' } },
+  'sound-volume':     { label: 'Set volume', icon: '🔊', color: '#84cc16', category: 'sound', params: { volume: '100' } },
+  'ai-classify':      { label: 'AI classify', icon: '🤖', color: '#f97316', category: 'ai', params: { input: '"text"' } },
+  'ai-generate':      { label: 'AI generate text', icon: '🤖', color: '#f97316', category: 'ai', params: { prompt: '"Write a poem"' } },
 };
 
 const SIDEBAR_TO_TYPE = {
@@ -74,7 +81,18 @@ function createBlockFromDrop(text, x, y) {
   if (def) {
     return { id: Date.now(), type: key, ...def, params: { ...def.params }, x, y, connected: [] };
   }
-  return { id: Date.now(), type: 'custom', label: text, icon: '⚡', color: '#FFD700', category: 'custom', x, y, connected: [], params: {} };
+  return { id: Date.now(), type: 'custom', label: text, icon: '⚡', color: '#ec4899', category: 'custom', x, y, connected: [], params: {} };
+}
+
+function normalizeStack(blocks) {
+  if (!Array.isArray(blocks) || blocks.length === 0) return [];
+  const sorted = [...blocks].sort((a, b) => (a.y - b.y) || (a.x - b.x));
+  return sorted.map((b, idx) => ({
+    ...b,
+    x: STACK_X,
+    y: STACK_START_Y + idx * STACK_STEP,
+    connected: idx < sorted.length - 1 ? [sorted[idx + 1].id] : [],
+  }));
 }
 
 function ParamInput({ value, onChange, width, color }) {
@@ -103,7 +121,6 @@ function ParamInput({ value, onChange, width, color }) {
 }
 
 function BlockContent({ block, onParamChange }) {
-  block = { ...block, icon: '' };
   const p = block.params || {};
   const PI = (paramKey, w) => (
     <ParamInput
@@ -177,15 +194,32 @@ const PALETTE_CATS = [
   { id: 'ai',       label: '🤖 AI',        color: '#f97316' },
 ];
 
-function BlockPalette({ onAdd }) {
+function BlockPalette({ onAdd, enabledExtensions, onOpenExtensions }) {
   const [activeCat, setActiveCat] = useState('event');
-  const cat = PALETTE_CATS.find(c => c.id === activeCat);
-  const blocks = Object.entries(BLOCK_DEFS).filter(([, d]) => d.category === activeCat);
+  
+  // Merge base categories with extension categories
+  const extensionCats = useMemo(() => {
+    return getExtensionSidebarCategories(enabledExtensions).map(ext => ({
+      id: `ext-${ext.extensionId}`,
+      label: `${ext.icon} ${ext.name}`,
+      color: ext.color,
+      isExtension: true,
+      extensionId: ext.extensionId,
+    }));
+  }, [enabledExtensions]);
+  
+  const allCategories = [...PALETTE_CATS, ...extensionCats];
+  
+  const cat = allCategories.find(c => c.id === activeCat);
+  const blocks = cat?.isExtension 
+    ? [] // Extensions show placeholder blocks for now
+    : Object.entries(BLOCK_DEFS).filter(([, d]) => d.category === activeCat);
+  
   return (
     <div style={{ width: 180, flexShrink: 0, display: 'flex', flexDirection: 'column', borderRight: '1px solid var(--border-color)', background: 'var(--bg-secondary)', overflow: 'hidden' }}>
       {/* Category list */}
-      <div style={{ overflowY: 'auto', borderBottom: '1px solid var(--border-color)', padding: '4px 4px' }}>
-        {PALETTE_CATS.map(c => (
+      <div style={{ overflowY: 'auto', borderBottom: '1px solid var(--border-color)', padding: '4px 4px', flex: 1 }}>
+        {allCategories.map(c => (
           <button key={c.id} onClick={() => setActiveCat(c.id)} style={{
             display: 'block', width: '100%', textAlign: 'left', padding: '5px 8px',
             borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 600,
@@ -195,24 +229,48 @@ function BlockPalette({ onAdd }) {
             marginBottom: 1,
           }}>{c.label}</button>
         ))}
+        
+        {/* Extensions button */}
+        <button 
+          onClick={onOpenExtensions}
+          style={{
+            display: 'block', width: '100%', textAlign: 'left', padding: '5px 8px',
+            borderRadius: 6, border: '1px dashed var(--border-color)', cursor: 'pointer', 
+            fontSize: 11, fontWeight: 600, marginTop: 8,
+            background: 'transparent',
+            color: 'var(--text-secondary)',
+          }}
+        >
+          ➕ Extensions
+        </button>
       </div>
       {/* Blocks in selected category */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '6px 6px', display: 'flex', flexDirection: 'column', gap: 4 }}>
         {blocks.map(([type, def]) => (
           <button
             key={type}
-            className="palette-block"
-            data-category={activeCat}
             onClick={() => onAdd(type)}
             style={{
+              padding: 0,
+              border: 'none',
+              background: 'transparent',
+              cursor: 'pointer',
+              width: '100%',
               textAlign: 'left',
-              fontSize: 12,
-              lineHeight: 1.35,
-              margin: '0 0 12px 0',
-              padding: '8px 12px',
             }}
           >
-            {def.icon} {def.label}
+            <ScratchStyleBlock
+              block={{ id: `palette-${type}`, type, category: def.category, label: def.label }}
+              style={{
+                position: 'relative',
+                transform: 'none',
+                transition: 'none',
+                marginBottom: 2,
+              }}
+            >
+              <span>{def.icon}</span>
+              <span>{def.label}</span>
+            </ScratchStyleBlock>
           </button>
         ))}
       </div>
@@ -224,36 +282,25 @@ function BlockCanvas({ code, onCodeChange, onBlockLineMap, activeCodeLine, onNav
   const canvasRef = useRef(null);
   const { user } = useUser();
   const defaultBlocks = [
-    { id: 1, type: 'event-start', ...BLOCK_DEFS['event-start'], params: {}, x: 40, y: 30, connected: [2] },
-    { id: 2, type: 'var-create', ...BLOCK_DEFS['var-create'], params: { name: 'score', value: '0' }, x: 40, y: 95, connected: [3] },
-    { id: 3, type: 'loop-repeat', ...BLOCK_DEFS['loop-repeat'], params: { times: '10' }, x: 40, y: 160, connected: [4] },
-    { id: 4, type: 'logic-if', ...BLOCK_DEFS['logic-if'], params: { condition: 'score > 5' }, x: 60, y: 225, connected: [5] },
-    { id: 5, type: 'action-print', ...BLOCK_DEFS['action-print'], params: { message: '"You win!"' }, x: 80, y: 290, connected: [] },
-    { id: 6, type: 'var-change', ...BLOCK_DEFS['var-change'], params: { name: 'score', amount: '1' }, x: 60, y: 355, connected: [] },
+    { id: 1, type: 'event-start', ...BLOCK_DEFS['event-start'], params: {}, x: STACK_X, y: STACK_START_Y, connected: [2] },
+    { id: 2, type: 'var-create', ...BLOCK_DEFS['var-create'], params: { name: 'score', value: '0' }, x: STACK_X, y: STACK_START_Y + STACK_STEP, connected: [3] },
+    { id: 3, type: 'loop-repeat', ...BLOCK_DEFS['loop-repeat'], params: { times: '10' }, x: STACK_X, y: STACK_START_Y + STACK_STEP * 2, connected: [4] },
+    { id: 4, type: 'logic-if', ...BLOCK_DEFS['logic-if'], params: { condition: 'score > 5' }, x: STACK_X, y: STACK_START_Y + STACK_STEP * 3, connected: [5] },
+    { id: 5, type: 'action-print', ...BLOCK_DEFS['action-print'], params: { message: '"You win!"' }, x: STACK_X, y: STACK_START_Y + STACK_STEP * 4, connected: [6] },
+    { id: 6, type: 'var-change', ...BLOCK_DEFS['var-change'], params: { name: 'score', amount: '1' }, x: STACK_X, y: STACK_START_Y + STACK_STEP * 5, connected: [] },
   ];
   const [blocks, setBlocks] = useState(() => {
-    try { const s = localStorage.getItem('cv_workspace_blocks'); return s ? JSON.parse(s) : defaultBlocks; } catch { return defaultBlocks; }
+    try {
+      const s = localStorage.getItem('cv_workspace_blocks');
+      return s ? normalizeStack(JSON.parse(s)) : normalizeStack(defaultBlocks);
+    } catch {
+      return normalizeStack(defaultBlocks);
+    }
   });
   const [dragging, setDragging] = useState(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [hoveredBlock, setHoveredBlock] = useState(null);
   const [selectedBlock, setSelectedBlock] = useState(null);
-  const STACK_X = 40;
-  const STACK_START_Y = 40;
-  const STACK_GAP = 56;
-  const normalizeStack = (list) =>
-    [...list]
-      .sort((a, b) => a.y - b.y)
-      .map((b, i) => ({ ...b, x: STACK_X, y: STACK_START_Y + (i * STACK_GAP) }));
-  const reorderStackForDrop = (list, movingId) => {
-    const moving = list.find(b => b.id === movingId);
-    if (!moving) return normalizeStack(list);
-    const ordered = list.filter(b => b.id !== movingId).sort((a, b) => a.y - b.y);
-    const rawIndex = Math.round((moving.y - STACK_START_Y) / STACK_GAP);
-    const insertIndex = Math.max(0, Math.min(ordered.length, rawIndex));
-    ordered.splice(insertIndex, 0, moving);
-    return ordered.map((b, i) => ({ ...b, x: STACK_X, y: STACK_START_Y + (i * STACK_GAP) }));
-  };
 
   /* Generate code from blocks + build blockLineMap */
   useEffect(() => {
@@ -309,20 +356,17 @@ function BlockCanvas({ code, onCodeChange, onBlockLineMap, activeCodeLine, onNav
     const def = BLOCK_DEFS[type];
     if (!def) return;
     const id = Date.now();
-    const lastBlock = blocks.length ? [...blocks].sort((a, b) => b.y - a.y)[0] : null;
-    const nextX = STACK_X;
-    const nextY = lastBlock ? lastBlock.y + STACK_GAP : STACK_START_Y;
-    const newBlock = { id, type, ...def, params: { ...def.params }, x: nextX, y: nextY, connected: [] };
-    setBlocks(prev => [...prev, newBlock]);
-  }, [blocks]);
+    const newBlock = { id, type, ...def, params: { ...def.params }, x: STACK_X, y: STACK_START_Y + blocks.length * STACK_STEP, connected: [] };
+    setBlocks(prev => normalizeStack([...prev, newBlock]));
+  }, [blocks.length]);
 
   const deleteBlock = useCallback((blockId) => {
     setBlocks(prev => {
       const filtered = prev.filter(b => b.id !== blockId);
-      return filtered.map(b => ({
+      return normalizeStack(filtered.map(b => ({
         ...b,
         connected: b.connected.filter(cid => cid !== blockId),
-      }));
+      })));
     });
     setSelectedBlock(null);
   }, []);
@@ -341,45 +385,22 @@ function BlockCanvas({ code, onCodeChange, onBlockLineMap, activeCodeLine, onNav
   const handleMouseMove = useCallback((e) => {
     if (!dragging || !canvasRef.current) return;
     const rect = canvasRef.current.getBoundingClientRect();
-    const x = Math.max(0, e.clientX - rect.left - dragOffset.x);
+    const x = STACK_X;
     const y = Math.max(0, e.clientY - rect.top - dragOffset.y);
     setBlocks(prev => prev.map(b => b.id === dragging ? { ...b, x, y } : b));
   }, [dragging, dragOffset]);
 
   const handleMouseUp = useCallback(() => {
-    if (!dragging) return;
-    setBlocks(prev => {
-      const moving = prev.find(b => b.id === dragging);
-      if (!moving) return prev;
-      const snapTarget = prev
-        .filter(b => b.id !== dragging)
-        .map(b => ({
-          block: b,
-          dx: Math.abs(b.x - moving.x),
-          dy: Math.abs((b.y + STACK_GAP) - moving.y),
-        }))
-        .filter(s => s.dx <= 80 && s.dy <= 50)
-        .sort((a, b) => (a.dx + a.dy) - (b.dx + b.dy))[0]?.block;
-      if (!snapTarget) return prev;
-      return prev.map(b =>
-        b.id === dragging ? { ...b, x: snapTarget.x, y: snapTarget.y + STACK_GAP } : b
-      );
-    });
+    setBlocks(prev => normalizeStack(prev));
     setDragging(null);
-  }, [dragging]);
+  }, []);
 
   const handleDrop = (e) => {
     e.preventDefault();
     const text = e.dataTransfer.getData('text/plain');
     if (!text || !canvasRef.current) return;
-    const rect = canvasRef.current.getBoundingClientRect();
-    const newBlock = createBlockFromDrop(text, e.clientX - rect.left - 80, e.clientY - rect.top - 20);
-    setBlocks(prev => {
-      const lastBlock = prev.length ? [...prev].sort((a, b) => b.y - a.y)[0] : null;
-      const x = lastBlock ? lastBlock.x : STACK_X;
-      const y = lastBlock ? lastBlock.y + STACK_GAP : STACK_START_Y;
-      return [...prev, { ...newBlock, x, y }];
-    });
+    const newBlock = createBlockFromDrop(text, STACK_X, STACK_START_Y + blocks.length * STACK_STEP);
+    setBlocks(prev => normalizeStack([...prev, newBlock]));
   };
 
   // Keyboard navigation for blocks
@@ -388,18 +409,12 @@ function BlockCanvas({ code, onCodeChange, onBlockLineMap, activeCodeLine, onNav
     if (e.key === 'Delete' || e.key === 'Backspace') {
       e.preventDefault();
       deleteBlock(block.id);
-    } else if (e.key === 'ArrowLeft') {
-      e.preventDefault();
-      setBlocks(prev => prev.map(b => b.id === block.id ? { ...b, x: Math.max(0, b.x - STEP) } : b));
-    } else if (e.key === 'ArrowRight') {
-      e.preventDefault();
-      setBlocks(prev => prev.map(b => b.id === block.id ? { ...b, x: b.x + STEP } : b));
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
-      setBlocks(prev => prev.map(b => b.id === block.id ? { ...b, y: Math.max(0, b.y - STEP) } : b));
+      setBlocks(prev => normalizeStack(prev.map(b => b.id === block.id ? { ...b, y: Math.max(0, b.y - STEP) } : b)));
     } else if (e.key === 'ArrowDown') {
       e.preventDefault();
-      setBlocks(prev => prev.map(b => b.id === block.id ? { ...b, y: b.y + STEP } : b));
+      setBlocks(prev => normalizeStack(prev.map(b => b.id === block.id ? { ...b, y: b.y + STEP } : b)));
     } else if (e.key === 'Escape') {
       setSelectedBlock(null);
     }
@@ -413,7 +428,6 @@ function BlockCanvas({ code, onCodeChange, onBlockLineMap, activeCodeLine, onNav
 
   return (
     <div style={{ display: 'flex', flex: 1, minWidth: 0, minHeight: 0 }}>
-      <BlockPalette onAdd={addBlockFromPalette} />
     <div
       ref={canvasRef}
       className="block-canvas"
@@ -455,10 +469,10 @@ function BlockCanvas({ code, onCodeChange, onBlockLineMap, activeCodeLine, onNav
         const isSynced = syncedBlockId && String(block.id) === String(syncedBlockId);
         const isSelected = selectedBlock === block.id;
         return (
-          <div
+          <ScratchStyleBlock
             key={block.id}
-            className={`block${isSynced ? ' block-synced' : ''}${isSelected ? ' active' : ''}`}
-            data-category={block.category}
+            block={block}
+            className={`${isSynced ? ' block-synced' : ''}${isSelected ? ' active' : ''}${dragging === block.id ? ' dragging' : ''}`}
             tabIndex={0}
             role="button"
             aria-label={`${block.label || block.type} block`}
@@ -471,10 +485,13 @@ function BlockCanvas({ code, onCodeChange, onBlockLineMap, activeCodeLine, onNav
               position: 'absolute',
               left: block.x,
               top: block.y,
-              transform: dragging === block.id ? 'scale(1.05)' : 'scale(1)',
-              transition: dragging === block.id ? 'none' : 'transform 0.15s, box-shadow 0.15s',
+              cursor: dragging === block.id ? 'grabbing' : 'grab',
+              userSelect: 'none',
+              transform: 'none',
+              transition: 'none',
               zIndex: dragging === block.id ? 100 : isSelected ? 50 : 1,
-              outline: 'none',
+              outline: isSelected ? `3px solid ${getCategoryColor(block.category)}88` : 'none',
+              outlineOffset: '2px',
             }}
           >
             <BlockContent block={block} onParamChange={handleParamChange} />
@@ -482,26 +499,26 @@ function BlockCanvas({ code, onCodeChange, onBlockLineMap, activeCodeLine, onNav
             <button
               onMouseDown={(e) => { e.stopPropagation(); deleteBlock(block.id); }}
               style={{
-                position: 'absolute', top: 3, right: 3,
-                width: 20, height: 20, borderRadius: '50%', border: 'none',
+                position: 'absolute', top: 5, right: 5,
+                width: 18, height: 18, borderRadius: '50%', border: 'none',
                 background: hoveredBlock === block.id ? '#ef4444' : 'transparent',
                 color: hoveredBlock === block.id ? '#fff' : 'transparent',
-                fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                fontSize: 11, fontWeight: 700, cursor: 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 transition: 'all 0.15s', lineHeight: 1, padding: 0,
+                pointerEvents: 'auto',
               }}
-              title="Delete block"
+              title="Delete block (Del)"
             >×</button>
-
-          </div>
+          </ScratchStyleBlock>
         );
       })}
 
       {blocks.length === 0 && (
         <div className="empty-state" style={{ height: '100%' }}>
           <div className="empty-state-icon">🧩</div>
-          <h3>Click a block to add it</h3>
-          <p>Pick blocks from the palette on the left</p>
+          <h3>Drag a block to get started</h3>
+          <p>Use the Block Library sidebar on the left</p>
         </div>
       )}
     </div>
@@ -679,13 +696,38 @@ function Preview({ code, language }) {
 export default function WorkspaceEditor() {
   const { activeProject, viewMode, setViewMode, updateProject } = useProject();
   const { user, addXP } = useUser();
-  const [showAI, setShowAI] = useState(true);
   const [savedFlash, setSavedFlash] = useState(false);
   const [language, setLanguage] = useState(activeProject?.language || 'python');
+  const [extensionsOpen, setExtensionsOpen] = useState(false);
+  const [enabledExtensions, setEnabledExtensions] = useState(() => readEnabledExtensionIds());
 
   const saveBlocks = useCallback(() => {
     setSavedFlash(true);
     setTimeout(() => setSavedFlash(false), 1800);
+  }, []);
+
+  const toggleExtension = useCallback((id) => {
+    setEnabledExtensions(prev => {
+      const set = new Set(prev);
+      if (set.has(id)) set.delete(id);
+      else set.add(id);
+      const next = Array.from(set);
+      writeEnabledExtensionIds(next);
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    const handleExtensionsChanged = () => {
+      setEnabledExtensions(readEnabledExtensionIds());
+    };
+    const openExt = () => setExtensionsOpen(true);
+    window.addEventListener(BB_OPEN_EXTENSIONS, openExt);
+    window.addEventListener('bb-extensions-changed', handleExtensionsChanged);
+    return () => {
+      window.removeEventListener(BB_OPEN_EXTENSIONS, openExt);
+      window.removeEventListener('bb-extensions-changed', handleExtensionsChanged);
+    };
   }, []);
 
   useEffect(() => {
@@ -757,16 +799,18 @@ export default function WorkspaceEditor() {
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
           <button
             className="btn btn-sm"
+            onClick={() => setExtensionsOpen(true)}
+            style={{ background: '#6366f1', color: '#fff' }}
+            title="Add Extensions"
+          >
+            🧩 Extensions
+          </button>
+          <button
+            className="btn btn-sm"
             onClick={saveBlocks}
             style={{ background: savedFlash ? '#22c55e' : '#334155', color: '#fff', transition: 'background 0.3s', minWidth: 80 }}
           >
             {savedFlash ? '✓ Saved!' : '💾 Save'}
-          </button>
-          <button
-            className={`btn btn-ghost btn-sm ${showAI ? '' : 'opacity-50'}`}
-            onClick={() => setShowAI(!showAI)}
-          >
-            🤖 AI Assistant
           </button>
           <span className="tag tag-primary" style={{ alignSelf: 'center' }}>
             {activeProject.name}
@@ -817,17 +861,17 @@ export default function WorkspaceEditor() {
 
         {/* Preview */}
         <Preview code={code} language={language} />
-
-        {/* AI Assistant */}
-        {showAI && (
-          <>
-            <div className="panel-resizer" />
-            <AIAssistant code={code} language={language} />
-          </>
-        )}
         </>
         )}
       </div>
+      
+      {/* Extensions Modal */}
+      <ExtensionsModal
+        open={extensionsOpen}
+        onClose={() => setExtensionsOpen(false)}
+        enabledIds={enabledExtensions}
+        onToggleExtension={toggleExtension}
+      />
     </div>
   );
 }

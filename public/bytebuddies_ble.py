@@ -1,41 +1,36 @@
-# ByteBuddies BLE Firmware for micro:bit v2
-# Flash ONCE via USB at https://python.microbit.org/v/3
-# Screen codes:  S=Starting  1=BT imported  2=BLE active  3=Service registered  B=Broadcasting
-# Sad face + scrolling text = error — read it and tell your teacher!
+# ByteBuddies general BLE bridge for micro:bit v2.
+# Uses the simplest stable UART pattern (B5B3 + WRITE_NO_RESPONSE 0x0004)
+# to maximize compatibility with classroom firmware builds.
 
 from microbit import *
-display.show('S')
+
+display.show("S")
 
 try:
-    import bluetooth
-    display.show('1')
+    from bluetooth import BLE, UUID
 
-    ble = bluetooth.BLE()
+    ble = BLE()
     ble.active(True)
-    display.show('2')
+    display.show("B")
 
-    # Nordic UART Service (NUS) — same UUIDs as MakeCode Bluetooth extension
-    # TX = micro:bit → browser (NOTIFY)
-    # RX = browser → micro:bit (WRITE WITHOUT RESPONSE = 0x0004)
+    # Nordic UART service (legacy B5B3 variant; app accepts B5A3 and B5B3)
     ((tx_h, rx_h),) = ble.gatts_register_services(((
-        bluetooth.UUID('6e400001-b5b3-f393-e0a9-e50e24dcca9e'), (
-            (bluetooth.UUID('6e400003-b5b3-f393-e0a9-e50e24dcca9e'), 0x0010),  # NOTIFY
-            (bluetooth.UUID('6e400002-b5b3-f393-e0a9-e50e24dcca9e'), 0x0004),  # WRITE_NO_RESPONSE
+        UUID("6e400001-b5b3-f393-e0a9-e50e24dcca9e"), (
+            (UUID("6e400003-b5b3-f393-e0a9-e50e24dcca9e"), 0x0010),  # NOTIFY
+            (UUID("6e400002-b5b3-f393-e0a9-e50e24dcca9e"), 0x0004),  # WRITE_NO_RESPONSE
         )
     ),))
-    display.show('3')
 
-    # Advertisement payload: Flags + Complete Local Name "ByteBuddies"
-    _name = b'ByteBuddies'
-    _ADV  = bytes([2, 0x01, 0x06, len(_name) + 1, 0x09]) + _name
+    _name = b"ByteBuddies"
+    _ADV = bytes([2, 0x01, 0x06, len(_name) + 1, 0x09]) + _name
 
     _conn = None
-    _buf  = ''
+    _buf = ""
 
     def _send(s):
         if _conn is None:
             return
-        b = s.encode()
+        b = s.encode() if isinstance(s, str) else s
         for i in range(0, len(b), 20):
             try:
                 ble.gatts_notify(_conn, tx_h, b[i:i + 20])
@@ -46,44 +41,37 @@ try:
     def _recv(chunk):
         global _buf
         _buf += chunk
-        # Accept both \n and \x04 as command terminators so ByteBuddies
-        # browser app can ping with either style
         while True:
-            i4  = _buf.find('\x04')
-            inl = _buf.find('\n')
-            if i4 < 0 and inl < 0:
+            idx = _buf.find("\x04")
+            if idx < 0:
                 break
-            if   i4  < 0: idx = inl
-            elif inl < 0: idx = i4
-            else:         idx = min(i4, inl)
-            cmd  = _buf[:idx].strip()
+            cmd = _buf[:idx].strip()
             _buf = _buf[idx + 1:]
             if cmd:
                 try:
-                    exec(compile(cmd, '<b>', 'exec'), globals())
+                    exec(cmd)
                 except:
                     pass
-                # Always reply with \x04\x04 — the completion signal
-                _send('\x04\x04')
+                _send("\x04\x04")
 
     def _irq(event, data):
         global _conn, _buf
-        if event == 1:          # central connected
+        if event == 1:  # connected
             _conn = data[0]
-            _buf  = ''
+            _buf = ""
             display.show(Image.HAPPY)
-        elif event == 2:        # central disconnected
+        elif event == 2:  # disconnected
             _conn = None
-            _buf  = ''
-            display.show('B')
-            ble.gap_advertise(100_000, _ADV)
-        elif event == 3:        # write received
+            _buf = ""
+            display.show("B")
+            ble.gap_advertise(100000, _ADV)
+        elif event == 3:  # write
             if data[1] == rx_h:
-                _recv(ble.gatts_read(rx_h).decode('utf-8', 'replace'))
+                _recv(ble.gatts_read(rx_h).decode("utf-8", "replace"))
 
     ble.irq(_irq)
-    ble.gap_advertise(100_000, _ADV)
-    display.show('B')   # Broadcasting — ready to connect!
+    ble.gap_advertise(100000, _ADV)
+    display.show("B")
 
 except Exception as e:
     display.scroll(str(e), delay=80)

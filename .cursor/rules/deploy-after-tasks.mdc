@@ -1,0 +1,26 @@
+---
+description: After code or asset changes for this app, deploy to production VPS immediately unless the user opts out.
+alwaysApply: true
+---
+
+# Deploy after each request
+
+When you finish substantive work in this repo (code fixes, features, CSS, or anything that affects the live site), **deploy to production right away** in the same turn. Do not wait for a separate "deploy" message.
+
+## Steps (Windows PowerShell)
+
+1. `npm run build` in the project root.
+2. SSH clear and upload (key path and host are fixed for this project):
+   - Key: `C:\Users\miche\OneDrive\Documents\Oracle Keys\ssh-key-2026-03-25.key`
+   - Host: `ubuntu@129.151.144.92`
+   - Remote dir: `/home/ubuntu/bytebuddies`
+3. `ssh ... 'rm -rf /home/ubuntu/bytebuddies/*; mkdir -p /home/ubuntu/bytebuddies'`
+4. `scp -r -i KEY -o StrictHostKeyChecking=no "PATH\dist\." ubuntu@129.151.144.92:/home/ubuntu/bytebuddies/`
+5. `ssh ... 'find /home/ubuntu/bytebuddies -type d -exec chmod 755 {} \; ; find /home/ubuntu/bytebuddies -type f -exec chmod 644 {} \; ; sudo nginx -t && sudo systemctl reload nginx'`
+
+## Exceptions
+
+- Skip deploy if the user explicitly says not to deploy, or the change is docs-only and they asked not to.
+- If SSH/SCP fails (key missing, network), report the error and what succeeded (e.g. build OK).
+
+Live site: https://bytebuddies.technology/
