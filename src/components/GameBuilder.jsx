@@ -281,9 +281,9 @@ export default function GameBuilder() {
   const [sprites, setSprites] = useState(() => {
     try {
       const s = localStorage.getItem('cv_gamebuilder_sprites');
-      return normalizeSpritesBlockStacks(s ? JSON.parse(s) : defaultSprites);
+      return s ? JSON.parse(s) : defaultSprites;
     } catch {
-      return normalizeSpritesBlockStacks(defaultSprites);
+      return defaultSprites;
     }
   });
   const [selected, setSelected] = useState(1);
@@ -1003,7 +1003,7 @@ loadImages(function(){
   const deleteBlock = useCallback((blockId) => {
     setSprites(prev => prev.map(s => {
       if (s.id !== selected) return s;
-      return { ...s, blocks: normalizeSpriteBlocks(s.blocks.filter(b => b.id !== blockId)) };
+      return { ...s, blocks: s.blocks.filter(b => b.id !== blockId) };
     }));
   }, [selected]);
 
@@ -1017,7 +1017,7 @@ loadImages(function(){
   const handleBlockMouseMove = useCallback((e) => {
     if (!draggingBlock || !blockAreaRef.current) return;
     const rect = blockAreaRef.current.getBoundingClientRect();
-    const x = BLOCK_LANE_X;
+    const x = Math.max(0, e.clientX - rect.left - blockDragOffset.x);
     const y = Math.max(0, e.clientY - rect.top - blockDragOffset.y);
     setSprites(prev => prev.map(s => {
       if (s.id !== selected) return s;
@@ -1027,26 +1027,6 @@ loadImages(function(){
 
   const handleBlockMouseUp = useCallback(() => {
     if (!draggingBlock) return;
-    setSprites((prev) =>
-      prev.map((s) => {
-        if (s.id !== selected) return s;
-        const dragged = s.blocks.find((b) => b.id === draggingBlock);
-        if (!dragged) return { ...s, blocks: normalizeSpriteBlocks(s.blocks) };
-        const snapped = snapCanvasStack({
-          draggedId: dragged.id,
-          x: BLOCK_LANE_X,
-          y: dragged.y,
-          blocks: s.blocks,
-          getId: (b) => b.id,
-          minX: BLOCK_LANE_X,
-          minY: 0,
-        });
-        const withSnap = s.blocks.map((b) =>
-          b.id === draggingBlock ? { ...b, x: snapped.x, y: snapped.y } : b
-        );
-        return { ...s, blocks: normalizeSpriteBlocks(withSnap) };
-      })
-    );
     setDraggingBlock(null);
   }, [draggingBlock, selected]);
 
@@ -1058,7 +1038,7 @@ loadImages(function(){
     const newBlock = createBlockFromDrop(text, BLOCK_LANE_X, e.clientY - rect.top - 20);
     setSprites(prev => prev.map(s => {
       if (s.id !== selected) return s;
-      return { ...s, blocks: normalizeSpriteBlocks([...s.blocks, newBlock]) };
+      return { ...s, blocks: [...s.blocks, newBlock] };
     }));
   };
 
