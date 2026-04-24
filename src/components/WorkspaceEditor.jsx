@@ -292,9 +292,9 @@ function BlockCanvas({ code, onCodeChange, onBlockLineMap, activeCodeLine, onNav
   const [blocks, setBlocks] = useState(() => {
     try {
       const s = localStorage.getItem('cv_workspace_blocks');
-      return s ? normalizeStack(JSON.parse(s)) : normalizeStack(defaultBlocks);
+      return s ? JSON.parse(s) : defaultBlocks;
     } catch {
-      return normalizeStack(defaultBlocks);
+      return defaultBlocks;
     }
   });
   const [dragging, setDragging] = useState(null);
@@ -357,16 +357,16 @@ function BlockCanvas({ code, onCodeChange, onBlockLineMap, activeCodeLine, onNav
     if (!def) return;
     const id = Date.now();
     const newBlock = { id, type, ...def, params: { ...def.params }, x: STACK_X, y: STACK_START_Y + blocks.length * STACK_STEP, connected: [] };
-    setBlocks(prev => normalizeStack([...prev, newBlock]));
+    setBlocks(prev => [...prev, newBlock]);
   }, [blocks.length]);
 
   const deleteBlock = useCallback((blockId) => {
     setBlocks(prev => {
       const filtered = prev.filter(b => b.id !== blockId);
-      return normalizeStack(filtered.map(b => ({
+      return filtered.map(b => ({
         ...b,
         connected: b.connected.filter(cid => cid !== blockId),
-      })));
+      }));
     });
     setSelectedBlock(null);
   }, []);
@@ -399,7 +399,7 @@ function BlockCanvas({ code, onCodeChange, onBlockLineMap, activeCodeLine, onNav
     const text = e.dataTransfer.getData('text/plain');
     if (!text || !canvasRef.current) return;
     const newBlock = createBlockFromDrop(text, STACK_X, STACK_START_Y + blocks.length * STACK_STEP);
-    setBlocks(prev => normalizeStack([...prev, newBlock]));
+    setBlocks(prev => [...prev, newBlock]);
   };
 
   // Keyboard navigation for blocks
