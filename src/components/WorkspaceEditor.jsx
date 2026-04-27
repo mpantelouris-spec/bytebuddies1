@@ -2,7 +2,9 @@ import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { useProject } from '../contexts/ProjectContext';
 import { useUser } from '../contexts/UserContext';
 import CodeEditor from './CodeEditor';
+import BlockEditor from './BlockEditor';
 import StarterBlocks from './StarterBlocks';
+import UnifiedBlocklyWorkspace from './UnifiedBlocklyWorkspace';
 import { runPython } from '../utils/pythonRunner';
 import ScratchStyleBlock, { getCategoryColor } from './ScratchStyleBlock';
 import { BLOCK_STACK_GAP } from '../utils/blockStack';
@@ -697,6 +699,46 @@ function Preview({ code, language }) {
   );
 }
 
+function blocklyModelToPreviewCode(model) {
+  if (!Array.isArray(model) || !model.length) return '# Build with blocks\n';
+  const lineForNode = (node) => {
+    const f = node?.fields || {};
+    switch (node?.type) {
+      case 'bb_event_start': return '# when program starts';
+      case 'bb_event_keypress': return `# when key ${f.KEY || 'space'} pressed`;
+      case 'bb_sprite_move': return `move_steps(${f.STEPS || 10})`;
+      case 'bb_sprite_turn': return `turn_${f.DIRECTION || 'right'}(${f.DEGREES || 90})`;
+      case 'bb_sprite_goto': return `goto(${f.X || 0}, ${f.Y || 0})`;
+      case 'bb_sprite_changex': return `change_x(${f.AMOUNT || 10})`;
+      case 'bb_sprite_changey': return `change_y(${f.AMOUNT || 10})`;
+      case 'bb_control_wait': return `wait(${f.SECONDS || 1})`;
+      case 'bb_loop_repeat': return `for i in range(${f.TIMES || 10}):`;
+      case 'bb_loop_forever': return 'while True:';
+      case 'bb_logic_if': return 'if condition:';
+      case 'bb_sound_play': return `play_sound("${f.SOUND || 'pop'}")`;
+      case 'bb_sprite_say': return `say("${String(f.TEXT || 'Hi!').replace(/"/g, "'")}", ${f.SECONDS || 2})`;
+      case 'bb_var_create': return `${f.NAME || 'myVar'} = ${f.VALUE || 0}`;
+      case 'bb_var_change': return `${f.NAME || 'myVar'} += ${f.AMOUNT || 1}`;
+      default: return `# ${node?.type || 'block'}`;
+    }
+  };
+  const out = [];
+  const walk = (nodes, depth = 0) => {
+    nodes.forEach((n) => {
+      out.push(`${'    '.repeat(depth)}${lineForNode(n)}`);
+      const doBody = n?.statements?.DO || [];
+      const elseBody = n?.statements?.ELSE || [];
+      if (doBody.length) walk(doBody, depth + 1);
+      if (elseBody.length) {
+        out.push(`${'    '.repeat(depth)}else:`);
+        walk(elseBody, depth + 1);
+      }
+    });
+  };
+  walk(model);
+  return `${out.join('\n')}\n`;
+}
+
 /* ─── Main Workspace Editor ─── */
 export default function WorkspaceEditor() {
   const { activeProject, viewMode, setViewMode, updateProject } = useProject();
@@ -831,12 +873,15 @@ export default function WorkspaceEditor() {
         <>
         {/* Blocks View */}
         {(viewMode === 'blocks' || viewMode === 'split') && (
-          <BlockCanvas
-            code={code}
-            onCodeChange={handleCodeChange}
-            onBlockLineMap={handleBlockLineMap}
-            activeCodeLine={activeCodeLine}
-          />
+          <div style={{ flex: 1, minWidth: 320, padding: 8 }}>
+            <UnifiedBlocklyWorkspace
+              onModelChange={(model) => {
+                const codeFromBlocks = blocklyModelToPreviewCode(model);
+                handleCodeChange(codeFromBlocks);
+              }}
+              style={{ height: viewMode === 'split' ? 460 : 640 }}
+            />
+          </div>
         )}
 
         {viewMode === 'split' && <div className="panel-resizer" />}

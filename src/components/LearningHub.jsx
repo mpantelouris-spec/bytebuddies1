@@ -954,7 +954,12 @@ function LessonView({ course, completedSet, onComplete, onBack }) {
                 {interactive && (
                   <div style={{ flex: 1, position: 'sticky', top: 16 }}>
                     {interactive.type === 'blocks' && (
-                      <BlockEditor key={`${course.id}-${activeModule}`} starterBlocks={interactive.starter} editorHeight={600} />
+                      <BlockEditor
+                        key={`${course.id}-${activeModule}`}
+                        starterBlocks={interactive.starter}
+                        editorHeight={600}
+                        pictobloxLayout={!!interactive.pictobloxLayout}
+                      />
                     )}
                     {interactive.type === 'python' && (
                       <PythonRunner key={`${course.id}-${activeModule}`} starterCode={interactive.code || '# Write your Python here\n'} editorHeight={440} />

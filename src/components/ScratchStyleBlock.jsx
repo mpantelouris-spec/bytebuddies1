@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
+import { resolveBlockCategoryColor } from '../utils/blockTheme';
 
 /**
  * Scratch-Style SVG Block Component
@@ -6,41 +7,7 @@ import React, { useRef, useEffect, useState } from 'react';
  */
 
 // Map category to Scratch colors
-export const getCategoryColor = (category) => {
-  const colorMap = {
-    'event': '#FFAB19',
-    'events': '#FFAB19',
-    'motion': '#4C97FF',
-    'movement': '#4C97FF',
-    'sprite': '#4C97FF',
-    'looks': '#9966FF',
-    'sound': '#CF63CF',
-    'control': '#FFAB19',
-    'loop': '#FFAB19',
-    'sensing': '#4CBFE6',
-    'sensors': '#4CBFE6',
-    'operators': '#40BF4A',
-    'math': '#40BF4A',
-    'variables': '#FF8C1A',
-    'variable': '#FF8C1A',
-    'outputs': '#CF63CF',
-    'lights': '#CF63CF',
-    'servo': '#9966FF',
-    'comms': '#FF6680',
-    'myblocks': '#FF6680',
-    'function': '#FF6680',
-    'functions': '#FF6680',
-    'action': '#9966FF',
-    'logic': '#4C97FF',
-    'text': '#40BF4A',
-    'list': '#FF8C1A',
-    'game': '#40BF4A',
-    'physics': '#4CBFE6',
-    'ai': '#9966FF',
-  };
-  
-  return colorMap[category?.toLowerCase()] || '#4C97FF';
-};
+export const getCategoryColor = (category) => resolveBlockCategoryColor(category);
 
 /**
  * Generate Scratch-like puzzle-piece path with standard notch/tab proportions.

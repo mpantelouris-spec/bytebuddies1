@@ -3,7 +3,16 @@ import { useProject } from '../contexts/ProjectContext';
 import { useUser } from '../contexts/UserContext';
 import { buildLibraryCategories } from '../data/blockLibraryCategories';
 import { readEnabledExtensionIds } from '../data/extensionsCatalog';
-import { BB_EXTENSIONS_CHANGED } from '../utils/blockLibraryEvents';
+import { BB_EXTENSIONS_CHANGED, emitAddSidebarBlock } from '../utils/blockLibraryEvents';
+import BlocklySidebarFlyout from './BlocklySidebarFlyout';
+
+function darken(hex, amt = 44) {
+  const n = parseInt(String(hex).replace('#', ''), 16);
+  const r = Math.max(0, (n >> 16) - amt);
+  const g = Math.max(0, ((n >> 8) & 0xff) - amt);
+  const b = Math.max(0, (n & 0xff) - amt);
+  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+}
 
 export default function Sidebar({ currentPage }) {
   const [activeCategory, setActiveCategory] = useState(null);
@@ -46,6 +55,9 @@ export default function Sidebar({ currentPage }) {
           (c.blocks || []).some((b) => String(b).toLowerCase().includes(searchTerm.toLowerCase())),
       )
     : categories;
+  const pictoStylePages = new Set(['workspace', 'gamebuilder', 'learn', 'robot']);
+  const usePictoBlockStyle = pictoStylePages.has(String(currentPage || '').toLowerCase());
+  const useBlocklyFlyout = ['workspace', 'gamebuilder', 'robot'].includes(String(currentPage || '').toLowerCase());
 
   return (
     <div className="sidebar">
@@ -91,10 +103,16 @@ export default function Sidebar({ currentPage }) {
         </div>
 
         {/* Block categories */}
-        <div className="sidebar-section">
+        <div className="sidebar-section" style={useBlocklyFlyout ? { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' } : undefined}>
           <div className="sidebar-section-title">
             {currentPage === 'gamebuilder' ? 'Assets & Blocks' : 'Blocks'}
           </div>
+          {useBlocklyFlyout ? (
+            <div style={{ flex: 1, minHeight: 300 }}>
+              <BlocklySidebarFlyout categories={filtered} />
+            </div>
+          ) : (
+          <>
           {filtered.map((cat) => (
             <div key={cat.extensionId || cat.name}>
               <button
@@ -119,25 +137,53 @@ export default function Sidebar({ currentPage }) {
                       className="sidebar-item"
                       draggable
                       onDragStart={(e) => e.dataTransfer.setData('text/plain', block)}
+                      onClick={() => emitAddSidebarBlock(String(block))}
                       style={{
                         fontSize: isStarter ? 14 : 12,
-                        padding: isStarter ? '14px 12px' : '5px 10px',
-                        borderLeft: `3px solid ${cat.color}`,
-                        marginBottom: isStarter ? 6 : 2,
-                        borderRadius: '0 6px 6px 0',
-                        cursor: 'grab',
+                        padding: isStarter ? '12px 12px' : '8px 10px',
+                        borderLeft: usePictoBlockStyle ? 'none' : `3px solid ${cat.color}`,
+                        marginBottom: isStarter ? 8 : 6,
+                        borderRadius: usePictoBlockStyle
+                          ? (String(block).toLowerCase().startsWith('on ') ? '14px 14px 6px 6px' : 8)
+                          : '0 6px 6px 0',
+                        cursor: 'pointer',
                         minHeight: isStarter ? 48 : 'auto',
                         display: 'flex',
                         alignItems: 'center',
+                        color: usePictoBlockStyle ? '#fff' : undefined,
+                        fontWeight: usePictoBlockStyle ? 700 : undefined,
+                        background: usePictoBlockStyle
+                          ? `linear-gradient(180deg, ${cat.color} 0%, ${darken(cat.color, 30)} 100%)`
+                          : undefined,
+                        boxShadow: usePictoBlockStyle
+                          ? `0 3px 0 ${darken(cat.color, 72)}, inset 0 1px 0 rgba(255,255,255,0.2)`
+                          : undefined,
+                        position: usePictoBlockStyle ? 'relative' : undefined,
+                        textShadow: usePictoBlockStyle ? '0 1px 0 rgba(0,0,0,0.28)' : undefined,
                       }}
                     >
                       {block}
+                      {usePictoBlockStyle && (
+                        <span
+                          style={{
+                            position: 'absolute',
+                            left: 12,
+                            bottom: -7,
+                            width: 18,
+                            height: 7,
+                            borderRadius: '0 0 4px 4px',
+                            background: darken(cat.color, 72),
+                          }}
+                        />
+                      )}
                     </div>
                   ))}
                 </div>
               )}
             </div>
           ))}
+          </>
+          )}
         </div>
       </div>
     </div>

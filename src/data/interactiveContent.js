@@ -7,8 +7,12 @@ export const INTERACTIVE = {
     // Module 0: Meet the Blocks! — just the flag block
     0: {
       type: 'blocks',
+      pictobloxLayout: true,
       starter: [
         { type: 'when_flag', params: {} },
+        { type: 'move', params: { steps: 10 } },
+        { type: 'forever', params: {}, children: [] },
+        { type: 'broadcast', params: { msg: 'message1' } },
       ],
     },
     // Module 1: Make Your Sprite Talk — say blocks

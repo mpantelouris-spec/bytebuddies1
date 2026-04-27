@@ -4,6 +4,14 @@ import { buildLibraryCategories } from '../data/blockLibraryCategories';
 import { readEnabledExtensionIds } from '../data/extensionsCatalog';
 import { emitAddSidebarBlock, BB_OPEN_EXTENSIONS } from '../utils/blockLibraryEvents';
 
+function darken(hex, amt = 44) {
+  const n = parseInt(String(hex).replace('#', ''), 16);
+  const r = Math.max(0, (n >> 16) - amt);
+  const g = Math.max(0, ((n >> 8) & 0xff) - amt);
+  const b = Math.max(0, (n & 0xff) - amt);
+  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+}
+
 /**
  * Full-screen block picker for narrow viewports (sidebar is hidden ≤768px).
  */
@@ -99,10 +107,31 @@ export default function BlockLibraryDrawer({ open, onClose, currentPage, isStart
                       key={`${cat.name}-${bi}-${block}`}
                       type="button"
                       className="block-library-drawer-block-row"
-                      style={{ borderLeftColor: cat.color }}
+                      style={{
+                        borderLeftColor: cat.color,
+                        borderLeftWidth: 0,
+                        borderRadius: String(block).toLowerCase().startsWith('on ') ? '14px 14px 6px 6px' : 8,
+                        color: '#fff',
+                        background: `linear-gradient(180deg, ${cat.color} 0%, ${darken(cat.color, 30)} 100%)`,
+                        boxShadow: `0 3px 0 ${darken(cat.color, 72)}, inset 0 1px 0 rgba(255,255,255,0.2)`,
+                        fontWeight: 700,
+                        position: 'relative',
+                        overflow: 'visible',
+                      }}
                       onClick={() => pickBlock(block)}
                     >
                       {block}
+                      <span
+                        style={{
+                          position: 'absolute',
+                          left: 12,
+                          bottom: -7,
+                          width: 18,
+                          height: 7,
+                          borderRadius: '0 0 4px 4px',
+                          background: darken(cat.color, 72),
+                        }}
+                      />
                     </button>
                   ))}
                 </div>

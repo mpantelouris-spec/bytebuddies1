@@ -1,4 +1,15 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import {
+  PictoHatWhenClicked,
+  PictoStackMotionMove,
+  PictoStackBroadcast,
+  PictoForeverCBlock,
+  PictoOperatorPill,
+} from './PictoBloxBlockShapes';
+import { PICTO_THEME } from './pictobloxTheme';
+import { BB_ADD_SIDEBAR_BLOCK } from '../utils/blockLibraryEvents';
+import { SIDEBAR_TO_TYPE } from '../utils/blocks';
+import { resolveBlockCategoryColor } from '../utils/blockTheme';
 
 let _uid = 0;
 const uid = () => String(++_uid);
@@ -14,6 +25,7 @@ function darken(hex, amt = 50) {
 
 // ── Sprite characters ──────────────────────────────────────────────────
 const SPRITES = [
+  { id: 'tobi',      label: 'Tobi',      emoji: '🐻', color: '#9333ea' },
   { id: 'rocket',    label: 'Rocket',    emoji: '🚀', color: '#ef4444' },
   { id: 'cat',       label: 'Cat',       emoji: '🐱', color: '#f59e0b' },
   { id: 'robot',     label: 'Robot',     emoji: '🤖', color: '#6366f1' },
@@ -146,18 +158,74 @@ const BACKGROUNDS = [
 
 // ── Block category definitions ────────────────────────────────────────
 const CATS = [
-  { id: 'event',    label: 'Events',    color: '#f59e0b', icon: '⚡' },
-  { id: 'motion',   label: 'Motion',    color: '#3b82f6', icon: '🏃' },
-  { id: 'looks',    label: 'Looks',     color: '#9333ea', icon: '👁️' },
-  { id: 'control',  label: 'Control',   color: '#059669', icon: '🔄' },
-  { id: 'sensing',  label: 'Sensing',   color: '#06b6d4', icon: '🔍' },
-  { id: 'sound',    label: 'Sound',     color: '#84cc16', icon: '🔊' },
-  { id: 'variable', label: 'Variables', color: '#f97316', icon: '📦' },
-  { id: 'math',     label: 'Math',      color: '#ef4444', icon: '🔢' },
+  { id: 'event',    label: 'Events',    color: resolveBlockCategoryColor('event'), icon: '⚡' },
+  { id: 'motion',   label: 'Motion',    color: resolveBlockCategoryColor('motion'), icon: '🏃' },
+  { id: 'looks',    label: 'Looks',     color: resolveBlockCategoryColor('looks'), icon: '👁️' },
+  { id: 'control',  label: 'Control',   color: resolveBlockCategoryColor('control'), icon: '🔄' },
+  { id: 'sensing',  label: 'Sensing',   color: resolveBlockCategoryColor('sensing'), icon: '🔍' },
+  { id: 'sound',    label: 'Sound',     color: resolveBlockCategoryColor('sound'), icon: '🔊' },
+  { id: 'variable', label: 'Variables', color: resolveBlockCategoryColor('variable'), icon: '📦' },
+  { id: 'math',     label: 'Operators', color: resolveBlockCategoryColor('operators'), icon: '🔢' },
   { id: 'game',     label: 'Game',      color: '#e11d48', icon: '🎮' },
   { id: 'physics',  label: 'Physics',   color: '#1abc9c', icon: '💨' },
   { id: 'ai',       label: 'AI',        color: '#a855f7', icon: '🤖' },
 ];
+
+/** PictoBlox dark UI — category rail (icon + short label, like mobile PictoBlox) */
+const PICTO_CATS = [
+  { id: 'events', label: 'Events', short: 'EVENT', icon: '⚡', color: resolveBlockCategoryColor('events') },
+  { id: 'motion', label: 'Motion', short: 'MOTIO', icon: '🏃', color: resolveBlockCategoryColor('motion') },
+  { id: 'looks', label: 'Looks', short: 'LOOKS', icon: '👁️', color: resolveBlockCategoryColor('looks') },
+  { id: 'control', label: 'Control', short: 'CONTR', icon: '🔄', color: resolveBlockCategoryColor('control') },
+  { id: 'sensing', label: 'Sensing', short: 'SENSI', icon: '🔍', color: resolveBlockCategoryColor('sensing') },
+  { id: 'sound', label: 'Sound', short: 'SOUND', icon: '🔊', color: resolveBlockCategoryColor('sound') },
+  { id: 'variables', label: 'Variables', short: 'VARIA', icon: '📦', color: resolveBlockCategoryColor('variables') },
+  { id: 'operators', label: 'Operators', short: '1234', icon: '🔢', color: resolveBlockCategoryColor('operators') },
+];
+
+function pictoEventPaletteOutline(def) {
+  return def?.type === 'when_click' || def?.type === 'broadcast' || def?.type === 'on_message';
+}
+
+const PICTO_CAT_TO_PALETTE = {
+  motion: 'motion', looks: 'looks', sound: 'sound', events: 'event', control: 'control',
+  sensing: 'sensing', operators: 'math', variables: 'variable', myblocks: 'game',
+};
+
+const OPERATOR_PILL_DEFS = [
+  { label: '+', type: 'math_add' }, { label: '−', type: 'math_sub' }, { label: '×', type: 'math_mult' }, { label: '÷', type: 'math_div' },
+  { label: 'pick random', type: 'math_random' }, { label: '>', type: 'math_add' },
+  { label: '<', type: 'math_sub' }, { label: '=', type: 'math_mult' },
+  { label: 'and', type: 'math_add' }, { label: 'or', type: 'math_sub' }, { label: 'not', type: 'math_mult' },
+  { label: 'join', type: 'math_add' }, { label: 'letter', type: 'math_sub' }, { label: 'length', type: 'math_mult' },
+];
+
+const TYPE_ALIASES = {
+  'event-start': 'when_flag',
+  'event-keypress': 'when_key',
+  'event-click': 'when_click',
+  'event-message': 'on_message',
+  'event-broadcast': 'broadcast',
+  'loop-repeat': 'repeat',
+  'loop-forever': 'forever',
+  'control-wait': 'wait',
+  'control-stop': 'stop_all',
+  'sprite-move': 'move',
+  'sprite-turn': 'turn_r',
+  'sprite-goto': 'go_xy',
+  'sprite-say': 'say',
+  'sound-play': 'play_sound',
+  'sound-volume': 'set_volume',
+  'var-set': 'var_set',
+  'var-change': 'var_change',
+  'var-show': 'var_show',
+  'math-add': 'math_add',
+  'math-mult': 'math_mult',
+  'math-random': 'math_random',
+};
+
+const KEY_OPTIONS = ['space', 'up', 'down', 'left', 'right', 'a', 'b'];
+const MESSAGE_OPTIONS = ['message1', 'start', 'gameOver', 'win'];
 
 // ── Block palette definitions ─────────────────────────────────────────
 const PALETTE = {
@@ -165,7 +233,7 @@ const PALETTE = {
     { type:'when_flag',   hat:true, parts:['When 🚩 clicked'] },
     { type:'when_key',    hat:true, parts:['When key',{k:'key',t:'str',v:'space',w:55},'pressed'] },
     { type:'when_click',  hat:true, parts:['When sprite clicked'] },
-    { type:'broadcast',            parts:['Broadcast',{k:'msg',t:'str',v:'start',w:70}] },
+    { type:'broadcast',            parts:['Broadcast',{k:'msg',t:'str',v:'message1',w:90}] },
     { type:'on_message',  hat:true, parts:['When I receive',{k:'msg',t:'str',v:'start',w:70}] },
   ],
   motion: [
@@ -278,7 +346,11 @@ async function runBlocks(blocks, state, redraw, isStopped) {
           await runBlocks(b.children || [], state, redraw, isStopped);
         break;
       case 'forever':
-        while (!isStopped()) await runBlocks(b.children || [], state, redraw, isStopped);
+        while (!isStopped()) {
+          await runBlocks(b.children || [], state, redraw, isStopped);
+          // Yield so an empty forever loop does not freeze the tab
+          await sleep(1);
+        }
         return;
       default: break;
     }
@@ -327,13 +399,29 @@ function drawStage(canvas, state, bgDef, spriteDef) {
 }
 
 // ── Block param input ─────────────────────────────────────────────────
-function PI({ val, t, w, color, onChange }) {
+function PI({ val, t, w, color, onChange, options }) {
   const base = {
     fontSize: 12, fontWeight: 700, outline: 'none', borderRadius: 5,
     border: `1.5px solid rgba(255,255,255,0.4)`, color: '#fff',
     background: 'rgba(0,0,0,0.3)', padding: '1px 4px',
     verticalAlign: 'middle', margin: '0 2px',
   };
+  if (t === 'select') {
+    const selectOptions = Array.isArray(options) && options.length ? options : [String(val ?? '')];
+    return (
+      <select
+        value={String(val ?? selectOptions[0] ?? '')}
+        onChange={e => onChange(e.target.value)}
+        onMouseDown={e => e.stopPropagation()}
+        onClick={e => e.stopPropagation()}
+        style={{ ...base, width: w || 84, appearance: 'none', paddingRight: 16 }}
+      >
+        {selectOptions.map((opt) => (
+          <option key={opt} value={opt}>{opt}</option>
+        ))}
+      </select>
+    );
+  }
   if (t === 'num') return (
     <input type="number" value={val} onChange={e => onChange(Number(e.target.value))}
       onMouseDown={e => e.stopPropagation()} onClick={e => e.stopPropagation()}
@@ -349,19 +437,19 @@ function PI({ val, t, w, color, onChange }) {
 // ── Puzzle-piece block shape ──────────────────────────────────────────
 const NUB_W = 24, NUB_X = 18, NUB_H = 8;
 
-function BlockShape({ color, hat, children, isC, innerBlocks, onAddInside, paramsByKey, onParam, onDelete, blockId }) {
+function BlockShape({ color, hat, children, isC, innerBlocks, onAddInside, paramsByKey, onParam, onDelete, blockId, hideDelete }) {
   const dark = darken(color, 50);
   return (
     <div style={{ position: 'relative', marginTop: hat ? 4 : NUB_H + 2, userSelect: 'none' }}>
       {/* top slot shadow (female connector) */}
       {!hat && (
         <div style={{ position: 'absolute', top: -NUB_H, left: NUB_X, width: NUB_W, height: NUB_H,
-          background: '#f59e0b', borderRadius: '4px 4px 0 0', zIndex: 0 }} />
+          background: color, borderRadius: '4px 4px 0 0', zIndex: 0 }} />
       )}
 
       {/* main block body */}
       <div style={{
-        background: '#f59e0b',
+        background: `linear-gradient(180deg, ${darken(color, -12)} 0%, ${color} 55%, ${darken(color, 15)} 100%)`,
         borderRadius: hat ? '14px 14px 4px 4px' : '10px',
         padding: '10px 36px 10px 14px',
         display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap',
@@ -371,6 +459,7 @@ function BlockShape({ color, hat, children, isC, innerBlocks, onAddInside, param
         cursor: 'grab',
       }}>
         {children}
+        {!hideDelete && (
         <button onClick={() => onDelete(blockId)}
           style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
             background: 'rgba(255,255,255,0.3)', border: 'none', borderRadius: 6,
@@ -378,26 +467,28 @@ function BlockShape({ color, hat, children, isC, innerBlocks, onAddInside, param
             width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center',
             hover: { background: 'rgba(255,255,255,0.5)' }
           }}>✕</button>
+        )}
       </div>
 
       {/* C-block mouth */}
       {isC && (
         <div style={{
-          marginLeft: NUB_X + 4, borderLeft: `4px solid #f59e0b`,
-          borderBottom: `4px solid #f59e0b`, borderRadius: '0 0 0 4px',
+          marginLeft: NUB_X + 4, borderLeft: `4px solid ${color}`,
+          borderBottom: `4px solid ${color}`, borderRadius: '0 0 0 4px',
           minHeight: 32, paddingLeft: 8, paddingTop: 4, paddingBottom: 4,
-          background: 'rgba(245, 158, 11, 0.08)',
+          background: `${color}14`,
         }}>
           {innerBlocks}
           <button onClick={onAddInside} style={{
-            fontSize: 11, color: '#f59e0b', background: 'rgba(245, 158, 11, 0.15)',
-            border: `1.5px dashed rgba(245, 158, 11, 0.5)`, borderRadius: 6,
+            fontSize: 11, color, background: `${color}26`,
+            border: `1.5px dashed ${color}80`, borderRadius: 6,
             padding: '3px 12px', cursor: 'pointer', marginTop: 4, display: 'block',
           }}>+ block inside</button>
         </div>
       )}
 
-      {/* bottom nub (male connector) */}
+      {/* bottom nub (male connector) — C-blocks like forever have no stack below */}
+      {!isC && (
       <div style={{
         position: 'absolute', bottom: -(NUB_H), left: NUB_X,
         width: NUB_W, height: NUB_H,
@@ -406,12 +497,23 @@ function BlockShape({ color, hat, children, isC, innerBlocks, onAddInside, param
         boxShadow: `0 3px 0 ${dark}`,
         zIndex: 1,
       }} />
+      )}
     </div>
   );
 }
 
 // ── WorkspaceBlock (renders a block instance) ────────────────────────
-function WorkspaceBlock({ block, catMap, palMap, onParamChange, onDelete, onAddInside }) {
+function WorkspaceBlock({
+  block,
+  catMap,
+  palMap,
+  onParamChange,
+  onDelete,
+  onAddInside,
+  hideDelete,
+  variableNames = [],
+  messageNames = [],
+}) {
   const catId = palMap[block.type]?.catId;
   const cat = catMap[catId] || { color: '#6366f1' };
   const def = palMap[block.type];
@@ -421,8 +523,20 @@ function WorkspaceBlock({ block, catMap, palMap, onParamChange, onDelete, onAddI
 
   const content = (def.parts || []).map((part, i) => {
     if (typeof part === 'string') return <span key={i} style={{ whiteSpace: 'nowrap' }}>{part}</span>;
+    let inputType = part.t;
+    let options;
+    if (part.k === 'key') {
+      inputType = 'select';
+      options = KEY_OPTIONS;
+    } else if (part.k === 'msg') {
+      inputType = 'select';
+      options = messageNames.length ? messageNames : MESSAGE_OPTIONS;
+    } else if (part.k === 'name') {
+      inputType = 'select';
+      options = variableNames.length ? variableNames : ['score'];
+    }
     return (
-      <PI key={i} val={params[part.k] ?? part.v} t={part.t} w={part.w} color={cat.color}
+      <PI key={i} val={params[part.k] ?? part.v} t={inputType} options={options} w={part.w} color={cat.color}
         onChange={v => onParamChange(block.id, part.k, v)} />
     );
   });
@@ -430,11 +544,13 @@ function WorkspaceBlock({ block, catMap, palMap, onParamChange, onDelete, onAddI
   return (
     <BlockShape
       color={cat.color} hat={def.hat} isC={def.isC} blockId={block.id}
+      hideDelete={hideDelete}
       onDelete={onDelete}
       onAddInside={() => onAddInside(block.id)}
       innerBlocks={(block.children || []).map(child => (
         <WorkspaceBlock key={child.id} block={child} catMap={catMap} palMap={palMap}
-          onParamChange={onParamChange} onDelete={onDelete} onAddInside={onAddInside} />
+          onParamChange={onParamChange} onDelete={onDelete} onAddInside={onAddInside} hideDelete={hideDelete}
+          variableNames={variableNames} messageNames={messageNames} />
       ))}
     >
       {content}
@@ -443,8 +559,75 @@ function WorkspaceBlock({ block, catMap, palMap, onParamChange, onDelete, onAddI
 }
 
 // ── Palette block (in sidebar) ────────────────────────────────────────
-function PaletteBlock({ def, catColor, onClick }) {
+function PaletteBlock({ def, catColor, onClick, pictoblox, outline }) {
   const [hover, setHover] = useState(false);
+  const ev = PICTO_THEME.event;
+  const rHat = pictoblox ? 18 : 14;
+  const rBody = pictoblox ? 14 : 6;
+
+  if (pictoblox && outline) {
+    return (
+      <div
+        onClick={onClick}
+        onMouseEnter={() => setHover(true)}
+        onMouseLeave={() => setHover(false)}
+        style={{ position: 'relative', marginBottom: NUB_H + 8, cursor: 'pointer' }}
+      >
+        <div style={{
+          background: hover ? '#1c2030' : '#12151f',
+          border: `2.5px solid ${ev}`,
+          borderRadius: def.hat ? `${rHat}px ${rHat}px 6px 6px` : rBody,
+          padding: '10px 14px', color: '#f1f5f9', fontWeight: 700, fontSize: 12,
+          boxShadow: hover ? `0 0 0 1px ${ev}55, 0 4px 12px rgba(0,0,0,0.35)` : '0 3px 0 rgba(0,0,0,0.45)',
+          display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 4,
+          transition: 'transform 0.1s, box-shadow 0.15s', transform: hover ? 'translateY(-1px)' : 'none',
+        }}
+        >
+          {(def.parts || []).map((p, i) =>
+            typeof p === 'string'
+              ? <span key={i}>{p}</span>
+              : <span key={i} style={{ background: '#0a0c14', borderRadius: 6, padding: '2px 8px', fontSize: 11, border: `1px solid ${ev}88` }}>{p.v}</span>
+          )}
+        </div>
+        <div style={{
+          position: 'absolute', bottom: -(NUB_H), left: NUB_X, width: NUB_W, height: NUB_H,
+          background: darken(ev, 35), borderRadius: '0 0 4px 4px',
+          boxShadow: `0 3px 0 ${darken(ev, 55)}`,
+        }} />
+      </div>
+    );
+  }
+
+  if (pictoblox) {
+    return (
+      <div onClick={onClick} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
+        style={{ position: 'relative', marginBottom: NUB_H + 8, cursor: 'pointer' }}>
+        <div style={{
+          background: hover
+            ? `linear-gradient(180deg, ${darken(catColor, -6)} 0%, ${catColor} 100%)`
+            : `linear-gradient(180deg, ${darken(catColor, -14)} 0%, ${catColor} 92%)`,
+          borderRadius: def.hat ? `${rHat}px ${rHat}px 6px 6px` : rBody,
+          padding: '10px 14px', color: '#fff', fontWeight: 700, fontSize: 12,
+          boxShadow: `0 4px 0 ${darken(catColor, 48)}, inset 0 1px 0 rgba(255,255,255,0.28)`,
+          display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 4,
+          transition: 'transform 0.1s', transform: hover ? 'translateY(-1px)' : 'none',
+        }}
+        >
+          {(def.parts || []).map((p, i) =>
+            typeof p === 'string'
+              ? <span key={i}>{p}</span>
+              : <span key={i} style={{ background: 'rgba(0,0,0,0.28)', borderRadius: 6, padding: '2px 8px', fontSize: 11 }}>{p.v}</span>
+          )}
+        </div>
+        <div style={{
+          position: 'absolute', bottom: -(NUB_H), left: NUB_X, width: NUB_W, height: NUB_H,
+          background: darken(catColor, 42), borderRadius: '0 0 4px 4px',
+          boxShadow: `0 3px 0 ${darken(catColor, 58)}`,
+        }} />
+      </div>
+    );
+  }
+
   return (
     <div onClick={onClick} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
       style={{ position: 'relative', marginBottom: NUB_H + 6, cursor: 'pointer' }}>
@@ -474,18 +657,18 @@ function PaletteBlock({ def, catColor, onClick }) {
 }
 
 // ── Mini sprite thumbnail ─────────────────────────────────────────────
-function SpriteThumbnail({ sprite, selected, onClick }) {
+function SpriteThumbnail({ sprite, selected, onClick, light }) {
   return (
     <div onClick={onClick} style={{
       width: 60, height: 60, borderRadius: 12, cursor: 'pointer', flexShrink: 0,
-      background: selected ? `${sprite.color}30` : 'rgba(255,255,255,0.04)',
-      border: selected ? `2.5px solid ${sprite.color}` : '2px solid rgba(255,255,255,0.08)',
+      background: selected ? (light ? `${sprite.color}18` : `${sprite.color}30`) : (light ? '#f3f4f6' : 'rgba(255,255,255,0.04)'),
+      border: selected ? `2.5px solid ${sprite.color}` : (light ? '2px solid #e5e7eb' : '2px solid rgba(255,255,255,0.08)'),
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       gap: 2, transition: 'all 0.15s', transform: selected ? 'scale(1.08)' : 'none',
       boxShadow: selected ? `0 0 12px ${sprite.color}60` : 'none',
     }}>
       <span style={{ fontSize: 26, lineHeight: 1 }}>{sprite.emoji}</span>
-      <span style={{ fontSize: 9, color: selected ? sprite.color : '#475569', fontWeight: 700, letterSpacing: 0.2 }}>{sprite.label}</span>
+      <span style={{ fontSize: 9, color: selected ? sprite.color : (light ? '#64748b' : '#475569'), fontWeight: 700, letterSpacing: 0.2 }}>{sprite.label}</span>
     </div>
   );
 }
@@ -508,15 +691,151 @@ function BgSwatch({ bg, selected, onClick }) {
 }
 
 // ── Main BlockEditor ──────────────────────────────────────────────────
+function findDefForType(type) {
+  for (const [catId, defs] of Object.entries(PALETTE)) {
+    const def = defs.find(d => d.type === type);
+    if (def) return { def, catId };
+  }
+  return { def: { parts: [] }, catId: 'event' };
+}
+
+function blocksFromStarter(starterBlocks) {
+  if (!starterBlocks?.length) return null;
+  return starterBlocks.map(s => {
+    const { def, catId } = findDefForType(s.type);
+    const base = initBlock(def, s.type, s.catId || catId);
+    const merged = { ...base, params: { ...base.params, ...(s.params || {}) } };
+    if (s.children?.length) merged.children = blocksFromStarter(s.children);
+    return merged;
+  });
+}
+
 function initBlock(def, type, catId) {
   const params = {};
   (def.parts || []).forEach(p => { if (typeof p !== 'string') params[p.k] = p.v; });
   return { id: uid(), type, params, catId, ...(def.isC ? { children: [] } : {}) };
 }
 
-export default function BlockEditor({ starterBlocks, editorHeight = 480 }) {
-  const [activeCat, setActiveCat] = useState('event');
+/** Delete chip to the right of scripts (PictoBlox-style) */
+function PictoColumnDelete({ onClick }) {
+  return (
+    <button
+      type="button"
+      aria-label="Delete block"
+      onClick={e => { e.stopPropagation(); onClick(); }}
+      style={{
+        width: 30, height: 30, borderRadius: 999, border: 'none', cursor: 'pointer', flexShrink: 0,
+        background: 'linear-gradient(180deg, #4b5263 0%, #3d4354 100%)', color: '#fff', fontWeight: 700, fontSize: 16, lineHeight: 1,
+        boxShadow: '0 2px 0 #1f232d, inset 0 1px 0 rgba(255,255,255,0.12)', marginTop: 10, alignSelf: 'flex-start',
+      }}
+    >×</button>
+  );
+}
+
+/** Vertical script stack + delete controls (matches PictoBlox dark layout) */
+function PictoScriptColumn({
+  workspace,
+  catMap,
+  palMap,
+  onParamChange,
+  onDelete,
+  onAddInside,
+  variableNames = [],
+  messageNames = [],
+}) {
+  const used = new Set();
+  const rows = [];
+  let scriptRow = 0;
+  for (let i = 0; i < workspace.length; i++) {
+    const b = workspace[i];
+    if (used.has(b.id)) continue;
+
+    const wrap = (key, node, onDel) => {
+      const snap = scriptRow > 0;
+      scriptRow += 1;
+      return (
+        <div key={key} style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginTop: snap ? -10 : 0, marginBottom: 2 }}>
+          <div style={{ flexShrink: 0 }}>{node}</div>
+          <PictoColumnDelete onClick={onDel} />
+        </div>
+      );
+    };
+
+    if (b.type === 'when_flag' && workspace[i + 1]?.type === 'move') {
+      const m = workspace[i + 1];
+      used.add(b.id);
+      used.add(m.id);
+      rows.push(wrap(
+        b.id,
+        (
+          <div>
+            <PictoHatWhenClicked />
+            <PictoStackMotionMove
+              value={m.params?.steps ?? 10}
+              onChangeValue={v => onParamChange(m.id, 'steps', v)}
+            />
+          </div>
+        ),
+        () => { onDelete(b.id); onDelete(m.id); },
+      ));
+      continue;
+    }
+    if (b.type === 'forever') {
+      rows.push(wrap(b.id, <PictoForeverCBlock glow={false} />, () => onDelete(b.id)));
+      continue;
+    }
+    if (b.type === 'broadcast') {
+      rows.push(wrap(
+        b.id,
+        <PictoStackBroadcast message={b.params?.msg ?? 'message1'} outline />,
+        () => onDelete(b.id),
+      ));
+      continue;
+    }
+    rows.push(wrap(
+      b.id,
+      <WorkspaceBlock
+        block={b}
+        catMap={catMap}
+        palMap={palMap}
+        onParamChange={onParamChange}
+        onDelete={onDelete}
+        onAddInside={onAddInside}
+        hideDelete
+        variableNames={variableNames}
+        messageNames={messageNames}
+      />,
+      () => onDelete(b.id),
+    ));
+  }
+  return (
+    <div style={{
+      padding: '18px 14px 32px', minHeight: 220, display: 'flex', flexDirection: 'column', alignItems: 'flex-start',
+    }}
+    >
+      {rows}
+    </div>
+  );
+}
+
+export default function BlockEditor({
+  starterBlocks,
+  editorHeight = 480,
+  pictobloxLayout = false,
+  useGlobalSidebarToolbox = false,
+}) {
+  const [activeCat, setActiveCat] = useState(pictobloxLayout ? 'events' : 'event');
   const [workspace, setWorkspace] = useState(() => {
+    const fromStarter = blocksFromStarter(starterBlocks);
+    if (fromStarter) return fromStarter;
+    if (pictobloxLayout) {
+      return [
+        initBlock(PALETTE.event[0], 'when_flag', 'event'),
+        initBlock(PALETTE.motion[0], 'move', 'motion'),
+        initBlock(PALETTE.control[1], 'forever', 'control'),
+        initBlock(PALETTE.event[3], 'broadcast', 'event'),
+      ];
+    }
     const startDef = PALETTE.event[0];
     return [initBlock(startDef, 'when_flag', 'event')];
   });
@@ -524,6 +843,7 @@ export default function BlockEditor({ starterBlocks, editorHeight = 480 }) {
   const [insertParent, setInsertParent] = useState(null);
   const [activeSpriteId, setActiveSpriteId] = useState('rocket');
   const [activeBgId, setActiveBgId] = useState('space');
+  const [spriteVisible, setSpriteVisible] = useState(true);
 
   const canvasRef = useRef();
   const stoppedRef = useRef(false);
@@ -531,20 +851,41 @@ export default function BlockEditor({ starterBlocks, editorHeight = 480 }) {
 
   // build lookup maps
   const catMap = Object.fromEntries(CATS.map(c => [c.id, c]));
+  if (pictobloxLayout) {
+    PICTO_CATS.forEach(c => { catMap[c.id] = { ...c }; });
+  }
   const palMap = {};
   Object.entries(PALETTE).forEach(([catId, defs]) => defs.forEach(def => { palMap[def.type] = { ...def, catId }; }));
 
   const activeBg = BACKGROUNDS.find(b => b.id === activeBgId) || BACKGROUNDS[0];
   const activeSprite = SPRITES.find(s => s.id === activeSpriteId) || SPRITES[0];
+  const collectWorkspaceValues = useCallback((blocks, key) => {
+    const values = new Set();
+    const walk = (list = []) => {
+      list.forEach((item) => {
+        const v = item?.params?.[key];
+        if (typeof v === 'string' && v.trim()) values.add(v.trim());
+        if (item?.children?.length) walk(item.children);
+      });
+    };
+    walk(blocks);
+    return Array.from(values);
+  }, []);
+  const variableNames = collectWorkspaceValues(workspace, 'name');
+  const messageNames = collectWorkspaceValues(workspace, 'msg');
 
   const redraw = useCallback(() => {
-    if (canvasRef.current) drawStage(canvasRef.current, spriteStateRef.current, activeBg, activeSprite);
+    if (!canvasRef.current) return;
+    drawStage(canvasRef.current, spriteStateRef.current, activeBg, activeSprite);
   }, [activeBg, activeSprite]);
 
   useEffect(() => { redraw(); }, [redraw]);
 
   const resetSprite = () => {
-    spriteStateRef.current = { x: 0, y: 0, dir: 0, saying: '', size: 100, visible: true, penDown: false, penColor: '#ff0000', penSize: 2, trail: [] };
+    spriteStateRef.current = {
+      x: 0, y: 0, dir: 0, saying: '', size: 100, visible: pictobloxLayout ? spriteVisible : true,
+      penDown: false, penColor: '#ff0000', penSize: 2, trail: [],
+    };
   };
 
   const handleRun = async () => {
@@ -577,6 +918,14 @@ export default function BlockEditor({ starterBlocks, editorHeight = 480 }) {
     setWorkspace(p => add(p));
   };
 
+  const addBlockByType = useCallback((requestedType) => {
+    const targetType = TYPE_ALIASES[requestedType] || requestedType;
+    const match = findDefForType(targetType);
+    if (!match?.def) return;
+    const block = initBlock(match.def, targetType, match.catId);
+    setWorkspace((prev) => [...prev, block]);
+  }, []);
+
   const handlePaletteClick = (def, type, catId) => {
     const block = initBlock(def, type, catId);
     if (insertParent) {
@@ -587,141 +936,312 @@ export default function BlockEditor({ starterBlocks, editorHeight = 480 }) {
     }
   };
 
+  useEffect(() => {
+    if (!useGlobalSidebarToolbox) return undefined;
+    const handleSidebarAdd = (event) => {
+      const directType = String(event?.detail?.type || '').trim();
+      const name = String(event?.detail?.name || '').trim().toLowerCase();
+      const mapped = directType || SIDEBAR_TO_TYPE[name];
+      if (!mapped) return;
+      addBlockByType(mapped);
+    };
+    window.addEventListener(BB_ADD_SIDEBAR_BLOCK, handleSidebarAdd);
+    return () => window.removeEventListener(BB_ADD_SIDEBAR_BLOCK, handleSidebarAdd);
+  }, [addBlockByType, useGlobalSidebarToolbox]);
+
   const STAGE_W = 260;
-  const cat = catMap[activeCat] || CATS[0];
+  const railCats = pictobloxLayout ? PICTO_CATS : CATS;
+  const cat = pictobloxLayout
+    ? (PICTO_CATS.find(c => c.id === activeCat) || PICTO_CATS[0])
+    : (catMap[activeCat] || CATS[0]);
+  const paletteKey = pictobloxLayout ? (PICTO_CAT_TO_PALETTE[activeCat] || null) : activeCat;
+  const paletteDefs = paletteKey ? (PALETTE[paletteKey] || []) : [];
+  const spriteRail = SPRITES;
+
+  const T = PICTO_THEME;
 
   return (
     <div style={{
-      display: 'flex', height: editorHeight, borderRadius: 14, overflow: 'hidden',
-      border: '1px solid rgba(255,255,255,0.1)', background: '#0d0d1a',
-      fontFamily: 'Inter, system-ui, sans-serif', boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+      display: 'flex', height: editorHeight, borderRadius: pictobloxLayout ? 6 : 14, overflow: 'hidden',
+      border: pictobloxLayout ? `1px solid ${T.border}` : '1px solid rgba(255,255,255,0.1)',
+      background: pictobloxLayout ? T.shell : '#0d0d1a',
+      fontFamily: 'Inter, system-ui, sans-serif', boxShadow: pictobloxLayout ? '0 8px 28px rgba(0,0,0,0.45)' : '0 8px 32px rgba(0,0,0,0.5)',
     }}>
 
       {/* ── Category sidebar ── */}
-      <div style={{ width: 58, background: '#060610', borderRight: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '6px 0', gap: 2, overflowY: 'auto', flexShrink: 0 }}>
-        {CATS.map(c => (
-          <button key={c.id} onClick={() => setActiveCat(c.id)} title={c.label} style={{
-            width: 46, height: 46, borderRadius: 10, border: 'none', cursor: 'pointer',
-            background: activeCat === c.id ? `${c.color}25` : 'transparent',
-            outline: activeCat === c.id ? `2px solid ${c.color}` : 'none',
-            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1,
-            transition: 'all 0.15s',
+      {!useGlobalSidebarToolbox && (
+      <div style={{
+        width: pictobloxLayout ? 76 : 58,
+        background: pictobloxLayout ? T.rail : '#060610',
+        borderRight: pictobloxLayout ? `1px solid ${T.borderSoft}` : '1px solid rgba(255,255,255,0.06)',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', padding: pictobloxLayout ? '10px 0' : '6px 0',
+        gap: pictobloxLayout ? 6 : 2, overflowY: 'auto', flexShrink: 0,
+      }}>
+        {railCats.map(c => (
+          <button key={c.id} type="button" onClick={() => setActiveCat(c.id)} title={c.label} style={{
+            width: pictobloxLayout ? 58 : 46,
+            minHeight: pictobloxLayout ? 56 : 46,
+            borderRadius: pictobloxLayout ? 12 : 10, border: 'none', cursor: 'pointer',
+            background: activeCat === c.id
+              ? (pictobloxLayout ? 'rgba(255,171,25,0.12)' : `${c.color}25`)
+              : 'transparent',
+            boxShadow: pictobloxLayout && activeCat === c.id ? `0 0 0 2px ${c.color}, 0 0 14px ${T.railActiveGlow}` : 'none',
+            outline: !pictobloxLayout && activeCat === c.id ? `2px solid ${c.color}` : 'none',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3,
+            transition: 'all 0.15s', padding: '6px 2px',
           }}>
-            <span style={{ fontSize: 18 }}>{c.icon}</span>
-            <span style={{ fontSize: 8, color: activeCat === c.id ? c.color : '#374151', fontWeight: 700, letterSpacing: 0.3 }}>
-              {c.label.slice(0, 5).toUpperCase()}
+            <span style={{
+              fontSize: pictobloxLayout ? 20 : 18,
+              lineHeight: 1, filter: pictobloxLayout && activeCat === c.id ? 'drop-shadow(0 0 6px rgba(255,171,25,0.7))' : undefined,
+            }}>{pictobloxLayout ? (c.icon || '●') : c.icon}</span>
+            <span style={{
+              fontSize: 8, fontWeight: 800,
+              color: pictobloxLayout
+                ? (activeCat === c.id ? T.event : T.textMuted)
+                : (activeCat === c.id ? c.color : '#374151'),
+              letterSpacing: 0.4, textAlign: 'center', lineHeight: 1.05, maxWidth: 58,
+            }}>
+              {pictobloxLayout ? (c.short || c.label.slice(0, 5).toUpperCase()) : c.label.slice(0, 5).toUpperCase()}
             </span>
           </button>
         ))}
       </div>
+      )}
 
       {/* ── Block palette ── */}
-      <div style={{ width: 186, background: '#0a0a18', borderRight: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
-        <div style={{ padding: '10px 10px 6px', borderBottom: `2px solid ${cat.color}40`, flexShrink: 0 }}>
-          <div style={{ fontSize: 11, fontWeight: 800, color: cat.color, letterSpacing: 1.5, textTransform: 'uppercase' }}>{cat.label}</div>
+      {!useGlobalSidebarToolbox && (
+      <div style={{
+        width: pictobloxLayout ? 208 : 186,
+        background: pictobloxLayout ? T.palette : '#0a0a18',
+        borderRight: pictobloxLayout ? `1px solid ${T.border}` : '1px solid rgba(255,255,255,0.06)',
+        display: 'flex', flexDirection: 'column', flexShrink: 0,
+      }}>
+        <div style={{
+          padding: pictobloxLayout ? '14px 14px 12px' : '10px 10px 6px',
+          borderBottom: pictobloxLayout ? `1px solid ${T.border}` : `2px solid ${cat.color}40`,
+          flexShrink: 0,
+          background: pictobloxLayout ? T.paletteHeader : undefined,
+        }}>
+          <div style={{
+            fontSize: pictobloxLayout ? 20 : 12, fontWeight: 900,
+            color: pictobloxLayout ? T.event : cat.color,
+            letterSpacing: pictobloxLayout ? 1.2 : 1.5,
+            textTransform: 'uppercase',
+          }}>{cat.label}</div>
         </div>
-        <div style={{ flex: 1, overflowY: 'auto', padding: '10px 10px 20px' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: pictobloxLayout ? '12px 12px 22px' : '10px 10px 20px' }}>
           {insertParent && (
-            <div style={{ fontSize: 10, color: '#f59e0b', background: '#f59e0b18', border: '1px solid #f59e0b40', borderRadius: 6, padding: '4px 8px', marginBottom: 8 }}>
+            <div style={{
+              fontSize: 10, color: '#fbbf24', background: 'rgba(251,191,36,0.12)', border: '1px solid rgba(251,191,36,0.35)',
+              borderRadius: 8, padding: '6px 10px', marginBottom: 10,
+            }}>
               Picking for inside block ↓
-              <button onClick={() => setInsertParent(null)} style={{ marginLeft: 6, background: 'none', border: 'none', color: '#f59e0b', cursor: 'pointer', fontSize: 10 }}>✕ cancel</button>
+              <button type="button" onClick={() => setInsertParent(null)} style={{ marginLeft: 8, background: 'none', border: 'none', color: '#fbbf24', cursor: 'pointer', fontSize: 10 }}>✕ cancel</button>
             </div>
           )}
-          {(PALETTE[activeCat] || []).map((def, i) => (
-            <PaletteBlock key={i} def={def} catColor={cat.color} onClick={() => handlePaletteClick(def, def.type, activeCat)} />
+          {pictobloxLayout && activeCat === 'operators' && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-start' }}>
+              {OPERATOR_PILL_DEFS.map((row, idx) => {
+                const { def, catId } = findDefForType(row.type);
+                return (
+                  <PictoOperatorPill key={`${row.label}-${idx}`} label={row.label} onClick={() => handlePaletteClick(def, row.type, catId)} />
+                );
+              })}
+            </div>
+          )}
+          {(!pictobloxLayout || activeCat !== 'operators') && paletteDefs.map((def, i) => (
+            <PaletteBlock
+              key={i}
+              def={def}
+              catColor={cat.color}
+              pictoblox={pictobloxLayout}
+              outline={!!(pictobloxLayout && paletteKey === 'event' && pictoEventPaletteOutline(def))}
+              onClick={() => handlePaletteClick(def, def.type, paletteKey || activeCat)}
+            />
           ))}
         </div>
       </div>
+      )}
 
       {/* ── Workspace ── */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, background: '#111122' }}>
-        {/* toolbar */}
-        <div style={{ display: 'flex', gap: 8, padding: '8px 12px', borderBottom: '1px solid rgba(255,255,255,0.06)', alignItems: 'center', flexShrink: 0, background: '#0d0d1e' }}>
-          <button onClick={handleRun} disabled={running} style={{
-            padding: '6px 18px', borderRadius: 8, border: 'none', cursor: running ? 'default' : 'pointer',
-            background: running ? '#1f2937' : 'linear-gradient(135deg, #16a34a, #15803d)',
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, background: pictobloxLayout ? T.script : '#111122' }}>
+        <div style={{
+          display: 'flex', gap: 10, padding: pictobloxLayout ? '10px 14px' : '8px 12px',
+          borderBottom: pictobloxLayout ? `1px solid ${T.border}` : '1px solid rgba(255,255,255,0.06)',
+          alignItems: 'center', flexShrink: 0,
+          background: pictobloxLayout ? T.panel : '#0d0d1e',
+        }}>
+          <button type="button" onClick={handleRun} disabled={running} style={{
+            padding: pictobloxLayout ? '8px 20px' : '6px 18px', borderRadius: pictobloxLayout ? 10 : 8, border: 'none', cursor: running ? 'default' : 'pointer',
+            background: running ? '#1f2937' : 'linear-gradient(180deg, #22c55e 0%, #16a34a 100%)',
             color: '#fff', fontWeight: 800, fontSize: 13,
-            boxShadow: running ? 'none' : '0 2px 8px rgba(22,163,74,0.4)',
+            boxShadow: running ? 'none' : (pictobloxLayout ? '0 3px 0 #14532d, inset 0 1px 0 rgba(255,255,255,0.25)' : '0 2px 8px rgba(22,163,74,0.4)'),
           }}>▶ Run</button>
-          <button onClick={handleStop} disabled={!running} style={{
+          <button type="button" onClick={handleStop} disabled={!running} style={pictobloxLayout ? {
+            padding: '8px 16px', borderRadius: 10, border: 'none', cursor: 'pointer',
+            background: running ? 'linear-gradient(180deg, #ef4444 0%, #b91c1c 100%)' : 'linear-gradient(180deg, #4b5263 0%, #353b4a 100%)',
+            color: '#fff', fontWeight: 800, fontSize: 13,
+            boxShadow: running ? '0 3px 0 #7f1d1d' : '0 3px 0 #1a1e28',
+          } : {
             padding: '6px 14px', borderRadius: 8, border: 'none', cursor: !running ? 'default' : 'pointer',
             background: !running ? '#1f2937' : 'linear-gradient(135deg, #dc2626, #b91c1c)',
             color: '#fff', fontWeight: 800, fontSize: 13, opacity: !running ? 0.4 : 1,
             boxShadow: running ? '0 2px 8px rgba(220,38,38,0.4)' : 'none',
           }}>■ Stop</button>
-          <button onClick={handleReset} style={{
-            padding: '6px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)',
-            cursor: 'pointer', background: 'transparent', color: '#64748b', fontSize: 13, fontWeight: 700,
+          <button type="button" onClick={handleReset} style={{
+            padding: pictobloxLayout ? '8px 14px' : '6px 12px', borderRadius: pictobloxLayout ? 10 : 8,
+            border: pictobloxLayout ? `1px solid ${T.border}` : '1px solid rgba(255,255,255,0.1)',
+            cursor: 'pointer',
+            background: pictobloxLayout ? 'linear-gradient(180deg, #3d4455 0%, #2f3545 100%)' : 'transparent',
+            color: pictobloxLayout ? T.text : '#64748b', fontSize: 13, fontWeight: 700,
+            boxShadow: pictobloxLayout ? '0 2px 0 #1a1d26' : undefined,
           }}>↺ Reset</button>
-          <div style={{ marginLeft: 'auto', fontSize: 11, color: '#334155' }}>
+          <div style={{ marginLeft: 'auto', fontSize: 11, color: pictobloxLayout ? T.textMuted : '#334155', fontWeight: 600 }}>
             {workspace.length} blocks
           </div>
         </div>
 
-        {/* script area */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px 40px' }}>
-          {workspace.length === 0 && (
-            <div style={{ textAlign: 'center', color: '#1f2937', paddingTop: 48 }}>
-              <div style={{ fontSize: 40, marginBottom: 10 }}>🧩</div>
-              <div style={{ fontSize: 14, fontWeight: 600 }}>Click a block to add it here</div>
-            </div>
-          )}
-          {workspace.map(block => (
-            <WorkspaceBlock key={block.id} block={block} catMap={catMap} palMap={palMap}
-              onParamChange={onParamChange} onDelete={onDelete}
-              onAddInside={id => { setInsertParent(id); }} />
-          ))}
-        </div>
+        {pictobloxLayout ? (
+          <div style={{
+            flex: 1, position: 'relative', minHeight: 200, background: T.script,
+            backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.04) 1px, transparent 1px)',
+            backgroundSize: '22px 22px',
+            overflow: 'auto',
+          }}>
+            {workspace.length === 0 && (
+              <div style={{ textAlign: 'center', color: T.textMuted, paddingTop: 100, position: 'relative', zIndex: 1 }}>
+                <div style={{ fontSize: 14, fontWeight: 600 }}>Tap a block in the palette to add scripts</div>
+              </div>
+            )}
+            <PictoScriptColumn
+              workspace={workspace}
+              catMap={catMap}
+              palMap={palMap}
+              onParamChange={onParamChange}
+              onDelete={onDelete}
+              onAddInside={id => { setInsertParent(id); }}
+              variableNames={variableNames}
+              messageNames={messageNames}
+            />
+          </div>
+        ) : (
+          <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px 40px' }}>
+            {workspace.length === 0 && (
+              <div style={{ textAlign: 'center', color: '#1f2937', paddingTop: 48 }}>
+                <div style={{ fontSize: 40, marginBottom: 10 }}>🧩</div>
+                <div style={{ fontSize: 14, fontWeight: 600 }}>
+                  {useGlobalSidebarToolbox ? 'Drag blocks from the left sidebar' : 'Click a block to add it here'}
+                </div>
+              </div>
+            )}
+            {workspace.map(block => (
+              <WorkspaceBlock key={block.id} block={block} catMap={catMap} palMap={palMap}
+                onParamChange={onParamChange} onDelete={onDelete}
+                onAddInside={id => { setInsertParent(id); }}
+                variableNames={variableNames}
+                messageNames={messageNames} />
+            ))}
+          </div>
+        )}
       </div>
 
       {/* ── Stage + Sprites + Backgrounds ── */}
-      <div style={{ width: STAGE_W, display: 'flex', flexDirection: 'column', background: '#060610', borderLeft: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 }}>
-        {/* stage header */}
-        <div style={{ padding: '6px 10px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
-          <span style={{ fontSize: 10, fontWeight: 800, color: '#374151', letterSpacing: 1.5, textTransform: 'uppercase' }}>Stage</span>
-          <span style={{ fontSize: 11, color: '#1d4ed8', background: running ? '#1d4ed820' : 'transparent', borderRadius: 4, padding: '1px 6px', fontWeight: 700 }}>
-            {running ? '● RUNNING' : ''}
-          </span>
-        </div>
-
-        {/* canvas */}
-        <canvas ref={canvasRef} width={STAGE_W} height={170}
-          style={{ display: 'block', flexShrink: 0 }} />
-
-        {/* sprite info strip */}
-        <div style={{ padding: '4px 8px', borderTop: '1px solid rgba(255,255,255,0.05)', borderBottom: '1px solid rgba(255,255,255,0.05)', background: '#0a0a1e', flexShrink: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontSize: 16 }}>{activeSprite.emoji}</span>
-            <div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: activeSprite.color }}>{activeSprite.label}</div>
-              <div style={{ fontSize: 9, color: '#374151' }}>
-                x:{Math.round(spriteStateRef.current.x)} y:{Math.round(spriteStateRef.current.y)} dir:{Math.round(spriteStateRef.current.dir)}°
+      <div style={{
+        width: STAGE_W, display: 'flex', flexDirection: 'column',
+        background: pictobloxLayout ? T.panel : '#060610',
+        borderLeft: pictobloxLayout ? `1px solid ${T.border}` : '1px solid rgba(255,255,255,0.06)', flexShrink: 0,
+      }}>
+        {pictobloxLayout ? (
+          <>
+            <div style={{ padding: '8px 10px', borderBottom: `1px solid ${T.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+              <span style={{ fontSize: 10, fontWeight: 800, color: T.textMuted, letterSpacing: 1.4, textTransform: 'uppercase' }}>Stage</span>
+              <span style={{ fontSize: 10, color: T.event, background: running ? 'rgba(255,171,25,0.15)' : 'transparent', borderRadius: 4, padding: '2px 6px', fontWeight: 700 }}>
+                {running ? '● RUNNING' : ''}
+              </span>
+            </div>
+            <canvas ref={canvasRef} width={STAGE_W} height={170} style={{ display: 'block', flexShrink: 0, background: '#0a0c14' }} />
+            <div style={{ padding: '6px 10px', borderBottom: `1px solid ${T.border}`, background: T.paletteHeader, flexShrink: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 18 }}>{activeSprite.emoji}</span>
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: T.text }}>{activeSprite.label}</div>
+                  <div style={{ fontSize: 9, color: T.textMuted }}>
+                    x:{Math.round(spriteStateRef.current.x)} y:{Math.round(spriteStateRef.current.y)}
+                  </div>
+                </div>
+                <label style={{ marginLeft: 'auto', fontSize: 10, color: T.textMuted, display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontWeight: 600 }}>
+                  👁
+                  <input
+                    type="checkbox"
+                    checked={spriteVisible}
+                    onChange={e => {
+                      setSpriteVisible(e.target.checked);
+                      spriteStateRef.current.visible = e.target.checked;
+                      redraw();
+                    }}
+                  />
+                </label>
               </div>
             </div>
-          </div>
-        </div>
-
-        {/* sprite selector */}
-        <div style={{ padding: '8px 8px 4px', flexShrink: 0 }}>
-          <div style={{ fontSize: 9, fontWeight: 800, color: '#374151', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 6 }}>Choose Sprite</div>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {SPRITES.map(s => (
-              <SpriteThumbnail key={s.id} sprite={s} selected={activeSpriteId === s.id}
-                onClick={() => { setActiveSpriteId(s.id); setTimeout(redraw, 10); }} />
-            ))}
-          </div>
-        </div>
-
-        {/* background selector */}
-        <div style={{ padding: '6px 8px 10px', flexShrink: 0 }}>
-          <div style={{ fontSize: 9, fontWeight: 800, color: '#374151', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 6 }}>Background</div>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {BACKGROUNDS.map(bg => (
-              <BgSwatch key={bg.id} bg={bg} selected={activeBgId === bg.id}
-                onClick={() => { setActiveBgId(bg.id); setTimeout(redraw, 10); }} />
-            ))}
-          </div>
-        </div>
+            <div style={{ padding: '8px 10px 6px', flexShrink: 0 }}>
+              <div style={{ fontSize: 9, fontWeight: 800, color: T.textMuted, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 6 }}>Choose</div>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {spriteRail.map(s => (
+                  <SpriteThumbnail key={s.id} sprite={s} selected={activeSpriteId === s.id}
+                    onClick={() => { setActiveSpriteId(s.id); setTimeout(redraw, 10); }} />
+                ))}
+              </div>
+            </div>
+            <div style={{ padding: '6px 8px 10px', flexShrink: 0, borderTop: `1px solid ${T.border}` }}>
+              <div style={{ fontSize: 9, fontWeight: 800, color: T.textMuted, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 6 }}>Background</div>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {BACKGROUNDS.map(bg => (
+                  <BgSwatch key={bg.id} bg={bg} selected={activeBgId === bg.id}
+                    onClick={() => { setActiveBgId(bg.id); setTimeout(redraw, 10); }} />
+                ))}
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            <div style={{ padding: '6px 10px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+              <span style={{ fontSize: 10, fontWeight: 800, color: '#374151', letterSpacing: 1.5, textTransform: 'uppercase' }}>Stage</span>
+              <span style={{ fontSize: 11, color: '#1d4ed8', background: running ? '#1d4ed820' : 'transparent', borderRadius: 4, padding: '1px 6px', fontWeight: 700 }}>
+                {running ? '● RUNNING' : ''}
+              </span>
+            </div>
+            <canvas ref={canvasRef} width={STAGE_W} height={170} style={{ display: 'block', flexShrink: 0 }} />
+            <div style={{ padding: '4px 8px', borderTop: '1px solid rgba(255,255,255,0.05)', borderBottom: '1px solid rgba(255,255,255,0.05)', background: '#0a0a1e', flexShrink: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: 16 }}>{activeSprite.emoji}</span>
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: activeSprite.color }}>{activeSprite.label}</div>
+                  <div style={{ fontSize: 9, color: '#374151' }}>
+                    x:{Math.round(spriteStateRef.current.x)} y:{Math.round(spriteStateRef.current.y)} dir:{Math.round(spriteStateRef.current.dir)}°
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div style={{ padding: '8px 8px 4px', flexShrink: 0 }}>
+              <div style={{ fontSize: 9, fontWeight: 800, color: '#374151', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 6 }}>Choose Sprite</div>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {spriteRail.map(s => (
+                  <SpriteThumbnail key={s.id} sprite={s} selected={activeSpriteId === s.id}
+                    onClick={() => { setActiveSpriteId(s.id); setTimeout(redraw, 10); }} />
+                ))}
+              </div>
+            </div>
+            <div style={{ padding: '6px 8px 10px', flexShrink: 0 }}>
+              <div style={{ fontSize: 9, fontWeight: 800, color: '#374151', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 6 }}>Background</div>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {BACKGROUNDS.map(bg => (
+                  <BgSwatch key={bg.id} bg={bg} selected={activeBgId === bg.id}
+                    onClick={() => { setActiveBgId(bg.id); setTimeout(redraw, 10); }} />
+                ))}
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

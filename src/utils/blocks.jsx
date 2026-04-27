@@ -176,16 +176,68 @@ export function ParamInput({ value, onChange, width, color }) {
   );
 }
 
+function ParamSelect({ value, onChange, options, width }) {
+  return (
+    <select
+      value={String(value ?? options?.[0] ?? '')}
+      onChange={(e) => onChange(e.target.value)}
+      onMouseDown={(e) => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
+      style={{
+        background: '#ffffff',
+        border: 'none',
+        borderRadius: '10px',
+        padding: '2px 8px',
+        color: '#575E75',
+        fontSize: '12px',
+        fontWeight: '600',
+        fontFamily: "'Helvetica Neue', 'Helvetica', 'Arial', sans-serif",
+        width: width || 64,
+        outline: 'none',
+        margin: '0 2px',
+        verticalAlign: 'middle',
+        textAlign: 'center',
+        minHeight: '20px',
+        appearance: 'none',
+      }}
+    >
+      {(options || []).map((opt) => (
+        <option key={opt} value={opt}>{opt}</option>
+      ))}
+    </select>
+  );
+}
+
 /* ─── Render block content with inline inputs ─── */
-export function BlockContent({ block, onParamChange }) {
+export function BlockContent({ block, onParamChange, context = {} }) {
   const p = block.params || {};
+  const keyOptions = ['space', 'up', 'down', 'left', 'right', 'a', 'b'];
+  const messageOptions = context.messageNames?.length ? context.messageNames : ['go', 'message1', 'start'];
+  const variableOptions = context.variableNames?.length ? context.variableNames : ['myVar', 'score'];
   const PI = (paramKey, w) => (
-    <ParamInput
-      value={p[paramKey] || ''}
-      onChange={(v) => onParamChange(block.id, paramKey, v)}
-      width={w}
-      color={block.color}
-    />
+    (paramKey === 'key' || paramKey === 'message' || paramKey === 'name' || paramKey === 'list')
+      ? (
+        <ParamSelect
+          value={p[paramKey] || ''}
+          onChange={(v) => onParamChange(block.id, paramKey, v)}
+          width={w}
+          options={
+            paramKey === 'key'
+              ? keyOptions
+              : (paramKey === 'message'
+                ? messageOptions
+                : variableOptions)
+          }
+        />
+      )
+      : (
+        <ParamInput
+          value={p[paramKey] || ''}
+          onChange={(v) => onParamChange(block.id, paramKey, v)}
+          width={w}
+          color={block.color}
+        />
+      )
   );
 
   switch (block.type) {

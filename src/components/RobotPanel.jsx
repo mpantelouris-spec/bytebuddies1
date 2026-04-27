@@ -1,7 +1,9 @@
 import React, { useState, useRef, useEffect, useCallback, useImperativeHandle, forwardRef } from 'react';
 import ScratchStyleBlock, { getCategoryColor } from './ScratchStyleBlock';
+import UnifiedBlocklyWorkspace from './UnifiedBlocklyWorkspace';
 import { BLOCK_STACK_GAP, columnizeBlocks } from '../utils/blockStack';
 import { snapCanvasStack } from '../utils/blockSnap';
+import { BB_ADD_SIDEBAR_BLOCK } from '../utils/blockLibraryEvents';
 
 // ─── micro:bit WebUSB direct-flash (works with ANY firmware) ─────────────────
 async function _idbCache(key, fetchFn) {
@@ -3359,7 +3361,112 @@ export default function RobotPanel() {
     };
   };
 
+  const blocklyNodesToRobotProgram = useCallback((nodes = []) => {
+    const typeToCommand = {
+      bb_event_start: 'on_start',
+      bb_sprite_move: 'forward',
+      bb_sprite_turn: 'right',
+      bb_control_wait: 'wait',
+      bb_loop_repeat: 'repeat',
+      bb_loop_forever: 'forever',
+      bb_logic_if: 'if_then',
+      bb_sound_play: 'buzz',
+      bb_var_create: 'var_set',
+      bb_var_change: 'var_inc',
+    };
+    const next = [];
+    const make = (id, params = {}) => {
+      const cmd = ROBOT_COMMANDS.find((c) => c.id === id);
+      if (!cmd) return null;
+      return {
+        uid: Date.now() + Math.random() + next.length,
+        id: cmd.id,
+        label: cmd.label,
+        icon: cmd.icon,
+        color: cmd.color,
+        cat: cmd.cat,
+        params: { ...Object.fromEntries((cmd.params || []).map((p) => [p.key, p.default])), ...params },
+        x: ROBOT_BLOCK_LANE_X,
+        y: 0,
+      };
+    };
+    const walk = (list = []) => {
+      list.forEach((node) => {
+        const mapped = typeToCommand[node?.type];
+        if (!mapped) return;
+        const f = node.fields || {};
+        if (mapped === 'forward') {
+          const b = make('forward', { amount: String(f.STEPS || 80) });
+          if (b) next.push(b);
+          return;
+        }
+        if (mapped === 'right') {
+          const dir = String(f.DIRECTION || 'right');
+          const turnCmd = dir === 'left' ? 'left' : 'right';
+          const b = make(turnCmd, { degrees: String(f.DEGREES || 90) });
+          if (b) next.push(b);
+          return;
+        }
+        if (mapped === 'wait') {
+          const b = make('wait', { secs: String(f.SECONDS || 1) });
+          if (b) next.push(b);
+          return;
+        }
+        if (mapped === 'repeat') {
+          const head = make('repeat', { times: String(f.TIMES || 10) });
+          if (head) next.push(head);
+          walk(node?.statements?.DO || []);
+          const end = make('repeat_end');
+          if (end) next.push(end);
+          return;
+        }
+        if (mapped === 'forever') {
+          const head = make('forever');
+          if (head) next.push(head);
+          walk(node?.statements?.DO || []);
+          const end = make('repeat_end');
+          if (end) next.push(end);
+          return;
+        }
+        if (mapped === 'if_then') {
+          const head = make('if_then');
+          if (head) next.push(head);
+          walk(node?.statements?.DO || []);
+          if ((node?.statements?.ELSE || []).length) {
+            const eb = make('else_branch');
+            if (eb) next.push(eb);
+            walk(node.statements.ELSE);
+          }
+          const end = make('if_end');
+          if (end) next.push(end);
+          return;
+        }
+        const b = make(mapped);
+        if (b) next.push(b);
+      });
+    };
+    walk(nodes);
+    return normalizeRobotProgram(next);
+  }, [normalizeRobotProgram]);
+
   const addBlock = (cmd) => setProgram((prev) => normalizeRobotProgram([...prev, createBlock(cmd)]));
+
+  useEffect(() => {
+    const handleSidebarAdd = (event) => {
+      const raw = String(event?.detail?.name || '').trim().toLowerCase();
+      if (!raw) return;
+      const compact = raw.replace(/\s+/g, ' ');
+      const cmd = ROBOT_COMMANDS.find((c) => {
+        const label = String(c.label || '').toLowerCase();
+        const id = String(c.id || '').toLowerCase();
+        return label === compact || id === compact || label.includes(compact);
+      });
+      if (!cmd) return;
+      addBlock(cmd);
+    };
+    window.addEventListener(BB_ADD_SIDEBAR_BLOCK, handleSidebarAdd);
+    return () => window.removeEventListener(BB_ADD_SIDEBAR_BLOCK, handleSidebarAdd);
+  }, [addBlock]);
 
   const removeBlock = (uid) => {
     setProgram((prev) => normalizeRobotProgram(prev.filter((b) => b.uid !== uid)));
@@ -3436,6 +3543,7 @@ export default function RobotPanel() {
 
   /* ─── Run program uses blocks sorted by Y ─── */
   const sortedProgram = [...program].sort((a, b) => a.y - b.y);
+  const useUnifiedBlocklyCanvas = true;
 
   /* ─── Generated code viewer ─── */
   const generatedCode = profile.codeHeader + sortedProgram.map(s => profile.buildCmd(s.id, s.params)).join('');
@@ -3797,6 +3905,14 @@ export default function RobotPanel() {
           })()}
 
           {/* Canvas with dot grid */}
+          {useUnifiedBlocklyCanvas ? (
+            <div style={{ flex: 1, minHeight: 0, background: 'var(--bg-primary)' }}>
+              <UnifiedBlocklyWorkspace
+                onModelChange={(nodes) => setProgram(blocklyNodesToRobotProgram(nodes))}
+                style={{ height: '100%' }}
+              />
+            </div>
+          ) : (
           <div
             ref={canvasAreaRef}
             style={{
@@ -4007,6 +4123,7 @@ export default function RobotPanel() {
               );
             })}
           </div>
+          )}
 
           <div style={s.runBar}>
             {running

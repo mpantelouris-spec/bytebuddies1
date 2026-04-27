@@ -3,11 +3,12 @@ import { BLOCK_DEFS, SIDEBAR_TO_TYPE, createBlockFromDrop, BlockContent } from '
 import { saveSubmissionToFirestore } from '../firebase';
 import { useUser } from '../contexts/UserContext';
 import ScratchStyleBlock from './ScratchStyleBlock';
+import UnifiedBlocklyWorkspace from './UnifiedBlocklyWorkspace';
 import { BLOCK_STACK_GAP, columnizeBlocks } from '../utils/blockStack';
 import { snapCanvasStack } from '../utils/blockSnap';
 import ExtensionsModal from './ExtensionsModal';
 import { readEnabledExtensionIds, writeEnabledExtensionIds } from '../data/extensionsCatalog';
-import { BB_OPEN_EXTENSIONS } from '../utils/blockLibraryEvents';
+import { BB_ADD_SIDEBAR_BLOCK, BB_OPEN_EXTENSIONS } from '../utils/blockLibraryEvents';
 
 const STAGE_W = 480;
 const STAGE_H = 360;
@@ -27,6 +28,59 @@ function normalizeSpritesBlockStacks(sprites) {
     ...sprite,
     blocks: normalizeSpriteBlocks(sprite.blocks),
   }));
+}
+
+function blocklyNodesToGameBlocks(nodes = []) {
+  const mapType = {
+    bb_event_start: 'event-start',
+    bb_event_keypress: 'event-keypress',
+    bb_sprite_move: 'sprite-move',
+    bb_sprite_turn: 'sprite-turn',
+    bb_sprite_goto: 'sprite-goto',
+    bb_sprite_changex: 'sprite-changex',
+    bb_sprite_changey: 'sprite-changey',
+    bb_control_wait: 'control-wait',
+    bb_loop_repeat: 'loop-repeat',
+    bb_loop_forever: 'loop-forever',
+    bb_logic_if: 'logic-if',
+    bb_sound_play: 'sound-play',
+    bb_sprite_say: 'sprite-say',
+    bb_var_create: 'var-create',
+    bb_var_change: 'var-change',
+  };
+  let y = BLOCK_START_Y;
+  const out = [];
+  const pushNode = (node) => {
+    const type = mapType[node?.type];
+    if (!type || !BLOCK_DEFS[type]) return;
+    const f = node.fields || {};
+    const base = { ...BLOCK_DEFS[type], params: { ...BLOCK_DEFS[type].params } };
+    if (type === 'event-keypress') base.params.key = f.KEY || 'space';
+    if (type === 'sprite-move') base.params.steps = String(f.STEPS || 10);
+    if (type === 'sprite-turn') base.params.degrees = String(f.DEGREES || 90);
+    if (type === 'sprite-goto') { base.params.x = String(f.X || 0); base.params.y = String(f.Y || 0); }
+    if (type === 'sprite-changex' || type === 'sprite-changey') base.params.amount = String(f.AMOUNT || 10);
+    if (type === 'control-wait') base.params.secs = String(f.SECONDS || 1);
+    if (type === 'loop-repeat') base.params.times = String(f.TIMES || 10);
+    if (type === 'sprite-say') { base.params.text = String(f.TEXT || 'Hi!'); base.params.secs = String(f.SECONDS || 2); }
+    if (type === 'sound-play') base.params.sound = String(f.SOUND || 'pop');
+    if (type === 'var-create') { base.params.name = String(f.NAME || 'myVar'); base.params.value = String(f.VALUE || 0); }
+    if (type === 'var-change') { base.params.name = String(f.NAME || 'myVar'); base.params.amount = String(f.AMOUNT || 1); }
+    out.push({
+      id: Date.now() + Math.random() + out.length,
+      type,
+      ...base,
+      x: BLOCK_LANE_X,
+      y,
+    });
+    y += BLOCK_STACK_GAP;
+    const doNodes = node?.statements?.DO || [];
+    doNodes.forEach(pushNode);
+    const elseNodes = node?.statements?.ELSE || [];
+    elseNodes.forEach(pushNode);
+  };
+  nodes.forEach(pushNode);
+  return normalizeSpriteBlocks(out);
 }
 
 /* ─── Sprite Library (SVG-based characters) ─── */
@@ -1042,6 +1096,30 @@ loadImages(function(){
     }));
   };
 
+  useEffect(() => {
+    const handleSidebarAdd = (event) => {
+      const directType = String(event?.detail?.type || '').trim();
+      const name = String(event?.detail?.name || '').trim().toLowerCase();
+      if (!selected) return;
+      const type = directType || SIDEBAR_TO_TYPE[name];
+      const def = type ? BLOCK_DEFS[type] : null;
+      if (!def) return;
+      const newBlock = {
+        id: Date.now() + Math.random(),
+        type,
+        ...def,
+        params: { ...(def.params || {}) },
+        x: BLOCK_LANE_X,
+        y: BLOCK_START_Y,
+      };
+      setSprites((prev) => prev.map((s) => (
+        s.id === selected ? { ...s, blocks: normalizeSpriteBlocks([...(s.blocks || []), newBlock]) } : s
+      )));
+    };
+    window.addEventListener(BB_ADD_SIDEBAR_BLOCK, handleSidebarAdd);
+    return () => window.removeEventListener(BB_ADD_SIDEBAR_BLOCK, handleSidebarAdd);
+  }, [selected]);
+
   /* ═══ Render ═══ */
   const submitToAssignment = async () => {
     if (!pendingAssignment) return;
@@ -1147,65 +1225,17 @@ loadImages(function(){
             </span>
           </div>
 
-          {/* Block canvas */}
-          <div
-            ref={blockAreaRef}
-            style={{
-              flex: 1, position: 'relative', overflow: 'auto',
-              background: 'var(--bg-primary)',
-              backgroundImage: 'radial-gradient(circle, var(--border-color) 1px, transparent 1px)',
-              backgroundSize: '24px 24px',
-              cursor: draggingBlock ? 'grabbing' : 'default',
-              minHeight: 0,
-            }}
-            onMouseMove={handleBlockMouseMove}
-            onMouseUp={handleBlockMouseUp}
-            onMouseLeave={handleBlockMouseUp}
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={handleBlockDrop}
-          >
-            {selectedSprite && selectedSprite.blocks.map(block => (
-              <ScratchStyleBlock
-                key={block.id}
-                block={block}
-                onMouseDown={(e) => handleBlockMouseDown(e, block)}
-                onMouseEnter={() => setHoveredBlock(block.id)}
-                onMouseLeave={() => setHoveredBlock(null)}
-                style={{
-                  position: 'absolute',
-                  left: block.x,
-                  top: block.y,
-                  transform: 'none',
-                  transition: 'none',
-                  zIndex: draggingBlock === block.id ? 20000 : 10000 - Math.round(block.y || 0),
-                }}
-              >
-                <BlockContent block={block} onParamChange={handleBlockParamChange} />
-
-                {/* Delete button */}
-                <button
-                  onMouseDown={(e) => { e.stopPropagation(); deleteBlock(block.id); }}
-                  style={{
-                    position: 'absolute', top: 5, right: 5,
-                    width: 18, height: 18, borderRadius: '50%', border: 'none',
-                    background: hoveredBlock === block.id ? '#ef4444' : 'transparent',
-                    color: hoveredBlock === block.id ? '#fff' : 'transparent',
-                    fontSize: 11, fontWeight: 700, cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    transition: 'all 0.15s', lineHeight: 1, padding: 0,
-                    pointerEvents: 'auto',
-                  }}
-                  title="Delete block"
-                >×</button>
-              </ScratchStyleBlock>
-            ))}
-            {(!selectedSprite || (selectedSprite.blocks || []).length === 0) && (
-              <div className="empty-state" style={{ height: '100%', pointerEvents: 'none' }}>
-                <div className="empty-state-icon">🧩</div>
-                <h3>{selectedSprite ? 'Drag blocks here to code this sprite' : 'Select a sprite first'}</h3>
-                <p>{selectedSprite ? 'Use the sidebar to pick event, motion, and logic blocks' : 'Click a sprite below the stage to select it'}</p>
-              </div>
-            )}
+          <div style={{ flex: 1, minHeight: 0 }}>
+            <UnifiedBlocklyWorkspace
+              onModelChange={(nodes) => {
+                if (!selected) return;
+                const nextBlocks = blocklyNodesToGameBlocks(nodes);
+                setSprites((prev) => prev.map((s) => (
+                  s.id === selected ? { ...s, blocks: nextBlocks } : s
+                )));
+              }}
+              style={{ height: '100%' }}
+            />
           </div>
         </div>
 

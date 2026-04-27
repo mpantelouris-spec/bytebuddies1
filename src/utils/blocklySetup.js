@@ -22,8 +22,9 @@ export const defineBytebuddiesBlocks = () => {
       init: function() {
         this.appendDummyInput()
             .appendField("🚩 when program starts");
+        this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
-        this.setColour(60);
+        this.setColour('#FFBF00');
         this.setTooltip("Starts the program");
       }
     };
@@ -38,8 +39,9 @@ export const defineBytebuddiesBlocks = () => {
               ["a", "a"], ["s", "s"], ["d", "d"], ["w", "w"]
             ]), "KEY")
             .appendField("pressed");
+        this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
-        this.setColour(60);
+        this.setColour('#FFBF00');
         this.setTooltip("Triggers when a key is pressed");
       }
     };
@@ -53,7 +55,7 @@ export const defineBytebuddiesBlocks = () => {
             .appendField("steps");
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
-        this.setColour(210);
+        this.setColour('#4C97FF');
         this.setTooltip("Move forward");
       }
     };
@@ -69,7 +71,7 @@ export const defineBytebuddiesBlocks = () => {
             .appendField("degrees");
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
-        this.setColour(210);
+        this.setColour('#4C97FF');
         this.setTooltip("Turn left or right");
       }
     };
@@ -83,7 +85,7 @@ export const defineBytebuddiesBlocks = () => {
             .appendField(new Blockly.FieldNumber(0, -360, 360), "Y");
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
-        this.setColour(210);
+        this.setColour('#4C97FF');
         this.setTooltip("Go to position");
       }
     };
@@ -95,7 +97,7 @@ export const defineBytebuddiesBlocks = () => {
             .appendField(new Blockly.FieldNumber(10, -1000, 1000), "AMOUNT");
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
-        this.setColour(210);
+        this.setColour('#4C97FF');
         this.setTooltip("Change X position");
       }
     };
@@ -107,7 +109,7 @@ export const defineBytebuddiesBlocks = () => {
             .appendField(new Blockly.FieldNumber(10, -1000, 1000), "AMOUNT");
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
-        this.setColour(210);
+        this.setColour('#4C97FF');
         this.setTooltip("Change Y position");
       }
     };
@@ -121,7 +123,7 @@ export const defineBytebuddiesBlocks = () => {
             .appendField("seconds");
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
-        this.setColour(30);
+        this.setColour('#FFAB19');
         this.setTooltip("Pause for seconds");
       }
     };
@@ -136,7 +138,7 @@ export const defineBytebuddiesBlocks = () => {
             .setCheck(null);
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
-        this.setColour(30);
+        this.setColour('#FFAB19');
         this.setTooltip("Repeat commands");
       }
     };
@@ -148,7 +150,7 @@ export const defineBytebuddiesBlocks = () => {
         this.appendStatementInput("DO")
             .setCheck(null);
         this.setPreviousStatement(true, null);
-        this.setColour(30);
+        this.setColour('#FFAB19');
         this.setTooltip("Repeat forever");
       }
     };
@@ -161,7 +163,7 @@ export const defineBytebuddiesBlocks = () => {
             .appendField(new Blockly.FieldTextInput("Hello!"), "MESSAGE");
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
-        this.setColour(160);
+        this.setColour('#59C059');
         this.setTooltip("Print a message");
       }
     };
@@ -176,7 +178,7 @@ export const defineBytebuddiesBlocks = () => {
             .appendField("seconds");
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
-        this.setColour(270);
+        this.setColour('#9966FF');
         this.setTooltip("Display speech bubble");
       }
     };
@@ -191,7 +193,7 @@ export const defineBytebuddiesBlocks = () => {
             .appendField(new Blockly.FieldTextInput("0"), "VALUE");
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
-        this.setColour(330);
+        this.setColour('#FF8C1A');
         this.setTooltip("Create or set variable");
       }
     };
@@ -205,7 +207,7 @@ export const defineBytebuddiesBlocks = () => {
             .appendField(new Blockly.FieldNumber(1, -1000, 1000), "AMOUNT");
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
-        this.setColour(330);
+        this.setColour('#FF8C1A');
         this.setTooltip("Change variable by amount");
       }
     };
@@ -219,9 +221,12 @@ export const defineBytebuddiesBlocks = () => {
         this.appendStatementInput("DO")
             .setCheck(null)
             .appendField("then");
+        this.appendStatementInput("ELSE")
+            .setCheck(null)
+            .appendField("else");
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
-        this.setColour(200);
+        this.setColour('#59C059');
         this.setTooltip("If condition is true");
       }
     };
@@ -237,9 +242,20 @@ export const defineBytebuddiesBlocks = () => {
             ]), "SOUND");
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
-        this.setColour(300);
+        this.setColour('#CF63CF');
         this.setTooltip("Play a sound effect");
       }
+    };
+
+    Blockly.Blocks.bb_generic_stack = {
+      init: function init() {
+        this.appendDummyInput()
+          .appendField(new Blockly.FieldLabelSerializable('block'), 'LABEL');
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour('#4C97FF');
+        this.setTooltip('Generic sidebar block');
+      },
     };
 
     // =============== CODE GENERATORS ===============
@@ -322,12 +338,18 @@ export const defineBytebuddiesBlocks = () => {
       BlocklyJS.javascriptGenerator.forBlock['bb_logic_if'] = function(block) {
         const condition = BlocklyJS.javascriptGenerator.valueToCode(block, 'CONDITION', BlocklyJS.javascriptGenerator.ORDER_NONE) || 'false';
         const statements = BlocklyJS.javascriptGenerator.statementToCode(block, 'DO');
-        return `if (${condition}) {\n${statements}}\n`;
+        const elseStatements = BlocklyJS.javascriptGenerator.statementToCode(block, 'ELSE');
+        return `if (${condition}) {\n${statements}}\n${elseStatements ? `else {\n${elseStatements}}\n` : ''}`;
       };
 
       BlocklyJS.javascriptGenerator.forBlock['bb_sound_play'] = function(block) {
         const sound = block.getFieldValue('SOUND');
         return `play_sound("${sound}");\n`;
+      };
+
+      BlocklyJS.javascriptGenerator.forBlock.bb_generic_stack = function(block) {
+        const label = block.getFieldValue('LABEL') || 'block';
+        return `// ${label}\n`;
       };
     }
 
