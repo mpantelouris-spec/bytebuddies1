@@ -1,87 +1,160 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useMemo } from 'react';
 import { resolveBlockCategoryColor } from '../utils/blockTheme';
 
 /**
- * Scratch-Style SVG Block Component
- * Renders blocks with proper puzzle-piece shapes just like Scratch/Blockly
+ * Scratch-Style SVG Block Component — Blockly / PictoBlox puzzle geometry (SVG paths only).
  */
 
-// Map category to Scratch colors
 export const getCategoryColor = (category) => resolveBlockCategoryColor(category);
 
-/**
- * Generate Scratch-like puzzle-piece path with standard notch/tab proportions.
- */
-const generateScratchPath = (width, height, hasTopNotch = true) => {
-  const notchWidth = 14;
-  const notchDepth = 4;
-  const notchX = 16;
-  const radius = 4;
-  const join = 3;
-  const hatRise = 8;
-  const topY = hasTopNotch ? notchDepth : hatRise;
+const NW = 12;
+const ND = 6;
+const R = 9;
+const HAT_TOP = 10;
+const INNER_SLOT_DEFAULT = 28;
+const C_INDENT = 26;
+
+const C_BLOCK_TYPES = new Set(['loop-repeat', 'loop-forever', 'loop-while', 'loop-foreach', 'logic-if']);
+const BOOLEAN_BLOCK_TYPES = new Set(['logic-bool', 'sense-touching', 'sense-touching-sprite', 'sense-key']);
+const REPORTER_BLOCK_TYPES = new Set(['sense-mouse-x', 'sense-mouse-y', 'sense-distance', 'sense-timer']);
+
+export function inferBlockShapeKind(type) {
+  const t = String(type || '');
+  if (t.startsWith('event-')) return 'hat';
+  if (C_BLOCK_TYPES.has(t)) return 'c';
+  if (BOOLEAN_BLOCK_TYPES.has(t)) return 'boolean';
+  if (REPORTER_BLOCK_TYPES.has(t)) return 'reporter';
+  return 'stack';
+}
+
+/** Stack / hat: top puzzle notch (inward) + bottom tab (outward); smooth corner arcs R≈9 */
+function pathStack(width, bodyH, hasTopNotch) {
+  const topY = hasTopNotch ? ND : HAT_TOP;
+  const nx = 18;
+  const j = 2.5;
+  const bottomY = topY + bodyH;
+  const tabY = bottomY + ND;
 
   let d = '';
-
   if (hasTopNotch) {
-    d += `M ${radius},${topY} `;
-    d += `L ${notchX},${topY} `;
-    d += `L ${notchX + join},0 `;
-    d += `L ${notchX + notchWidth - join},0 `;
-    d += `L ${notchX + notchWidth},${topY} `;
-    d += `L ${width - radius},${topY} `;
-    d += `Q ${width},${topY} ${width},${topY + radius} `;
+    d += `M ${R},${topY}`;
+    d += ` L ${nx},${topY}`;
+    d += ` L ${nx + j},0`;
+    d += ` L ${nx + NW - j},0`;
+    d += ` L ${nx + NW},${topY}`;
+    d += ` L ${width - R},${topY}`;
+    d += ` Q ${width},${topY} ${width},${topY + R}`;
   } else {
-    // Event "hat" top: smooth cap, then normal block body.
-    d += `M ${radius},${topY} `;
-    d += `Q ${width * 0.18},0 ${width * 0.38},0 `;
-    d += `Q ${width * 0.5},0 ${width * 0.62},0 `;
-    d += `Q ${width * 0.82},0 ${width - radius},${topY} `;
-    d += `Q ${width},${topY} ${width},${topY + radius} `;
+    d += `M ${R},${topY}`;
+    d += ` Q ${width * 0.2},0 ${width * 0.42},0`;
+    d += ` Q ${width * 0.5},0 ${width * 0.58},0`;
+    d += ` Q ${width * 0.8},0 ${width - R},${topY}`;
+    d += ` Q ${width},${topY} ${width},${topY + R}`;
   }
 
-  d += `L ${width},${height - radius} `;
-  d += `Q ${width},${height} ${width - radius},${height} `;
-  d += `L ${notchX + notchWidth},${height} `;
-  d += `L ${notchX + notchWidth - join},${height + notchDepth} `;
-  d += `L ${notchX + join},${height + notchDepth} `;
-  d += `L ${notchX},${height} `;
-  d += `L ${radius},${height} `;
-  d += `Q 0,${height} 0,${height - radius} `;
-  d += `L 0,${topY + radius} `;
-  d += `Q 0,${topY} ${radius},${topY} `;
-  d += 'Z';
-
+  d += ` L ${width},${bottomY - R}`;
+  d += ` Q ${width},${bottomY} ${width - R},${bottomY}`;
+  d += ` L ${nx + NW},${bottomY}`;
+  d += ` L ${nx + NW - j},${tabY}`;
+  d += ` L ${nx + j},${tabY}`;
+  d += ` L ${nx},${bottomY}`;
+  d += ` L ${R},${bottomY}`;
+  d += ` Q 0,${bottomY} 0,${bottomY - R}`;
+  d += ` L 0,${topY + R}`;
+  d += ` Q 0,${topY} ${R},${topY}`;
+  d += ' Z';
   return d;
-};
+}
 
-/**
- * ScratchStyleBlock - Main component
- */
-const ScratchStyleBlock = ({ 
-  block, 
-  children, 
-  style = {}, 
+/** C-block: header + inner cavity + bottom continuation with stack tab */
+function pathCBlock(width, bodyTop, hHeader, hInner, hFooterBar) {
+  const y0 = bodyTop;
+  const y1 = y0 + hHeader;
+  const y2 = y1 + hInner;
+  const y3 = y2 + hFooterBar;
+  const nx = 18;
+  const j = 2.5;
+  const I = Math.min(C_INDENT, Math.max(18, width * 0.22));
+
+  let d = `M ${R},${y0}`;
+  d += ` L ${nx},${y0}`;
+  d += ` L ${nx + j},${y0 - ND}`;
+  d += ` L ${nx + NW - j},${y0 - ND}`;
+  d += ` L ${nx + NW},${y0}`;
+  d += ` L ${width - R},${y0}`;
+  d += ` Q ${width},${y0} ${width},${y0 + R}`;
+  d += ` L ${width},${y1}`;
+  d += ` L ${I},${y1}`;
+  d += ` L ${I},${y2 - R}`;
+  d += ` Q ${I},${y2} ${I + R},${y2}`;
+  d += ` L ${width - R},${y2}`;
+  d += ` Q ${width},${y2} ${width},${y2 + R}`;
+  d += ` L ${width},${y3 - R}`;
+  d += ` Q ${width},${y3} ${width - R},${y3}`;
+  d += ` L ${nx + NW},${y3}`;
+  d += ` L ${nx + NW - j},${y3 + ND}`;
+  d += ` L ${nx + j},${y3 + ND}`;
+  d += ` L ${nx},${y3}`;
+  d += ` L ${R},${y3}`;
+  d += ` Q 0,${y3} 0,${y3 - R}`;
+  d += ` L 0,${y1}`;
+  d += ` L 0,${y0 + R}`;
+  d += ` Q 0,${y0} ${R},${y0}`;
+  d += ' Z';
+  return d;
+}
+
+/** Horizontal reporter pill (rounded ends), SVG path */
+function pathReporterPill(w, h) {
+  const r = Math.min(h / 2, 11);
+  const d = `M ${r},0
+    H ${w - r}
+    A ${r},${r} 0 0 1 ${w},${r}
+    V ${h - r}
+    A ${r},${r} 0 0 1 ${w - r},${h}
+    H ${r}
+    A ${r},${r} 0 0 1 0,${h - r}
+    V ${r}
+    A ${r},${r} 0 0 1 ${r},0 Z`;
+  return d;
+}
+
+/** Boolean hex (flat top/bottom, angled sides) */
+function pathBooleanHex(w, h) {
+  const inset = h * 0.28;
+  const d = `M ${inset},0
+    L ${w - inset},0
+    L ${w},${h / 2}
+    L ${w - inset},${h}
+    L ${inset},${h}
+    L 0,${h / 2} Z`;
+  return d;
+}
+
+const ScratchStyleBlock = ({
+  block,
+  children,
+  style = {},
   className = '',
   onMouseDown,
   onMouseEnter,
   onMouseLeave,
-  ...props 
+  ...props
 }) => {
   const contentRef = useRef(null);
-  const [dimensions, setDimensions] = useState({ width: 170, height: 34 });
+  const rowRef = useRef(null);
+  const [dimensions, setDimensions] = useState({ width: 170, rowH: 24 });
   const measureSignatureRef = useRef('');
-  
-  // Determine if this is a "hat" block (events have smooth tops)
-  const isHatBlock = block?.type?.startsWith('event-') || block?.category === 'event' || block?.category === 'events';
-  const hasTopNotch = !isHatBlock;
-  
-  // Get color from category
+
+  const shapeKind = useMemo(() => inferBlockShapeKind(block?.type), [block?.type]);
+  const isHatBlock = shapeKind === 'hat';
+  const isCBlock = shapeKind === 'c';
+  const isReporter = shapeKind === 'reporter';
+  const isBoolean = shapeKind === 'boolean';
+  const hasTopNotch = shapeKind === 'stack' || shapeKind === 'c';
+
   const blockColor = getCategoryColor(block?.category);
-  
-  // Measure content and adjust block size.
-  // IMPORTANT: only re-measure when block content actually changes,
-  // not on hover/selection re-renders.
+
   useEffect(() => {
     const measureSignature = JSON.stringify({
       id: block?.id ?? null,
@@ -92,106 +165,167 @@ const ScratchStyleBlock = ({
     if (measureSignatureRef.current === measureSignature) return;
     measureSignatureRef.current = measureSignature;
 
-    if (contentRef.current) {
-      const tempWidth = contentRef.current.scrollWidth + 34;
-      const tempHeight = 34;
-      const nextWidth = Math.max(145, Math.min(420, tempWidth));
-      setDimensions((prev) => {
-        // Ignore tiny subpixel/text antialiasing jitter that can look like stretching.
-        if (Math.abs(prev.width - nextWidth) < 2 && prev.height === tempHeight) {
-          return prev;
-        }
-        return { width: nextWidth, height: tempHeight };
-      });
+    const rowEl = rowRef.current;
+    const wrapEl = contentRef.current;
+    if (!wrapEl) return;
+
+    const rowH = Math.max(22, rowEl ? rowEl.offsetHeight : wrapEl.scrollHeight);
+    let nextW = Math.max(120, (rowEl ? rowEl.scrollWidth : wrapEl.scrollWidth) + 28);
+    if (isReporter || isBoolean) {
+      nextW = Math.max(100, Math.min(360, (rowEl ? rowEl.scrollWidth : wrapEl.scrollWidth) + 36));
+    } else {
+      nextW = Math.max(160, Math.min(480, nextW));
     }
-  }, [block]);
-  
+    if (isCBlock) {
+      nextW = Math.max(200, nextW);
+    }
+
+    setDimensions((prev) => {
+      if (Math.abs(prev.width - nextW) < 2 && Math.abs(prev.rowH - rowH) < 1) return prev;
+      return { width: nextW, rowH };
+    });
+  }, [block, isBoolean, isCBlock, isReporter]);
+
+  const w = dimensions.width;
+  const rowH = dimensions.rowH;
+
+  const bodyTop = hasTopNotch ? ND : HAT_TOP;
+  const innerSlot = isCBlock ? INNER_SLOT_DEFAULT : 0;
+  const bodyHStack = rowH + 8;
+
+  const svgPaths = useMemo(() => {
+    if (isBoolean) {
+      const h = Math.max(24, rowH + 6);
+      return { main: pathBooleanHex(w, h), svgH: h + 2, padT: 5, padL: 10 };
+    }
+    if (isReporter) {
+      const h = Math.max(24, rowH + 6);
+      return { main: pathReporterPill(w, h), svgH: h + 2, padT: 5, padL: 10 };
+    }
+    if (isCBlock) {
+      const hHeader = rowH + 6;
+      const hFooterBar = 12;
+      const svgH = bodyTop + hHeader + innerSlot + hFooterBar + ND + 2;
+      return {
+        main: pathCBlock(w, bodyTop, hHeader, innerSlot, hFooterBar),
+        svgH,
+        padT: bodyTop + 5,
+        padL: 12,
+      };
+    }
+    const svgH = bodyTop + bodyHStack + ND + 3;
+    return {
+      main: pathStack(w, bodyHStack, hasTopNotch),
+      svgH,
+      padT: hasTopNotch ? bodyTop + 5 : 8,
+      padL: 12,
+    };
+  }, [w, rowH, bodyTop, hasTopNotch, innerSlot, isBoolean, isCBlock, isReporter, bodyHStack]);
+
   const blockId = `scratch-block-${block?.id || Math.random()}`;
-  const topPadding = hasTopNotch ? 4 : 8;
-  const totalHeight = dimensions.height + topPadding + 4;
-  
+
   return (
     <div
       className={`scratch-svg-block ${className}`}
       style={{
         position: 'relative',
-        width: `${dimensions.width}px`,
-        height: `${totalHeight}px`,
+        width: `${w}px`,
+        height: `${svgPaths.svgH}px`,
         cursor: 'grab',
         userSelect: 'none',
-        ...style
+        ...style,
       }}
       onMouseDown={onMouseDown}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
       {...props}
     >
-      {/* SVG Block Shape */}
       <svg
-        width={dimensions.width}
-        height={totalHeight}
-        style={{ 
-          position: 'absolute', 
-          top: 0, 
+        width={w}
+        height={svgPaths.svgH}
+        style={{
+          position: 'absolute',
+          top: 0,
           left: 0,
           pointerEvents: 'none',
+          overflow: 'visible',
         }}
       >
         <defs>
           <linearGradient id={`gradient-${blockId}`} x1="0%" y1="0%" x2="0%" y2="100%">
             <stop offset="0%" style={{ stopColor: blockColor, stopOpacity: 1 }} />
-            <stop offset="100%" style={{ stopColor: blockColor, stopOpacity: 0.92 }} />
+            <stop offset="100%" style={{ stopColor: blockColor, stopOpacity: 0.9 }} />
           </linearGradient>
-          
-          <linearGradient id={`highlight-${blockId}`} x1="0%" y1="0%" x2="0%" y2="30%">
-            <stop offset="0%" style={{ stopColor: '#ffffff', stopOpacity: 0.2 }} />
+          <linearGradient id={`highlight-${blockId}`} x1="0%" y1="0%" x2="0%" y2="35%">
+            <stop offset="0%" style={{ stopColor: '#ffffff', stopOpacity: 0.22 }} />
             <stop offset="100%" style={{ stopColor: '#ffffff', stopOpacity: 0 }} />
           </linearGradient>
         </defs>
-        
+
         <path
-          d={generateScratchPath(dimensions.width, dimensions.height, hasTopNotch)}
+          d={svgPaths.main}
           fill="#000000"
-          opacity="0.1"
-          transform="translate(0, 1.5)"
+          opacity="0.12"
+          transform="translate(0, 1.25)"
         />
-        
         <path
-          d={generateScratchPath(dimensions.width, dimensions.height, hasTopNotch)}
+          d={svgPaths.main}
           fill={`url(#gradient-${blockId})`}
-          stroke="rgba(0,0,0,0.18)"
+          stroke="rgba(0,0,0,0.2)"
           strokeWidth="1"
         />
-        
         <path
-          d={generateScratchPath(dimensions.width, dimensions.height, hasTopNotch)}
+          d={svgPaths.main}
           fill={`url(#highlight-${blockId})`}
-          pointerEvents="none"
         />
       </svg>
-      
-      {/* Content Overlay */}
+
       <div
         ref={contentRef}
         style={{
           position: 'absolute',
-          top: hasTopNotch ? '9px' : '7px',
-          left: '12px',
-          right: '12px',
+          top: svgPaths.padT,
+          left: svgPaths.padL,
+          right: 12,
           display: 'flex',
-          alignItems: 'center',
-          gap: '5px',
-          fontSize: '12px',
-          fontFamily: "'Helvetica Neue', 'Helvetica', 'Arial', sans-serif",
-          fontWeight: '500',
-          color: 'white',
-          lineHeight: '22px',
-          whiteSpace: 'nowrap',
+          flexDirection: isCBlock ? 'column' : 'row',
+          alignItems: isCBlock ? 'stretch' : 'center',
+          gap: isCBlock ? 4 : 5,
           pointerEvents: 'auto',
-          textShadow: '0 1px 0 rgba(0,0,0,0.18)',
         }}
       >
-        {children}
+        <div
+          ref={rowRef}
+          style={{
+            display: 'flex',
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 5,
+            flexWrap: 'nowrap',
+            fontSize: '12px',
+            fontFamily: "'Helvetica Neue', 'Helvetica', 'Arial', sans-serif",
+            fontWeight: 600,
+            color: 'white',
+            lineHeight: '20px',
+            whiteSpace: 'nowrap',
+            textShadow: '0 1px 0 rgba(0,0,0,0.2)',
+          }}
+        >
+          {children}
+        </div>
+        {isCBlock && (
+          <div
+            aria-hidden
+            style={{
+              minHeight: INNER_SLOT_DEFAULT,
+              marginLeft: C_INDENT - 4,
+              marginRight: 4,
+              borderRadius: 6,
+              background: 'rgba(0,0,0,0.12)',
+              boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.25)',
+            }}
+          />
+        )}
       </div>
     </div>
   );

@@ -50,6 +50,7 @@ export const BLOCK_DEFS = {
   'control-wait':     { label: 'Wait', icon: '⏱', color: '#f59e0b', category: 'control', params: { secs: '1' } },
   'control-stop':     { label: 'Stop all', icon: '⏹', color: '#f59e0b', category: 'control', params: {} },
   'sound-play':       { label: 'Play sound', icon: '🔊', color: '#f59e0b', category: 'sound', params: { sound: 'pop' } },
+  'sound-stop':       { label: 'Stop sounds', icon: '🔇', color: '#f59e0b', category: 'sound', params: {} },
   'sound-volume':     { label: 'Set volume', icon: '🔊', color: '#f59e0b', category: 'sound', params: { volume: '100' } },
   'ai-classify':      { label: 'AI classify', icon: '🤖', color: '#f59e0b', category: 'ai', params: { input: '"text"' } },
   'ai-generate':      { label: 'AI generate text', icon: '🤖', color: '#f59e0b', category: 'ai', params: { prompt: '"Write a poem"' } },
@@ -102,26 +103,30 @@ export const BLOCK_DEFS = {
   // My Blocks
   'myblock-define':     { label: 'Define my block', icon: '🧩', color: '#f59e0b', category: 'myblocks', params: { name: 'my block' } },
   'myblock-run':        { label: 'Run my block', icon: '🧩', color: '#f59e0b', category: 'myblocks', params: { name: 'my block' } },
+  'tts-speak':          { label: 'TTS Speak', icon: '🔊', color: '#f59e0b', category: 'ai', params: { voice: 'auto', text: 'Hello from ByteBuddies' } },
 };
 
 /* Map sidebar block names to block type keys */
 export const SIDEBAR_TO_TYPE = {
   'create variable': 'var-create', 'set variable': 'var-set', 'change by': 'var-change', 'show variable': 'var-show',
+  'wait': 'control-wait',
   'if / else': 'logic-if', 'and / or / not': 'logic-and', 'compare (=, <, >)': 'logic-compare', 'true / false': 'logic-bool',
-  'repeat n times': 'loop-repeat', 'while condition': 'loop-while', 'for each in list': 'loop-foreach', 'break / continue': 'loop-break',
+  'repeat n times': 'loop-repeat', 'forever': 'loop-forever', 'while condition': 'loop-while', 'for each in list': 'loop-foreach', 'break / continue': 'loop-break',
   'define function': 'func-define', 'call function': 'func-call', 'return value': 'func-return', 'with parameters': 'func-params',
   'on start': 'event-start', 'on key press': 'event-keypress', 'on click': 'event-click', 'on collision': 'event-collision', 'on message': 'event-message', 'broadcast': 'event-broadcast',
   'add / subtract': 'math-add', 'multiply / divide': 'math-mult', 'random number': 'math-random', 'round / abs': 'math-round', 'modulo': 'math-round',
   'create text': 'text-create', 'join text': 'text-join', 'length of': 'text-length', 'letter # of': 'text-length', 'contains': 'text-length',
   'create list': 'list-create', 'add to list': 'list-add', 'get item #': 'list-get', 'length of list': 'list-get', 'sort list': 'list-get',
   'print': 'action-print', 'ask and wait': 'action-ask', 'alert': 'action-alert', 'prompt': 'action-ask',
-  'move steps': 'sprite-move', 'turn degrees': 'sprite-turn', 'go to x,y': 'sprite-goto', 'set size': 'sprite-setsize', 'show / hide': 'sprite-show', 'say text': 'sprite-say',
-  'play sound': 'sound-play', 'stop sounds': 'sound-play', 'set volume': 'sound-volume', 'play note': 'sound-play',
+  'move steps': 'sprite-move', 'turn degrees': 'sprite-turn', 'go to x,y': 'sprite-goto',
+  'change x by': 'sprite-changex', 'change y by': 'sprite-changey',
+  'set size': 'sprite-setsize', 'show / hide': 'sprite-show', 'say text': 'sprite-say',
+  'play sound': 'sound-play', 'stop sounds': 'sound-stop', 'set volume': 'sound-volume', 'play note': 'sound-play',
   'ai classify': 'ai-classify', 'ai generate text': 'ai-generate', 'ai detect object': 'ai-classify', 'ai translate': 'ai-generate', 'train model': 'ai-classify',
   'touching edge?': 'sense-touching', 'touching sprite?': 'sense-touching-sprite',
   'key pressed?': 'sense-key', 'mouse x': 'sense-mouse-x', 'mouse y': 'sense-mouse-y',
   'distance to mouse': 'sense-distance', 'timer': 'sense-timer', 'reset timer': 'sense-reset-timer',
-  'say': 'looks-say', 'think': 'looks-think', 'switch costume': 'looks-costume',
+  'say': 'sprite-say', 'think': 'looks-think', 'switch costume': 'looks-costume',
   'next costume': 'looks-next-costume', 'color effect': 'looks-color-effect',
   'ghost effect': 'looks-ghost-effect', 'clear effects': 'looks-clear-effects',
   'grow by': 'looks-grow', 'shrink by': 'looks-shrink',
@@ -137,7 +142,24 @@ export const SIDEBAR_TO_TYPE = {
   'point in direction': 'motion-point-dir', 'set x to': 'motion-setx',
   'set y to': 'motion-sety', 'set speed': 'motion-speed',
   'define my block': 'myblock-define', 'run my block': 'myblock-run',
+  '[tts] speak': 'tts-speak',
 };
+
+/** e.g. event-start → bb_event_start (Blockly block type id). */
+export function shortTypeToBlocklyType(short) {
+  if (!short || typeof short !== 'string') return null;
+  return `bb_${short.replace(/-/g, '_')}`;
+}
+
+/** Library flyout nodes (bb_sidebar_item / bb_lib_*) carry BLOCK_NAME; map to real bb_* when possible. */
+export function resolveBlocklyNodeType(node) {
+  if (!node?.type) return null;
+  const t = node.type;
+  if (t !== 'bb_sidebar_item' && !(typeof t === 'string' && t.startsWith('bb_lib_'))) return t;
+  const label = String(node.fields?.BLOCK_NAME || '').trim().toLowerCase();
+  const short = SIDEBAR_TO_TYPE[label];
+  return short ? shortTypeToBlocklyType(short) : null;
+}
 
 export function createBlockFromDrop(text, x, y) {
   const key = SIDEBAR_TO_TYPE[text.toLowerCase()] || null;
@@ -148,63 +170,112 @@ export function createBlockFromDrop(text, x, y) {
   return { id: Date.now() + Math.random(), type: 'custom', label: text, icon: '⚡', color: '#f59e0b', category: 'custom', x, y, params: {} };
 }
 
+/* ─── SVG chrome for embedded inputs (pill / hex), Blockly-style ─── */
+function pathInputPill(pw, ph) {
+  const r = Math.min(ph / 2, 9);
+  return `M ${r},0 H ${pw - r} A ${r},${r} 0 0 1 ${pw},${r} V ${ph - r} A ${r},${r} 0 0 1 ${pw - r},${ph} H ${r} A ${r},${r} 0 0 1 0,${ph - r} V ${r} A ${r},${r} 0 0 1 ${r},0 Z`;
+}
+function pathInputHex(pw, ph) {
+  const inset = ph * 0.28;
+  return `M ${inset},0 L ${pw - inset},0 L ${pw},${ph / 2} L ${pw - inset},${ph} L ${inset},${ph} L 0,${ph / 2} Z`;
+}
+
 /* ─── Inline editable param field ─── */
-export function ParamInput({ value, onChange, width, color }) {
+export function ParamInput({ value, onChange, width, color, fieldShape = 'pill' }) {
+  const iw = Math.max(24, Number(width) || 50);
+  const ph = 22;
+  const pw = iw + 12;
+  const d = fieldShape === 'hex' ? pathInputHex(pw, ph) : pathInputPill(pw, ph);
   return (
-    <input
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      onMouseDown={(e) => e.stopPropagation()}
-      onClick={(e) => e.stopPropagation()}
+    <span
       style={{
-        background: '#ffffff',
-        border: 'none',
-        borderRadius: '10px',
-        padding: '2px 8px',
-        color: '#575E75',
-        fontSize: '12px',
-        fontWeight: '600',
-        fontFamily: "'Helvetica Neue', 'Helvetica', 'Arial', sans-serif",
-        width: width || 50,
-        outline: 'none',
-        margin: '0 2px',
+        position: 'relative',
+        display: 'inline-flex',
         verticalAlign: 'middle',
-        textAlign: 'center',
-        minHeight: '20px',
+        width: pw,
+        height: ph,
+        margin: '0 2px',
+        alignItems: 'center',
+        justifyContent: 'center',
       }}
-    />
+    >
+      <svg width={pw} height={ph} style={{ position: 'absolute', left: 0, top: 0, pointerEvents: 'none' }} aria-hidden>
+        <path d={d} fill="#ffffff" fillOpacity="0.96" stroke="rgba(0,0,0,0.14)" strokeWidth="1" />
+      </svg>
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onMouseDown={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          position: 'relative',
+          zIndex: 1,
+          background: 'transparent',
+          border: 'none',
+          padding: '2px 6px',
+          color: '#575E75',
+          fontSize: '12px',
+          fontWeight: '600',
+          fontFamily: "'Helvetica Neue', 'Helvetica', 'Arial', sans-serif",
+          width: iw,
+          outline: 'none',
+          textAlign: 'center',
+          minHeight: '18px',
+        }}
+      />
+    </span>
   );
 }
 
-function ParamSelect({ value, onChange, options, width }) {
+export function ParamSelect({ value, onChange, options, width, fieldShape = 'pill' }) {
+  const iw = Math.max(36, Number(width) || 64);
+  const ph = 22;
+  const pw = iw + 12;
+  const d = fieldShape === 'hex' ? pathInputHex(pw, ph) : pathInputPill(pw, ph);
   return (
-    <select
-      value={String(value ?? options?.[0] ?? '')}
-      onChange={(e) => onChange(e.target.value)}
-      onMouseDown={(e) => e.stopPropagation()}
-      onClick={(e) => e.stopPropagation()}
+    <span
       style={{
-        background: '#ffffff',
-        border: 'none',
-        borderRadius: '10px',
-        padding: '2px 8px',
-        color: '#575E75',
-        fontSize: '12px',
-        fontWeight: '600',
-        fontFamily: "'Helvetica Neue', 'Helvetica', 'Arial', sans-serif",
-        width: width || 64,
-        outline: 'none',
-        margin: '0 2px',
+        position: 'relative',
+        display: 'inline-flex',
         verticalAlign: 'middle',
-        textAlign: 'center',
-        minHeight: '20px',
-        appearance: 'none',
+        width: pw,
+        height: ph,
+        margin: '0 2px',
+        alignItems: 'center',
+        justifyContent: 'center',
       }}
     >
-      {(options || []).map((opt) => (
-        <option key={opt} value={opt}>{opt}</option>
-      ))}
-    </select>
+      <svg width={pw} height={ph} style={{ position: 'absolute', left: 0, top: 0, pointerEvents: 'none' }} aria-hidden>
+        <path d={d} fill="#ffffff" fillOpacity="0.96" stroke="rgba(0,0,0,0.14)" strokeWidth="1" />
+      </svg>
+      <select
+        value={String(value ?? options?.[0] ?? '')}
+        onChange={(e) => onChange(e.target.value)}
+        onMouseDown={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          position: 'relative',
+          zIndex: 1,
+          background: 'transparent',
+          border: 'none',
+          padding: '2px 6px',
+          color: '#575E75',
+          fontSize: '12px',
+          fontWeight: '600',
+          fontFamily: "'Helvetica Neue', 'Helvetica', 'Arial', sans-serif",
+          width: iw,
+          outline: 'none',
+          textAlign: 'center',
+          minHeight: '18px',
+          appearance: 'none',
+          cursor: 'pointer',
+        }}
+      >
+        {(options || []).map((opt) => (
+          <option key={opt} value={opt}>{opt}</option>
+        ))}
+      </select>
+    </span>
   );
 }
 
@@ -248,7 +319,18 @@ export function BlockContent({ block, onParamChange, context = {} }) {
     case 'logic-if':    return <>{block.icon} If{PI('condition', 120)}</>;
     case 'logic-and':   return <>{block.icon}{PI('left', 50)}{PI('op', 35)}{PI('right', 50)}</>;
     case 'logic-compare': return <>{block.icon}{PI('left', 50)}{PI('op', 30)}{PI('right', 50)}</>;
-    case 'logic-bool':  return <>{block.icon}{PI('value', 50)}</>;
+    case 'logic-bool': return (
+      <>
+        {block.icon}
+        <ParamSelect
+          value={p.value || 'true'}
+          onChange={(v) => onParamChange(block.id, 'value', v)}
+          width={56}
+          fieldShape="hex"
+          options={['true', 'false']}
+        />
+      </>
+    );
     case 'loop-repeat': return <>{block.icon} Repeat{PI('times', 40)}times</>;
     case 'loop-forever': return <>{block.icon} Forever</>;
     case 'loop-while':  return <>{block.icon} While{PI('condition', 120)}</>;
@@ -283,6 +365,7 @@ export function BlockContent({ block, onParamChange, context = {} }) {
     case 'control-wait': return <><span>⏱</span> Wait{PI('secs', 35)}seconds</>;
     case 'control-stop': return <><span>⏹</span> Stop all</>;
     case 'sound-play':  return <>{block.icon} Play{PI('sound', 70)}</>;
+    case 'sound-stop': return <>{block.icon} Stop sounds</>;
     case 'sound-volume': return <>{block.icon} Volume{PI('volume', 40)}%</>;
     case 'ai-classify': return <>{block.icon} Classify{PI('input', 100)}</>;
     case 'ai-generate': return <>{block.icon} Generate{PI('prompt', 120)}</>;

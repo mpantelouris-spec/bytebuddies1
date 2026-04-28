@@ -7,7 +7,9 @@ export const BB_OPEN_EXTENSIONS = 'bb-open-extensions';
 export const BB_EXTENSIONS_CHANGED = 'bb-extensions-changed';
 
 /** Click-to-add from sidebar / mobile drawer — canvas listeners append the block. */
-export function emitAddSidebarBlock(name, blockType) {
+export function emitAddSidebarBlock(name, blockType, color, meta) {
   if (typeof window === 'undefined' || !name) return;
-  window.dispatchEvent(new CustomEvent(BB_ADD_SIDEBAR_BLOCK, { detail: { name: String(name), type: blockType || null } }));
+  window.dispatchEvent(new CustomEvent(BB_ADD_SIDEBAR_BLOCK, {
+    detail: { name: String(name), type: blockType || null, color: color || null, meta: meta || null },
+  }));
 }

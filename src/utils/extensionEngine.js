@@ -155,6 +155,7 @@ const DRAG = {
   '[video] play clip': { kind: 'run', cmd: 'vplay|play|demo' },
   '[video] pause': { kind: 'run', cmd: 'vplay|pause' },
   '[video] seek sec': { kind: 'run', cmd: 'vplay|seek|0' },
+  '[tts] speak': { kind: 'run', cmd: 'tts|speak|Hello from ByteBuddies' },
 };
 
 export function resolveExtensionDragToBlock(text) {
@@ -1185,14 +1186,209 @@ export function runExtensionCmd(cmdStr, output) {
       logOut(output, `[Video] Seek ${S.videoPlayer.pos}s (sim)`);
       return;
     case 'tts|speak': {
-      const t = c || 'Hello';
-      if (typeof window !== 'undefined' && window.speechSynthesis) {
-        const u = new SpeechSynthesisUtterance(t);
-        u.rate = 1;
-        window.speechSynthesis.speak(u);
+      const voicePref = d ? String(c || 'auto').toLowerCase() : 'auto';
+      const t = d ? parts.slice(3).join('|') : (c || 'Hello');
+      try {
+        const synth = (typeof window !== 'undefined' && window.speechSynthesis) ? window.speechSynthesis : null;
+        const Utter = (typeof window !== 'undefined' && window.SpeechSynthesisUtterance) ? window.SpeechSynthesisUtterance : null;
+        if (!synth || !Utter) {
+          logOut(output, '[TTS] Speech synthesis unavailable in this browser/device.');
+          return;
+        }
+
+        const pickVoice = (voices) => {
+          if (!voices?.length) return null;
+          const isChrome =
+            typeof navigator !== 'undefined' &&
+            /chrome/i.test(navigator.userAgent || '') &&
+            !/edg\//i.test(navigator.userAgent || '');
+          const matchPref = (v) => {
+            const n = String(v?.name || '').toLowerCase();
+            const lang = String(v?.lang || '').toLowerCase();
+            if (voicePref === 'female') return /(female|woman|zira|susan|samantha|victoria|hazel|aria|jenny|libby|sonia)/.test(n);
+            if (voicePref === 'male') return /(male|man|david|mark|daniel|george|james|guy|ryan|brandon)/.test(n);
+            if (voicePref === 'uk') return lang.startsWith('en-gb');
+            if (voicePref === 'us') return lang.startsWith('en-us');
+            if (voicePref === 'google_us') return /google/.test(n) && (lang.startsWith('en-us') || /us english/.test(n));
+            if (voicePref === 'google_uk_female') return /google/.test(n) && lang.startsWith('en-gb') && /(female|woman|f\b|uk english female)/.test(n);
+            if (voicePref === 'google_uk_male') return /google/.test(n) && lang.startsWith('en-gb') && /(male|man|m\b|uk english male)/.test(n);
+            if (voicePref === 'google_au') return /google/.test(n) && (lang.startsWith('en-au') || /australian/.test(n));
+            if (voicePref === 'google_india') return /google/.test(n) && (lang.startsWith('en-in') || /india/.test(n));
+            if (voicePref === 'en_natural') return lang.startsWith('en-') && /(natural|neural|premium|online)/.test(n);
+            return true; // auto
+          };
+          const findExact = (needle) => voices.find((v) => String(v?.name || '').toLowerCase().includes(needle));
+          const googleEnglish = voices.filter((v) => {
+            const n = String(v?.name || '').toLowerCase();
+            const lang = String(v?.lang || '').toLowerCase();
+            return /google/.test(n) && lang.startsWith('en-');
+          });
+          const needsGoogle =
+            voicePref.startsWith('google_') ||
+            ['heart', 'bella', 'nicole', 'sarah', 'sky', 'adam', 'michael', 'liam', 'eric', 'emma', 'isabella', 'alice', 'george', 'daniel', 'lewis'].includes(voicePref);
+
+          // Force explicit Google selections first.
+          if (voicePref === 'google_us') {
+            return (
+              findExact('google us english') ||
+              googleEnglish.find((v) => String(v?.lang || '').toLowerCase().startsWith('en-us')) ||
+              googleEnglish[0] ||
+              null
+            );
+          }
+          if (voicePref === 'google_uk_female') {
+            return (
+              findExact('google uk english female') ||
+              findExact('google british english female') ||
+              googleEnglish.find((v) => {
+                const n = String(v?.name || '').toLowerCase();
+                const lang = String(v?.lang || '').toLowerCase();
+                return lang.startsWith('en-gb') && /(female|woman)/.test(n);
+              }) ||
+              googleEnglish.find((v) => String(v?.lang || '').toLowerCase().startsWith('en-gb')) ||
+              googleEnglish[0] ||
+              null
+            );
+          }
+          if (voicePref === 'google_uk_male') {
+            return (
+              findExact('google uk english male') ||
+              findExact('google british english male') ||
+              googleEnglish.find((v) => {
+                const n = String(v?.name || '').toLowerCase();
+                const lang = String(v?.lang || '').toLowerCase();
+                return lang.startsWith('en-gb') && /(male|man)/.test(n);
+              }) ||
+              googleEnglish.find((v) => String(v?.lang || '').toLowerCase().startsWith('en-gb')) ||
+              googleEnglish[0] ||
+              null
+            );
+          }
+          if (voicePref === 'google_au') {
+            return (
+              findExact('google australian english') ||
+              googleEnglish.find((v) => String(v?.lang || '').toLowerCase().startsWith('en-au')) ||
+              googleEnglish[0] ||
+              null
+            );
+          }
+          if (voicePref === 'google_india') {
+            return (
+              findExact('google indian english') ||
+              googleEnglish.find((v) => String(v?.lang || '').toLowerCase().startsWith('en-in')) ||
+              googleEnglish[0] ||
+              null
+            );
+          }
+          const directByName = new Set([
+            'heart', 'bella', 'nicole', 'sarah', 'sky',
+            'adam', 'michael', 'liam', 'eric',
+            'emma', 'isabella', 'alice', 'george', 'daniel', 'lewis',
+          ]);
+          if (directByName.has(voicePref)) {
+            return (
+              googleEnglish.find((v) => {
+                const n = String(v?.name || '').toLowerCase();
+                return n.includes(voicePref);
+              }) ||
+              null
+            );
+          }
+          const scoreVoice = (v) => {
+            const n = String(v?.name || '').toLowerCase();
+            const lang = String(v?.lang || '').toLowerCase();
+            let score = 0;
+
+            // Prefer English voices for this app.
+            if (lang.startsWith('en-')) score += 30;
+            if (lang.startsWith('en-us')) score += 8;
+            if (lang.startsWith('en-gb')) score += 8;
+
+            // Prefer high-quality voice families.
+            if (/(natural|neural|premium|online)/.test(n)) score += 40;
+            if (isChrome && /google/.test(n)) score += 30;
+
+            // Preference bonus within already-filtered candidates.
+            if (voicePref === 'female' || voicePref === 'male') score += 10;
+            if (voicePref === 'uk' || voicePref === 'us') score += 15;
+            if (voicePref === 'auto') score += 12;
+
+            return score;
+          };
+
+          // Enforce selected preference first; fallback if that bucket is empty.
+          const preferred = voices.filter(matchPref);
+          const pool = preferred.length ? preferred : voices;
+          // For auto/default behavior in Chrome, prefer Google voices first when present.
+          if (voicePref === 'auto' && googleEnglish.length) {
+            const rankedGoogle = [...googleEnglish]
+              .map((v) => ({ v, s: scoreVoice(v) + 60 }))
+              .sort((a, b) => b.s - a.s);
+            return rankedGoogle[0]?.v || null;
+          }
+          // For explicit Google picks, never silently downgrade to non-Google.
+          if (needsGoogle && !googleEnglish.length) return null;
+          const ranked = [...pool]
+            .map((v) => ({ v, s: scoreVoice(v) }))
+            .sort((a, b) => b.s - a.s);
+          return ranked[0]?.v || null;
+        };
+
+        const speakNow = () => {
+          const voices = synth.getVoices ? synth.getVoices() : [];
+          const u = new Utter(String(t || 'Hello'));
+          const picked = pickVoice(voices);
+          const requestedGoogle =
+            voicePref.startsWith('google_') ||
+            ['heart', 'bella', 'nicole', 'sarah', 'sky', 'adam', 'michael', 'liam', 'eric', 'emma', 'isabella', 'alice', 'george', 'daniel', 'lewis'].includes(voicePref);
+          if (requestedGoogle && !picked) {
+            logOut(output, `[TTS] Google voice "${voicePref}" not found in this Chrome profile. Using browser default.`);
+          }
+          if (picked) u.voice = picked;
+          u.lang = picked?.lang || (voicePref === 'uk' ? 'en-GB' : 'en-US');
+          u.rate = 1;
+          u.pitch = 1;
+          u.volume = 1;
+          // Avoid queued silent utterances from previous runs.
+          try { synth.cancel(); } catch { /* ignore */ }
+          synth.speak(u);
+          if (picked) {
+            logOut(output, `[TTS] Voice: ${picked.name} (${picked.lang || 'unknown'})`);
+          } else {
+            logOut(output, '[TTS] Voice: browser default');
+            if (voicePref && voicePref !== 'auto') {
+              logOut(output, `[TTS] Requested voice "${voicePref}" not available in this browser.`);
+            }
+          }
+        };
+
+        const initialVoices = synth.getVoices ? synth.getVoices() : [];
+        const strictVoice =
+          voicePref.startsWith('google_') ||
+          ['heart', 'bella', 'nicole', 'sarah', 'sky', 'adam', 'michael', 'liam', 'eric', 'emma', 'isabella', 'alice', 'george', 'daniel', 'lewis'].includes(voicePref);
+        if ((!initialVoices.length || strictVoice) && 'onvoiceschanged' in synth) {
+          let didSpeak = false;
+          synth.onvoiceschanged = () => {
+            if (didSpeak) return;
+            didSpeak = true;
+            speakNow();
+            synth.onvoiceschanged = null;
+          };
+          // Wait a moment for voice list before speaking in strict mode.
+          setTimeout(() => {
+            if (didSpeak) return;
+            didSpeak = true;
+            speakNow();
+            synth.onvoiceschanged = null;
+          }, strictVoice ? 1200 : 250);
+        } else {
+          speakNow();
+        }
+      } catch (err) {
+        logOut(output, `[TTS] Error: ${err?.message || 'unknown error'}`);
       }
       S.tts.last = t;
-      logOut(output, `[TTS] Speaking: ${t}`);
+      logOut(output, `[TTS] Speaking (${voicePref}): ${t}`);
       return;
     }
     case 'ai|classify': {

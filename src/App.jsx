@@ -121,7 +121,7 @@ function AppInner() {
         onAuth={() => setShowAuth(true)}
       />
       <div className="app-main">
-        {(currentPage === 'workspace' || currentPage === 'gamebuilder' || currentPage === 'robot') && (
+        {(currentPage === 'workspace' || currentPage === 'gamebuilder') && (
           <Sidebar currentPage={currentPage} />
         )}
         <div className="app-content">

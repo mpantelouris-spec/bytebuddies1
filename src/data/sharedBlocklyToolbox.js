@@ -1,3 +1,7 @@
+import { buildLibraryCategories } from './blockLibraryCategories';
+import { readEnabledExtensionIds } from './extensionsCatalog';
+import { toolboxBlockJsonForLibraryEntry } from '../utils/blocklyToolboxEntries';
+
 export const SHARED_BLOCKLY_TOOLBOX = {
   kind: 'categoryToolbox',
   contents: [
@@ -36,7 +40,10 @@ export const SHARED_BLOCKLY_TOOLBOX = {
       name: 'Sound',
       categorystyle: 'sound_category',
       colour: '#CF63CF',
-      contents: [{ kind: 'block', type: 'bb_sound_play' }],
+      contents: [
+        { kind: 'block', type: 'bb_sound_play' },
+        { kind: 'block', type: 'bb_sound_stop' },
+      ],
     },
     {
       kind: 'category',
@@ -77,12 +84,37 @@ export const BLOCKLY_TYPE_TO_SIDEBAR_NAME = {
   bb_sprite_goto: 'go to x,y',
   bb_sprite_changex: 'change X by',
   bb_sprite_changey: 'change Y by',
+  bb_motion_glide: 'glide to',
   bb_control_wait: 'wait',
   bb_loop_repeat: 'repeat N times',
   bb_loop_forever: 'forever',
   bb_logic_if: 'if / else',
   bb_sound_play: 'play sound',
+  bb_sound_stop: 'stop sounds',
+  bb_math_add: 'add / subtract',
+  bb_math_mult: 'multiply / divide',
+  bb_math_random: 'random number',
+  bb_math_round: 'round / abs',
   bb_sprite_say: 'say',
   bb_var_create: 'create variable',
   bb_var_change: 'change by',
+  bb_action_print: 'print',
 };
+
+/** Full category toolbox aligned with Block Library (bb_sidebar_item per palette label). */
+export function buildBlocklyToolboxForPage(currentPage = 'workspace') {
+  const cats = buildLibraryCategories({
+    currentPage,
+    isStarter: false,
+    enabledExtensionIds: readEnabledExtensionIds(),
+  });
+  return {
+    kind: 'categoryToolbox',
+    contents: cats.map((cat) => ({
+      kind: 'category',
+      name: cat.name,
+      colour: cat.color || '#4C97FF',
+      contents: (cat.blocks || []).map((name) => toolboxBlockJsonForLibraryEntry(name)),
+    })),
+  };
+}

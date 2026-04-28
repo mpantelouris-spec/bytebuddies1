@@ -57,7 +57,10 @@ export default function Sidebar({ currentPage }) {
     : categories;
   const pictoStylePages = new Set(['workspace', 'gamebuilder', 'learn', 'robot']);
   const usePictoBlockStyle = pictoStylePages.has(String(currentPage || '').toLowerCase());
-  const useBlocklyFlyout = ['workspace', 'gamebuilder', 'robot'].includes(String(currentPage || '').toLowerCase());
+  /* Blockly flyout under "Blocks": Scratch/Zelos shapes; click or drag block → main canvas via bb-add-sidebar-block */
+  /* Workspace + Game Builder: keep classic block list in sidebar; Robot uses Blockly flyout. */
+  const useBlocklyFlyout = ['robot'].includes(String(currentPage || '').toLowerCase());
+  const blocksSectionStyle = { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' };
 
   return (
     <div className="sidebar">
@@ -78,7 +81,7 @@ export default function Sidebar({ currentPage }) {
 
       <div className="sidebar-content">
         {/* Project selector */}
-        <div className="sidebar-section">
+        <div className="sidebar-section" style={{ flexShrink: 0 }}>
           <div className="sidebar-section-title">Projects</div>
           {projects.slice(0, 5).map(p => (
             <button
@@ -102,16 +105,20 @@ export default function Sidebar({ currentPage }) {
           </button>
         </div>
 
-        {/* Block categories */}
-        <div className="sidebar-section" style={useBlocklyFlyout ? { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' } : undefined}>
+        {/* Block categories — workspace keeps classic list; flyout here for game builder / robot */}
+        <div
+          className={`sidebar-section${useBlocklyFlyout ? ' sidebar-blocks-workspace' : ''}`}
+          style={blocksSectionStyle}
+        >
           <div className="sidebar-section-title">
             {currentPage === 'gamebuilder' ? 'Assets & Blocks' : 'Blocks'}
           </div>
           {useBlocklyFlyout ? (
-            <div style={{ flex: 1, minHeight: 300 }}>
+            <div className="sidebar-blocks-flyout-wrap">
               <BlocklySidebarFlyout categories={filtered} />
             </div>
           ) : (
+          <div className="sidebar-blocks-scroll" style={{ flex: 1, minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
           <>
           {filtered.map((cat) => (
             <div key={cat.extensionId || cat.name}>
@@ -136,7 +143,12 @@ export default function Sidebar({ currentPage }) {
                       key={`${cat.name}-${bi}-${String(block).slice(0, 32)}`}
                       className="sidebar-item"
                       draggable
-                      onDragStart={(e) => e.dataTransfer.setData('text/plain', block)}
+                      onDragStart={(e) => {
+                        const payload = { name: String(block), type: null, color: cat.color || null };
+                        e.dataTransfer.effectAllowed = 'copy';
+                        e.dataTransfer.setData('text/plain', String(block));
+                        e.dataTransfer.setData('application/x-bb-sidebar-block', JSON.stringify(payload));
+                      }}
                       onClick={() => emitAddSidebarBlock(String(block))}
                       style={{
                         fontSize: isStarter ? 14 : 12,
@@ -165,6 +177,7 @@ export default function Sidebar({ currentPage }) {
                       {block}
                       {usePictoBlockStyle && (
                         <span
+                          aria-hidden
                           style={{
                             position: 'absolute',
                             left: 12,
@@ -173,6 +186,7 @@ export default function Sidebar({ currentPage }) {
                             height: 7,
                             borderRadius: '0 0 4px 4px',
                             background: darken(cat.color, 72),
+                            pointerEvents: 'none',
                           }}
                         />
                       )}
@@ -183,6 +197,7 @@ export default function Sidebar({ currentPage }) {
             </div>
           ))}
           </>
+          </div>
           )}
         </div>
       </div>

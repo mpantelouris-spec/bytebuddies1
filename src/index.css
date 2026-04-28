@@ -46,7 +46,8 @@
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
 
   --topbar-height: 56px;
-  --sidebar-width: 260px;
+  /* Room for Blockly category strip + flyout under “Blocks” */
+  --sidebar-width: 340px;
   --panel-min: 300px;
 
   --transition-fast: 150ms ease;
@@ -55,24 +56,67 @@
 }
 
 [data-theme="light"] {
-  --bg-primary: #f8f9fc;
+  --bg-primary: #f4f6fb;
   --bg-secondary: #ffffff;
-  --bg-tertiary: #f0f2f8;
+  --bg-tertiary: #e9edf6;
   --bg-card: #ffffff;
-  --bg-hover: #eef0f8;
-  --bg-input: #f0f2f8;
-  --border-color: #e2e4ee;
-  --border-light: #d0d4e4;
+  --bg-hover: #e3e8f5;
+  --bg-input: #edf1f9;
+  --border-color: #cfd7e6;
+  --border-light: #b9c5da;
 
-  --text-primary: #1a1a2e;
-  --text-secondary: #4a4a6a;
-  --text-muted: #8a8aaa;
+  --text-primary: #111827;
+  --text-secondary: #24324a;
+  --text-muted: #5c6b84;
   --text-inverse: #ffffff;
 
   --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
   --shadow-md: 0 4px 12px rgba(0,0,0,0.1);
   --shadow-lg: 0 8px 30px rgba(0,0,0,0.12);
   --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.15);
+}
+
+[data-theme="light"] .topbar {
+  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.06);
+}
+
+[data-theme="light"] .topbar-nav-btn {
+  color: #334155;
+}
+
+[data-theme="light"] .topbar-nav-btn:hover {
+  background: #e2e8f6;
+  color: #0f172a;
+}
+
+[data-theme="light"] .sidebar-header,
+[data-theme="light"] .sidebar-section-title {
+  color: #475569;
+}
+
+[data-theme="light"] .sidebar-item {
+  color: #1f2b3d;
+}
+
+[data-theme="light"] .sidebar-item:hover {
+  background: #e3e8f5;
+}
+
+[data-theme="light"] .panel-header {
+  color: #334155;
+}
+
+[data-theme="light"] .panel-header-tab {
+  color: #4b5563;
+}
+
+[data-theme="light"] .panel-header-tab:hover {
+  background: #e2e8f6;
+  color: #111827;
+}
+
+[data-theme="light"] .workspace-toolbar {
+  box-shadow: inset 0 -1px 0 rgba(15, 23, 42, 0.06);
 }
 
 /* ============ Reset & Base ============ */
@@ -234,7 +278,7 @@ body {
   border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: auto;
   flex-shrink: 0;
   transition: width var(--transition-normal);
 }
@@ -255,8 +299,51 @@ body {
 
 .sidebar-content {
   flex: 1;
-  overflow-y: auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   padding: 8px;
+}
+
+/* Blockly palette (workspace / game builder / robot): fill under “Blocks”, don’t clip flyout */
+.sidebar-blocks-workspace {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Flyout host is nested under a flex wrapper, not a direct child of .sidebar-blocks-workspace */
+.sidebar-blocks-workspace .blockly-container {
+  flex: 1;
+  min-height: 280px;
+  min-width: 0;
+}
+
+.sidebar-blocks-flyout-wrap {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-blocks-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(125, 130, 255, 0.65) transparent;
+}
+
+.sidebar-blocks-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.sidebar-blocks-scroll::-webkit-scrollbar-thumb {
+  background: rgba(125, 130, 255, 0.6);
+  border-radius: 8px;
+}
+
+.sidebar .blockly-container .blocklySvg {
+  background: var(--bg-tertiary) !important;
 }
 
 .sidebar-section {
@@ -845,6 +932,56 @@ textarea.input {
 
 .blockly-container .blocklySvg {
   background: var(--bg-primary) !important;
+}
+
+/* Hide Blockly scrollbars while canvas is empty; reveal after blocks are added. */
+.bb-hide-empty-scrollbars .blocklyScrollbarHorizontal,
+.bb-hide-empty-scrollbars .blocklyScrollbarVertical {
+  display: none !important;
+}
+
+/*
+ * Workspace: keep Blockly canvas clean; block categories live in the app sidebar.
+ */
+.bb-workspace-scratch-toolbox {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.bb-workspace-scratch-toolbox > .blockly-container {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+
+.bb-workspace-scratch-toolbox .blocklyToolboxDiv {
+  display: none !important;
+  width: 0 !important;
+  min-width: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: none !important;
+}
+
+.bb-workspace-scratch-toolbox .blockly-container .blocklySvg {
+  background-color: #eceff4 !important;
+  background-image: radial-gradient(circle, rgba(15, 23, 42, 0.14) 1px, transparent 1px) !important;
+  background-size: 22px 22px !important;
+}
+
+[data-theme="light"] .bb-workspace-scratch-toolbox .blockly-container .blocklySvg {
+  background-color: #e8edf6 !important;
+  background-image: radial-gradient(circle, rgba(30, 41, 59, 0.22) 1px, transparent 1px) !important;
+}
+
+[data-theme="dark"] .bb-workspace-scratch-toolbox .blockly-container .blocklySvg {
+  background-color: #2a2d3d !important;
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.1) 1px, transparent 1px) !important;
+}
+
+.bb-workspace-scratch-toolbox .blocklyMainBackground {
+  fill: transparent !important;
 }
 
 /* ============ Chat / AI Panel ============ */

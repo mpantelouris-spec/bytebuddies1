@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect, useCallback, useImperativeHandle, forwardRef } from 'react';
 import ScratchStyleBlock, { getCategoryColor } from './ScratchStyleBlock';
 import UnifiedBlocklyWorkspace from './UnifiedBlocklyWorkspace';
+import { resolveBlocklyNodeType } from '../utils/blocks';
 import { BLOCK_STACK_GAP, columnizeBlocks } from '../utils/blockStack';
 import { snapCanvasStack } from '../utils/blockSnap';
-import { BB_ADD_SIDEBAR_BLOCK } from '../utils/blockLibraryEvents';
+import { emitAddSidebarBlock } from '../utils/blockLibraryEvents';
 
 // ─── micro:bit WebUSB direct-flash (works with ANY firmware) ─────────────────
 async function _idbCache(key, fetchFn) {
@@ -235,6 +236,33 @@ const ROBOT_COMMANDS = [
   { cat: 'Sensors', id: 'read_line_r', icon: '▶️',  label: 'Read Right Line Sensor', color: '#f59e0b', params: [{ key: 'var', label: 'var', default: 'lineR', type: 'text' }] },
   { cat: 'Sensors', id: 'read_sonar',  icon: '📡',  label: 'Read Sonar (cm) → var',  color: '#f59e0b', params: [{ key: 'var', label: 'var', default: 'dist', type: 'text' }] },
 ];
+
+const ROBOT_CATEGORY_COLORS = {
+  Movement: '#3b82f6',
+  Sensors: '#06b6d4',
+  Control: '#f59e0b',
+  Math: '#ef4444',
+  Outputs: '#8b5cf6',
+  Servo: '#f97316',
+  Variables: '#22c55e',
+  Comms: '#ec4899',
+  Lights: '#eab308',
+};
+
+function darkenHex(hex, amt = 34) {
+  const v = String(hex || '').replace('#', '');
+  if (v.length !== 6) return '#1f3f8a';
+  const n = parseInt(v, 16);
+  const r = Math.max(0, (n >> 16) - amt);
+  const g = Math.max(0, ((n >> 8) & 255) - amt);
+  const b = Math.max(0, (n & 255) - amt);
+  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+}
+
+// Keep every block color aligned with its section.
+ROBOT_COMMANDS.forEach((cmd) => {
+  cmd.color = ROBOT_CATEGORY_COLORS[cmd.cat] || cmd.color;
+});
 
 /* ─── Supported robot profiles ─── */
 const ROBOT_PROFILES = {
@@ -1937,6 +1965,8 @@ const VirtualRobot = forwardRef(function VirtualRobot({ simRobotType, simTrack, 
   const trailRef = useRef([]);
   const stateRef = useRef({ ledOn: false, servoAngle: 90, tick: 0, moving: false, wheelAngle: 0, headlightL: null, headlightR: null });
   const animLoopRef = useRef(null);
+  const audioCtxRef = useRef(null);
+  const activeOscRef = useRef([]);
 
   // Output display state (React state so panel re-renders when lights change)
   const [out, setOut] = useState({
@@ -1955,6 +1985,59 @@ const VirtualRobot = forwardRef(function VirtualRobot({ simRobotType, simTrack, 
   const NAMED_RGB = { red:[255,0,0], green:[0,200,0], blue:[0,0,255], yellow:[255,220,0], cyan:[0,220,220], magenta:[220,0,220], white:[255,255,255], orange:[255,140,0], pink:[255,0,150], purple:[150,0,255], off:[0,0,0] };
   const namedToRgb = (n) => { const c = NAMED_RGB[(n||'').toLowerCase()] || [255,255,255]; return {r:c[0],g:c[1],b:c[2]}; };
   const rgbStr = (c) => c ? `rgb(${c.r},${c.g},${c.b})` : null;
+  const NOTE_FREQ = {
+    C3: 131, D3: 147, E3: 165, F3: 175, G3: 196, A3: 220, B3: 247,
+    C4: 262, D4: 294, E4: 330, F4: 349, G4: 392, A4: 440, B4: 494, C5: 523, E5: 659,
+  };
+
+  const getAudioCtx = () => {
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return null;
+      if (!audioCtxRef.current) audioCtxRef.current = new Ctx();
+      if (audioCtxRef.current.state === 'suspended') audioCtxRef.current.resume();
+      return audioCtxRef.current;
+    } catch (e) {
+      return null;
+    }
+  };
+
+  const playTone = (freq = 440, seconds = 0.25) => {
+    const ctx = getAudioCtx();
+    if (!ctx) return;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    const now = ctx.currentTime;
+    const dur = Math.max(0.05, Number(seconds) || 0.25);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(Number(freq) || 440, now);
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.08, now + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + dur + 0.01);
+    activeOscRef.current.push({ osc, gain });
+    osc.onended = () => {
+      activeOscRef.current = activeOscRef.current.filter((n) => n.osc !== osc);
+    };
+  };
+
+  const playMelody = (name = 'happy') => {
+    const tunes = {
+      happy: ['C4', 'E4', 'G4', 'C5'],
+      sad: ['C4', 'A3', 'G3', 'E3'],
+      power_up: ['C4', 'E4', 'G4', 'C5', 'E5'],
+      siren: ['A4', 'E4', 'A4', 'E4'],
+      birthday: ['C4', 'C4', 'D4', 'C4', 'F4', 'E4'],
+      twinkle: ['C4', 'C4', 'G4', 'G4', 'A4', 'A4', 'G4'],
+    };
+    const seq = tunes[String(name || '').toLowerCase()] || tunes.happy;
+    seq.forEach((note, idx) => {
+      setTimeout(() => playTone(NOTE_FREQ[note] || 440, 0.22), idx * 180);
+    });
+  };
 
   // Micro:bit 5×5 icon patterns (row-major, 1=on)
   const MB_ICONS = {
@@ -2089,6 +2172,9 @@ const VirtualRobot = forwardRef(function VirtualRobot({ simRobotType, simTrack, 
       /* non-movement commands resolve immediately */
       if (id === 'stop' || id === 'coast') { s.moving = false; resolve(); return; }
       if (id === 'wait') { setTimeout(resolve, (parseFloat(params?.secs)||1) * 1000); return; }
+      if (id === 'buzz') { playTone(440, parseFloat(params?.secs || 0.5)); resolve(); return; }
+      if (id === 'play_note') { playTone(NOTE_FREQ[String(params?.note || 'C4').toUpperCase()] || 262, parseFloat(params?.secs || 0.5)); resolve(); return; }
+      if (id === 'play_melody') { playMelody(params?.melody || 'happy'); resolve(); return; }
       if (id === 'servo' || id === 'servo_sweep') {
         const targetAngle = parseFloat(params?.angle || params?.to || 90);
         const startAngle  = s.servoAngle;
@@ -3088,6 +3174,107 @@ export default function RobotPanel() {
 
   /* ─── Run program ─── */
   const runningRef = useRef(false);
+  const runtimeVarsRef = useRef({});
+  const numOr = (v, fallback = 0) => {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : fallback;
+  };
+  const resolveVarValue = (raw) => {
+    if (raw === undefined || raw === null) return 0;
+    const s = String(raw).trim();
+    if (s in runtimeVarsRef.current) return numOr(runtimeVarsRef.current[s], 0);
+    const n = Number(s);
+    return Number.isFinite(n) ? n : 0;
+  };
+  const evalSimpleExpr = (expr) => {
+    const source = String(expr || '0');
+    const substituted = source.replace(/[A-Za-z_]\w*/g, (name) => {
+      if (name in runtimeVarsRef.current) return String(numOr(runtimeVarsRef.current[name], 0));
+      return '0';
+    });
+    if (!/^[\d+\-*/%().\s]+$/.test(substituted)) return 0;
+    try {
+      // eslint-disable-next-line no-new-func
+      const out = Function(`return (${substituted})`)();
+      return numOr(out, 0);
+    } catch {
+      return 0;
+    }
+  };
+  const applyRuntimeMathAndVars = (step) => {
+    const p = step?.params || {};
+    switch (step?.id) {
+      case 'var_set': {
+        runtimeVarsRef.current[String(p.name || 'x')] = numOr(p.val, 0);
+        break;
+      }
+      case 'var_inc': {
+        const k = String(p.name || 'x');
+        runtimeVarsRef.current[k] = numOr(runtimeVarsRef.current[k], 0) + numOr(p.val, 1);
+        break;
+      }
+      case 'var_dec': {
+        const k = String(p.name || 'x');
+        runtimeVarsRef.current[k] = numOr(runtimeVarsRef.current[k], 0) - numOr(p.val, 1);
+        break;
+      }
+      case 'math_random': {
+        const k = String(p.var || 'n');
+        const min = Math.floor(numOr(p.min, 1));
+        const max = Math.floor(numOr(p.max, 10));
+        const lo = Math.min(min, max);
+        const hi = Math.max(min, max);
+        const value = Math.floor(Math.random() * (hi - lo + 1)) + lo;
+        runtimeVarsRef.current[k] = value;
+        addTerminal(`🧮 ${k} = ${value}`, 'recv');
+        break;
+      }
+      case 'math_abs': {
+        const k = String(p.var || 'x');
+        const value = Math.abs(resolveVarValue(p.src || k));
+        runtimeVarsRef.current[k] = value;
+        addTerminal(`🧮 ${k} = ${value}`, 'recv');
+        break;
+      }
+      case 'math_map': {
+        const k = String(p.var || 'mapped');
+        const src = resolveVarValue(p.src || 'x');
+        const low1 = numOr(p.low1, 0);
+        const hi1 = numOr(p.hi1, 100);
+        const low2 = numOr(p.low2, 0);
+        const hi2 = numOr(p.hi2, 1023);
+        const denom = (hi1 - low1) || 1;
+        const value = Math.round(((src - low1) * (hi2 - low2)) / denom + low2);
+        runtimeVarsRef.current[k] = value;
+        addTerminal(`🧮 ${k} = ${value}`, 'recv');
+        break;
+      }
+      case 'math_constrain': {
+        const k = String(p.var || 'x');
+        const min = numOr(p.min, 0);
+        const max = numOr(p.max, 100);
+        const value = Math.max(Math.min(resolveVarValue(k), Math.max(min, max)), Math.min(min, max));
+        runtimeVarsRef.current[k] = value;
+        addTerminal(`🧮 ${k} = ${value}`, 'recv');
+        break;
+      }
+      case 'math_expr': {
+        const k = String(p.var || 'x');
+        const value = evalSimpleExpr(p.expr || '0');
+        runtimeVarsRef.current[k] = value;
+        addTerminal(`🧮 ${k} = ${value}`, 'recv');
+        break;
+      }
+      case 'var_show': {
+        const k = String(p.name || 'x');
+        const value = k in runtimeVarsRef.current ? runtimeVarsRef.current[k] : '(undefined)';
+        addTerminal(`📊 ${k} = ${value}`, 'recv');
+        break;
+      }
+      default:
+        break;
+    }
+  };
   // Execute a sorted block list.
   // Rule: when a "loop-repeat" or "loop-forever" block is encountered,
   //       ALL blocks that follow it (by y-position) become its body.
@@ -3159,6 +3346,7 @@ export default function RobotPanel() {
 
       // Normal block
       setActiveBlockUid(step.uid);
+      applyRuntimeMathAndVars(step);
       if (connectedRef.current && !simOnly) {
         if (robotType === 'microbit') {
           // Run physical and simulation in parallel; physical uses raw REPL with completion wait
@@ -3202,6 +3390,7 @@ export default function RobotPanel() {
     }
     setRunning(true);
     runningRef.current = true;
+    runtimeVarsRef.current = {};
     robotRef.current?.resetState(); // clear trail/state but keep user-dragged position
     const orderedSteps = [...program].sort((a, b) => a.y - b.y);
     // Track concepts used
@@ -3371,6 +3560,16 @@ export default function RobotPanel() {
       bb_loop_forever: 'forever',
       bb_logic_if: 'if_then',
       bb_sound_play: 'buzz',
+      bb_robot_if_dist: 'if_dist',
+      bb_robot_led_color: 'led',
+      bb_robot_led_brightness: 'led_bright',
+      bb_robot_led_rgb: 'led_rgb',
+      bb_robot_buzz: 'buzz',
+      bb_robot_play_note: 'play_note',
+      bb_robot_play_melody: 'play_melody',
+      bb_robot_show_text: 'display',
+      bb_robot_show_number: 'show_num',
+      bb_robot_show_icon: 'show_icon',
       bb_var_create: 'var_set',
       bb_var_change: 'var_inc',
     };
@@ -3392,9 +3591,29 @@ export default function RobotPanel() {
     };
     const walk = (list = []) => {
       list.forEach((node) => {
-        const mapped = typeToCommand[node?.type];
-        if (!mapped) return;
+        const blocklyType = resolveBlocklyNodeType(node) || node?.type;
+        let mapped = typeToCommand[blocklyType];
         const f = node.fields || {};
+        let dataObj = null;
+        try {
+          dataObj = node?.data ? JSON.parse(node.data) : null;
+        } catch (e) {
+          dataObj = null;
+        }
+        const dataTag = String(dataObj?.directType || node?.data || '').trim().toLowerCase();
+        const robotDataMatch = /^robot:([a-z0-9_]+)$/.exec(dataTag);
+        if (robotDataMatch?.[1]) mapped = robotDataMatch[1];
+        if (!mapped && dataObj?.robotId) mapped = String(dataObj.robotId);
+        if (!mapped && blocklyType === 'bb_generic_stack') {
+          const raw = String(f.LABEL || '').trim().toLowerCase();
+          const m = /^robot:([a-z0-9_]+)$/.exec(raw);
+          if (m) mapped = m[1];
+          if (!mapped) {
+            const byLabel = ROBOT_COMMANDS.find((c) => String(c.label || '').toLowerCase() === raw);
+            if (byLabel) mapped = byLabel.id;
+          }
+        }
+        if (!mapped) return;
         if (mapped === 'forward') {
           const b = make('forward', { amount: String(f.STEPS || 80) });
           if (b) next.push(b);
@@ -3409,6 +3628,69 @@ export default function RobotPanel() {
         }
         if (mapped === 'wait') {
           const b = make('wait', { secs: String(f.SECONDS || 1) });
+          if (b) next.push(b);
+          return;
+        }
+        if (mapped === 'if_dist') {
+          const b = make('if_dist', { cm: String(f.CM || 20) });
+          if (b) next.push(b);
+          return;
+        }
+        if (mapped === 'led') {
+          const b = make('led', { color: String(f.COLOR || 'red') });
+          if (b) next.push(b);
+          return;
+        }
+        if (mapped === 'led_bright') {
+          const b = make('led_bright', { pct: String(f.PCT || 100) });
+          if (b) next.push(b);
+          return;
+        }
+        if (mapped === 'led_rgb') {
+          const b = make('led_rgb', { r: String(f.R || 255), g: String(f.G || 0), b: String(f.B || 0) });
+          if (b) next.push(b);
+          return;
+        }
+        if (mapped === 'buzz') {
+          const b = make('buzz', { secs: String(f.SECS || 0.5) });
+          if (b) next.push(b);
+          return;
+        }
+        if (mapped === 'play_note') {
+          const b = make('play_note', { note: String(f.NOTE || 'C4'), secs: String(f.SECS || 0.5) });
+          if (b) next.push(b);
+          return;
+        }
+        if (mapped === 'play_melody') {
+          const b = make('play_melody', { melody: String(f.MELODY || 'happy') });
+          if (b) next.push(b);
+          return;
+        }
+        if (mapped === 'display') {
+          const b = make('display', { text: String(f.TEXT || 'Hi!') });
+          if (b) next.push(b);
+          return;
+        }
+        if (mapped === 'show_num') {
+          const b = make('show_num', { num: String(f.NUM || 42) });
+          if (b) next.push(b);
+          return;
+        }
+        if (mapped === 'show_icon') {
+          const b = make('show_icon', { icon: String(f.ICON || 'HAPPY') });
+          if (b) next.push(b);
+          return;
+        }
+        if (blocklyType === 'bb_robot_generic') {
+          const defs = Array.isArray(dataObj?.params) ? dataObj.params : [];
+          const parsedParams = {};
+          defs.forEach((def, idx) => {
+            const k = String(def?.key || '').trim();
+            if (!k) return;
+            const rawVal = f[`V${idx + 1}`];
+            parsedParams[k] = String(rawVal ?? def?.default ?? '');
+          });
+          const b = make(mapped, parsedParams);
           if (b) next.push(b);
           return;
         }
@@ -3451,22 +3733,27 @@ export default function RobotPanel() {
 
   const addBlock = (cmd) => setProgram((prev) => normalizeRobotProgram([...prev, createBlock(cmd)]));
 
-  useEffect(() => {
-    const handleSidebarAdd = (event) => {
-      const raw = String(event?.detail?.name || '').trim().toLowerCase();
-      if (!raw) return;
-      const compact = raw.replace(/\s+/g, ' ');
-      const cmd = ROBOT_COMMANDS.find((c) => {
-        const label = String(c.label || '').toLowerCase();
-        const id = String(c.id || '').toLowerCase();
-        return label === compact || id === compact || label.includes(compact);
-      });
-      if (!cmd) return;
-      addBlock(cmd);
+  const toBlocklySidebarName = useCallback((cmd) => {
+    const map = {
+      on_start: 'on start',
+      forward: 'move steps',
+      back: 'move steps',
+      move_left: 'move steps',
+      move_right: 'move steps',
+      left: 'turn degrees',
+      right: 'turn degrees',
+      spin_left: 'turn degrees',
+      spin_right: 'turn degrees',
+      wait: 'wait',
+      repeat: 'repeat N times',
+      forever: 'forever',
+      if_then: 'if / else',
+      buzz: 'play sound',
+      var_set: 'create variable',
+      var_inc: 'change by',
     };
-    window.addEventListener(BB_ADD_SIDEBAR_BLOCK, handleSidebarAdd);
-    return () => window.removeEventListener(BB_ADD_SIDEBAR_BLOCK, handleSidebarAdd);
-  }, [addBlock]);
+    return map[cmd?.id] || cmd?.label || 'block';
+  }, []);
 
   const removeBlock = (uid) => {
     setProgram((prev) => normalizeRobotProgram(prev.filter((b) => b.uid !== uid)));
@@ -3544,6 +3831,44 @@ export default function RobotPanel() {
   /* ─── Run program uses blocks sorted by Y ─── */
   const sortedProgram = [...program].sort((a, b) => a.y - b.y);
   const useUnifiedBlocklyCanvas = true;
+  const isLightTheme = typeof document !== 'undefined' && document.documentElement.getAttribute('data-theme') === 'light';
+  const ui = isLightTheme
+    ? {
+        codeBg: '#f3f6ff',
+        codeText: '#1f2a44',
+        setupBg: '#eef2ff',
+        setupBorder: '#c7d2fe',
+        setupAccent: '#4338ca',
+        infoBg: '#e0f2fe',
+        infoBorder: '#7dd3fc',
+        infoText: '#0c4a6e',
+        successBg: '#ecfdf5',
+        successBorder: '#86efac',
+        successText: '#166534',
+        warnBg: '#eef2ff',
+        warnBorder: '#a5b4fc',
+        warnText: '#4338ca',
+        tabInactiveBg: '#eef2ff',
+        tabInactiveText: '#334155',
+      }
+    : {
+        codeBg: '#0c0c1e',
+        codeText: '#a5f3fc',
+        setupBg: '#1e1b4b',
+        setupBorder: 'var(--border)',
+        setupAccent: '#818cf8',
+        infoBg: '#0c1a2e',
+        infoBorder: '#0ea5e9',
+        infoText: '#38bdf8',
+        successBg: '#0f2a1a',
+        successBorder: '#16a34a',
+        successText: '#86efac',
+        warnBg: '#1e1b4b',
+        warnBorder: '#4338ca',
+        warnText: '#818cf8',
+        tabInactiveBg: 'rgba(12,22,48,0.75)',
+        tabInactiveText: '#cbd5e1',
+      };
 
   /* ─── Generated code viewer ─── */
   const generatedCode = profile.codeHeader + sortedProgram.map(s => profile.buildCmd(s.id, s.params)).join('');
@@ -3558,13 +3883,13 @@ export default function RobotPanel() {
     rightCol: { width: 340, borderLeft: '1px solid var(--border)', display: 'flex', flexDirection: 'column', overflow: 'hidden' },
     runBar: { padding: '10px 12px', borderTop: '1px solid var(--border)', display: 'flex', gap: 8, alignItems: 'center', background: 'var(--bg-secondary)' },
     btn: (bg, fg = '#fff') => ({ padding: '8px 16px', borderRadius: 8, border: 'none', background: bg, color: fg, fontWeight: 600, cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }),
-    terminal: { flex: 1, overflowY: 'auto', padding: 10, fontFamily: 'monospace', fontSize: 12, background: '#0c0c1e' },
+    terminal: { flex: 1, overflowY: 'auto', padding: 10, fontFamily: 'monospace', fontSize: 12, background: ui.codeBg },
     termLine: (type) => ({ color: type === 'send' ? '#60a5fa' : type === 'recv' ? '#4ade80' : type === 'error' ? '#f87171' : type === 'success' ? '#34d399' : type === 'warn' ? '#fbbf24' : '#94a3b8', padding: '1px 0' }),
     iconBtn: { background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 13, padding: '2px 4px', borderRadius: 4 },
     connDot: (ok) => ({ width: 10, height: 10, borderRadius: '50%', background: ok ? '#22c55e' : '#94a3b8', boxShadow: ok ? '0 0 6px #22c55e' : 'none' }),
     tabBar: { display: 'flex', borderBottom: '1px solid var(--border)', background: 'var(--bg-secondary)' },
     tab: (active) => ({ padding: '8px 16px', fontSize: 12, fontWeight: 600, cursor: 'pointer', color: active ? '#6366f1' : 'var(--text-muted)', background: 'transparent', border: 'none', borderBottom: active ? '2px solid #6366f1' : '2px solid transparent' }),
-    codeBox: { flex: 1, overflowY: 'auto', padding: 12, fontFamily: 'monospace', fontSize: 12, background: '#0c0c1e', color: '#a5f3fc', whiteSpace: 'pre', lineHeight: 1.6 },
+    codeBox: { flex: 1, overflowY: 'auto', padding: 12, fontFamily: 'monospace', fontSize: 12, background: ui.codeBg, color: ui.codeText, whiteSpace: 'pre', lineHeight: 1.6 },
   };
 
   const [rightTab, setRightTab] = useState('virtual');
@@ -3601,7 +3926,7 @@ export default function RobotPanel() {
               value={microbitKit}
               onChange={e => setMicrobitKit(e.target.value)}
               disabled={connected}
-              style={{ padding: '6px 10px', borderRadius: 8, background: '#1e1b4b', border: '1px solid #6366f1', color: '#a5b4fc', fontSize: 13 }}
+              style={{ padding: '6px 10px', borderRadius: 8, background: ui.setupBg, border: `1px solid ${ui.setupBorder}`, color: isLightTheme ? '#334155' : '#a5b4fc', fontSize: 13 }}
             >
               <option value="generic">🔌 Generic H-bridge</option>
               <option value="cutebot">🐱 Elecfreaks Cutebot</option>
@@ -3643,7 +3968,7 @@ export default function RobotPanel() {
 
       {/* Setup guide banner */}
       {showSetup && (
-        <div style={{ padding: 16, background: '#1e1b4b', borderBottom: '1px solid var(--border)' }}>
+        <div style={{ padding: 16, background: ui.setupBg, borderBottom: `1px solid ${ui.setupBorder}` }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
             <strong style={{ fontSize: 14 }}>📋 {profile.name} Setup Guide</strong>
             <button style={s.iconBtn} onClick={() => setShowSetup(false)}>✕</button>
@@ -3665,8 +3990,8 @@ export default function RobotPanel() {
             </>}
           </ol>
           {robotType === 'microbit' && (
-            <div style={{ marginTop: 12, padding: '12px 14px', background: '#0c1a2e', border: '1px solid #0ea5e9', borderRadius: 8 }}>
-              <strong style={{ fontSize: 13, color: '#38bdf8' }}>📡 Wireless via Bluetooth — one-click USB flash</strong>
+            <div style={{ marginTop: 12, padding: '12px 14px', background: ui.infoBg, border: `1px solid ${ui.infoBorder}`, borderRadius: 8 }}>
+              <strong style={{ fontSize: 13, color: ui.infoText }}>📡 Wireless via Bluetooth — one-click USB flash</strong>
               <p style={{ margin: '6px 0', fontSize: 12, color: 'var(--text-secondary)' }}>
                 Connect your micro:bit via USB, then click the button below. ByteBuddies will automatically flash the BLE firmware — no MakeCode needed!
               </p>
@@ -3686,14 +4011,14 @@ export default function RobotPanel() {
             </div>
           )}
           {(robotType === 'mbot' || robotType === 'arduino') && (
-            <div style={{ marginTop: 12, padding: '10px 14px', background: '#0f2a1a', border: '1px solid #16a34a', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <div style={{ marginTop: 12, padding: '10px 14px', background: ui.successBg, border: `1px solid ${ui.successBorder}`, borderRadius: 8, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
               <a
                 href={robotType === 'mbot' ? '/bytebuddies-mbot.ino' : '/bytebuddies-arduino.ino'}
                 download
                 style={{ ...s.btn('#16a34a'), fontSize: 14, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 18px', fontWeight: 700, flexShrink: 0 }}>
                 ⬇️ Download {robotType === 'mbot' ? 'mBot' : 'Arduino'} Sketch (.ino)
               </a>
-              <span style={{ fontSize: 12, color: '#86efac' }}>
+              <span style={{ fontSize: 12, color: ui.successText }}>
                 {robotType === 'mbot'
                   ? 'Upload once via Arduino IDE (needs Makeblock library) — then just Connect + Run every time'
                   : 'Upload once via Arduino IDE — then just Connect + Run every time'}
@@ -3701,10 +4026,10 @@ export default function RobotPanel() {
             </div>
           )}
           <details style={{ marginTop: 10 }}>
-            <summary style={{ cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#818cf8' }}>
+            <summary style={{ cursor: 'pointer', fontSize: 13, fontWeight: 600, color: ui.setupAccent }}>
               Show sketch source code →
             </summary>
-            <pre style={{ marginTop: 8, padding: 10, background: '#0c0c1e', borderRadius: 8, fontSize: 11, color: '#a5f3fc', overflowX: 'auto', maxHeight: 200 }}>
+            <pre style={{ marginTop: 8, padding: 10, background: ui.codeBg, borderRadius: 8, fontSize: 11, color: ui.codeText, overflowX: 'auto', maxHeight: 200 }}>
               {profile.setupCode}
             </pre>
             <button style={{ ...s.btn('#6366f1'), marginTop: 6, fontSize: 12 }}
@@ -3724,12 +4049,12 @@ export default function RobotPanel() {
         if (!noSerial || (!isFirefox && !isSafari)) return null;
         const browserName = isFirefox ? 'Firefox' : isSafari ? 'Safari' : 'your browser';
         return (
-          <div style={{ padding: '12px 20px', background: '#1e1b4b', borderBottom: '1px solid #4338ca', fontSize: 13, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <div style={{ padding: '12px 20px', background: ui.warnBg, borderBottom: `1px solid ${ui.warnBorder}`, fontSize: 13, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 20 }}>ℹ️</span>
             <div>
               <strong>You're using {browserName}</strong> — the simulator below works fine, but connecting to a real robot requires
               {' '}<strong>Google Chrome</strong> or <strong>Microsoft Edge</strong>.
-              {' '}<span style={{ color: '#818cf8' }}>The program builder and simulator work in any browser.</span>
+              {' '}<span style={{ color: ui.warnText }}>The program builder and simulator work in any browser.</span>
             </div>
           </div>
         );
@@ -3739,15 +4064,22 @@ export default function RobotPanel() {
         {/* Left: block palette sidebar */}
         <div style={s.leftCol}>
           {/* Category tabs */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 2, padding: 6, borderBottom: '1px solid var(--border)' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, padding: 6, borderBottom: '1px solid var(--border)' }}>
             {['Movement','Sensors','Control','Math','Outputs','Servo','Variables','Comms','Lights'].map(cat => {
               const col = getCategoryColor(cat);
               return (
                 <button key={cat} onClick={() => setActiveCat(cat)} style={{
-                  padding: '4px 8px', borderRadius: 6, border: `1.5px solid ${activeCat === cat ? col : 'transparent'}`,
-                  background: activeCat === cat ? `${col}22` : 'transparent',
-                  color: activeCat === cat ? col : 'var(--text-muted)',
-                  fontSize: 10, fontWeight: 700, cursor: 'pointer', transition: 'all 0.12s',
+                  padding: '4px 8px',
+                  borderRadius: 4,
+                  border: `1px solid ${activeCat === cat ? col : 'rgba(148,163,184,0.25)'}`,
+                  background: activeCat === cat
+                    ? `linear-gradient(180deg, ${col}, ${darkenHex(col, 30)})`
+                    : ui.tabInactiveBg,
+                  color: activeCat === cat ? '#fff' : ui.tabInactiveText,
+                  fontSize: 10,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  transition: 'all 0.12s',
                 }}>{cat}</button>
               );
             })}
@@ -3761,25 +4093,74 @@ export default function RobotPanel() {
               <div
                 key={cmd.id}
                 draggable
-                onDragStart={e => e.dataTransfer.setData('robot-cmd', cmd.id)}
-                onClick={() => addBlock(cmd)}
+                onDragStart={e => {
+                  e.dataTransfer.effectAllowed = 'copy';
+                  if (useUnifiedBlocklyCanvas) {
+                    const name = toBlocklySidebarName(cmd);
+                    const payload = { name, type: `robot:${cmd.id}`, color: cmd.color, meta: { robotId: cmd.id, label: cmd.label, icon: cmd.icon, params: cmd.params || [] } };
+                    e.dataTransfer.setData('text/plain', name);
+                    e.dataTransfer.setData('application/x-bb-sidebar-block', JSON.stringify(payload));
+                    return;
+                  }
+                  e.dataTransfer.setData('robot-cmd', cmd.id);
+                }}
+                onClick={() => {
+                  if (useUnifiedBlocklyCanvas) {
+                    emitAddSidebarBlock(
+                      toBlocklySidebarName(cmd),
+                      `robot:${cmd.id}`,
+                      cmd.color,
+                      { robotId: cmd.id, label: cmd.label, icon: cmd.icon, params: cmd.params || [] },
+                    );
+                    return;
+                  }
+                  addBlock(cmd);
+                }}
                 style={{
-                  margin: '2px 4px',
+                  margin: '3px 4px',
                   cursor: 'grab',
                 }}
                 title="Click to add · Drag to place"
               >
-                <ScratchStyleBlock
-                  block={{ id: `robot-palette-${cmd.id}`, type: cmd.id, category: cmd.cat, label: cmd.label }}
+                <div
                   style={{
-                    position: 'relative',
-                    transform: 'none',
-                    transition: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    minHeight: 30,
+                    padding: '4px 8px',
+                    borderRadius: 7,
+                    border: `1px solid ${darkenHex(cmd.color, 10)}`,
+                    background: `linear-gradient(180deg, ${cmd.color} 0%, ${darkenHex(cmd.color, 28)} 100%)`,
+                    color: '#fff',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    boxShadow: `0 2px 0 ${darkenHex(cmd.color, 56)}, inset 0 1px 0 rgba(255,255,255,0.22)`,
+                    userSelect: 'none',
                   }}
                 >
-                  <span style={{ fontSize: 15 }}>{cmd.icon}</span>
-                  <span style={{ flex: 1 }}>{cmd.label}</span>
-                </ScratchStyleBlock>
+                  <span style={{ fontSize: 13, lineHeight: 1 }}>{cmd.icon}</span>
+                  <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{cmd.label}</span>
+                  {(cmd.params || []).slice(0, 2).map((p) => (
+                    <span
+                      key={p.key}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 3,
+                        padding: '1px 6px',
+                        borderRadius: 10,
+                        background: '#ffffff',
+                        color: '#575E75',
+                        fontSize: 10,
+                        fontWeight: 700,
+                      }}
+                    >
+                      {String(p.default ?? '')}
+                      {p.type === 'select' ? '▾' : ''}
+                    </span>
+                  ))}
+                </div>
               </div>
             ))}
           </div>
@@ -3906,8 +4287,10 @@ export default function RobotPanel() {
 
           {/* Canvas with dot grid */}
           {useUnifiedBlocklyCanvas ? (
-            <div style={{ flex: 1, minHeight: 0, background: 'var(--bg-primary)' }}>
+            <div className="bb-workspace-scratch-toolbox" style={{ flex: 1, minHeight: 0, background: 'var(--bg-primary)' }}>
               <UnifiedBlocklyWorkspace
+                libraryPage="workspace"
+                scrollbarSide="top-left"
                 onModelChange={(nodes) => setProgram(blocklyNodesToRobotProgram(nodes))}
                 style={{ height: '100%' }}
               />
@@ -4409,12 +4792,12 @@ export default function RobotPanel() {
 
       {/* Flash progress overlay */}
       {flashProgress !== null && flashProgress !== 'done' && (
-        <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 9999, background: '#1e1b4b', border: '1px solid #6366f1', borderRadius: 12, padding: '14px 20px', minWidth: 260, boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}>
-          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 8, color: '#e0e7ff' }}>⚡ Flashing to micro:bit...</div>
-          <div style={{ background: '#312e81', borderRadius: 6, height: 8, overflow: 'hidden' }}>
+        <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 9999, background: ui.setupBg, border: `1px solid ${ui.setupBorder}`, borderRadius: 12, padding: '14px 20px', minWidth: 260, boxShadow: '0 8px 32px rgba(0,0,0,0.35)' }}>
+          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 8, color: isLightTheme ? '#1e293b' : '#e0e7ff' }}>⚡ Flashing to micro:bit...</div>
+          <div style={{ background: isLightTheme ? '#c7d2fe' : '#312e81', borderRadius: 6, height: 8, overflow: 'hidden' }}>
             <div style={{ height: '100%', background: 'linear-gradient(90deg,#6366f1,#a5b4fc)', width: `${flashProgress}%`, transition: 'width 0.3s ease', borderRadius: 6 }} />
           </div>
-          <div style={{ fontSize: 12, color: '#a5b4fc', marginTop: 6, textAlign: 'right' }}>{flashProgress}%</div>
+          <div style={{ fontSize: 12, color: isLightTheme ? '#4338ca' : '#a5b4fc', marginTop: 6, textAlign: 'right' }}>{flashProgress}%</div>
         </div>
       )}
     </div>

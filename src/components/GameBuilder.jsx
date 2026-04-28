@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { BLOCK_DEFS, SIDEBAR_TO_TYPE, createBlockFromDrop, BlockContent } from '../utils/blocks';
+import { BLOCK_DEFS, SIDEBAR_TO_TYPE, createBlockFromDrop, BlockContent, resolveBlocklyNodeType } from '../utils/blocks';
 import { saveSubmissionToFirestore } from '../firebase';
 import { useUser } from '../contexts/UserContext';
 import ScratchStyleBlock from './ScratchStyleBlock';
@@ -8,6 +8,7 @@ import { BLOCK_STACK_GAP, columnizeBlocks } from '../utils/blockStack';
 import { snapCanvasStack } from '../utils/blockSnap';
 import ExtensionsModal from './ExtensionsModal';
 import { readEnabledExtensionIds, writeEnabledExtensionIds } from '../data/extensionsCatalog';
+import { getCategoryColorForBlockLabel } from '../data/blockLibraryCategories';
 import { BB_ADD_SIDEBAR_BLOCK, BB_OPEN_EXTENSIONS } from '../utils/blockLibraryEvents';
 
 const STAGE_W = 480;
@@ -39,11 +40,17 @@ function blocklyNodesToGameBlocks(nodes = []) {
     bb_sprite_goto: 'sprite-goto',
     bb_sprite_changex: 'sprite-changex',
     bb_sprite_changey: 'sprite-changey',
+    bb_motion_glide: 'motion-glide',
     bb_control_wait: 'control-wait',
     bb_loop_repeat: 'loop-repeat',
     bb_loop_forever: 'loop-forever',
     bb_logic_if: 'logic-if',
     bb_sound_play: 'sound-play',
+    bb_sound_stop: 'sound-stop',
+    bb_math_add: 'math-add',
+    bb_math_mult: 'math-mult',
+    bb_math_random: 'math-random',
+    bb_math_round: 'math-round',
     bb_sprite_say: 'sprite-say',
     bb_var_create: 'var-create',
     bb_var_change: 'var-change',
@@ -51,7 +58,11 @@ function blocklyNodesToGameBlocks(nodes = []) {
   let y = BLOCK_START_Y;
   const out = [];
   const pushNode = (node) => {
-    const type = mapType[node?.type];
+    const blocklyType = resolveBlocklyNodeType(node) || node?.type;
+    let type = mapType[blocklyType];
+    if (!type && (blocklyType === 'bb_generic_stack' || String(blocklyType || '').startsWith('bb_lib_'))) {
+      type = 'action-print';
+    }
     if (!type || !BLOCK_DEFS[type]) return;
     const f = node.fields || {};
     const base = { ...BLOCK_DEFS[type], params: { ...BLOCK_DEFS[type].params } };
@@ -59,11 +70,23 @@ function blocklyNodesToGameBlocks(nodes = []) {
     if (type === 'sprite-move') base.params.steps = String(f.STEPS || 10);
     if (type === 'sprite-turn') base.params.degrees = String(f.DEGREES || 90);
     if (type === 'sprite-goto') { base.params.x = String(f.X || 0); base.params.y = String(f.Y || 0); }
+    if (type === 'motion-glide') {
+      base.params.x = String(f.X || 0);
+      base.params.y = String(f.Y || 0);
+      base.params.secs = String(f.SECS || 1);
+    }
     if (type === 'sprite-changex' || type === 'sprite-changey') base.params.amount = String(f.AMOUNT || 10);
     if (type === 'control-wait') base.params.secs = String(f.SECONDS || 1);
     if (type === 'loop-repeat') base.params.times = String(f.TIMES || 10);
     if (type === 'sprite-say') { base.params.text = String(f.TEXT || 'Hi!'); base.params.secs = String(f.SECONDS || 2); }
     if (type === 'sound-play') base.params.sound = String(f.SOUND || 'pop');
+    if (type === 'math-add') { base.params.a = String(f.A || 1); base.params.op = String(f.OP || '+'); base.params.b = String(f.B || 1); }
+    if (type === 'math-mult') { base.params.a = String(f.A || 2); base.params.op = String(f.OP || '*'); base.params.b = String(f.B || 3); }
+    if (type === 'math-random') { base.params.min = String(f.MIN || 1); base.params.max = String(f.MAX || 100); }
+    if (type === 'math-round') { base.params.op = String(f.MOP || 'round'); base.params.value = String(f.VALUE || 0); }
+    if (type === 'action-print' && (blocklyType === 'bb_generic_stack' || String(blocklyType || '').startsWith('bb_lib_'))) {
+      base.params.message = String(f.LABEL || f.BLOCK_NAME || 'extension block');
+    }
     if (type === 'var-create') { base.params.name = String(f.NAME || 'myVar'); base.params.value = String(f.VALUE || 0); }
     if (type === 'var-change') { base.params.name = String(f.NAME || 'myVar'); base.params.amount = String(f.AMOUNT || 1); }
     out.push({
@@ -331,6 +354,7 @@ const defaultSprites = [
 export default function GameBuilder() {
   const { user } = useUser();
   const canvasRef = useRef(null);
+  const mouseRef = useRef({ x: STAGE_W / 2, y: STAGE_H / 2 });
   const blockAreaRef = useRef(null);
   const [sprites, setSprites] = useState(() => {
     try {
@@ -819,18 +843,62 @@ loadImages(function(){
         }
       }
       if (current) chains.push(current);
+      // If no explicit event blocks exist, run the stack once on Play.
+      if (chains.length === 0) {
+        chains.push({ trigger: { type: 'event-start', params: {} }, body: sorted });
+      }
       return chains;
     }
+
+    const listStore = {};
+    const playTone = (name = 'pop') => {
+      try {
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        if (!Ctx) return;
+        const ctx = new Ctx();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        const freqByName = { pop: 440, beep: 660, coin: 880, jump: 520, success: 740, error: 220 };
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freqByName[String(name).toLowerCase()] || 600, ctx.currentTime);
+        gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.09, ctx.currentTime + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.16);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.17);
+      } catch (e) {
+        /* ignore audio errors */
+      }
+    };
 
     // Execute a block on a sprite
     function execBlock(block, sprite) {
       const p = block.params || {};
+      const num = (v, d = 0) => {
+        const n = parseFloat(v);
+        return Number.isFinite(n) ? n : d;
+      };
+      const txt = (v, d = '') => String(v ?? d);
       switch (block.type) {
         case 'sprite-move': sprite.x += parseFloat(p.steps) || 0; break;
         case 'sprite-changex': sprite.x += parseFloat(p.amount) || 0; break;
         case 'sprite-changey': sprite.y += parseFloat(p.amount) || 0; break;
         case 'sprite-goto': sprite.x = parseFloat(p.x) || 0; sprite.y = parseFloat(p.y) || 0; break;
         case 'sprite-turn': sprite.rotation = (sprite.rotation || 0) + (parseFloat(p.degrees) || 0); break;
+        case 'motion-glide': sprite.x = num(p.x, sprite.x); sprite.y = num(p.y, sprite.y); break;
+        case 'motion-setx': sprite.x = num(p.x, sprite.x); break;
+        case 'motion-sety': sprite.y = num(p.y, sprite.y); break;
+        case 'motion-point-dir': sprite.rotation = num(p.direction, sprite.rotation || 0); break;
+        case 'motion-point': {
+          const cx = sprite.x + sprite.w / 2;
+          const cy = sprite.y + sprite.h / 2;
+          const dx = mouseRef.current.x - cx;
+          const dy = mouseRef.current.y - cy;
+          sprite.rotation = (Math.atan2(dy, dx) * 180) / Math.PI;
+          break;
+        }
         case 'sprite-setsize': {
           const pct = (parseFloat(p.size) || 100) / 100;
           const tpl = findSpriteTemplate(sprite.svgKey);
@@ -844,13 +912,108 @@ loadImages(function(){
           sprite._sayText = (p.text || '').replace(/"/g, '');
           sprite._sayUntil = Date.now() + (parseFloat(p.secs) || 2) * 1000;
           break;
+        case 'looks-say':
+          sprite._sayText = txt(p.text, 'Hello!');
+          sprite._sayUntil = Date.now() + (num(p.secs, 2) * 1000);
+          break;
+        case 'looks-think':
+          sprite._sayText = `(${txt(p.text, 'Hmm...')})`;
+          sprite._sayUntil = Date.now() + (num(p.secs, 2) * 1000);
+          break;
+        case 'looks-grow': {
+          const scale = 1 + num(p.amount, 10) / 100;
+          sprite.w = Math.max(8, Math.round(sprite.w * scale));
+          sprite.h = Math.max(8, Math.round(sprite.h * scale));
+          break;
+        }
+        case 'looks-shrink': {
+          const scale = 1 - num(p.amount, 10) / 100;
+          sprite.w = Math.max(8, Math.round(sprite.w * scale));
+          sprite.h = Math.max(8, Math.round(sprite.h * scale));
+          break;
+        }
+        case 'physics-velocity':
+          sprite.vx = num(p.vx, sprite.vx || 0);
+          sprite.vy = num(p.vy, sprite.vy || 0);
+          break;
+        case 'physics-gravity':
+          sprite.vy = (sprite.vy || 0) + num(p.amount, 0.5);
+          break;
+        case 'physics-jump':
+          sprite.vy = -Math.abs(num(p.power, 10));
+          break;
+        case 'physics-push': {
+          const rad = (num(p.direction, 0) * Math.PI) / 180;
+          const force = num(p.force, 5);
+          sprite.vx = (sprite.vx || 0) + Math.cos(rad) * force;
+          sprite.vy = (sprite.vy || 0) + Math.sin(rad) * force;
+          break;
+        }
+        case 'physics-friction':
+          sprite.vx = (sprite.vx || 0) * num(p.amount, 0.9);
+          sprite.vy = (sprite.vy || 0) * num(p.amount, 0.9);
+          break;
+        case 'physics-bounce':
+          if (sprite.x <= 0 || sprite.x >= STAGE_W - sprite.w) sprite.vx = -(sprite.vx || 0);
+          if (sprite.y <= 0 || sprite.y >= STAGE_H - sprite.h) sprite.vy = -(sprite.vy || 0);
+          break;
         case 'var-create':
         case 'var-set': vars[p.name] = parseFloat(p.value) || 0; break;
         case 'var-change': vars[p.name] = (vars[p.name] || 0) + (parseFloat(p.amount) || 0); break;
+        case 'var-show':
+          sprite._sayText = `${p.name || 'var'}=${vars[p.name] ?? 0}`;
+          sprite._sayUntil = Date.now() + 1500;
+          break;
+        case 'math-add': vars._math = num(p.a, 0) + num(p.b, 0); break;
+        case 'math-mult': vars._math = num(p.a, 0) * num(p.b, 0); break;
+        case 'math-random': vars._math = Math.floor(Math.random() * (num(p.max, 100) - num(p.min, 1) + 1)) + num(p.min, 1); break;
+        case 'math-round': vars._math = p.op === 'abs' ? Math.abs(num(p.value, 0)) : Math.round(num(p.value, 0)); break;
+        case 'text-create': vars._text = txt(p.text, ''); break;
+        case 'text-join': vars._text = `${txt(p.a, '')}${txt(p.b, '')}`; break;
+        case 'text-length': vars._math = txt(p.text, '').length; break;
+        case 'list-create': listStore[p.name || 'myList'] = listStore[p.name || 'myList'] || []; break;
+        case 'list-add': {
+          const name = p.list || 'myList';
+          listStore[name] = listStore[name] || [];
+          listStore[name].push(p.item ?? '');
+          break;
+        }
+        case 'list-get': {
+          const name = p.list || 'myList';
+          const idx = Math.max(0, Math.floor(num(p.index, 0)));
+          vars._item = (listStore[name] || [])[idx];
+          break;
+        }
+        case 'sound-play':
+          playTone(p.sound || 'pop');
+          break;
+        case 'sound-stop':
+          // Sounds are short tones; clearing here prevents any sustained pending tones.
+          break;
+        case 'sound-volume':
+          vars._volume = num(p.volume, 100);
+          break;
         case 'action-print': sprite._sayText = (p.message || '').replace(/"/g, ''); sprite._sayUntil = Date.now() + 2000; break;
+        case 'action-alert': sprite._sayText = txt(p.message, 'Notice'); sprite._sayUntil = Date.now() + 2000; break;
+        case 'action-ask': vars._lastAnswer = txt(p.prompt, ''); break;
+        case 'game-score-add': localScore += num(p.amount, 10); setScore(localScore); break;
+        case 'game-score-set': localScore = num(p.value, 0); setScore(localScore); break;
+        case 'game-lose-life': vars._lives = Math.max(0, num(vars._lives, 3) - 1); break;
+        case 'game-set-lives': vars._lives = num(p.value, 3); break;
+        case 'game-over': running = false; break;
+        case 'game-win':
+          sprite._sayText = 'You Win!';
+          sprite._sayUntil = Date.now() + 2000;
+          break;
+        case 'game-next-level': vars._level = num(vars._level, 1) + 1; break;
+        case 'game-destroy': sprite.visible = false; break;
+        case 'game-pause': running = false; break;
+        case 'event-broadcast': vars._broadcast = txt(p.message, 'go'); break;
         default: break;
       }
 
+      sprite.x += sprite.vx || 0;
+      sprite.y += sprite.vy || 0;
       // Keep sprite in bounds
       sprite.x = Math.max(0, Math.min(STAGE_W - sprite.w, sprite.x));
       sprite.y = Math.max(0, Math.min(STAGE_H - sprite.h, sprite.y));
@@ -875,14 +1038,14 @@ loadImages(function(){
       chains: buildScriptChains(s.blocks),
     }));
 
+    let running = true;
+
     // Run "event-start" chains once
     spriteChains.forEach(({ sprite, chains }) => {
       chains.filter(c => c.trigger.type === 'event-start').forEach(chain => {
         execBody(chain.body, sprite);
       });
     });
-
-    let running = true;
     const loop = () => {
       if (!running) return;
       const ps = playSpritesRef.current;
@@ -977,8 +1140,10 @@ loadImages(function(){
   };
 
   const handleCanvasMouseMove = (e) => {
+    const pos = getCanvasPos(e);
+    mouseRef.current = pos;
     if (!draggingSprite || isPlaying) return;
-    const { x, y } = getCanvasPos(e);
+    const { x, y } = pos;
     setSprites(prev => prev.map(s => s.id === draggingSprite ? {
       ...s,
       x: Math.max(0, Math.min(STAGE_W - s.w, x - dragOffset.x)),
@@ -1090,6 +1255,8 @@ loadImages(function(){
     if (!text || !blockAreaRef.current) return;
     const rect = blockAreaRef.current.getBoundingClientRect();
     const newBlock = createBlockFromDrop(text, BLOCK_LANE_X, e.clientY - rect.top - 20);
+    const sectionColor = getCategoryColorForBlockLabel(text);
+    if (sectionColor) newBlock.color = sectionColor;
     setSprites(prev => prev.map(s => {
       if (s.id !== selected) return s;
       return { ...s, blocks: [...s.blocks, newBlock] };
@@ -1108,6 +1275,7 @@ loadImages(function(){
         id: Date.now() + Math.random(),
         type,
         ...def,
+        color: getCategoryColorForBlockLabel(name) || def.color,
         params: { ...(def.params || {}) },
         x: BLOCK_LANE_X,
         y: BLOCK_START_Y,
@@ -1225,8 +1393,10 @@ loadImages(function(){
             </span>
           </div>
 
-          <div style={{ flex: 1, minHeight: 0 }}>
+          <div className="bb-workspace-scratch-toolbox" style={{ flex: 1, minHeight: 0 }}>
             <UnifiedBlocklyWorkspace
+              libraryPage="gamebuilder"
+              extensionsKey={[...enabledExtensions].sort().join(',')}
               onModelChange={(nodes) => {
                 if (!selected) return;
                 const nextBlocks = blocklyNodesToGameBlocks(nodes);

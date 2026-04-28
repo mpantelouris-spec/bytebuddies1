@@ -7,6 +7,7 @@ import StarterBlocks from './StarterBlocks';
 import UnifiedBlocklyWorkspace from './UnifiedBlocklyWorkspace';
 import { runPython } from '../utils/pythonRunner';
 import ScratchStyleBlock, { getCategoryColor } from './ScratchStyleBlock';
+import { ParamInput as SharedParamInput, ParamSelect, resolveBlocklyNodeType } from '../utils/blocks';
 import { BLOCK_STACK_GAP } from '../utils/blockStack';
 import ExtensionsModal from './ExtensionsModal';
 import { readEnabledExtensionIds, writeEnabledExtensionIds, getExtensionSidebarCategories } from '../data/extensionsCatalog';
@@ -32,6 +33,7 @@ const BLOCK_DEFS = {
   'logic-compare':    { label: 'Compare', icon: '🧠', color: '#6366f1', category: 'logic', params: { left: 'a', op: '=', right: 'b' } },
   'logic-bool':       { label: 'Boolean', icon: '🧠', color: '#6366f1', category: 'logic', params: { value: 'true' } },
   'loop-repeat':      { label: 'Repeat', icon: '🔁', color: '#8b5cf6', category: 'loop', params: { times: '10' } },
+  'loop-forever':     { label: 'Forever', icon: '🔁', color: '#8b5cf6', category: 'loop', params: {} },
   'loop-while':       { label: 'While', icon: '🔁', color: '#8b5cf6', category: 'loop', params: { condition: 'true' } },
   'loop-foreach':     { label: 'For each', icon: '🔁', color: '#8b5cf6', category: 'loop', params: { item: 'item', list: 'myList' } },
   'loop-break':       { label: 'Break', icon: '🔁', color: '#8b5cf6', category: 'loop', params: {} },
@@ -57,6 +59,7 @@ const BLOCK_DEFS = {
   'sprite-goto':      { label: 'Go to', icon: '🎭', color: '#06b6d4', category: 'sprite', params: { x: '0', y: '0' } },
   'sprite-say':       { label: 'Say', icon: '🎭', color: '#06b6d4', category: 'sprite', params: { text: '"Hi!"' } },
   'sound-play':       { label: 'Play sound', icon: '🔊', color: '#84cc16', category: 'sound', params: { sound: 'pop' } },
+  'sound-stop':       { label: 'Stop sounds', icon: '🔇', color: '#84cc16', category: 'sound', params: {} },
   'sound-volume':     { label: 'Set volume', icon: '🔊', color: '#84cc16', category: 'sound', params: { volume: '100' } },
   'ai-classify':      { label: 'AI classify', icon: '🤖', color: '#f97316', category: 'ai', params: { input: '"text"' } },
   'ai-generate':      { label: 'AI generate text', icon: '🤖', color: '#f97316', category: 'ai', params: { prompt: '"Write a poem"' } },
@@ -65,7 +68,7 @@ const BLOCK_DEFS = {
 const SIDEBAR_TO_TYPE = {
   'create variable': 'var-create', 'set variable': 'var-set', 'change by': 'var-change', 'show variable': 'var-show',
   'if / else': 'logic-if', 'and / or / not': 'logic-and', 'compare (=, <, >)': 'logic-compare', 'true / false': 'logic-bool',
-  'repeat n times': 'loop-repeat', 'while condition': 'loop-while', 'for each in list': 'loop-foreach', 'break / continue': 'loop-break',
+  'repeat n times': 'loop-repeat', 'forever': 'loop-forever', 'while condition': 'loop-while', 'for each in list': 'loop-foreach', 'break / continue': 'loop-break',
   'define function': 'func-define', 'call function': 'func-call', 'return value': 'func-return', 'with parameters': 'func-params',
   'on start': 'event-start', 'on key press': 'event-keypress', 'on click': 'event-click', 'on message': 'event-message', 'broadcast': 'event-broadcast',
   'add / subtract': 'math-add', 'multiply / divide': 'math-mult', 'random number': 'math-random', 'round / abs': 'math-round', 'modulo': 'math-round',
@@ -73,7 +76,7 @@ const SIDEBAR_TO_TYPE = {
   'create list': 'list-create', 'add to list': 'list-add', 'get item #': 'list-get', 'length of list': 'list-get', 'sort list': 'list-get',
   'print': 'action-print', 'ask and wait': 'action-ask', 'alert': 'action-alert', 'prompt': 'action-ask',
   'move steps': 'sprite-move', 'turn degrees': 'sprite-turn', 'go to x,y': 'sprite-goto', 'set size': 'sprite-move', 'show / hide': 'sprite-move', 'say text': 'sprite-say',
-  'play sound': 'sound-play', 'stop sounds': 'sound-play', 'set volume': 'sound-volume', 'play note': 'sound-play',
+  'play sound': 'sound-play', 'stop sounds': 'sound-stop', 'set volume': 'sound-volume', 'play note': 'sound-play',
   'ai classify': 'ai-classify', 'ai generate text': 'ai-generate', 'ai detect object': 'ai-classify', 'ai translate': 'ai-generate', 'train model': 'ai-classify',
 };
 
@@ -97,35 +100,10 @@ function normalizeStack(blocks) {
   }));
 }
 
-function ParamInput({ value, onChange, width, color }) {
-  return (
-    <input
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      onMouseDown={(e) => e.stopPropagation()}
-      onClick={(e) => e.stopPropagation()}
-      style={{
-        background: 'rgba(0,0,0,0.3)',
-        border: `1px solid ${color}88`,
-        borderRadius: 4,
-        padding: '1px 5px',
-        color: '#fff',
-        fontSize: 12,
-        fontWeight: 700,
-        fontFamily: 'var(--font-mono)',
-        width: width || 60,
-        outline: 'none',
-        margin: '0 3px',
-        verticalAlign: 'middle',
-      }}
-    />
-  );
-}
-
 function BlockContent({ block, onParamChange }) {
   const p = block.params || {};
   const PI = (paramKey, w) => (
-    <ParamInput
+    <SharedParamInput
       value={p[paramKey] || ''}
       onChange={(v) => onParamChange(block.id, paramKey, v)}
       width={w}
@@ -141,8 +119,20 @@ function BlockContent({ block, onParamChange }) {
     case 'logic-if':    return <>{block.icon} If{PI('condition', 120)}</>;
     case 'logic-and':   return <>{block.icon}{PI('left', 50)}{PI('op', 35)}{PI('right', 50)}</>;
     case 'logic-compare': return <>{block.icon}{PI('left', 50)}{PI('op', 30)}{PI('right', 50)}</>;
-    case 'logic-bool':  return <>{block.icon}{PI('value', 50)}</>;
+    case 'logic-bool': return (
+      <>
+        {block.icon}
+        <ParamSelect
+          value={p.value || 'true'}
+          onChange={(v) => onParamChange(block.id, 'value', v)}
+          width={56}
+          fieldShape="hex"
+          options={['true', 'false']}
+        />
+      </>
+    );
     case 'loop-repeat': return <>{block.icon} Repeat{PI('times', 40)}times</>;
+    case 'loop-forever': return <>{block.icon} Forever</>;
     case 'loop-while':  return <>{block.icon} While{PI('condition', 120)}</>;
     case 'loop-foreach': return <>{block.icon} For{PI('item', 50)}in{PI('list', 60)}</>;
     case 'loop-break':  return <>{block.icon} Break</>;
@@ -168,6 +158,7 @@ function BlockContent({ block, onParamChange }) {
     case 'sprite-goto': return <>{block.icon} Go to x{PI('x', 35)}y{PI('y', 35)}</>;
     case 'sprite-say':  return <>{block.icon} Say{PI('text', 100)}</>;
     case 'sound-play':  return <>{block.icon} Play{PI('sound', 70)}</>;
+    case 'sound-stop': return <>{block.icon} Stop sounds</>;
     case 'sound-volume': return <>{block.icon} Volume{PI('volume', 40)}%</>;
     case 'ai-classify': return <>{block.icon} Classify{PI('input', 100)}</>;
     case 'ai-generate': return <>{block.icon} Generate{PI('prompt', 120)}</>;
@@ -322,6 +313,7 @@ function BlockCanvas({ code, onCodeChange, onBlockLineMap, activeCodeLine, onNav
         case 'var-show': line = `print(${p.name})`; break;
         case 'logic-if': line = `if ${p.condition}:`; break;
         case 'loop-repeat': line = `for i in range(${p.times}):`; break;
+        case 'loop-forever': line = 'while True:'; break;
         case 'loop-while': line = `while ${p.condition}:`; break;
         case 'loop-foreach': line = `for ${p.item} in ${p.list}:`; break;
         case 'loop-break': line = '    break'; break;
@@ -554,6 +546,45 @@ function Preview({ code, language }) {
   const { addXP, incrementQuestProgress } = useUser();
   const iframeRef = useRef(null);
   const listenerRef = useRef(null);
+  const audioCtxRef = useRef(null);
+  const activeOscRef = useRef([]);
+
+  const stopPreviewSounds = useCallback(() => {
+    activeOscRef.current.forEach(({ osc, gain }) => {
+      try { gain?.gain?.cancelScheduledValues(0); } catch (e) { /* ignore */ }
+      try { gain?.gain?.setValueAtTime(0.0001, audioCtxRef.current?.currentTime || 0); } catch (e) { /* ignore */ }
+      try { osc?.stop(); } catch (e) { /* ignore */ }
+    });
+    activeOscRef.current = [];
+  }, []);
+
+  const playPreviewSound = useCallback((name = 'pop') => {
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return;
+      if (!audioCtxRef.current) audioCtxRef.current = new Ctx();
+      const ctx = audioCtxRef.current;
+      if (ctx.state === 'suspended') ctx.resume();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const freqByName = { pop: 440, beep: 660, coin: 880, jump: 520, success: 740, error: 220 };
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freqByName[String(name).toLowerCase()] || 600, ctx.currentTime);
+      gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.12, ctx.currentTime + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.18);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.19);
+      activeOscRef.current.push({ osc, gain });
+      osc.onended = () => {
+        activeOscRef.current = activeOscRef.current.filter((n) => n.osc !== osc);
+      };
+    } catch (e) {
+      /* ignore audio errors */
+    }
+  }, []);
 
   // Cleanup message listener
   useEffect(() => {
@@ -576,8 +607,12 @@ function Preview({ code, language }) {
       // Real Python subset interpreter
       setTimeout(() => {
         try {
-          const { output: pyOut, errors } = runPython(code);
+          const { output: pyOut, errors, events = [] } = runPython(code);
           const lines = pyOut.map(t => ({ type: 'output', text: t }));
+          events.forEach((evt) => {
+            if (evt?.type === 'sound') playPreviewSound(evt.name);
+            if (evt?.type === 'sound-stop') stopPreviewSounds();
+          });
           if (errors.length) lines.push(...errors.map(t => ({ type: 'error', text: t })));
           if (lines.length === 0) lines.push({ type: 'info', text: '✅ Program ran (no output)' });
           lines.push({ type: 'success', text: `✨ Done` });
@@ -699,28 +734,54 @@ function Preview({ code, language }) {
   );
 }
 
+function lineForResolvedBlocklyType(type, f) {
+  switch (type) {
+    case 'bb_event_start': return '# when program starts';
+    case 'bb_event_keypress': return `# when key ${f.KEY || 'space'} pressed`;
+    case 'bb_sprite_move': return `move_steps(${f.STEPS || 10})`;
+    case 'bb_sprite_turn': return `turn_${f.DIRECTION || 'right'}(${f.DEGREES || 90})`;
+    case 'bb_sprite_goto': return `goto(${f.X || 0}, ${f.Y || 0})`;
+    case 'bb_sprite_changex': return `change_x(${f.AMOUNT || 10})`;
+    case 'bb_sprite_changey': return `change_y(${f.AMOUNT || 10})`;
+    case 'bb_motion_glide': return `glide_to(${f.SECS || 1}, ${f.X || 0}, ${f.Y || 0})`;
+    case 'bb_control_wait': return `wait(${f.SECONDS || 1})`;
+    case 'bb_loop_repeat': return `for i in range(${f.TIMES || 10}):`;
+    case 'bb_loop_forever': return 'while True:';
+    case 'bb_logic_if': return 'if condition:';
+    case 'bb_sound_play': return `play_sound("${f.SOUND || 'pop'}")`;
+    case 'bb_sound_stop': return 'stop_sounds()';
+    case 'bb_math_add': return `print((${f.A || 0}) ${f.OP || '+'} (${f.B || 0}))`;
+    case 'bb_math_mult': return `print((${f.A || 0}) ${f.OP || '*'} (${f.B || 1}))`;
+    case 'bb_math_random': return `print(random_int(${f.MIN || 1}, ${f.MAX || 100}))`;
+    case 'bb_math_round': return (String(f.MOP || 'round') === 'abs')
+      ? `print(abs(${f.VALUE || 0}))`
+      : `print(round(${f.VALUE || 0}))`;
+    case 'bb_sprite_say': return `say("${String(f.TEXT || 'Hi!').replace(/"/g, "'")}", ${f.SECONDS || 2})`;
+    case 'bb_var_create': return `${f.NAME || 'myVar'} = ${f.VALUE || 0}`;
+    case 'bb_var_change': return `${f.NAME || 'myVar'} += ${f.AMOUNT || 1}`;
+    case 'bb_action_print': return `print(${JSON.stringify(f.MESSAGE != null && f.MESSAGE !== '' ? String(f.MESSAGE) : 'Hello!')})`;
+    case 'bb_tts_speak': return `run_extension_block(${JSON.stringify(`tts|speak|${String(f.VOICE || 'auto')}|${String(f.TEXT || 'Hello from ByteBuddies')}`)})`;
+    default: return null;
+  }
+}
+
 function blocklyModelToPreviewCode(model) {
   if (!Array.isArray(model) || !model.length) return '# Build with blocks\n';
   const lineForNode = (node) => {
     const f = node?.fields || {};
-    switch (node?.type) {
-      case 'bb_event_start': return '# when program starts';
-      case 'bb_event_keypress': return `# when key ${f.KEY || 'space'} pressed`;
-      case 'bb_sprite_move': return `move_steps(${f.STEPS || 10})`;
-      case 'bb_sprite_turn': return `turn_${f.DIRECTION || 'right'}(${f.DEGREES || 90})`;
-      case 'bb_sprite_goto': return `goto(${f.X || 0}, ${f.Y || 0})`;
-      case 'bb_sprite_changex': return `change_x(${f.AMOUNT || 10})`;
-      case 'bb_sprite_changey': return `change_y(${f.AMOUNT || 10})`;
-      case 'bb_control_wait': return `wait(${f.SECONDS || 1})`;
-      case 'bb_loop_repeat': return `for i in range(${f.TIMES || 10}):`;
-      case 'bb_loop_forever': return 'while True:';
-      case 'bb_logic_if': return 'if condition:';
-      case 'bb_sound_play': return `play_sound("${f.SOUND || 'pop'}")`;
-      case 'bb_sprite_say': return `say("${String(f.TEXT || 'Hi!').replace(/"/g, "'")}", ${f.SECONDS || 2})`;
-      case 'bb_var_create': return `${f.NAME || 'myVar'} = ${f.VALUE || 0}`;
-      case 'bb_var_change': return `${f.NAME || 'myVar'} += ${f.AMOUNT || 1}`;
-      default: return `# ${node?.type || 'block'}`;
+    const resolved = resolveBlocklyNodeType(node);
+    if (resolved) {
+      const line = lineForResolvedBlocklyType(resolved, f);
+      if (line) return line;
     }
+    const t = node?.type;
+    if (t === 'bb_sidebar_item' || (typeof t === 'string' && t.startsWith('bb_lib_'))) {
+      return `run_extension_block(${JSON.stringify(f.BLOCK_NAME || 'block')})`;
+    }
+    if (t === 'bb_generic_stack') return `run_extension_block(${JSON.stringify(f.LABEL || 'block')})`;
+    const fallback = lineForResolvedBlocklyType(t, f);
+    if (fallback) return fallback;
+    return `# ${t || 'block'}`;
   };
   const out = [];
   const walk = (nodes, depth = 0) => {
@@ -873,8 +934,10 @@ export default function WorkspaceEditor() {
         <>
         {/* Blocks View */}
         {(viewMode === 'blocks' || viewMode === 'split') && (
-          <div style={{ flex: 1, minWidth: 320, padding: 8 }}>
+          <div className="bb-workspace-scratch-toolbox" style={{ flex: 1, minWidth: 320, minHeight: 0, padding: 8 }}>
             <UnifiedBlocklyWorkspace
+              libraryPage="workspace"
+              extensionsKey={[...enabledExtensions].sort().join(',')}
               onModelChange={(model) => {
                 const codeFromBlocks = blocklyModelToPreviewCode(model);
                 handleCodeChange(codeFromBlocks);

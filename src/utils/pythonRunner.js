@@ -3,10 +3,12 @@
  * Supports: variable assignment, print(), if/elif/else,
  * for i in range(n), while, def + calls, basic arithmetic, strings, lists.
  */
+import { resolveExtensionDragToBlock, runExtensionCmd } from './extensionEngine';
 
 export function runPython(code) {
   const output = [];
   const errors = [];
+  const events = [];
 
   try {
     const lines = code.split('\n');
@@ -17,6 +19,22 @@ export function runPython(code) {
     function evalExpr(expr, localScope = {}) {
       expr = expr.trim();
       const env = { ...scope, ...localScope };
+
+      // Strip wrapping parentheses: (x), ((a + b)), etc.
+      const hasWrappedParens = (s) => {
+        if (!(s.startsWith('(') && s.endsWith(')'))) return false;
+        let depth = 0;
+        for (let i = 0; i < s.length; i++) {
+          const ch = s[i];
+          if (ch === '(') depth++;
+          else if (ch === ')') depth--;
+          if (depth === 0 && i < s.length - 1) return false;
+        }
+        return depth === 0;
+      };
+      while (hasWrappedParens(expr)) {
+        expr = expr.slice(1, -1).trim();
+      }
 
       // String literals
       if ((expr.startsWith('"') && expr.endsWith('"')) ||
@@ -79,6 +97,14 @@ export function runPython(code) {
       if (mathMatch) {
         const val = Number(evalExpr(mathMatch[2], localScope));
         return mathMatch[1] === 'abs' ? Math.abs(val) : Math.round(val);
+      }
+
+      const rndMatch = expr.match(/^random_int\((.+)\)$/);
+      if (rndMatch) {
+        const args = splitArgs(rndMatch[1]).map((a) => Number(evalExpr(a, localScope)));
+        const min = Number.isFinite(args[0]) ? args[0] : 1;
+        const max = Number.isFinite(args[1]) ? args[1] : 100;
+        return Math.floor(Math.random() * (max - min + 1)) + min;
       }
 
       // Function call
@@ -164,6 +190,50 @@ export function runPython(code) {
       return args;
     }
 
+    function speakInlineTts(cmdLabel) {
+      try {
+        const raw = String(cmdLabel || '');
+        const parts = raw.split('|').map((s) => String(s || '').trim());
+        if (parts[0] !== 'tts' || parts[1] !== 'speak') return false;
+        const voicePref = (parts[2] || 'auto').toLowerCase();
+        const text = parts.slice(3).join('|') || 'Hello from ByteBuddies';
+        const synth = (typeof window !== 'undefined' && window.speechSynthesis) ? window.speechSynthesis : null;
+        const Utter = (typeof window !== 'undefined' && window.SpeechSynthesisUtterance) ? window.SpeechSynthesisUtterance : null;
+        if (!synth || !Utter) {
+          output.push('[TTS] Speech synthesis unavailable.');
+          return true;
+        }
+        const voices = synth.getVoices ? synth.getVoices() : [];
+        const pick = () => {
+          if (!voices.length) return null;
+          const has = (needle) => voices.find((v) => String(v?.name || '').toLowerCase().includes(needle));
+          if (voicePref === 'bella') return has('bella');
+          if (voicePref === 'adam') return has('adam');
+          if (voicePref === 'emma') return has('emma');
+          if (voicePref === 'female') return voices.find((v) => /(female|woman|bella|nicole|sarah|sky|emma|isabella|alice)/i.test(String(v?.name || '')));
+          if (voicePref === 'male') return voices.find((v) => /(male|man|adam|michael|liam|eric|george|daniel|lewis)/i.test(String(v?.name || '')));
+          if (voicePref === 'uk') return voices.find((v) => String(v?.lang || '').toLowerCase().startsWith('en-gb'));
+          if (voicePref === 'us') return voices.find((v) => String(v?.lang || '').toLowerCase().startsWith('en-us'));
+          return voices.find((v) => /google/i.test(String(v?.name || ''))) || voices[0] || null;
+        };
+        const u = new Utter(text);
+        const v = pick();
+        if (v) u.voice = v;
+        u.lang = v?.lang || 'en-US';
+        u.rate = 1;
+        u.pitch = 1;
+        u.volume = 1;
+        try { synth.resume?.(); } catch { /* ignore */ }
+        try { synth.cancel(); } catch { /* ignore */ }
+        synth.speak(u);
+        output.push(`[TTS] Speaking (${voicePref})${v ? ` via ${v.name}` : ''}: ${text}`);
+        return true;
+      } catch (e) {
+        output.push(`[TTS] Error: ${e?.message || 'unknown error'}`);
+        return true;
+      }
+    }
+
     function execBlock(blockLines, localScope = {}) {
       let returnVal = null;
       let li = 0;
@@ -187,6 +257,51 @@ export function runPython(code) {
           li++; continue;
         }
 
+        // say("Hi", 2) -> preview text output
+        const sayMatch = stripped.match(/^say\((.*)\)$/);
+        if (sayMatch) {
+          const args = splitArgs(sayMatch[1]).map(a => evalExpr(a, env));
+          output.push(String(args[0] ?? ''));
+          li++; continue;
+        }
+
+        // play_sound("pop")
+        const soundMatch = stripped.match(/^play_sound\((.*)\)$/);
+        if (soundMatch) {
+          const args = splitArgs(soundMatch[1]).map(a => evalExpr(a, env));
+          events.push({ type: 'sound', name: String(args[0] ?? 'pop') });
+          li++; continue;
+        }
+
+        // stop_sounds()
+        if (/^stop_sounds\(\)$/.test(stripped)) {
+          events.push({ type: 'sound-stop' });
+          li++; continue;
+        }
+
+        // Extension fallback block execution hook
+        const extRun = stripped.match(/^run_extension_block\((.*)\)$/);
+        if (extRun) {
+          const args = splitArgs(extRun[1]).map(a => evalExpr(a, env));
+          const label = String(args[0] ?? 'block');
+          if (label.startsWith('tts|speak|') && speakInlineTts(label)) {
+            li++; continue;
+          }
+          // Support both palette labels ("[TTS] Speak") and direct command strings
+          // ("tts|speak|voice|text") produced by advanced extension blocks.
+          if (label.includes('|')) {
+            runExtensionCmd(label, output);
+          } else {
+            const mapped = resolveExtensionDragToBlock(label);
+            if (mapped?.type === 'extension-run' && mapped?.params?.cmd) {
+              runExtensionCmd(mapped.params.cmd, output);
+            } else {
+              output.push(`extension: ${label}`);
+            }
+          }
+          li++; continue;
+        }
+
         // Variable assignment: x = expr or x += expr etc
         const assignMatch = stripped.match(/^([a-zA-Z_]\w*)\s*(\+|-|\*|\/)?=\s*(.+)$/);
         if (assignMatch && !stripped.startsWith('if') && !stripped.startsWith('while')) {
@@ -201,6 +316,9 @@ export function runPython(code) {
           }
           env[varName] = val;
           scope[varName] = val;
+          // Keep backward compatibility: older math blocks assign into _math.
+          // Treat that as visible output so users see equation answers.
+          if (varName === '_math') output.push(String(val));
           li++; continue;
         }
 
@@ -312,5 +430,5 @@ export function runPython(code) {
     errors.push(`Error: ${err.message}`);
   }
 
-  return { output, errors };
+  return { output, errors, events };
 }
