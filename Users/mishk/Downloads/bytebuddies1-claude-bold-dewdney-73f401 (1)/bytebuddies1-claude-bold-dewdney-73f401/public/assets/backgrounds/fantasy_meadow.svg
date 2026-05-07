@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900">
+  <rect width="1600" height="900" fill="#0b1220"/>
+  <g id="background_mountains" opacity="0.45">
+    <path d="M0 500 Q200 300 400 500 T800 500 T1200 500 T1600 500 L1600 900 L0 900 Z" fill="#0f2b33"/>
+  </g>
+  <g id="midground_trees">
+    <rect x="100" y="420" width="1400" height="360" fill="#092424"/>
+  </g>
+  <g id="foreground" transform="translate(80,600)">
+    <circle cx="300" cy="-40" r="12" fill="#F59E0B" opacity="0.18"/>
+  </g>
+</svg>

@@ -1,0 +1,15 @@
+{
+  "name": "Raya the Coder",
+  "origin_point": [256,480],
+  "joints": {
+    "head": [256,140],
+    "neck": [256,180],
+    "shoulder_left": [206,200],
+    "shoulder_right": [306,200],
+    "elbow_left": [170,270],
+    "elbow_right": [346,270],
+    "hip": [256,340],
+    "knee_left": [216,420],
+    "knee_right": [296,420]
+  }
+}
