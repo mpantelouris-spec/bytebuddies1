@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { courses } from '../data/courseData';
 import { useUser } from '../contexts/UserContext';
-import BlockEditor from './BlockEditor';
+// BlockEditor removed - blocks only available in Game Builder mode
+// import BlockEditor from './BlockEditor';
 import PythonRunner from './PythonRunner';
 import HtmlEditor from './HtmlEditor';
 import { INTERACTIVE } from '../data/interactiveContent';
@@ -954,7 +955,9 @@ function LessonView({ course, completedSet, onComplete, onBack }) {
                 {interactive && (
                   <div style={{ flex: 1, position: 'sticky', top: 16 }}>
                     {interactive.type === 'blocks' && (
-                      <BlockEditor key={`${course.id}-${activeModule}`} starterBlocks={interactive.starter} editorHeight={600} />
+                      <div style={{ padding: '16px', background: 'var(--bg-secondary)', borderRadius: '8px', color: 'var(--text-muted)', textAlign: 'center', fontStyle: 'italic' }}>
+                        📝 Block-based lessons are available in Game Builder mode only. Visit Game Builder to practice this lesson.
+                      </div>
                     )}
                     {interactive.type === 'python' && (
                       <PythonRunner key={`${course.id}-${activeModule}`} starterCode={interactive.code || '# Write your Python here\n'} editorHeight={440} />

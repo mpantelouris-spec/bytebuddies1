@@ -1,4 +1,5 @@
 import React, { useState, useEffect, Component } from 'react';
+import AppMode from './utils/AppMode';
 
 class ErrorBoundary extends Component {
   constructor(props) { super(props); this.state = { error: null }; }
@@ -66,7 +67,13 @@ function AppInner() {
   useEffect(() => {
     const onHashChange = () => {
       const page = window.location.hash.replace('#', '') || 'dashboard';
+      const oldMode = AppMode.getCurrentMode(currentPage);
+      const newMode = AppMode.getCurrentMode(page);
       setCurrentPage(page);
+      // Notify AppMode listeners of mode change
+      if (oldMode !== newMode) {
+        AppMode.notifyModeChange(oldMode, newMode, page);
+      }
     };
     window.addEventListener('hashchange', onHashChange);
     // Set initial hash if not already set
@@ -74,9 +81,15 @@ function AppInner() {
       window.location.replace('#dashboard');
     }
     return () => window.removeEventListener('hashchange', onHashChange);
-  }, []);
+  }, [currentPage]);
 
   const renderPage = () => {
+    // Game Builder access guard - blocks only available to authorized users
+    if (currentPage === 'gamebuilder' && !isLoggedIn) {
+      setTimeout(() => navigate('dashboard'), 100);
+      return <Dashboard onNavigate={navigate} />;
+    }
+
     switch (currentPage) {
       case 'dashboard':  return user.role === 'teacher'
         ? <TeacherHome onNavigate={navigate} />

@@ -1,0 +1,19 @@
+:root{
+  /* Master palette tokens */
+  --primary-indigo: #6366F1;
+  --accent-amber: #F59E0B;
+  --accent-cyan: #06B6D4;
+  --shadow-base: #0B1020;
+  --surface-light: #F8FAFF;
+  --skin-light: #FFD7C4;
+  --skin-medium: #E8B487;
+  --skin-dark: #8C5A3C;
+  --friendly-green: #10B981;
+  --monster-pink: #FF6B6B;
+  --monster-peach: #FFB86B;
+  --glow-purple: #8B5CF6;
+  --ui-bg: #0f1724;
+}
+
+/* Utility classes for designers */
+.palette-swatch{width:40px;height:40px;border-radius:6px;display:inline-block;margin:4px}

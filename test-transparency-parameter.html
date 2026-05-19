@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Transparency Parameter Block Test</title>
+  <script src="https://unpkg.com/blockly@11.0.0/blockly_compressed.js"></script>
+  <script src="https://unpkg.com/blockly@11.0.0/blocks_compressed.js"></script>
+  <script src="https://unpkg.com/blockly@11.0.0/en.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      background: #1e1e2e;
+      color: #fff;
+    }
+    h1 { padding: 20px; margin: 0; background: #2d2d44; }
+    #blocklyDiv {
+      position: absolute;
+      left: 0;
+      top: 60px;
+      height: 600px;
+      width: 100%;
+      border: 2px solid #4a4a6a;
+    }
+    .info {
+      padding: 20px;
+      background: #2d2d44;
+      margin: 20px;
+      border-left: 4px solid #8b5cf6;
+      font-family: monospace;
+    }
+    .block-name { color: #8b5cf6; font-weight: bold; }
+    .transparency-info { 
+      background: #3d3d5d;
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎬 Transparency Parameter Block Test</h1>
+  <div id="blocklyDiv"></div>
+  
+  <div class="info">
+    <h3>✅ Implementation Status:</h3>
+    <p><span class="block-name">[Body] Turn on video on stage with [input] %</span></p>
+    <div class="transparency-info">
+      <strong>Transparency Parameter:</strong><br>
+      • Field Name: TRANSPARENCY<br>
+      • Type: Blockly.FieldNumber<br>
+      • Min: 0, Max: 100<br>
+      • Default: 0<br>
+      • Suffix: %<br>
+      • Status: ✅ Fully Implemented
+    </div>
+    <p><strong>Three Video Block Variants:</strong></p>
+    <ul>
+      <li><span class="block-name">[Body] Turn on video on stage with [input] %</span> (Purple #8b5cf6)</li>
+      <li><span class="block-name">[Face] Turn on video on stage with [input] %</span> (Pink #e91e63)</li>
+      <li><span class="block-name">[Object] Turn on video on stage with [input] %</span> (Orange #ff9800)</li>
+    </ul>
+    <p><strong>Try it:</strong> Click on a block in the left panel and drag it to the canvas. The transparency input field will appear inline on the block!</p>
+  </div>
+
+  <script>
+    // Define the three transparency video blocks
+    Blockly.Blocks['bb_body_video_on'] = {
+      init: function() {
+        this.appendDummyInput()
+            .appendField("[Body] Turn on video on stage with")
+            .appendField(new Blockly.FieldNumber(0, 0, 100), "TRANSPARENCY")
+            .appendField("%");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour('#8b5cf6');
+        this.setTooltip("Turn on camera for body detection with transparency level");
+      }
+    };
+
+    Blockly.Blocks['bb_face_video_on'] = {
+      init: function() {
+        this.appendDummyInput()
+            .appendField("[Face] Turn on video on stage with")
+            .appendField(new Blockly.FieldNumber(0, 0, 100), "TRANSPARENCY")
+            .appendField("%");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour('#e91e63');
+        this.setTooltip("Turn on camera for face detection with transparency level");
+      }
+    };
+
+    Blockly.Blocks['bb_object_video_on'] = {
+      init: function() {
+        this.appendDummyInput()
+            .appendField("[Object] Turn on video on stage with")
+            .appendField(new Blockly.FieldNumber(0, 0, 100), "TRANSPARENCY")
+            .appendField("%");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour('#ff9800');
+        this.setTooltip("Turn on camera for object detection with transparency level");
+      }
+    };
+
+    // JavaScript generator for these blocks (for export/code generation)
+    Blockly.JavaScript['bb_body_video_on'] = function(block) {
+      const transparency = block.getFieldValue('TRANSPARENCY');
+      return `// Turn on body detection video with transparency: ${transparency}%\n`;
+    };
+    Blockly.JavaScript['bb_face_video_on'] = function(block) {
+      const transparency = block.getFieldValue('TRANSPARENCY');
+      return `// Turn on face detection video with transparency: ${transparency}%\n`;
+    };
+    Blockly.JavaScript['bb_object_video_on'] = function(block) {
+      const transparency = block.getFieldValue('TRANSPARENCY');
+      return `// Turn on object detection video with transparency: ${transparency}%\n`;
+    };
+
+    // Initialize Blockly
+    const workspace = Blockly.inject('blocklyDiv', {
+      toolbox: `<xml>
+        <category name="Camera & Video" colour="270">
+          <block type="bb_body_video_on"></block>
+          <block type="bb_face_video_on"></block>
+          <block type="bb_object_video_on"></block>
+        </category>
+      </xml>`
+    });
+
+    // Pre-add a block for demonstration
+    workspace.newBlock('bb_body_video_on').initSvg();
+    workspace.newBlock('bb_body_video_on').moveTo(new Blockly.utils.Coordinate(20, 40));
+    workspace.render();
+  </script>
+</body>
+</html>

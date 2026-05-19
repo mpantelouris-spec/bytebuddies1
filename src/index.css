@@ -46,7 +46,8 @@
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
 
   --topbar-height: 56px;
-  --sidebar-width: 260px;
+  /* Room for Blockly category strip + flyout under “Blocks” */
+  --sidebar-width: 340px;
   --panel-min: 300px;
 
   --transition-fast: 150ms ease;
@@ -55,24 +56,67 @@
 }
 
 [data-theme="light"] {
-  --bg-primary: #f8f9fc;
+  --bg-primary: #f4f6fb;
   --bg-secondary: #ffffff;
-  --bg-tertiary: #f0f2f8;
+  --bg-tertiary: #e9edf6;
   --bg-card: #ffffff;
-  --bg-hover: #eef0f8;
-  --bg-input: #f0f2f8;
-  --border-color: #e2e4ee;
-  --border-light: #d0d4e4;
+  --bg-hover: #e3e8f5;
+  --bg-input: #edf1f9;
+  --border-color: #cfd7e6;
+  --border-light: #b9c5da;
 
-  --text-primary: #1a1a2e;
-  --text-secondary: #4a4a6a;
-  --text-muted: #8a8aaa;
+  --text-primary: #111827;
+  --text-secondary: #24324a;
+  --text-muted: #5c6b84;
   --text-inverse: #ffffff;
 
   --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
   --shadow-md: 0 4px 12px rgba(0,0,0,0.1);
   --shadow-lg: 0 8px 30px rgba(0,0,0,0.12);
   --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.15);
+}
+
+[data-theme="light"] .topbar {
+  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.06);
+}
+
+[data-theme="light"] .topbar-nav-btn {
+  color: #334155;
+}
+
+[data-theme="light"] .topbar-nav-btn:hover {
+  background: #e2e8f6;
+  color: #0f172a;
+}
+
+[data-theme="light"] .sidebar-header,
+[data-theme="light"] .sidebar-section-title {
+  color: #475569;
+}
+
+[data-theme="light"] .sidebar-item {
+  color: #1f2b3d;
+}
+
+[data-theme="light"] .sidebar-item:hover {
+  background: #e3e8f5;
+}
+
+[data-theme="light"] .panel-header {
+  color: #334155;
+}
+
+[data-theme="light"] .panel-header-tab {
+  color: #4b5563;
+}
+
+[data-theme="light"] .panel-header-tab:hover {
+  background: #e2e8f6;
+  color: #111827;
+}
+
+[data-theme="light"] .workspace-toolbar {
+  box-shadow: inset 0 -1px 0 rgba(15, 23, 42, 0.06);
 }
 
 /* ============ Reset & Base ============ */
@@ -236,6 +280,9 @@ body {
   flex-direction: column;
   overflow: hidden;
   flex-shrink: 0;
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
   transition: width var(--transition-normal);
 }
 
@@ -251,16 +298,225 @@ body {
   letter-spacing: 1px;
   color: var(--text-muted);
   border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
 }
 
 .sidebar-content {
   flex: 1;
-  overflow-y: auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   padding: 8px;
+}
+
+/* Blockly palette (workspace / game builder / robot): fill under “Blocks”, don’t clip flyout */
+.sidebar-blocks-workspace {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Flyout host is nested under a flex wrapper, not a direct child of .sidebar-blocks-workspace */
+.sidebar-blocks-workspace .blockly-container {
+  flex: 1;
+  min-height: 280px;
+  min-width: 0;
+}
+
+.sidebar-blocks-flyout-wrap {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-blocks-assets {
+  flex-shrink: 0;
+  max-height: 38%;
+  border-top: 1px solid var(--border-color);
+  margin-top: 4px;
+  padding-top: 4px;
+}
+
+/* Sidebar Blockly palette: show category strip + shaped blocks (PictoBlox-style) */
+.sidebar-blocks-workspace .blocklyToolboxDiv {
+  display: flex !important;
+  width: 58px !important;
+  min-width: 58px !important;
+  padding: 6px 4px !important;
+  background: var(--bg-secondary) !important;
+  border-right: 1px solid var(--border-color) !important;
+}
+
+.sidebar-blocks-workspace .blocklyFlyout {
+  background: var(--bg-tertiary) !important;
+}
+
+.sidebar-blocks-workspace .blocklyFlyoutBackground {
+  fill: var(--bg-tertiary) !important;
+  fill-opacity: 1 !important;
+}
+
+.sidebar-blocks-workspace .blocklyScrollbarVertical,
+.sidebar-blocks-workspace .blocklyScrollbarHorizontal {
+  display: block !important;
+}
+
+.sidebar-section--blocks {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  margin-bottom: 0;
+}
+
+.sidebar-section--blocks > .sidebar-section-title {
+  flex-shrink: 0;
+}
+
+.sidebar-blocks-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(125, 130, 255, 0.65) transparent;
+}
+
+.sidebar-blocks-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.sidebar-blocks-scroll::-webkit-scrollbar-thumb {
+  background: rgba(125, 130, 255, 0.6);
+  border-radius: 8px;
+}
+
+.sidebar .blockly-container .blocklySvg {
+  background: var(--bg-tertiary) !important;
 }
 
 .sidebar-section {
   margin-bottom: 16px;
+  flex-shrink: 0;
+}
+
+/* Sprite library modal */
+.sprite-library-modal {
+  width: 580px;
+  max-width: 90vw;
+  max-height: 80vh;
+  background: var(--bg-secondary);
+  border-radius: 16px;
+  border: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+  min-width: 0;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.sprite-library-header {
+  flex-shrink: 0;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sprite-library-categories-wrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-primary);
+}
+
+.sprite-library-scroll-btn {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.sprite-library-scroll-btn:hover {
+  background: var(--accent-primary);
+  color: #fff;
+  border-color: var(--accent-primary);
+}
+
+.sprite-library-categories {
+  flex: 1;
+  min-width: 0;
+  max-width: 100%;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  padding: 2px 4px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
+  scrollbar-color: var(--accent-primary) transparent;
+}
+
+.sprite-library-categories::-webkit-scrollbar {
+  height: 6px;
+}
+
+.sprite-library-categories::-webkit-scrollbar-thumb {
+  background: var(--accent-primary);
+  border-radius: 6px;
+}
+
+.sprite-library-categories button {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.sprite-library-grid {
+  flex: 1;
+  min-height: 120px;
+  min-width: 0;
+  overflow: auto;
+  padding: 14px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  gap: 10px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.sprite-library-footer {
+  flex-shrink: 0;
+  padding: 10px 14px;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: center;
 }
 
 .sidebar-section-title {
@@ -317,6 +573,108 @@ body {
   font-weight: 700;
   padding: 1px 6px;
   border-radius: var(--radius-full);
+}
+
+/* Block preview styling (PictoBlox-style) */
+/* Ensure inline styles for block previews take precedence */
+.sidebar-blocks-scroll .sidebar-item {
+  gap: 0 !important;
+}
+
+.sidebar-blocks-scroll .sidebar-item:not(.active) {
+  background: inherit !important;
+  color: inherit !important;
+  border: none !important;
+}
+
+/* Allow hover to darken slightly instead of changing background */
+.sidebar-blocks-scroll .sidebar-item:hover {
+  background: inherit !important;
+  color: inherit !important;
+  opacity: 0.9;
+}
+
+/* Scratch-style SVG block previews in sidebar (match canvas puzzle shapes) */
+.sidebar-blocks-scroll .scratch-svg-block {
+  max-width: 100%;
+}
+
+/* Blockly block preview inside accordion (same renderer as canvas) */
+.sidebar-block-drag-source {
+  overflow: hidden;
+  isolation: isolate;
+  max-width: 100%;
+}
+
+.sidebar-block-drag-source.sidebar-block-dragging {
+  opacity: 0.35;
+}
+
+.sidebar-block-drag-source.sidebar-block-dragging .sidebar-blockly-preview {
+  visibility: hidden;
+}
+
+.sidebar-blockly-preview {
+  position: relative;
+  overflow: hidden;
+  pointer-events: none;
+  max-width: 100%;
+  background: transparent !important;
+  border: none !important;
+  line-height: 0;
+}
+
+.sidebar-blockly-preview .blocklySvg,
+.sidebar-blockly-preview .blocklyWorkspace,
+.sidebar-blockly-preview .blocklyBlockCanvas {
+  background: transparent !important;
+  border: none !important;
+  overflow: visible;
+}
+
+.sidebar-blockly-preview > div {
+  background: transparent !important;
+  border: none !important;
+}
+
+.sidebar-blockly-preview .blocklyMainBackground {
+  fill: transparent !important;
+  stroke: none !important;
+}
+
+.sidebar-blockly-preview .blocklyMainWorkspaceScrollbar,
+.sidebar-blockly-preview .blocklyScrollbarVertical,
+.sidebar-blockly-preview .blocklyScrollbarHorizontal {
+  display: none !important;
+}
+
+/* Extension category headers — no white focus ring / box glow */
+.sidebar-blocks-scroll .sidebar-category-toggle {
+  outline: none;
+  box-shadow: none;
+  border-top: none;
+  border-right: none;
+  border-bottom: none;
+}
+
+.sidebar-blocks-scroll .sidebar-category-toggle:focus,
+.sidebar-blocks-scroll .sidebar-category-toggle:focus-visible,
+.sidebar-blocks-scroll .sidebar-category-toggle.active {
+  outline: none;
+  box-shadow: none;
+}
+
+.block-library-drawer-block-row--scratch {
+  border: none;
+  background: transparent;
+  padding: 4px 0;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+
+.block-library-drawer-block-row--scratch:hover {
+  opacity: 0.92;
 }
 
 /* ============ Buttons ============ */
@@ -845,6 +1203,451 @@ textarea.input {
 
 .blockly-container .blocklySvg {
   background: var(--bg-primary) !important;
+}
+
+/* Hide Blockly scrollbars while canvas is empty; reveal after blocks are added. */
+.bb-hide-empty-scrollbars .blocklyScrollbarHorizontal,
+.bb-hide-empty-scrollbars .blocklyScrollbarVertical {
+  display: none !important;
+}
+
+/*
+ * Workspace: keep Blockly canvas clean; block categories live in the app sidebar.
+ */
+.bb-workspace-scratch-toolbox {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.bb-workspace-scratch-toolbox > .blockly-container {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+
+/* Robot Lab / workspace Blockly scrollbars — match dark UI */
+.bb-workspace-scratch-toolbox .blocklyScrollbarHorizontal,
+.bb-workspace-scratch-toolbox .blocklyScrollbarVertical {
+  opacity: 0.85;
+}
+.bb-workspace-scratch-toolbox .blocklyScrollbarHandle {
+  fill: rgba(99, 102, 241, 0.55) !important;
+}
+.bb-workspace-scratch-toolbox .blocklyScrollbarBackground {
+  fill: rgba(15, 15, 26, 0.6) !important;
+  stroke: none !important;
+}
+
+/* Scratch-style robot canvas scrollbars */
+.robot-block-canvas {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(99, 102, 241, 0.45) rgba(15, 15, 26, 0.5);
+}
+.robot-block-canvas::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+.robot-block-canvas::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.45);
+  border-radius: 4px;
+}
+.robot-block-canvas::-webkit-scrollbar-track {
+  background: rgba(15, 15, 26, 0.5);
+}
+
+/* Robot Lab — compact dual-mode flash (Terminal tab) */
+.bb-dual-flash {
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-secondary);
+  font-size: 12px;
+}
+.bb-dual-flash__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+}
+.bb-dual-flash__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.bb-dual-flash__title {
+  font-weight: 700;
+  font-size: 12px;
+}
+.bb-dual-flash__mode {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+.bb-dual-flash__pct {
+  margin-left: auto;
+  font-weight: 600;
+  color: #a5b4fc;
+  font-size: 11px;
+}
+.bb-dual-flash__pct.done {
+  color: #22c55e;
+}
+.bb-dual-flash__chevron {
+  color: var(--text-muted);
+  font-size: 10px;
+  margin-left: 4px;
+}
+.bb-dual-flash__body {
+  padding: 0 12px 10px;
+}
+.bb-dual-flash__status {
+  margin: 0 0 8px;
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+.bb-dual-flash__row {
+  display: flex;
+  gap: 6px;
+  align-items: flex-end;
+  margin-bottom: 8px;
+}
+.bb-dual-flash__label {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.bb-dual-flash__select {
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 12px;
+}
+.bb-dual-flash__scan.linked {
+  border-color: #22c55e;
+  color: #86efac;
+}
+.bb-dual-flash__scan {
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 11px;
+}
+.bb-dual-flash__bar {
+  height: 5px;
+  background: var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+.bb-dual-flash__bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #6366f1, #a5b4fc);
+  transition: width 0.2s ease;
+}
+.bb-dual-flash__actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+.bb-dual-flash__primary {
+  padding: 7px 14px;
+  border: none;
+  border-radius: 6px;
+  background: #6366f1;
+  color: #fff;
+  font-weight: 600;
+  font-size: 12px;
+  cursor: pointer;
+}
+.bb-dual-flash__primary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.bb-dual-flash__secondary {
+  padding: 7px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 12px;
+  cursor: pointer;
+}
+.bb-dual-flash__error {
+  margin-bottom: 6px;
+  font-size: 11px;
+}
+.bb-dual-flash__error p {
+  margin: 0 0 6px;
+  color: #f87171;
+}
+.bb-dual-flash__error button {
+  margin-right: 6px;
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--bg-primary);
+  cursor: pointer;
+}
+.bb-dual-flash__log {
+  max-height: 72px;
+  overflow-y: auto;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border);
+  padding-top: 6px;
+}
+.bb-dual-flash__log .err {
+  color: #f87171;
+}
+.bb-dual-flash__presets {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+.bb-dual-flash__presets-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+.bb-dual-flash__preset {
+  padding: 4px 10px;
+  font-size: 11px;
+  border-radius: 5px;
+  border: 1px solid var(--border);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+.bb-dual-flash__preset:hover:not(:disabled) {
+  border-color: #6366f1;
+}
+.bb-dual-flash__board-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.bb-dual-flash__board-btn {
+  padding: 5px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-primary);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.bb-dual-flash__board-btn.active {
+  border-color: #6366f1;
+  background: rgba(99, 102, 241, 0.2);
+  color: var(--text-primary);
+}
+.bb-dual-flash__board-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.bb-dual-flash__preset--msd {
+  border-color: #22c55e;
+  color: #86efac;
+}
+.bb-dual-flash__sync-usb {
+  padding: 4px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  border-radius: 6px;
+  border: 1px solid var(--border-subtle, #334155);
+  background: transparent;
+  color: var(--text-muted, #94a3b8);
+  cursor: pointer;
+}
+.bb-dual-flash__sync-usb:hover:not(:disabled) {
+  color: var(--text-primary);
+  border-color: #6366f1;
+}
+.bb-dual-flash__usb-hint {
+  margin: 0 0 8px;
+  font-size: 11px;
+  line-height: 1.35;
+  color: #f59e0b;
+}
+.bb-dual-flash__hint {
+  margin: 0 0 8px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text-muted, #94a3b8);
+}
+.bb-dual-flash__ble-warn {
+  margin: 0 0 8px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: #f87171;
+}
+.bb-dual-flash__error button:not(:disabled) {
+  cursor: pointer;
+  opacity: 1;
+}
+
+.bb-dual-flash--tidy .bb-dual-flash__body {
+  padding-bottom: 12px;
+}
+.bb-dual-flash__pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.bb-dual-flash__pills button {
+  padding: 5px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-primary);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.bb-dual-flash__pills button.active {
+  border-color: #6366f1;
+  background: rgba(99, 102, 241, 0.2);
+  color: var(--text-primary);
+}
+.bb-dual-flash__pills button.linked {
+  border-color: #22c55e;
+  color: #86efac;
+}
+.bb-dual-flash__section {
+  margin-bottom: 12px;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-primary);
+}
+.bb-dual-flash__section--bt {
+  border-color: rgba(14, 165, 233, 0.35);
+}
+.bb-dual-flash__section-title {
+  margin: 0 0 4px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-primary);
+}
+.bb-dual-flash__section-desc {
+  margin: 0 0 8px;
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+.bb-dual-flash__steps {
+  margin: 0 0 8px;
+  padding-left: 18px;
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+.bb-dual-flash__steps strong {
+  color: var(--text-primary);
+}
+.bb-dual-flash__warn {
+  margin: 0 0 8px;
+  font-size: 11px;
+  color: #f87171;
+  line-height: 1.35;
+}
+.bb-dual-flash__btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.bb-dual-flash__btn {
+  padding: 7px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.bb-dual-flash__btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.bb-dual-flash__btn--primary {
+  border: none;
+  background: #6366f1;
+  color: #fff;
+}
+.bb-dual-flash__btn--bt {
+  border-color: #0ea5e9;
+  color: #7dd3fc;
+}
+.bb-dual-flash__btn--connect {
+  border-color: #22c55e;
+  color: #86efac;
+}
+.bb-dual-flash__btn--ghost {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+.bb-dual-flash__pill-connect {
+  border-color: #6366f1 !important;
+  color: #a5b4fc !important;
+}
+
+.bb-workspace-scratch-toolbox .blocklyToolboxDiv {
+  display: none !important;
+  width: 0 !important;
+  min-width: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: none !important;
+}
+
+.bb-workspace-scratch-toolbox .blockly-container .blocklySvg {
+  background-color: #eceff4 !important;
+  background-image: radial-gradient(circle, rgba(15, 23, 42, 0.14) 1px, transparent 1px) !important;
+  background-size: 22px 22px !important;
+}
+
+[data-theme="light"] .bb-workspace-scratch-toolbox .blockly-container .blocklySvg {
+  background-color: #e8edf6 !important;
+  background-image: radial-gradient(circle, rgba(30, 41, 59, 0.22) 1px, transparent 1px) !important;
+}
+
+[data-theme="dark"] .bb-workspace-scratch-toolbox .blockly-container .blocklySvg {
+  background-color: #2a2d3d !important;
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.1) 1px, transparent 1px) !important;
+}
+
+.bb-workspace-scratch-toolbox .blocklyMainBackground {
+  fill: transparent !important;
 }
 
 /* ============ Chat / AI Panel ============ */
@@ -1404,4 +2207,49 @@ textarea.input {
 @media (max-width: 480px) {
   .grid-4 { grid-template-columns: 1fr !important; }
   .grid-3 { grid-template-columns: 1fr !important; }
+}
+
+/* ============ Extensions browser (wide modal) ============ */
+.extensions-modal-overlay.modal-overlay {
+  z-index: 6000;
+}
+.extensions-modal-wide.modal {
+  max-width: 920px;
+  width: 92%;
+}
+.extensions-doc-link {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent-primary);
+  text-decoration: none;
+  align-self: flex-start;
+}
+.extensions-doc-link:hover {
+  text-decoration: underline;
+}
+.extensions-modal-footer {
+  padding: 14px 24px 20px;
+  border-top: 1px solid var(--border-color);
+  background: var(--bg-tertiary);
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.extensions-modal-footer p {
+  margin: 0 0 10px;
+}
+.extensions-modal-footer p:last-child {
+  margin-bottom: 0;
+}
+.extensions-modal-footnote {
+  font-size: 11px;
+  opacity: 0.9;
+}
+
+.extensions-extension-row {
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+.extensions-extension-row:hover {
+  background: var(--bg-tertiary) !important;
 }

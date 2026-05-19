@@ -5,10 +5,11 @@ Use this checklist after connecting the Cutebot on ByteBuddies to verify all fea
 ---
 
 ## Setup
-- [ ] micro:bit connected via USB
-- [ ] ByteBuddies shows "Connected"
-- [ ] Cutebot powered on (switch at the back)
-- [ ] Smiley face appears on micro:bit display after connecting
+- [x] micro:bit connected via USB
+- [x] ByteBuddies shows "Connected"
+- [x] Cutebot powered on (switch at the back)
+- [x] Smiley face appears on micro:bit display after connecting
+- **Status:** ✅ Ready for testing
 
 ---
 

@@ -1,6 +1,31 @@
 import React, { useState, useRef, useEffect, useCallback, useImperativeHandle, forwardRef } from 'react';
+import ScratchStyleBlock, { getCategoryColor } from './ScratchStyleBlock';
+import UnifiedBlocklyWorkspace from './UnifiedBlocklyWorkspace';
+import { resolveBlocklyNodeType } from '../utils/blocks';
+import { BLOCK_STACK_GAP, columnizeBlocks } from '../utils/blockStack';
+import { snapCanvasStack } from '../utils/blockSnap';
+import { emitAddSidebarBlock } from '../utils/blockLibraryEvents';
+import AppMode from '../utils/AppMode';
+import { getFlashingInstructions, getTroubleshootingSteps } from '../utils/simpleMicrobitFlash';
+import {
+  getMicrobitFlashCoordinator,
+  checkBrowserSupport,
+  isElectronNative,
+  validateHex,
+  getHexInfo,
+  isUniversalHex,
+  separateUniversalHex,
+  microbitBoardId,
+  getWebBluetoothStatus,
+  buildMicroPythonBootHex,
+  buildBleBridgeHex,
+  connectMicrobitWireless,
+} from '@flash/index.js';
+import { flashMicrobitHex, requestMicrobitUsbEarly } from '@flash/flashMicrobit.js';
+import { formatSignalBars } from '@flash/microbitWebBle.js';
+import { validateHexStrict } from '@flash/hexValidationStrict.js';
+import MicrobitDualFlashPanel from './MicrobitDualFlashPanel.jsx';
 
-// ─── micro:bit WebUSB direct-flash (works with ANY firmware) ─────────────────
 async function _idbCache(key, fetchFn) {
   try {
     const db = await new Promise((res, rej) => {
@@ -26,102 +51,135 @@ async function _idbCache(key, fetchFn) {
   } catch { return fetchFn(); }
 }
 
-async function buildMicrobitHex(pythonCode, onStatus) {
-  onStatus?.('📦 Loading MicroPython runtime... (cached after first use)');
-  const [{ MicropythonFsHex, microbitBoardId }, hexV1, hexV2] = await Promise.all([
+/** Build universal MicroPython hex in the browser (works on production without localhost). */
+async function buildMicrobitHexInBrowser(pythonCode, onStatus) {
+  onStatus?.('📦 Loading MicroPython runtime…');
+  const [{ MicropythonFsHex, microbitBoardId: mbId }, hexV1, hexV2] = await Promise.all([
     import('@microbit/microbit-fs'),
-    _idbCache('mp_v1', () => fetch('/micropython-v1.hex').then(r => { if (!r.ok) throw new Error('hex fetch failed'); return r.text(); })),
-    _idbCache('mp_v2', () => fetch('/micropython-v2.hex').then(r => { if (!r.ok) throw new Error('hex fetch failed'); return r.text(); })),
+    _idbCache('micropython_v1', () =>
+      fetch('/micropython-v1.hex').then((r) => {
+        if (!r.ok) throw new Error('Could not load micropython-v1.hex');
+        return r.text();
+      }),
+    ),
+    _idbCache('micropython_v2', () =>
+      fetch('/micropython-v2.hex').then((r) => {
+        if (!r.ok) throw new Error('Could not load micropython-v2.hex');
+        return r.text();
+      }),
+    ),
   ]);
-  onStatus?.('🔨 Building program hex...');
+
+  onStatus?.('⚙️ Compiling your program…');
   const fs = new MicropythonFsHex([
-    { hex: hexV1, boardId: microbitBoardId.V1 },
-    { hex: hexV2, boardId: microbitBoardId.V2 },
+    { hex: hexV1, boardId: mbId.V1 },
+    { hex: hexV2, boardId: mbId.V2 },
   ]);
   fs.write('main.py', pythonCode);
-  return fs.getUniversalHex();
+  const hex = fs.getUniversalHex();
+  onStatus?.(`✅ Program built (${(hex.length / 1024).toFixed(0)} KB universal hex)`);
+  return hex;
 }
 
-async function flashViaDAPLink(hexStr, onProgress) {
-  const { WebUSB, DAPLink } = await import('dapjs');
-  const device = await navigator.usb.requestDevice({ filters: [{ vendorId: 0x0D28 }] });
-  const transport = new WebUSB(device);
-  const daplink = new DAPLink(transport);
-  daplink.on(DAPLink.EVENT_PROGRESS, p => onProgress(Math.round(p * 100)));
+/** Optional local dev server fallback (node build-hex-server.mjs). */
+async function buildMicrobitHexViaServer(pythonCode, onStatus) {
+  onStatus?.('📦 Building via local hex server (localhost:3456)…');
+  const response = await fetch('http://localhost:3456/api/build-hex', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ pythonCode }),
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.error || response.statusText || 'Hex server error');
+  }
+  const result = await response.json();
+  if (!result.success) throw new Error(result.error || 'Hex build failed');
+  return result.hex;
+}
+
+async function buildMicrobitHex(pythonCode, onStatus) {
   try {
-    await daplink.connect();
-    await new Promise(r => setTimeout(r, 600)); // let DAPLink settle before flashing
-    await daplink.flash(hexStr);
-  } finally {
-    try { await daplink.disconnect(); } catch {}
+    return await buildMicrobitHexInBrowser(pythonCode, onStatus);
+  } catch (browserErr) {
+    onStatus?.(`⚠️ In-browser build failed: ${browserErr.message}`);
+    try {
+      return await buildMicrobitHexViaServer(pythonCode, onStatus);
+    } catch (serverErr) {
+      throw new Error(
+        `Could not build program hex. ${browserErr.message}. ` +
+          (serverErr.message?.includes('fetch')
+            ? 'Start optional dev server: node build-hex-server.mjs'
+            : serverErr.message),
+      );
+    }
   }
 }
-// ─────────────────────────────────────────────────────────────────────────────
 
 /* ─── Robot command definitions ─── */
 const ROBOT_COMMANDS = [
   // Movement
-  { cat: 'Movement', id: 'forward',    icon: '⬆️',  label: 'Forward',        color: '#22c55e', params: [{ key: 'amount',  label: 'steps',  default: '80',   type: 'number' }] },
-  { cat: 'Movement', id: 'back',       icon: '⬇️',  label: 'Backward',       color: '#22c55e', params: [{ key: 'amount',  label: 'steps', default: '80',   type: 'number' }] },
-  { cat: 'Movement', id: 'move_left',  icon: '⬅️',  label: 'Move Left',      color: '#22c55e', params: [{ key: 'amount',  label: 'steps',  default: '80',   type: 'number' }] },
-  { cat: 'Movement', id: 'move_right', icon: '➡️',  label: 'Move Right',     color: '#22c55e', params: [{ key: 'amount',  label: 'steps',  default: '80',   type: 'number' }] },
-  { cat: 'Movement', id: 'left',       icon: '↺',   label: 'Turn Left',      color: '#22c55e', params: [{ key: 'degrees', label: '°',   default: '90',   type: 'number' }] },
-  { cat: 'Movement', id: 'right',      icon: '↻',   label: 'Turn Right',     color: '#22c55e', params: [{ key: 'degrees', label: '°',   default: '90',   type: 'number' }] },
-  { cat: 'Movement', id: 'spin_left',  icon: '↺',   label: 'Spin Left',      color: '#22c55e', params: [{ key: 'degrees', label: '°',   default: '360',  type: 'number' }] },
-  { cat: 'Movement', id: 'spin_right', icon: '↻',   label: 'Spin Right',     color: '#22c55e', params: [{ key: 'degrees', label: '°',   default: '360',  type: 'number' }] },
-  { cat: 'Movement', id: 'stop',       icon: '⏹️',  label: 'Stop',           color: '#22c55e', params: [] },
-  { cat: 'Movement', id: 'coast',      icon: '🌊',  label: 'Coast Stop',     color: '#22c55e', params: [] },
-  { cat: 'Movement', id: 'speed',      icon: '⚡',  label: 'Set Speed',      color: '#22c55e', params: [{ key: 'pct',     label: '%',   default: '75',   type: 'number' }] },
-  { cat: 'Movement', id: 'motor_l',    icon: '◀',   label: 'Motor Left',     color: '#22c55e', params: [{ key: 'power',   label: '%',   default: '50',   type: 'number' }] },
-  { cat: 'Movement', id: 'motor_r',    icon: '▶',   label: 'Motor Right',    color: '#22c55e', params: [{ key: 'power',   label: '%',   default: '50',   type: 'number' }] },
-  { cat: 'Movement', id: 'motors',     icon: '⚙️',  label: 'Both Motors',    color: '#22c55e', params: [{ key: 'left',    label: 'L%',  default: '50',   type: 'number' }, { key: 'right', label: 'R%', default: '50', type: 'number' }] },
+  { cat: 'Movement', id: 'forward',    icon: '⬆️',  label: 'Forward',        color: '#f59e0b', params: [{ key: 'amount',  label: 'steps',  default: '80',   type: 'number' }] },
+  { cat: 'Movement', id: 'back',       icon: '⬇️',  label: 'Backward',       color: '#f59e0b', params: [{ key: 'amount',  label: 'steps', default: '80',   type: 'number' }] },
+  { cat: 'Movement', id: 'move_left',  icon: '⬅️',  label: 'Move Left',      color: '#f59e0b', params: [{ key: 'amount',  label: 'steps',  default: '80',   type: 'number' }] },
+  { cat: 'Movement', id: 'move_right', icon: '➡️',  label: 'Move Right',     color: '#f59e0b', params: [{ key: 'amount',  label: 'steps',  default: '80',   type: 'number' }] },
+  { cat: 'Movement', id: 'left',       icon: '↺',   label: 'Turn Left',      color: '#f59e0b', params: [{ key: 'degrees', label: '°',   default: '90',   type: 'number' }] },
+  { cat: 'Movement', id: 'right',      icon: '↻',   label: 'Turn Right',     color: '#f59e0b', params: [{ key: 'degrees', label: '°',   default: '90',   type: 'number' }] },
+  { cat: 'Movement', id: 'spin_left',  icon: '↺',   label: 'Spin Left',      color: '#f59e0b', params: [{ key: 'degrees', label: '°',   default: '360',  type: 'number' }] },
+  { cat: 'Movement', id: 'spin_right', icon: '↻',   label: 'Spin Right',     color: '#f59e0b', params: [{ key: 'degrees', label: '°',   default: '360',  type: 'number' }] },
+  { cat: 'Movement', id: 'stop',       icon: '⏹️',  label: 'Stop',           color: '#f59e0b', params: [] },
+  { cat: 'Movement', id: 'coast',      icon: '🌊',  label: 'Coast Stop',     color: '#f59e0b', params: [] },
+  { cat: 'Movement', id: 'speed',      icon: '⚡',  label: 'Set Speed',      color: '#f59e0b', params: [{ key: 'pct',     label: '%',   default: '75',   type: 'number' }] },
+  { cat: 'Movement', id: 'motor_l',    icon: '◀',   label: 'Motor Left',     color: '#f59e0b', params: [{ key: 'power',   label: '%',   default: '50',   type: 'number' }] },
+  { cat: 'Movement', id: 'motor_r',    icon: '▶',   label: 'Motor Right',    color: '#f59e0b', params: [{ key: 'power',   label: '%',   default: '50',   type: 'number' }] },
+  { cat: 'Movement', id: 'motors',     icon: '⚙️',  label: 'Both Motors',    color: '#f59e0b', params: [{ key: 'left',    label: 'L%',  default: '50',   type: 'number' }, { key: 'right', label: 'R%', default: '50', type: 'number' }] },
 
   // Sensors
-  { cat: 'Sensors', id: 'if_dist',     icon: '📡',  label: 'If Distance <',  color: '#3b82f6', params: [{ key: 'cm',      label: 'cm',  default: '20',   type: 'number' }] },
-  { cat: 'Sensors', id: 'if_line',     icon: '〰️',  label: 'If Line Found',  color: '#3b82f6', params: [] },
-  { cat: 'Sensors', id: 'if_btn_a',    icon: '🔘',  label: 'If Button A',    color: '#3b82f6', params: [] },
-  { cat: 'Sensors', id: 'if_btn_b',    icon: '🔘',  label: 'If Button B',    color: '#3b82f6', params: [] },
-  { cat: 'Sensors', id: 'if_touch',    icon: '👆',  label: 'If Touch Pin',   color: '#3b82f6', params: [{ key: 'pin',     label: 'pin', default: '0',    type: 'number' }] },
-  { cat: 'Sensors', id: 'if_shake',    icon: '📳',  label: 'If Shaken',      color: '#3b82f6', params: [] },
-  { cat: 'Sensors', id: 'if_tilt',     icon: '📐',  label: 'If Tilted',      color: '#3b82f6', params: [{ key: 'dir', label: 'dir', default: 'left', type: 'select', options: ['left','right','forward','back'] }] },
-  { cat: 'Sensors', id: 'if_light',    icon: '☀️',  label: 'If Light <',     color: '#3b82f6', params: [{ key: 'val',     label: 'lux', default: '100',  type: 'number' }] },
-  { cat: 'Sensors', id: 'wait_dist',   icon: '⏳',  label: 'Wait Until Dist <', color: '#3b82f6', params: [{ key: 'cm',   label: 'cm',  default: '20',   type: 'number' }] },
-  { cat: 'Sensors', id: 'wait_line',   icon: '⏳',  label: 'Wait for Line',  color: '#3b82f6', params: [] },
-  { cat: 'Sensors', id: 'read_dist',   icon: '📏',  label: 'Read Distance → var', color: '#3b82f6', params: [{ key: 'var', label: 'var', default: 'dist', type: 'text' }] },
-  { cat: 'Sensors', id: 'read_light',  icon: '💡',  label: 'Read Light → var',   color: '#3b82f6', params: [{ key: 'var', label: 'var', default: 'light', type: 'text' }] },
-  { cat: 'Sensors', id: 'follow_line', icon: '🛤️',  label: 'Follow Line',    color: '#3b82f6', params: [{ key: 'secs',   label: 's',   default: '3',    type: 'number' }] },
-  { cat: 'Sensors', id: 'avoid_wall',  icon: '🧱',  label: 'Avoid Walls',    color: '#3b82f6', params: [{ key: 'secs',   label: 's',   default: '5',    type: 'number' }] },
-  { cat: 'Sensors', id: 'read_temp',   icon: '🌡️',  label: 'Read Temp → var',    color: '#3b82f6', params: [{ key: 'var', label: 'var', default: 'temp', type: 'text' }] },
-  { cat: 'Sensors', id: 'read_compass',icon: '🧭',  label: 'Read Compass → var', color: '#3b82f6', params: [{ key: 'var', label: 'var', default: 'heading', type: 'text' }] },
-  { cat: 'Sensors', id: 'read_accel',  icon: '📐',  label: 'Read Accel → var',   color: '#3b82f6', params: [{ key: 'var', label: 'var', default: 'ax', type: 'text' }, { key: 'axis', label: 'axis', default: 'x', type: 'select', options: ['x','y','z'] }] },
-  { cat: 'Sensors', id: 'read_btn_a',  icon: '🔘',  label: 'Read Button A → var',color: '#3b82f6', params: [{ key: 'var', label: 'var', default: 'btnA', type: 'text' }] },
-  { cat: 'Sensors', id: 'read_btn_b',  icon: '🔘',  label: 'Read Button B → var',color: '#3b82f6', params: [{ key: 'var', label: 'var', default: 'btnB', type: 'text' }] },
-  { cat: 'Sensors', id: 'if_temp',     icon: '🌡️',  label: 'If Temp >',      color: '#3b82f6', params: [{ key: 'val', label: '°C', default: '25', type: 'number' }] },
-  { cat: 'Sensors', id: 'if_compass',  icon: '🧭',  label: 'If Heading >',   color: '#3b82f6', params: [{ key: 'val', label: '°', default: '180', type: 'number' }] },
+  { cat: 'Sensors', id: 'if_dist',     icon: '📡',  label: 'If Distance <',  color: '#f59e0b', params: [{ key: 'cm',      label: 'cm',  default: '20',   type: 'number' }] },
+  { cat: 'Sensors', id: 'if_line',     icon: '〰️',  label: 'If Line Found',  color: '#f59e0b', params: [] },
+  { cat: 'Sensors', id: 'if_btn_a',    icon: '🔘',  label: 'If Button A',    color: '#f59e0b', params: [] },
+  { cat: 'Sensors', id: 'if_btn_b',    icon: '🔘',  label: 'If Button B',    color: '#f59e0b', params: [] },
+  { cat: 'Sensors', id: 'if_touch',    icon: '👆',  label: 'If Touch Pin',   color: '#f59e0b', params: [{ key: 'pin',     label: 'pin', default: '0',    type: 'number' }] },
+  { cat: 'Sensors', id: 'if_shake',    icon: '📳',  label: 'If Shaken',      color: '#f59e0b', params: [] },
+  { cat: 'Sensors', id: 'if_tilt',     icon: '📐',  label: 'If Tilted',      color: '#f59e0b', params: [{ key: 'dir', label: 'dir', default: 'left', type: 'select', options: ['left','right','forward','back'] }] },
+  { cat: 'Sensors', id: 'if_light',    icon: '☀️',  label: 'If Light <',     color: '#f59e0b', params: [{ key: 'val',     label: 'lux', default: '100',  type: 'number' }] },
+  { cat: 'Sensors', id: 'wait_dist',   icon: '⏳',  label: 'Wait Until Dist <', color: '#f59e0b', params: [{ key: 'cm',   label: 'cm',  default: '20',   type: 'number' }] },
+  { cat: 'Sensors', id: 'wait_line',   icon: '⏳',  label: 'Wait for Line',  color: '#f59e0b', params: [] },
+  { cat: 'Sensors', id: 'read_dist',   icon: '📏',  label: 'Read Distance → var', color: '#f59e0b', params: [{ key: 'var', label: 'var', default: 'dist', type: 'text' }] },
+  { cat: 'Sensors', id: 'read_light',  icon: '💡',  label: 'Read Light → var',   color: '#f59e0b', params: [{ key: 'var', label: 'var', default: 'light', type: 'text' }] },
+  { cat: 'Sensors', id: 'follow_line', icon: '🛤️',  label: 'Follow Line',    color: '#f59e0b', params: [{ key: 'secs',   label: 's',   default: '3',    type: 'number' }] },
+  { cat: 'Sensors', id: 'avoid_wall',  icon: '🧱',  label: 'Avoid Walls',    color: '#f59e0b', params: [{ key: 'secs',   label: 's',   default: '5',    type: 'number' }] },
+  { cat: 'Sensors', id: 'read_temp',   icon: '🌡️',  label: 'Read Temp → var',    color: '#f59e0b', params: [{ key: 'var', label: 'var', default: 'temp', type: 'text' }] },
+  { cat: 'Sensors', id: 'read_compass',icon: '🧭',  label: 'Read Compass → var', color: '#f59e0b', params: [{ key: 'var', label: 'var', default: 'heading', type: 'text' }] },
+  { cat: 'Sensors', id: 'read_accel',  icon: '📐',  label: 'Read Accel → var',   color: '#f59e0b', params: [{ key: 'var', label: 'var', default: 'ax', type: 'text' }, { key: 'axis', label: 'axis', default: 'x', type: 'select', options: ['x','y','z'] }] },
+  { cat: 'Sensors', id: 'read_btn_a',  icon: '🔘',  label: 'Read Button A → var',color: '#f59e0b', params: [{ key: 'var', label: 'var', default: 'btnA', type: 'text' }] },
+  { cat: 'Sensors', id: 'read_btn_b',  icon: '🔘',  label: 'Read Button B → var',color: '#f59e0b', params: [{ key: 'var', label: 'var', default: 'btnB', type: 'text' }] },
+  { cat: 'Sensors', id: 'if_temp',     icon: '🌡️',  label: 'If Temp >',      color: '#f59e0b', params: [{ key: 'val', label: '°C', default: '25', type: 'number' }] },
+  { cat: 'Sensors', id: 'if_compass',  icon: '🧭',  label: 'If Heading >',   color: '#f59e0b', params: [{ key: 'val', label: '°', default: '180', type: 'number' }] },
 
   // Math
-  { cat: 'Math', id: 'math_random',    icon: '🎲',  label: 'Random Number',  color: '#d97706', params: [{ key: 'var', label: 'var', default: 'n', type: 'text' }, { key: 'min', label: 'min', default: '1', type: 'number' }, { key: 'max', label: 'max', default: '10', type: 'number' }] },
-  { cat: 'Math', id: 'math_abs',       icon: '±',   label: 'Abs Value',      color: '#d97706', params: [{ key: 'var', label: 'result', default: 'x', type: 'text' }, { key: 'src', label: 'of', default: 'x', type: 'text' }] },
-  { cat: 'Math', id: 'math_map',       icon: '🗺️',  label: 'Map Value',      color: '#d97706', params: [{ key: 'var', label: 'result', default: 'mapped', type: 'text' }, { key: 'src', label: 'from', default: 'x', type: 'text' }, { key: 'low1', label: 'lo1', default: '0', type: 'number' }, { key: 'hi1', label: 'hi1', default: '100', type: 'number' }, { key: 'low2', label: 'lo2', default: '0', type: 'number' }, { key: 'hi2', label: 'hi2', default: '1023', type: 'number' }] },
-  { cat: 'Math', id: 'math_constrain', icon: '📏',  label: 'Constrain',      color: '#d97706', params: [{ key: 'var', label: 'var', default: 'x', type: 'text' }, { key: 'min', label: 'min', default: '0', type: 'number' }, { key: 'max', label: 'max', default: '100', type: 'number' }] },
-  { cat: 'Math', id: 'math_expr',      icon: '🧮',  label: 'Set var = expr', color: '#d97706', params: [{ key: 'var', label: 'var', default: 'x', type: 'text' }, { key: 'expr', label: '=', default: 'x + 1', type: 'text' }] },
+  { cat: 'Math', id: 'math_random',    icon: '🎲',  label: 'Random Number',  color: '#f59e0b', params: [{ key: 'var', label: 'var', default: 'n', type: 'text' }, { key: 'min', label: 'min', default: '1', type: 'number' }, { key: 'max', label: 'max', default: '10', type: 'number' }] },
+  { cat: 'Math', id: 'math_abs',       icon: '±',   label: 'Abs Value',      color: '#f59e0b', params: [{ key: 'var', label: 'result', default: 'x', type: 'text' }, { key: 'src', label: 'of', default: 'x', type: 'text' }] },
+  { cat: 'Math', id: 'math_map',       icon: '🗺️',  label: 'Map Value',      color: '#f59e0b', params: [{ key: 'var', label: 'result', default: 'mapped', type: 'text' }, { key: 'src', label: 'from', default: 'x', type: 'text' }, { key: 'low1', label: 'lo1', default: '0', type: 'number' }, { key: 'hi1', label: 'hi1', default: '100', type: 'number' }, { key: 'low2', label: 'lo2', default: '0', type: 'number' }, { key: 'hi2', label: 'hi2', default: '1023', type: 'number' }] },
+  { cat: 'Math', id: 'math_constrain', icon: '📏',  label: 'Constrain',      color: '#f59e0b', params: [{ key: 'var', label: 'var', default: 'x', type: 'text' }, { key: 'min', label: 'min', default: '0', type: 'number' }, { key: 'max', label: 'max', default: '100', type: 'number' }] },
+  { cat: 'Math', id: 'math_expr',      icon: '🧮',  label: 'Set var = expr', color: '#f59e0b', params: [{ key: 'var', label: 'var', default: 'x', type: 'text' }, { key: 'expr', label: '=', default: 'x + 1', type: 'text' }] },
 
   // Control
-  { cat: 'Control', id: 'on_start',    icon: '🚀',  label: 'On Start',       color: '#16a34a', params: [] },
-  { cat: 'Control', id: 'wait',        icon: '⏱️',  label: 'Wait',           color: '#8b5cf6', params: [{ key: 'secs',   label: 's',   default: '1',    type: 'number' }] },
-  { cat: 'Control', id: 'forever',     icon: '♾️',  label: 'Forever',        color: '#8b5cf6', params: [] },
-  { cat: 'Control', id: 'repeat',      icon: '🔁',  label: 'Repeat',         color: '#8b5cf6', params: [{ key: 'times',  label: 'x',   default: '3',    type: 'number' }] },
-  { cat: 'Control', id: 'repeat_end',  icon: '🔚',  label: 'End Repeat',     color: '#8b5cf6', params: [] },
-  { cat: 'Control', id: 'while_do',    icon: '🔄',  label: 'While',          color: '#8b5cf6', params: [{ key: 'cond', label: 'var', default: 'x', type: 'text' }, { key: 'op', label: 'op', default: '<', type: 'select', options: ['<','>','=','!=','<=','>='] }, { key: 'val', label: 'val', default: '10', type: 'number' }] },
-  { cat: 'Control', id: 'while_end',   icon: '🔚',  label: 'End While',      color: '#8b5cf6', params: [] },
-  { cat: 'Control', id: 'for_range',   icon: '🔢',  label: 'Count',          color: '#8b5cf6', params: [{ key: 'var', label: 'var', default: 'i', type: 'text' }, { key: 'from', label: 'from', default: '0', type: 'number' }, { key: 'to', label: 'to', default: '5', type: 'number' }] },
-  { cat: 'Control', id: 'for_end',     icon: '🔚',  label: 'End Count',      color: '#8b5cf6', params: [] },
-  { cat: 'Control', id: 'if_then',     icon: '🔀',  label: 'If / Then',      color: '#8b5cf6', params: [{ key: 'cond',   label: 'var', default: 'dist',  type: 'text' }, { key: 'op', label: 'op', default: '<', type: 'select', options: ['<','>','=','!=','<=','>='] }, { key: 'val', label: 'val', default: '20', type: 'number' }] },
-  { cat: 'Control', id: 'else_branch', icon: '↔️',  label: 'Else',           color: '#8b5cf6', params: [] },
-  { cat: 'Control', id: 'else_if',     icon: '↔️',  label: 'Else If',        color: '#8b5cf6', params: [{ key: 'cond', label: 'var', default: 'x', type: 'text' }, { key: 'op', label: 'op', default: '<', type: 'select', options: ['<','>','=','!=','<=','>='] }, { key: 'val', label: 'val', default: '0', type: 'number' }] },
-  { cat: 'Control', id: 'if_end',      icon: '🔚',  label: 'End If',         color: '#8b5cf6', params: [] },
-  { cat: 'Control', id: 'break',       icon: '✋',  label: 'Break Loop',     color: '#8b5cf6', params: [] },
-  { cat: 'Control', id: 'stop_all',    icon: '🛑',  label: 'Stop Program',   color: '#8b5cf6', params: [] },
+  { cat: 'Control', id: 'on_start',    icon: '🚀',  label: 'On Start',       color: '#f59e0b', params: [] },
+  { cat: 'Control', id: 'wait',        icon: '⏱️',  label: 'Wait',           color: '#f59e0b', params: [{ key: 'secs',   label: 's',   default: '1',    type: 'number' }] },
+  { cat: 'Control', id: 'forever',     icon: '♾️',  label: 'Forever',        color: '#f59e0b', params: [] },
+  { cat: 'Control', id: 'repeat',      icon: '🔁',  label: 'Repeat',         color: '#f59e0b', params: [{ key: 'times',  label: 'x',   default: '3',    type: 'number' }] },
+  { cat: 'Control', id: 'repeat_end',  icon: '🔚',  label: 'End Repeat',     color: '#f59e0b', params: [] },
+  { cat: 'Control', id: 'while_do',    icon: '🔄',  label: 'While',          color: '#f59e0b', params: [{ key: 'cond', label: 'var', default: 'x', type: 'text' }, { key: 'op', label: 'op', default: '<', type: 'select', options: ['<','>','=','!=','<=','>='] }, { key: 'val', label: 'val', default: '10', type: 'number' }] },
+  { cat: 'Control', id: 'while_end',   icon: '🔚',  label: 'End While',      color: '#f59e0b', params: [] },
+  { cat: 'Control', id: 'for_range',   icon: '🔢',  label: 'Count',          color: '#f59e0b', params: [{ key: 'var', label: 'var', default: 'i', type: 'text' }, { key: 'from', label: 'from', default: '0', type: 'number' }, { key: 'to', label: 'to', default: '5', type: 'number' }] },
+  { cat: 'Control', id: 'for_end',     icon: '🔚',  label: 'End Count',      color: '#f59e0b', params: [] },
+  { cat: 'Control', id: 'if_then',     icon: '🔀',  label: 'If / Then',      color: '#f59e0b', params: [{ key: 'cond',   label: 'var', default: 'dist',  type: 'text' }, { key: 'op', label: 'op', default: '<', type: 'select', options: ['<','>','=','!=','<=','>='] }, { key: 'val', label: 'val', default: '20', type: 'number' }] },
+  { cat: 'Control', id: 'else_branch', icon: '↔️',  label: 'Else',           color: '#f59e0b', params: [] },
+  { cat: 'Control', id: 'else_if',     icon: '↔️',  label: 'Else If',        color: '#f59e0b', params: [{ key: 'cond', label: 'var', default: 'x', type: 'text' }, { key: 'op', label: 'op', default: '<', type: 'select', options: ['<','>','=','!=','<=','>='] }, { key: 'val', label: 'val', default: '0', type: 'number' }] },
+  { cat: 'Control', id: 'if_end',      icon: '🔚',  label: 'End If',         color: '#f59e0b', params: [] },
+  { cat: 'Control', id: 'break',       icon: '✋',  label: 'Break Loop',     color: '#f59e0b', params: [] },
+  { cat: 'Control', id: 'stop_all',    icon: '🛑',  label: 'Stop Program',   color: '#f59e0b', params: [] },
 
   // Outputs
   { cat: 'Outputs', id: 'led',         icon: '💡',  label: 'LED Colour',     color: '#f59e0b', params: [{ key: 'color',  label: 'col', default: 'red',  type: 'select', options: ['red','green','blue','yellow','cyan','magenta','white','off'] }] },
@@ -136,48 +194,75 @@ const ROBOT_COMMANDS = [
   { cat: 'Outputs', id: 'clear_disp',  icon: '🧹',  label: 'Clear Display',  color: '#f59e0b', params: [] },
 
   // Servo & Actuators
-  { cat: 'Servo', id: 'servo',         icon: '🔧',  label: 'Servo Angle',    color: '#ec4899', params: [{ key: 'pin', label: 'pin', default: '0', type: 'number' }, { key: 'angle', label: '°', default: '90', type: 'number' }] },
-  { cat: 'Servo', id: 'servo_sweep',   icon: '↔️',  label: 'Servo Sweep',    color: '#ec4899', params: [{ key: 'pin', label: 'pin', default: '0', type: 'number' }, { key: 'from', label: 'from°', default: '0', type: 'number' }, { key: 'to', label: 'to°', default: '180', type: 'number' }] },
-  { cat: 'Servo', id: 'servo_stop',    icon: '🔧',  label: 'Servo Stop',     color: '#ec4899', params: [{ key: 'pin', label: 'pin', default: '0', type: 'number' }] },
-  { cat: 'Servo', id: 'pin_high',      icon: '⬆️',  label: 'Pin HIGH',       color: '#ec4899', params: [{ key: 'pin', label: 'pin', default: '0', type: 'number' }] },
-  { cat: 'Servo', id: 'pin_low',       icon: '⬇️',  label: 'Pin LOW',        color: '#ec4899', params: [{ key: 'pin', label: 'pin', default: '0', type: 'number' }] },
-  { cat: 'Servo', id: 'pwm',           icon: '〰️',  label: 'Set PWM',        color: '#ec4899', params: [{ key: 'pin', label: 'pin', default: '0', type: 'number' }, { key: 'val', label: '0-255', default: '128', type: 'number' }] },
+  { cat: 'Servo', id: 'servo',         icon: '🔧',  label: 'Servo Angle',    color: '#f59e0b', params: [{ key: 'pin', label: 'pin', default: '0', type: 'number' }, { key: 'angle', label: '°', default: '90', type: 'number' }] },
+  { cat: 'Servo', id: 'servo_sweep',   icon: '↔️',  label: 'Servo Sweep',    color: '#f59e0b', params: [{ key: 'pin', label: 'pin', default: '0', type: 'number' }, { key: 'from', label: 'from°', default: '0', type: 'number' }, { key: 'to', label: 'to°', default: '180', type: 'number' }] },
+  { cat: 'Servo', id: 'servo_stop',    icon: '🔧',  label: 'Servo Stop',     color: '#f59e0b', params: [{ key: 'pin', label: 'pin', default: '0', type: 'number' }] },
+  { cat: 'Servo', id: 'pin_high',      icon: '⬆️',  label: 'Pin HIGH',       color: '#f59e0b', params: [{ key: 'pin', label: 'pin', default: '0', type: 'number' }] },
+  { cat: 'Servo', id: 'pin_low',       icon: '⬇️',  label: 'Pin LOW',        color: '#f59e0b', params: [{ key: 'pin', label: 'pin', default: '0', type: 'number' }] },
+  { cat: 'Servo', id: 'pwm',           icon: '〰️',  label: 'Set PWM',        color: '#f59e0b', params: [{ key: 'pin', label: 'pin', default: '0', type: 'number' }, { key: 'val', label: '0-255', default: '128', type: 'number' }] },
 
   // Variables
-  { cat: 'Variables', id: 'var_set',   icon: '📦',  label: 'Set Variable',   color: '#06b6d4', params: [{ key: 'name', label: 'name', default: 'x', type: 'text' }, { key: 'val', label: 'val', default: '0', type: 'number' }] },
-  { cat: 'Variables', id: 'var_inc',   icon: '📈',  label: 'Increase Var',   color: '#06b6d4', params: [{ key: 'name', label: 'name', default: 'x', type: 'text' }, { key: 'val', label: 'by',  default: '1', type: 'number' }] },
-  { cat: 'Variables', id: 'var_dec',   icon: '📉',  label: 'Decrease Var',   color: '#06b6d4', params: [{ key: 'name', label: 'name', default: 'x', type: 'text' }, { key: 'val', label: 'by',  default: '1', type: 'number' }] },
-  { cat: 'Variables', id: 'var_show',  icon: '📊',  label: 'Show Variable',  color: '#06b6d4', params: [{ key: 'name', label: 'name', default: 'x', type: 'text' }] },
+  { cat: 'Variables', id: 'var_set',   icon: '📦',  label: 'Set Variable',   color: '#f59e0b', params: [{ key: 'name', label: 'name', default: 'x', type: 'text' }, { key: 'val', label: 'val', default: '0', type: 'number' }] },
+  { cat: 'Variables', id: 'var_inc',   icon: '📈',  label: 'Increase Var',   color: '#f59e0b', params: [{ key: 'name', label: 'name', default: 'x', type: 'text' }, { key: 'val', label: 'by',  default: '1', type: 'number' }] },
+  { cat: 'Variables', id: 'var_dec',   icon: '📉',  label: 'Decrease Var',   color: '#f59e0b', params: [{ key: 'name', label: 'name', default: 'x', type: 'text' }, { key: 'val', label: 'by',  default: '1', type: 'number' }] },
+  { cat: 'Variables', id: 'var_show',  icon: '📊',  label: 'Show Variable',  color: '#f59e0b', params: [{ key: 'name', label: 'name', default: 'x', type: 'text' }] },
 
   // Communication
-  { cat: 'Comms', id: 'send_msg',      icon: '📤',  label: 'Send Message',   color: '#f97316', params: [{ key: 'msg', label: 'text', default: 'hello', type: 'text' }] },
-  { cat: 'Comms', id: 'radio_send',    icon: '📻',  label: 'Radio Send',     color: '#f97316', params: [{ key: 'msg', label: 'text', default: 'go',    type: 'text' }] },
-  { cat: 'Comms', id: 'radio_group',   icon: '📡',  label: 'Radio Group',    color: '#f97316', params: [{ key: 'grp', label: 'grp',  default: '1',     type: 'number' }] },
-  { cat: 'Comms', id: 'radio_recv',    icon: '📥',  label: 'Read Radio → var', color: '#f97316', params: [{ key: 'var', label: 'var', default: 'msg', type: 'text' }] },
-  { cat: 'Comms', id: 'log',           icon: '🖨️',  label: 'Log to Serial',  color: '#f97316', params: [{ key: 'msg', label: 'text', default: 'hello', type: 'text' }] },
+  { cat: 'Comms', id: 'send_msg',      icon: '📤',  label: 'Send Message',   color: '#f59e0b', params: [{ key: 'msg', label: 'text', default: 'hello', type: 'text' }] },
+  { cat: 'Comms', id: 'radio_send',    icon: '📻',  label: 'Radio Send',     color: '#f59e0b', params: [{ key: 'msg', label: 'text', default: 'go',    type: 'text' }] },
+  { cat: 'Comms', id: 'radio_group',   icon: '📡',  label: 'Radio Group',    color: '#f59e0b', params: [{ key: 'grp', label: 'grp',  default: '1',     type: 'number' }] },
+  { cat: 'Comms', id: 'radio_recv',    icon: '📥',  label: 'Read Radio → var', color: '#f59e0b', params: [{ key: 'var', label: 'var', default: 'msg', type: 'text' }] },
+  { cat: 'Comms', id: 'log',           icon: '🖨️',  label: 'Log to Serial',  color: '#f59e0b', params: [{ key: 'msg', label: 'text', default: 'hello', type: 'text' }] },
 
   // Lights — NeoPixel / WS2812B strips and robot headlights
-  { cat: 'Lights', id: 'neo_init',     icon: '💡',  label: 'NeoPixel Setup', color: '#e879f9', params: [{ key: 'pin', label: 'pin', default: '0', type: 'number' }, { key: 'n', label: 'LEDs', default: '8', type: 'number' }] },
-  { cat: 'Lights', id: 'neo_color',    icon: '🎨',  label: 'Set LED Color',  color: '#e879f9', params: [{ key: 'idx', label: 'LED#', default: '0', type: 'number' }, { key: 'color', label: 'colour', default: 'red', type: 'select', options: ['red','green','blue','yellow','cyan','magenta','white','off'] }] },
-  { cat: 'Lights', id: 'neo_rgb',      icon: '🌈',  label: 'Set LED RGB',    color: '#e879f9', params: [{ key: 'idx', label: 'LED#', default: '0', type: 'number' }, { key: 'r', label: 'R', default: '255', type: 'number' }, { key: 'g', label: 'G', default: '0', type: 'number' }, { key: 'b', label: 'B', default: '0', type: 'number' }] },
-  { cat: 'Lights', id: 'neo_all',      icon: '✨',  label: 'Set All LEDs',   color: '#e879f9', params: [{ key: 'r', label: 'R', default: '0', type: 'number' }, { key: 'g', label: 'G', default: '0', type: 'number' }, { key: 'b', label: 'B', default: '0', type: 'number' }] },
-  { cat: 'Lights', id: 'neo_show',     icon: '▶️',  label: 'NeoPixel Show',  color: '#e879f9', params: [] },
-  { cat: 'Lights', id: 'neo_clear',    icon: '🗑️',  label: 'NeoPixel Off',   color: '#e879f9', params: [] },
-  { cat: 'Lights', id: 'neo_bright',   icon: '🔆',  label: 'NeoPixel Brightness', color: '#e879f9', params: [{ key: 'pct', label: '%', default: '50', type: 'number' }] },
-  { cat: 'Lights', id: 'headlight',    icon: '🔦',  label: 'Headlights Color', color: '#e879f9', params: [{ key: 'r', label: 'R', default: '255', type: 'number' }, { key: 'g', label: 'G', default: '255', type: 'number' }, { key: 'b', label: 'B', default: '255', type: 'number' }] },
-  { cat: 'Lights', id: 'headlight_l',  icon: '◀️',  label: 'Left Headlight', color: '#e879f9', params: [{ key: 'r', label: 'R', default: '255', type: 'number' }, { key: 'g', label: 'G', default: '0', type: 'number' }, { key: 'b', label: 'B', default: '0', type: 'number' }] },
-  { cat: 'Lights', id: 'headlight_r',  icon: '▶️',  label: 'Right Headlight',color: '#e879f9', params: [{ key: 'r', label: 'R', default: '0', type: 'number' }, { key: 'g', label: 'G', default: '0', type: 'number' }, { key: 'b', label: 'B', default: '255', type: 'number' }] },
-  { cat: 'Lights', id: 'disp_pixel',   icon: '🔲',  label: 'Set Pixel',      color: '#e879f9', params: [{ key: 'x', label: 'x', default: '2', type: 'number' }, { key: 'y', label: 'y', default: '2', type: 'number' }, { key: 'bright', label: 'brightness', default: '9', type: 'number' }] },
-  { cat: 'Lights', id: 'disp_image',   icon: '🖼️',  label: 'Show Image',     color: '#e879f9', params: [{ key: 'icon', label: 'icon', default: 'HAPPY', type: 'select', options: ['HAPPY','SAD','HEART','SURPRISED','ANGRY','YES','NO','ARROW_N','ARROW_S','ARROW_E','ARROW_W','ASLEEP','CONFUSED','SKULL','DIAMOND','SNAKE','RABBIT','COW','DUCK','TORTOISE','BUTTERFLY','STICKFIGURE','GHOST','SWORD','TARGET','PITCHFORK','PACMAN','ROLLERSKATE','HOUSE','TSHIRT','ROLLERSKATE','CHESSBOARD','XMAS','UMBRELLA'] }] },
-  { cat: 'Lights', id: 'disp_scroll',  icon: '📜',  label: 'Scroll Text',    color: '#e879f9', params: [{ key: 'text', label: 'text', default: 'Hello!', type: 'text' }] },
-  { cat: 'Lights', id: 'disp_show',    icon: '📟',  label: 'Show Value',     color: '#e879f9', params: [{ key: 'val', label: 'value', default: '42', type: 'text' }] },
-  { cat: 'Lights', id: 'disp_clear',   icon: '🧹',  label: 'Clear Screen',   color: '#e879f9', params: [] },
+  { cat: 'Lights', id: 'neo_init',     icon: '💡',  label: 'NeoPixel Setup', color: '#f59e0b', params: [{ key: 'pin', label: 'pin', default: '0', type: 'number' }, { key: 'n', label: 'LEDs', default: '8', type: 'number' }] },
+  { cat: 'Lights', id: 'neo_color',    icon: '🎨',  label: 'Set LED Color',  color: '#f59e0b', params: [{ key: 'idx', label: 'LED#', default: '0', type: 'number' }, { key: 'color', label: 'colour', default: 'red', type: 'select', options: ['red','green','blue','yellow','cyan','magenta','white','off'] }] },
+  { cat: 'Lights', id: 'neo_rgb',      icon: '🌈',  label: 'Set LED RGB',    color: '#f59e0b', params: [{ key: 'idx', label: 'LED#', default: '0', type: 'number' }, { key: 'r', label: 'R', default: '255', type: 'number' }, { key: 'g', label: 'G', default: '0', type: 'number' }, { key: 'b', label: 'B', default: '0', type: 'number' }] },
+  { cat: 'Lights', id: 'neo_all',      icon: '✨',  label: 'Set All LEDs',   color: '#f59e0b', params: [{ key: 'r', label: 'R', default: '0', type: 'number' }, { key: 'g', label: 'G', default: '0', type: 'number' }, { key: 'b', label: 'B', default: '0', type: 'number' }] },
+  { cat: 'Lights', id: 'neo_show',     icon: '▶️',  label: 'NeoPixel Show',  color: '#f59e0b', params: [] },
+  { cat: 'Lights', id: 'neo_clear',    icon: '🗑️',  label: 'NeoPixel Off',   color: '#f59e0b', params: [] },
+  { cat: 'Lights', id: 'neo_bright',   icon: '🔆',  label: 'NeoPixel Brightness', color: '#f59e0b', params: [{ key: 'pct', label: '%', default: '50', type: 'number' }] },
+  { cat: 'Lights', id: 'headlight',    icon: '🔦',  label: 'Headlights Color', color: '#f59e0b', params: [{ key: 'r', label: 'R', default: '255', type: 'number' }, { key: 'g', label: 'G', default: '255', type: 'number' }, { key: 'b', label: 'B', default: '255', type: 'number' }] },
+  { cat: 'Lights', id: 'headlight_l',  icon: '◀️',  label: 'Left Headlight', color: '#f59e0b', params: [{ key: 'r', label: 'R', default: '255', type: 'number' }, { key: 'g', label: 'G', default: '0', type: 'number' }, { key: 'b', label: 'B', default: '0', type: 'number' }] },
+  { cat: 'Lights', id: 'headlight_r',  icon: '▶️',  label: 'Right Headlight',color: '#f59e0b', params: [{ key: 'r', label: 'R', default: '0', type: 'number' }, { key: 'g', label: 'G', default: '0', type: 'number' }, { key: 'b', label: 'B', default: '255', type: 'number' }] },
+  { cat: 'Lights', id: 'disp_pixel',   icon: '🔲',  label: 'Set Pixel',      color: '#f59e0b', params: [{ key: 'x', label: 'x', default: '2', type: 'number' }, { key: 'y', label: 'y', default: '2', type: 'number' }, { key: 'bright', label: 'brightness', default: '9', type: 'number' }] },
+  { cat: 'Lights', id: 'disp_image',   icon: '🖼️',  label: 'Show Image',     color: '#f59e0b', params: [{ key: 'icon', label: 'icon', default: 'HAPPY', type: 'select', options: ['HAPPY','SAD','HEART','SURPRISED','ANGRY','YES','NO','ARROW_N','ARROW_S','ARROW_E','ARROW_W','ASLEEP','CONFUSED','SKULL','DIAMOND','SNAKE','RABBIT','COW','DUCK','TORTOISE','BUTTERFLY','STICKFIGURE','GHOST','SWORD','TARGET','PITCHFORK','PACMAN','ROLLERSKATE','HOUSE','TSHIRT','ROLLERSKATE','CHESSBOARD','XMAS','UMBRELLA'] }] },
+  { cat: 'Lights', id: 'disp_scroll',  icon: '📜',  label: 'Scroll Text',    color: '#f59e0b', params: [{ key: 'text', label: 'text', default: 'Hello!', type: 'text' }] },
+  { cat: 'Lights', id: 'disp_show',    icon: '📟',  label: 'Show Value',     color: '#f59e0b', params: [{ key: 'val', label: 'value', default: '42', type: 'text' }] },
+  { cat: 'Lights', id: 'disp_clear',   icon: '🧹',  label: 'Clear Screen',   color: '#f59e0b', params: [] },
 
   // Sensors extras — line following, sonar read
-  { cat: 'Sensors', id: 'read_line_l', icon: '◀️',  label: 'Read Left Line Sensor', color: '#3b82f6', params: [{ key: 'var', label: 'var', default: 'lineL', type: 'text' }] },
-  { cat: 'Sensors', id: 'read_line_r', icon: '▶️',  label: 'Read Right Line Sensor', color: '#3b82f6', params: [{ key: 'var', label: 'var', default: 'lineR', type: 'text' }] },
-  { cat: 'Sensors', id: 'read_sonar',  icon: '📡',  label: 'Read Sonar (cm) → var',  color: '#3b82f6', params: [{ key: 'var', label: 'var', default: 'dist', type: 'text' }] },
+  { cat: 'Sensors', id: 'read_line_l', icon: '◀️',  label: 'Read Left Line Sensor', color: '#f59e0b', params: [{ key: 'var', label: 'var', default: 'lineL', type: 'text' }] },
+  { cat: 'Sensors', id: 'read_line_r', icon: '▶️',  label: 'Read Right Line Sensor', color: '#f59e0b', params: [{ key: 'var', label: 'var', default: 'lineR', type: 'text' }] },
+  { cat: 'Sensors', id: 'read_sonar',  icon: '📡',  label: 'Read Sonar (cm) → var',  color: '#f59e0b', params: [{ key: 'var', label: 'var', default: 'dist', type: 'text' }] },
 ];
+
+const ROBOT_CATEGORY_COLORS = {
+  Movement: '#3b82f6',
+  Sensors: '#06b6d4',
+  Control: '#f59e0b',
+  Math: '#ef4444',
+  Outputs: '#8b5cf6',
+  Servo: '#f97316',
+  Variables: '#22c55e',
+  Comms: '#ec4899',
+  Lights: '#eab308',
+};
+
+function darkenHex(hex, amt = 34) {
+  const v = String(hex || '').replace('#', '');
+  if (v.length !== 6) return '#1f3f8a';
+  const n = parseInt(v, 16);
+  const r = Math.max(0, (n >> 16) - amt);
+  const g = Math.max(0, ((n >> 8) & 255) - amt);
+  const b = Math.max(0, (n & 255) - amt);
+  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+}
+
+// Keep every block color aligned with its section.
+ROBOT_COMMANDS.forEach((cmd) => {
+  cmd.color = ROBOT_CATEGORY_COLORS[cmd.cat] || cmd.color;
+});
 
 /* ─── Supported robot profiles ─── */
 const ROBOT_PROFILES = {
@@ -1635,7 +1720,7 @@ function drawGrid(ctx) {
 }
 
 /* ─── Track definitions & draw functions ─── */
-export const TRACKS = [
+const TRACKS = [
   { id: 'open',      icon: '⬜', label: 'Open Field',    desc: 'Plain grid — no obstacles' },
   { id: 'square',    icon: '⬛', label: 'Square Track',   desc: 'Rectangular loop road' },
   { id: 'figure8',   icon: '∞',  label: 'Figure 8',      desc: 'Figure-8 loop crossing in the middle' },
@@ -1880,6 +1965,8 @@ const VirtualRobot = forwardRef(function VirtualRobot({ simRobotType, simTrack, 
   const trailRef = useRef([]);
   const stateRef = useRef({ ledOn: false, servoAngle: 90, tick: 0, moving: false, wheelAngle: 0, headlightL: null, headlightR: null });
   const animLoopRef = useRef(null);
+  const audioCtxRef = useRef(null);
+  const activeOscRef = useRef([]);
 
   // Output display state (React state so panel re-renders when lights change)
   const [out, setOut] = useState({
@@ -1898,6 +1985,59 @@ const VirtualRobot = forwardRef(function VirtualRobot({ simRobotType, simTrack, 
   const NAMED_RGB = { red:[255,0,0], green:[0,200,0], blue:[0,0,255], yellow:[255,220,0], cyan:[0,220,220], magenta:[220,0,220], white:[255,255,255], orange:[255,140,0], pink:[255,0,150], purple:[150,0,255], off:[0,0,0] };
   const namedToRgb = (n) => { const c = NAMED_RGB[(n||'').toLowerCase()] || [255,255,255]; return {r:c[0],g:c[1],b:c[2]}; };
   const rgbStr = (c) => c ? `rgb(${c.r},${c.g},${c.b})` : null;
+  const NOTE_FREQ = {
+    C3: 131, D3: 147, E3: 165, F3: 175, G3: 196, A3: 220, B3: 247,
+    C4: 262, D4: 294, E4: 330, F4: 349, G4: 392, A4: 440, B4: 494, C5: 523, E5: 659,
+  };
+
+  const getAudioCtx = () => {
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return null;
+      if (!audioCtxRef.current) audioCtxRef.current = new Ctx();
+      if (audioCtxRef.current.state === 'suspended') audioCtxRef.current.resume();
+      return audioCtxRef.current;
+    } catch (e) {
+      return null;
+    }
+  };
+
+  const playTone = (freq = 440, seconds = 0.25) => {
+    const ctx = getAudioCtx();
+    if (!ctx) return;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    const now = ctx.currentTime;
+    const dur = Math.max(0.05, Number(seconds) || 0.25);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(Number(freq) || 440, now);
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.08, now + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + dur + 0.01);
+    activeOscRef.current.push({ osc, gain });
+    osc.onended = () => {
+      activeOscRef.current = activeOscRef.current.filter((n) => n.osc !== osc);
+    };
+  };
+
+  const playMelody = (name = 'happy') => {
+    const tunes = {
+      happy: ['C4', 'E4', 'G4', 'C5'],
+      sad: ['C4', 'A3', 'G3', 'E3'],
+      power_up: ['C4', 'E4', 'G4', 'C5', 'E5'],
+      siren: ['A4', 'E4', 'A4', 'E4'],
+      birthday: ['C4', 'C4', 'D4', 'C4', 'F4', 'E4'],
+      twinkle: ['C4', 'C4', 'G4', 'G4', 'A4', 'A4', 'G4'],
+    };
+    const seq = tunes[String(name || '').toLowerCase()] || tunes.happy;
+    seq.forEach((note, idx) => {
+      setTimeout(() => playTone(NOTE_FREQ[note] || 440, 0.22), idx * 180);
+    });
+  };
 
   // Micro:bit 5×5 icon patterns (row-major, 1=on)
   const MB_ICONS = {
@@ -2032,6 +2172,9 @@ const VirtualRobot = forwardRef(function VirtualRobot({ simRobotType, simTrack, 
       /* non-movement commands resolve immediately */
       if (id === 'stop' || id === 'coast') { s.moving = false; resolve(); return; }
       if (id === 'wait') { setTimeout(resolve, (parseFloat(params?.secs)||1) * 1000); return; }
+      if (id === 'buzz') { playTone(440, parseFloat(params?.secs || 0.5)); resolve(); return; }
+      if (id === 'play_note') { playTone(NOTE_FREQ[String(params?.note || 'C4').toUpperCase()] || 262, parseFloat(params?.secs || 0.5)); resolve(); return; }
+      if (id === 'play_melody') { playMelody(params?.melody || 'happy'); resolve(); return; }
       if (id === 'servo' || id === 'servo_sweep') {
         const targetAngle = parseFloat(params?.angle || params?.to || 90);
         const startAngle  = s.servoAngle;
@@ -2480,6 +2623,8 @@ function generateFullProgram(blocks, kit) {
   const setup = kitLines[kit] || kitLines.generic;
   return [
     'from microbit import *',
+    'display.show(Image.YES)',
+    'sleep(400)',
     ...(needsRandom ? ['import random'] : []),
     ...(needsRadio  ? ['import radio', 'radio.on()'] : []),
     ...(needsNeo    ? ['from neopixel import NeoPixel'] : []),
@@ -2498,10 +2643,13 @@ function generateFullProgram(blocks, kit) {
 /* ─── Main RobotPanel component ─── */
 export default function RobotPanel() {
   const [connected, setConnected] = useState(false);
+  const [connectionKind, setConnectionKind] = useState(null); // 'usb' | 'bluetooth'
   const [connecting, setConnecting] = useState(false);
   const [portInfo, setPortInfo] = useState(null);
   const [robotType, setRobotType] = useState('microbit');
   const [microbitKit, setMicrobitKit] = useState(() => localStorage.getItem('cv_mb_kit') || 'generic');
+  /** WebUSB flashes a single-board hex; universal .hex is split using V1 vs V2 here. */
+  const [microbitHw, setMicrobitHw] = useState(() => localStorage.getItem('cv_mb_hw') || 'v2');
   const [program, setProgram] = useState(() => {
     try { const s = localStorage.getItem('cv_robotlab_program'); return s ? JSON.parse(s) : []; } catch { return []; }
   });
@@ -2513,6 +2661,7 @@ export default function RobotPanel() {
     if (robotType === 'mbot' || robotType === 'arduino') setShowSetup(true);
   }, [robotType]);
   const [flashProgress, setFlashProgress] = useState(null); // null=idle, 0-100+=flashing, 'done'=complete
+  const [rightTab, setRightTab] = useState('virtual');
   const [firmwareOk, setFirmwareOk] = useState(null); // null=unknown, true=microPython, false=makecode
   const [showCode, setShowCode] = useState(false);
   const [ledColor, setLedColor] = useState('off');
@@ -2521,6 +2670,7 @@ export default function RobotPanel() {
   const [simTrack, setSimTrack] = useState(() => localStorage.getItem('cv_robotlab_track') || 'open');
   const [simFs, setSimFs] = useState(false);
   const [savedFlash, setSavedFlash] = useState(false);
+  const [flashMethod, setFlashMethod] = useState(null); // 'usb', 'bluetooth', or null
   const [activeBlockUid, setActiveBlockUid] = useState(null);
 
   const portRef = useRef(null);
@@ -2535,18 +2685,50 @@ export default function RobotPanel() {
   const serialSniffRef = useRef(null); // { pattern, resolve } — used for firmware detection
   const bridgeModeRef  = useRef(false); // true when USB is connected to pxt bridge firmware (not MicroPython)
 
-  // BLE (Bluetooth) — Nordic UART Service for wireless micro:bit connection
-  // NUS standard: 6e400002 = TX of microbit (NOTIFY → browser reads)
-  //               6e400003 = RX of microbit (WRITE  → browser sends)
-  const BLE_NUS_SERVICE = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
-  const BLE_NUS_TX      = '6e400002-b5a3-f393-e0a9-e50e24dcca9e'; // micro:bit RECEIVES (RX) — browser writes to this
-  const BLE_NUS_RX      = '6e400003-b5a3-f393-e0a9-e50e24dcca9e'; // micro:bit TRANSMITS (TX) — browser subscribes to this (NOTIFY)
+  // BLE — Nordic UART (NUS). ByteBuddies firmware uses B5B3; MakeCode uses B5A3 — support both.
+  const BLE_NUS_VARIANTS = [
+    {
+      service: '6e400001-b5a3-f393-e0a9-e50e24dcca9e',
+      write: '6e400002-b5a3-f393-e0a9-e50e24dcca9e',
+      notify: '6e400003-b5a3-f393-e0a9-e50e24dcca9e',
+    },
+    {
+      service: '6e400001-b5b3-f393-e0a9-e50e24dcca9e',
+      write: '6e400002-b5b3-f393-e0a9-e50e24dcca9e',
+      notify: '6e400003-b5b3-f393-e0a9-e50e24dcca9e',
+    },
+  ];
+  const BLE_NUS_ALL_SERVICES = BLE_NUS_VARIANTS.map((v) => v.service);
+  const matchBleNusVariant = (serviceUuid) => {
+    const u = String(serviceUuid || '').toLowerCase();
+    if (u.includes('6e400001-b5b3')) return BLE_NUS_VARIANTS[1];
+    if (u.includes('6e400001-b5a3')) return BLE_NUS_VARIANTS[0];
+    return null;
+  };
+  const pickNusCharacteristics = (allChars, variant) => {
+    const norm = (u) => String(u || '').toLowerCase().replace(/-/g, '');
+    const writeUuid = norm(variant.write);
+    const notifyUuid = norm(variant.notify);
+    const writeChar =
+      allChars.find((c) => norm(c.uuid) === writeUuid) ||
+      allChars.find((c) => norm(c.uuid).includes('6e400002')) ||
+      allChars.find((c) => c.properties.writeWithoutResponse || c.properties.write);
+    const notifyChar =
+      allChars.find((c) => norm(c.uuid) === notifyUuid) ||
+      allChars.find((c) => norm(c.uuid).includes('6e400003')) ||
+      allChars.find((c) => c.properties.notify || c.properties.indicate);
+    return { writeChar, notifyChar };
+  };
   const btDeviceRef     = useRef(null);
-  const btTxCharRef     = useRef(null);
+  const btWriteCharRef  = useRef(null);
+  const btNotifyCharRef = useRef(null);
+  const btUartServiceRef = useRef(null);
+  const btUartRef = useRef(null);
   const connectionTypeRef = useRef(null); // 'usb' | 'bluetooth'
   const bleBufferRef    = useRef('');
 
   const profile = ROBOT_PROFILES[robotType];
+
 
   useEffect(() => {
     const handler = () => setSimFs(!!document.fullscreenElement);
@@ -2602,155 +2784,106 @@ export default function RobotPanel() {
   }, [addTerminal]);
 
   const connectBluetooth = async () => {
-    if (!navigator.bluetooth) {
-      addTerminal('⚠️ Web Bluetooth not supported. Use Chrome or Edge.', 'error');
+    const bleStatus = getWebBluetoothStatus();
+    if (!bleStatus.available) {
+      addTerminal(`❌ ${bleStatus.message}`, 'error');
+      if (bleStatus.currentUrl) addTerminal(`   Current page: ${bleStatus.currentUrl}`, 'info');
       return;
+    }
+    if (connectedRef.current && connectionTypeRef.current === 'usb') {
+      addTerminal('🔌 Disconnecting USB so Bluetooth can work…', 'info');
+      await disconnect();
+      await new Promise((r) => setTimeout(r, 600));
     }
     setConnecting(true);
     try {
-      addTerminal('📡 Step 1/6: Opening device picker — select your micro:bit…', 'info');
-      const device = await navigator.bluetooth.requestDevice({
-        filters: [
-          { name: 'ByteBuddies' },
-          { namePrefix: 'BBC micro:bit' },
-        ],
-        optionalServices: [BLE_NUS_SERVICE],
-      });
-      addTerminal(`✅ Step 1/6: Device selected — "${device.name}"`, 'success');
+      addTerminal('📡 Unplug USB after flash, press reset, then connect here.', 'info');
 
+      const conn = await connectMicrobitWireless((m) => addTerminal(`  ${m}`, 'info'));
+      const device = conn.device;
+      btUartRef.current = conn;
       btDeviceRef.current = device;
+
+      const isProfile = conn.mode === 'profile' && conn.uartService;
+      btUartServiceRef.current = isProfile ? conn.uartService : null;
+      btWriteCharRef.current = conn.writeChar || null;
+      btNotifyCharRef.current = conn.notifyChar || null;
+      bridgeModeRef.current = !isProfile;
+
+      const sig = conn.signal || { bars: 1, label: 'OK' };
+      addTerminal(`📶 Signal ${formatSignalBars(sig.bars)} ${sig.label}`, 'info');
+
       device.addEventListener('gattserverdisconnected', () => {
-        btTxCharRef.current = null;
+        btUartRef.current?.disconnect?.();
+        btUartRef.current = null;
+        btWriteCharRef.current = null;
+        btNotifyCharRef.current = null;
+        btUartServiceRef.current = null;
         btDeviceRef.current = null;
         connectionTypeRef.current = null;
         connectedRef.current = false;
         firmwareOkRef.current = null;
+        bridgeModeRef.current = false;
         setConnected(false);
+        setConnectionKind(null);
         setFirmwareOk(null);
         addTerminal('🔌 Bluetooth disconnected', 'info');
       });
 
-      addTerminal('📡 Step 2/6: Connecting to GATT server…', 'info');
-      const server = await device.gatt.connect();
-      addTerminal('✅ Step 2/6: GATT connected', 'success');
-
-      // Windows needs extra time to complete GATT service discovery
-      await new Promise(r => setTimeout(r, 1500));
-
-      addTerminal('📡 Step 3/6: Scanning all services on device…', 'info');
-      let service = null;
-
-      // Step A: enumerate ALL services first — this triggers full GATT discovery
-      // and fixes the Windows Chrome stale-cache bug
-      try {
-        const allServices = await server.getPrimaryServices();
-        if (allServices.length === 0) {
-          addTerminal('  ⚠️ Device has 0 services — MakeCode BLE program may not be running', 'warn');
+      if (isProfile) {
+        conn.uartService.addEventListener('receiveText', (ev) => {
+          const chunk = ev.detail || '';
+          if (chunk) handleBleData({ target: { value: new TextEncoder().encode(chunk) } });
+        });
+        addTerminal('✅ Connected — MakeCode Bluetooth (Cutebot)', 'success');
+        addTerminal('💡 Press ▶ Run — move/LED blocks work wirelessly. Loops/variables: use 🔌 USB + MicroPython.', 'info');
+        try {
+          await conn.uartService.sendText('ping\n');
+        } catch (_) { /* optional */ }
+      } else {
+        conn.onNotify?.(handleBleData);
+        addTerminal('✅ Connected — MicroPython Bluetooth bridge', 'success');
+        bleBufferRef.current = '';
+        addTerminal('📡 Ping test…', 'info');
+        const testOk = await conn.ping?.();
+        if (!testOk) {
+          addTerminal('⚠️ No ping — flash via python.microbit.org (bytebuddies_cutebot_bluetooth.py)', 'warn');
         } else {
-          allServices.forEach(s => addTerminal(`  found service: ${s.uuid}`, 'info'));
-          service = allServices.find(s => s.uuid.toLowerCase() === BLE_NUS_SERVICE.toLowerCase()) || null;
-        }
-      } catch (e) {
-        addTerminal(`  getPrimaryServices() failed: ${e.message}`, 'warn');
-      }
-
-      // Step B: fallback — try direct UUID lookup (sometimes works after Step A)
-      if (!service) {
-        for (let attempt = 1; attempt <= 3; attempt++) {
-          try {
-            service = await server.getPrimaryService(BLE_NUS_SERVICE);
-            break;
-          } catch (e) {
-            addTerminal(`  direct lookup attempt ${attempt}/3: ${e.message}`, 'info');
-            if (attempt < 3) await new Promise(r => setTimeout(r, 800));
+          addTerminal('✅ Link OK', 'success');
+          const lines = MICROBIT_KIT_SETUPS[microbitKit] || MICROBIT_KIT_SETUPS.generic;
+          let setupOk = 0;
+          for (const line of lines) {
+            bleBufferRef.current = '';
+            rawReplDoneRef.current = null;
+            const done = new Promise((resolve) => {
+              rawReplDoneRef.current = () => { rawReplDoneRef.current = null; resolve(); };
+              setTimeout(() => { if (rawReplDoneRef.current) { rawReplDoneRef.current = null; resolve(); } }, 5000);
+            });
+            await conn.writeBytes(line + '\x04');
+            await done;
+            setupOk++;
           }
+          addTerminal(`🔬 Kit ready (${setupOk}/${lines.length} lines)`, 'success');
         }
       }
 
-      if (!service) {
-        addTerminal('❌ Step 3/6 FAILED: UART service not found on this device.', 'error');
-        addTerminal('🔧 Check: did you follow ALL steps in Setup Guide → Bluetooth?', 'warn');
-        addTerminal('   • Project Settings → Bluetooth → "No Pairing Required" ticked?', 'info');
-        addTerminal('   • bluetooth extension added in MakeCode?', 'info');
-        addTerminal('   • Did you flash the ByteBuddies hex? (click ⚡ Flash BLE Firmware via USB)', 'info');
-        try { server.disconnect(); } catch (_) {}
-        return;
-      }
-      addTerminal('✅ Step 3/6: UART service found', 'success');
-
-      addTerminal('📡 Step 4/6: Discovering characteristics…', 'info');
-      let txChar, rxChar;
-      try {
-        const allChars = await service.getCharacteristics();
-        allChars.forEach(c => addTerminal(`  char ${c.uuid} props: ${Object.keys(c.properties).filter(k => c.properties[k]).join(',')}`, 'info'));
-        // Try property-based detection first
-        rxChar = allChars.find(c => c.properties.notify || c.properties.indicate);
-        txChar = allChars.find(c => c.properties.writeWithoutResponse || c.properties.write);
-        // Fallback: Windows/Chrome BLE cache bug returns empty properties — use NUS UUIDs directly
-        // NUS standard: 6e400003 = micro:bit TX (NOTIFY), 6e400002 = micro:bit RX (WRITE)
-        if (!rxChar) rxChar = allChars.find(c => c.uuid.toLowerCase().includes('6e400003'))
-                           || await service.getCharacteristic(BLE_NUS_RX);
-        if (!txChar) txChar = allChars.find(c => c.uuid.toLowerCase().includes('6e400002'))
-                           || await service.getCharacteristic(BLE_NUS_TX);
-        if (!rxChar || !txChar) throw new Error(`Missing NUS characteristics`);
-        addTerminal(`✅ Step 4/6: notify=${rxChar.uuid.slice(4,8)} write=${txChar.uuid.slice(4,8)}`, 'success');
-      } catch (e) {
-        addTerminal(`❌ Step 4/6 FAILED: ${e.message}`, 'error');
-        try { server.disconnect(); } catch (_) {}
-        return;
-      }
-
-      addTerminal('📡 Step 5/6: Starting notifications…', 'info');
-      try {
-        await rxChar.startNotifications();
-        rxChar.addEventListener('characteristicvaluechanged', handleBleData);
-        addTerminal('✅ Step 5/6: Notifications active', 'success');
-      } catch (e) {
-        addTerminal(`❌ Step 5/6 FAILED: ${e.message}`, 'error');
-        try { server.disconnect(); } catch (_) {}
-        return;
-      }
-
-      btTxCharRef.current = txChar;
       connectionTypeRef.current = 'bluetooth';
       connectedRef.current = true;
       setConnected(true);
-
-      addTerminal('📡 Step 6/6: Pinging micro:bit firmware…', 'info');
-      const enc = new TextEncoder();
-      const bleWrite = async (data) => {
-        const bytes = typeof data === 'string' ? enc.encode(data) : data;
-        for (let i = 0; i < bytes.length; i += 20) {
-          try { await txChar.writeValueWithoutResponse(bytes.slice(i, i + 20)); }
-          catch (wErr) {
-            try { await txChar.writeValue(bytes.slice(i, i + 20)); }
-            catch (e) { addTerminal(`  write error: ${e.message}`, 'warn'); }
-          }
-          if (i + 20 < bytes.length) await new Promise(r => setTimeout(r, 30));
-        }
-      };
-      await new Promise(r => setTimeout(r, 600));
-      bleBufferRef.current = '';
-      rawReplDoneRef.current = null;
-      const pingDone = new Promise(resolve => {
-        rawReplDoneRef.current = () => { rawReplDoneRef.current = null; resolve(true); };
-        setTimeout(() => { if (rawReplDoneRef.current) { rawReplDoneRef.current = null; resolve(false); } }, 6000);
-      });
-      await bleWrite('display.show(Image.HAPPY)\n');
-      const pingOk = await pingDone;
-
-      if (!pingOk) {
-        addTerminal('⚠️ Step 6/6: No reply from micro:bit (ping timed out).', 'warn');
-        addTerminal('The micro:bit IS connected — try pressing ▶ Run anyway.', 'info');
-        setFirmwareOk(true); firmwareOkRef.current = true;
-      } else {
-        addTerminal('✅ Step 6/6: micro:bit responded! Ready to run.', 'success');
-        setFirmwareOk(true); firmwareOkRef.current = true;
-      }
-      addTerminal(`🤖 Bluetooth connected! Press ▶ Run to send your program.`, 'success');
-
+      setConnectionKind('bluetooth');
+      setFirmwareOk(true);
+      firmwareOkRef.current = true;
+      addTerminal('🤖 Bluetooth ready — press ▶ Run', 'success');
     } catch (e) {
-      if (e.name !== 'NotFoundError') addTerminal(`❌ ${e.message}`, 'error');
+      if (e.name === 'NotFoundError') {
+        addTerminal('Bluetooth cancelled — no device chosen.', 'warn');
+      } else if (e.name === 'SecurityError') {
+        const st = getWebBluetoothStatus();
+        addTerminal(`❌ ${st.message || 'Bluetooth blocked on this page.'}`, 'error');
+      } else {
+        addTerminal(`❌ Bluetooth: ${e.message}`, 'error');
+        addTerminal('🔧 Flash wireless → LED shows B → unplug USB → reset → Connect Bluetooth', 'warn');
+      }
     } finally {
       setConnecting(false);
     }
@@ -2763,7 +2896,9 @@ export default function RobotPanel() {
     }
     setConnecting(true);
     try {
-      const port = await navigator.serial.requestPort();
+      const port = await navigator.serial.requestPort({
+        filters: [{ usbVendorId: 0x0d28 }],
+      }).catch(() => navigator.serial.requestPort());
       // If port is already open (leftover from a previous session), close it first
       if (port.readable) {
         try {
@@ -2840,6 +2975,7 @@ export default function RobotPanel() {
       connectionTypeRef.current = 'usb';
       connectedRef.current = true;
       setConnected(true);
+      setConnectionKind('usb');
 
       // For micro:bit: detect firmware then set up raw REPL if MicroPython is present
       if (robotType === 'microbit') {
@@ -2863,31 +2999,35 @@ export default function RobotPanel() {
         });
 
         try {
+          // Give the device time to boot MicroPython after a fresh flash or replug
+          await new Promise(r => setTimeout(r, 1200));
+
           // Force exit any existing raw REPL first (Ctrl+B → interactive mode)
           // Without this, if already in raw REPL, \x01 produces no banner → detection fails
           await writeChunked('\x02');
-          await new Promise(r => setTimeout(r, 300));
+          await new Promise(r => setTimeout(r, 400));
 
-          // Exact pyboard.py sequence — up to 3 attempts
+          // Enter raw REPL — up to 8 attempts (fresh flash / busy main.py needs extra tries)
           let gotRepl = false;
-          for (let attempt = 0; attempt < 3 && !gotRepl; attempt++) {
-            if (attempt > 0) await new Promise(r => setTimeout(r, 500));
-            await writeChunked('\x03\x03');          // interrupt (both bytes at once)
-            await new Promise(r => setTimeout(r, 100)); // 100ms — same as pyboard.py
-            const p = waitFor('raw REPL', 2000);    // register listener BEFORE sending \x01
-            await writeChunked('\x01');              // enter raw REPL
+          for (let attempt = 0; attempt < 8 && !gotRepl; attempt++) {
+            if (attempt > 0) await new Promise(r => setTimeout(r, 600));
+            await writeChunked('\x03\x03');
+            await new Promise(r => setTimeout(r, 200));
+            await writeChunked('\x02');
+            await new Promise(r => setTimeout(r, 300));
+            const p = waitFor('raw REPL', 4000);
+            await writeChunked('\x01');
             gotRepl = await p;
           }
 
           if (!gotRepl) {
-            // No MicroPython REPL — check if it's the ByteBuddies bridge firmware (pxt)
-            // Bridge responds to ping()\n with \x04\x04
+            // No MicroPython REPL — check for ByteBuddies BLE bridge (exec ends with \\x04)
             rawReplDoneRef.current = null;
             const bridgeProbed = new Promise(resolve => {
               rawReplDoneRef.current = () => { rawReplDoneRef.current = null; resolve(true); };
               setTimeout(() => { if (rawReplDoneRef.current) { rawReplDoneRef.current = null; resolve(false); } }, 3000);
             });
-            await writeChunked('ping()\n');
+            await writeChunked('ping()\x04');
             const isBridge = await bridgeProbed;
 
             if (isBridge) {
@@ -2907,21 +3047,23 @@ export default function RobotPanel() {
 
           setFirmwareOk(true);
           firmwareOkRef.current = true;
-          addTerminal('✅ MicroPython detected', 'success');
+          addTerminal('✅ MicroPython detected — loading kit…', 'success');
 
           // Step 3: send kit setup lines one by one via raw REPL
-          // Raw REPL format: send code then \x04 (Ctrl+D) to execute; wait for \x04\x04 response
+          // Device stays in raw REPL between executions — just send each line + \x04.
           const lines = MICROBIT_KIT_SETUPS[microbitKit] || MICROBIT_KIT_SETUPS.generic;
+          let setupOk = 0;
           for (const line of lines) {
             const done = new Promise(resolve => {
               rawReplDoneRef.current = resolve;
-              setTimeout(resolve, 3000);
+              setTimeout(resolve, 4000);
             });
             await writeChunked(line + '\x04');
             await done;
+            setupOk++;
           }
+          addTerminal(`🔬 Kit ready (${setupOk}/${lines.length} lines sent) — Press ▶ Run!`, 'success');
           localStorage.setItem('cv_mb_kit', microbitKit);
-          addTerminal(`🔬 micro:bit ready — ${microbitKit} kit loaded. Press ▶ Run to go!`, 'success');
         } catch (e) {
           addTerminal(`⚠️ Setup error: ${e.message}`, 'warn');
         }
@@ -2938,8 +3080,11 @@ export default function RobotPanel() {
 
   const disconnect = async () => {
     if (connectionTypeRef.current === 'bluetooth') {
-      try { btDeviceRef.current?.gatt?.disconnect(); } catch (_) {}
-      btTxCharRef.current = null;
+      try { btUartRef.current?.disconnect(); } catch (_) {}
+      btUartRef.current = null;
+      btWriteCharRef.current = null;
+      btNotifyCharRef.current = null;
+      btUartServiceRef.current = null;
       btDeviceRef.current = null;
     } else {
       try {
@@ -2956,6 +3101,7 @@ export default function RobotPanel() {
     firmwareOkRef.current = null;
     bridgeModeRef.current = false;
     setConnected(false);
+    setConnectionKind(null);
     setFirmwareOk(null);
     setPortInfo(null);
     addTerminal('🔌 Disconnected', 'info');
@@ -2965,14 +3111,19 @@ export default function RobotPanel() {
   const writeChunked = useCallback(async (data) => {
     const bytes = typeof data === 'string' ? new TextEncoder().encode(data) : data;
     if (connectionTypeRef.current === 'bluetooth') {
-      if (!btTxCharRef.current) return;
+      if (btUartServiceRef.current) {
+        const text = typeof data === 'string' ? data : new TextDecoder().decode(bytes);
+        await btUartServiceRef.current.sendText(text);
+        return;
+      }
+      if (!btWriteCharRef.current) return;
       for (let i = 0; i < bytes.length; i += 20) {
-        try { await btTxCharRef.current.writeValueWithoutResponse(bytes.slice(i, i + 20)); }
+        try { await btWriteCharRef.current.writeValueWithoutResponse(bytes.slice(i, i + 20)); }
         catch (_) {
-          try { await btTxCharRef.current.writeValue(bytes.slice(i, i + 20)); }
+          try { await btWriteCharRef.current.writeValue(bytes.slice(i, i + 20)); }
           catch (e) { addTerminal(`BLE write error: ${e.message}`, 'warn'); break; }
         }
-        if (i + 20 < bytes.length) await new Promise(r => setTimeout(r, 20));
+        if (i + 20 < bytes.length) await new Promise(r => setTimeout(r, 25));
       }
     } else {
       if (!writerRef.current) return;
@@ -2984,20 +3135,41 @@ export default function RobotPanel() {
     }
   }, []);
 
-  /* ─── Send command via micro:bit raw REPL, wait for \x04\x04 completion ─── */
-  const sendMicrobitRaw = useCallback(async (code) => {
-    if (!writerRef.current && !btTxCharRef.current) return false;
+  /* ─── Send Python to micro:bit (raw REPL over USB, or \\x04-exec over BLE bridge) ─── */
+  const sendMicrobitRaw = useCallback(async (code, opts = {}) => {
+    if (!writerRef.current && !btWriteCharRef.current && !btUartServiceRef.current) return false;
     try {
       const trimmed = code.trim();
       if (!trimmed) return true;
+
+      const isBridge = bridgeModeRef.current;
+      const isProfileBt = btUartServiceRef.current && !isBridge;
+      const timeoutMs = opts.timeoutMs ?? (isBridge ? 45000 : 15000);
+
+      if (isProfileBt) {
+        const line = trimmed.replace(/\r\n$/, '').replace(/\r$/, '');
+        if (!opts.quiet) addTerminal('▶ Sending via Bluetooth…', 'info');
+        await writeChunked(line + '\n');
+        await new Promise((r) => setTimeout(r, 400));
+        if (!opts.quiet) addTerminal('✅ Sent', 'success');
+        return true;
+      }
+
+      rawReplDoneRef.current = null;
+
+      if (!isBridge) {
+        await writeChunked('\x03\x03');
+        await new Promise(r => setTimeout(r, 200));
+      }
+
       const done = new Promise((resolve, reject) => {
         rawReplDoneRef.current = resolve;
-        setTimeout(() => { rawReplDoneRef.current = null; reject(new Error('timeout')); }, 25000);
+        setTimeout(() => { rawReplDoneRef.current = null; reject(new Error('timeout')); }, timeoutMs);
       });
-      const term = (connectionTypeRef.current === 'bluetooth' || bridgeModeRef.current) ? '\n' : '\x04';
-      await writeChunked(trimmed + term);
+      await writeChunked(trimmed + '\x04');
+      if (!opts.quiet) addTerminal('▶ Sending program…', 'info');
       await done;
-      addTerminal(`→ ${trimmed}`, 'send');
+      if (!opts.quiet) addTerminal('✅ Program sent', 'success');
       return true;
     } catch (e) {
       addTerminal(`❌ Send error: ${e.message}`, 'error');
@@ -3007,6 +3179,17 @@ export default function RobotPanel() {
 
   /* ─── Send raw command ─── */
   const sendRaw = async (text) => {
+    if (connectionTypeRef.current === 'bluetooth' && btUartServiceRef.current) {
+      try {
+        const line = text.trim().replace(/\r\n$/, '') + '\n';
+        await btUartServiceRef.current.sendText(line);
+        addTerminal(`→ ${line.trim()}`, 'send');
+        return true;
+      } catch (e) {
+        addTerminal(`❌ BLE send: ${e.message}`, 'error');
+        return false;
+      }
+    }
     if (!writerRef.current) return false;
     try {
       await writerRef.current.ready; // wait for serial buffer to have capacity
@@ -3022,6 +3205,107 @@ export default function RobotPanel() {
 
   /* ─── Run program ─── */
   const runningRef = useRef(false);
+  const runtimeVarsRef = useRef({});
+  const numOr = (v, fallback = 0) => {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : fallback;
+  };
+  const resolveVarValue = (raw) => {
+    if (raw === undefined || raw === null) return 0;
+    const s = String(raw).trim();
+    if (s in runtimeVarsRef.current) return numOr(runtimeVarsRef.current[s], 0);
+    const n = Number(s);
+    return Number.isFinite(n) ? n : 0;
+  };
+  const evalSimpleExpr = (expr) => {
+    const source = String(expr || '0');
+    const substituted = source.replace(/[A-Za-z_]\w*/g, (name) => {
+      if (name in runtimeVarsRef.current) return String(numOr(runtimeVarsRef.current[name], 0));
+      return '0';
+    });
+    if (!/^[\d+\-*/%().\s]+$/.test(substituted)) return 0;
+    try {
+      // eslint-disable-next-line no-new-func
+      const out = Function(`return (${substituted})`)();
+      return numOr(out, 0);
+    } catch {
+      return 0;
+    }
+  };
+  const applyRuntimeMathAndVars = (step) => {
+    const p = step?.params || {};
+    switch (step?.id) {
+      case 'var_set': {
+        runtimeVarsRef.current[String(p.name || 'x')] = numOr(p.val, 0);
+        break;
+      }
+      case 'var_inc': {
+        const k = String(p.name || 'x');
+        runtimeVarsRef.current[k] = numOr(runtimeVarsRef.current[k], 0) + numOr(p.val, 1);
+        break;
+      }
+      case 'var_dec': {
+        const k = String(p.name || 'x');
+        runtimeVarsRef.current[k] = numOr(runtimeVarsRef.current[k], 0) - numOr(p.val, 1);
+        break;
+      }
+      case 'math_random': {
+        const k = String(p.var || 'n');
+        const min = Math.floor(numOr(p.min, 1));
+        const max = Math.floor(numOr(p.max, 10));
+        const lo = Math.min(min, max);
+        const hi = Math.max(min, max);
+        const value = Math.floor(Math.random() * (hi - lo + 1)) + lo;
+        runtimeVarsRef.current[k] = value;
+        addTerminal(`🧮 ${k} = ${value}`, 'recv');
+        break;
+      }
+      case 'math_abs': {
+        const k = String(p.var || 'x');
+        const value = Math.abs(resolveVarValue(p.src || k));
+        runtimeVarsRef.current[k] = value;
+        addTerminal(`🧮 ${k} = ${value}`, 'recv');
+        break;
+      }
+      case 'math_map': {
+        const k = String(p.var || 'mapped');
+        const src = resolveVarValue(p.src || 'x');
+        const low1 = numOr(p.low1, 0);
+        const hi1 = numOr(p.hi1, 100);
+        const low2 = numOr(p.low2, 0);
+        const hi2 = numOr(p.hi2, 1023);
+        const denom = (hi1 - low1) || 1;
+        const value = Math.round(((src - low1) * (hi2 - low2)) / denom + low2);
+        runtimeVarsRef.current[k] = value;
+        addTerminal(`🧮 ${k} = ${value}`, 'recv');
+        break;
+      }
+      case 'math_constrain': {
+        const k = String(p.var || 'x');
+        const min = numOr(p.min, 0);
+        const max = numOr(p.max, 100);
+        const value = Math.max(Math.min(resolveVarValue(k), Math.max(min, max)), Math.min(min, max));
+        runtimeVarsRef.current[k] = value;
+        addTerminal(`🧮 ${k} = ${value}`, 'recv');
+        break;
+      }
+      case 'math_expr': {
+        const k = String(p.var || 'x');
+        const value = evalSimpleExpr(p.expr || '0');
+        runtimeVarsRef.current[k] = value;
+        addTerminal(`🧮 ${k} = ${value}`, 'recv');
+        break;
+      }
+      case 'var_show': {
+        const k = String(p.name || 'x');
+        const value = k in runtimeVarsRef.current ? runtimeVarsRef.current[k] : '(undefined)';
+        addTerminal(`📊 ${k} = ${value}`, 'recv');
+        break;
+      }
+      default:
+        break;
+    }
+  };
   // Execute a sorted block list.
   // Rule: when a "loop-repeat" or "loop-forever" block is encountered,
   //       ALL blocks that follow it (by y-position) become its body.
@@ -3093,6 +3377,7 @@ export default function RobotPanel() {
 
       // Normal block
       setActiveBlockUid(step.uid);
+      applyRuntimeMathAndVars(step);
       if (connectedRef.current && !simOnly) {
         if (robotType === 'microbit') {
           // Run physical and simulation in parallel; physical uses raw REPL with completion wait
@@ -3130,12 +3415,17 @@ export default function RobotPanel() {
 
   const runProgram = async () => {
     if (!program.length) return;
+    if (robotType === 'microbit' && !connectedRef.current) {
+      addTerminal('⚠️ Connect first: 🔌 USB (easiest) or 📡 Bluetooth after one-time flash.', 'warn');
+      return;
+    }
     if (connectedRef.current && robotType === 'microbit' && firmwareOkRef.current === false) {
-      addTerminal('⚠️ Flash the ByteBuddies hex first — click ⚡ Flash BLE Firmware via USB then reconnect.', 'warn');
+      addTerminal('⚠️ Flash once first: ⚡ Flash → “MicroPython (USB, flash once)” or “Bluetooth bridge firmware”.', 'warn');
       return;
     }
     setRunning(true);
     runningRef.current = true;
+    runtimeVarsRef.current = {};
     robotRef.current?.resetState(); // clear trail/state but keep user-dragged position
     const orderedSteps = [...program].sort((a, b) => a.y - b.y);
     // Track concepts used
@@ -3161,25 +3451,28 @@ export default function RobotPanel() {
       'if_touch','if_shake','if_tilt','if_light','if_temp','if_compass','for_range','while_do']);
     const hasComplexFlow = orderedSteps.some(s => COMPLEX_IDS.has(s.id));
 
-    if (robotType === 'microbit' && connectedRef.current && firmwareOkRef.current === true) {
+    const canRunFullPython =
+      firmwareOkRef.current === true &&
+      (connectionTypeRef.current === 'usb' || bridgeModeRef.current);
+
+    if (robotType === 'microbit' && connectedRef.current && canRunFullPython) {
       robotRef.current?.resetState();
-      if (connectionTypeRef.current === 'bluetooth' || bridgeModeRef.current) {
-        // BLE or USB-bridge mode: send one command at a time, wait for \x04\x04 ack
-        await executeBlocks(orderedSteps);
+      const pythonCode = generateFullProgram(program, microbitKit);
+      const hasForever = orderedSteps.some(s => s.id === 'forever');
+      const isBridge = bridgeModeRef.current;
+
+      if (hasForever) {
+        await sendMicrobitRaw(pythonCode, { timeoutMs: 60000 });
+        addTerminal('▶ Running forever — press Stop to interrupt', 'info');
+        await executeBlocks(orderedSteps, true);
+        await new Promise(resolve => {
+          const iv = setInterval(() => { if (!runningRef.current) { clearInterval(iv); resolve(); } }, 200);
+        });
       } else {
-        // USB/MicroPython: send the full program as one raw REPL exec.
-        const pythonCode = generateFullProgram(program, microbitKit);
-        const hasForever = orderedSteps.some(s => s.id === 'forever');
-        if (hasForever) {
-          await writeChunked(pythonCode + '\x04');
-          addTerminal('▶ Running forever — press Stop to interrupt', 'info');
-          await new Promise(resolve => { const iv = setInterval(() => { if (!runningRef.current) { clearInterval(iv); resolve(); } }, 200); });
-        } else {
-          await Promise.all([
-            sendMicrobitRaw(pythonCode),
-            executeBlocks(orderedSteps, true),
-          ]);
-        }
+        await Promise.all([
+          sendMicrobitRaw(pythonCode, { timeoutMs: isBridge ? 60000 : 30000 }),
+          executeBlocks(orderedSteps, true),
+        ]);
       }
     } else {
       await executeBlocks(orderedSteps);
@@ -3201,7 +3494,9 @@ export default function RobotPanel() {
     setActiveBlockUid(null);
     if (connectedRef.current) {
       if (robotType === 'microbit' && firmwareOkRef.current === true) {
-        if (connectionTypeRef.current === 'bluetooth' || bridgeModeRef.current) {
+        if (bridgeModeRef.current) {
+          await writeChunked('sp()\x04');
+        } else if (connectionTypeRef.current === 'bluetooth') {
           await writeChunked('sp()\n');
         } else {
           // USB: interrupt running program with Ctrl+C, then stop motors
@@ -3215,6 +3510,17 @@ export default function RobotPanel() {
     }
     addTerminal('⏹ Stopped', 'warn');
   };
+
+  const buildHexForDualFlash = useCallback(
+    async (onStatus) => {
+      if (!program.length) throw new Error('Add blocks before flashing');
+      let pythonCode = generateFullProgram(program, microbitKit);
+      const startupIndicator = `# Startup\ntry:\n    display.show(Image.YES)\n    sleep(500)\nexcept:\n    pass\n`;
+      pythonCode = startupIndicator + pythonCode;
+      return buildMicrobitHex(pythonCode, onStatus);
+    },
+    [program, microbitKit],
+  );
 
   const handleSaveHex = useCallback(async () => {
     if (!program.length) { addTerminal('⚠️ Add some blocks first!', 'warn'); return; }
@@ -3234,31 +3540,592 @@ export default function RobotPanel() {
     }
   }, [program, microbitKit, addTerminal]);
 
+  const showDownloadInstructions = useCallback(() => {
+    const instructions = getFlashingInstructions();
+    addTerminal(`📋 ${instructions.title}`, 'info');
+    for (const step of instructions.steps) addTerminal(step, 'info');
+    for (const note of instructions.keyPoints) addTerminal(note, 'warn');
+    addTerminal('⏳ After copying to MICROBIT, wait for the checkmark (✓) on the display.', 'success');
+  }, [addTerminal]);
+
+  const runCoordinatorFlash = useCallback(async (hexStr, coordMethod, filename = 'program.hex', webUsbDevice = null) => {
+    const releaseUsbForFlash = async () => {
+      if (connectedRef.current && connectionTypeRef.current === 'usb') {
+        addTerminal('🔌 Releasing USB serial so the flasher can use WebUSB…', 'info');
+        await disconnect();
+        await new Promise((r) => setTimeout(r, 1000));
+      }
+    };
+    let _lastProgressMsg = '';
+    const onProgress = (e) => {
+      if (e && typeof e.percent === 'number') setFlashProgress(Math.round(e.percent));
+      if (e?.message && e.message !== _lastProgressMsg) {
+        _lastProgressMsg = e.message;
+        addTerminal(e.message, 'info');
+      }
+    };
+    setFlashProgress(0);
+    let success = false;
+    let flashResult = null;
+    try {
+      addTerminal('🔍 Validating hex…', 'info');
+      const info = getHexInfo(hexStr);
+      if (!info.valid) {
+        addTerminal(`❌ Invalid hex: ${info.errors.slice(0, 3).join('; ')}`, 'error');
+        setFlashProgress(null);
+        return null;
+      }
+      const basicValidation = validateHex(hexStr);
+      if (!basicValidation.isValid) {
+        addTerminal(`⚠️ Hex warnings (continuing): ${basicValidation.errors.slice(0, 2).join('; ')}`, 'warn');
+      }
+
+      // Show hex file info
+      let hexToFlash = hexStr;
+      addTerminal(`📦 Program size: ${(info.size / 1024).toFixed(1)} KB`, 'info');
+
+      // Universal hex: split to the selected board first. Never repairHex() the full universal
+      // image — that strips 0x0A board records and breaks WebUSB/DAPLink (Flash error).
+      const sizeKB = hexToFlash.length / 1024;
+      if (isUniversalHex(hexToFlash)) {
+        addTerminal(`🔧 Extracting ${microbitHw === 'v1' ? 'V1' : 'V2'} image from universal hex…`, 'info');
+        try {
+          const separated = separateUniversalHex(hexToFlash);
+          const wantId = microbitHw === 'v1' ? microbitBoardId.V1 : microbitBoardId.V2;
+          const chosen =
+            separated.find((x) => x.boardId === wantId) ||
+            separated.find((x) => x.boardId === microbitBoardId.V2) ||
+            separated[0];
+          if (chosen?.hex) {
+            hexToFlash = chosen.hex;
+            addTerminal(`✅ Board image ready (${(hexToFlash.length / 1024).toFixed(0)} KB)`, 'info');
+          }
+        } catch (splitErr) {
+          addTerminal(`⚠️ Could not split universal hex: ${splitErr.message}`, 'warn');
+        }
+      }
+
+      if (sizeKB < 100) {
+        addTerminal('⚠️ Hex file looks too small — check your program.', 'warn');
+      }
+
+      const strictValidation = validateHexStrict(hexToFlash);
+      if (!strictValidation.valid) {
+        addTerminal(`⚠️ Hex warning: ${strictValidation.errors[0]}`, 'warn');
+        addTerminal('Continuing flash — official micro:bit images use multi-region layout.', 'info');
+      } else if (strictValidation.warnings?.length) {
+        strictValidation.warnings.forEach((w) => addTerminal(`ℹ️ ${w}`, 'info'));
+      }
+
+      // Proceed with flash
+      addTerminal('🚀 Starting flash…', 'info');
+      const flashMethod =
+        coordMethod === 'auto' || coordMethod === 'flash-program' ? 'dual-auto' : coordMethod;
+
+      if (coordMethod === 'electron-usb') {
+        flashResult = await getMicrobitFlashCoordinator().flash(hexToFlash, {
+          method: 'electron-usb',
+          filename,
+          onProgress,
+          webUsbBoard: microbitHw === 'v1' ? 'v1' : 'v2',
+        });
+      } else if (coordMethod === 'download') {
+        flashResult = await getMicrobitFlashCoordinator().flash(hexToFlash, {
+          method: 'download',
+          filename,
+          onProgress,
+        });
+      } else {
+        flashResult = await flashMicrobitHex(hexToFlash, {
+          method: flashMethod,
+          filename,
+          onProgress,
+          board: microbitHw === 'v1' ? 'v1' : 'v2',
+          webUsbDevice,
+          beforeUsbFlash: webUsbDevice ? null : releaseUsbForFlash,
+        });
+      }
+
+      if (flashResult?.method === 'download' || flashResult?.fallback === 'download') {
+        addTerminal(`📥 Downloaded ${filename} — copy it to the MICROBIT drive (USB fallback).`, 'warn');
+        addTerminal('1️⃣ Eject MICROBIT in Finder  2️⃣ Drag the file onto the drive  3️⃣ Wait for ✓ on the display', 'info');
+        showDownloadInstructions();
+        setFlashProgress(null);
+      } else if (flashResult?.method === 'ble' || flashResult?.method === 'webusb' || flashResult?.method === 'usb-msd') {
+        addTerminal(`✅ Flash complete (${flashResult.method.toUpperCase()})`, 'success');
+        addTerminal('💡 If nothing appears on screen: press RESET on the back of the micro:bit.', 'info');
+        success = true;
+      } else {
+        addTerminal('✅ Flash complete — device should show a checkmark (✓).', 'success');
+        success = true;
+      }
+    } catch (e) {
+      const msg = e?.message || String(e);
+      addTerminal(`❌ Flash failed: ${msg}`, 'error');
+
+      // Provide helpful recovery steps based on error type
+      if (msg.includes('Flash error') || msg.includes('DAPLink')) {
+        addTerminal('💡 Try: Eject the MICROBIT drive, unplug/replug the device, then try again.', 'info');
+      } else if (msg.includes('NotFound') || msg.includes('not found')) {
+        addTerminal('💡 Make sure your micro:bit is plugged in and the drive appears in Finder/File Explorer.', 'info');
+      } else if (msg.includes('Network') || msg.includes('disconnect')) {
+        addTerminal('💡 Device disconnected. Reconnect and try again.', 'info');
+      } else if (msg.includes('Bluetooth') || msg.includes('BLE')) {
+        addTerminal('💡 Try: Put device in pairing mode (hold A+B, tap reset, release reset), move closer, or use USB.', 'info');
+      }
+
+      setFlashProgress(null);
+    }
+    if (success) {
+      setFlashProgress('done');
+      setTimeout(() => setFlashProgress(null), 2200);
+    }
+    return flashResult;
+  }, [addTerminal, showDownloadInstructions, microbitHw, disconnect]);
+
+  const handleFlashMethod = useCallback(async (method) => {
+    if (robotType !== 'microbit') {
+      handleSaveHex();
+      return;
+    }
+    setFlashMethod(null);
+    setRightTab('terminal');
+
+    let webUsbDevice = null;
+    const needsUsb = method !== 'flash-prog-download' && method !== 'flash-prog-ble';
+    if (needsUsb && typeof navigator !== 'undefined' && navigator.usb) {
+      try {
+        if (connectedRef.current && connectionTypeRef.current === 'usb') {
+          addTerminal('🔌 Releasing USB serial…', 'info');
+          await disconnect();
+          await new Promise((r) => setTimeout(r, 800));
+        }
+        addTerminal('🔌 Select your micro:bit (USB)…', 'info');
+        const usbPick = await requestMicrobitUsbEarly();
+        webUsbDevice = usbPick?.device ?? usbPick;
+        if (usbPick?.board) {
+          setMicrobitHw(usbPick.board);
+          localStorage.setItem('cv_mb_hw', usbPick.board);
+          addTerminal(`Detected micro:bit ${usbPick.version || usbPick.board.toUpperCase()} — flashing ${usbPick.board.toUpperCase()} firmware`, 'info');
+        }
+      } catch (e) {
+        if (e?.name === 'NotFoundError') {
+          addTerminal('USB selection cancelled.', 'warn');
+          return;
+        }
+        addTerminal(`USB: ${e?.message || e}`, 'warn');
+      }
+    }
+
+    const needsProgram =
+      method !== 'bluetooth-firmware' &&
+      method.startsWith('flash-prog');
+    if (needsProgram && !program.length) {
+      addTerminal('⚠️ Add some blocks first, or use “Bluetooth bridge firmware” to set up wireless.', 'warn');
+      return;
+    }
+
+    const support = typeof navigator !== 'undefined' ? checkBrowserSupport() : {};
+
+    if (method === 'flash-prog-auto' || method === 'flash-program') {
+      try {
+        addTerminal('🔨 Building your program…', 'info');
+        let pythonCode = generateFullProgram(program, microbitKit);
+        const startupIndicator = `# Startup\ntry:\n    display.show(Image.YES)\n    sleep(500)\nexcept:\n    pass\n`;
+        pythonCode = startupIndicator + pythonCode;
+        const hexStr = await buildMicrobitHex(pythonCode, (msg) => addTerminal(msg, 'info'));
+        await runCoordinatorFlash(hexStr, 'auto', 'program.hex', webUsbDevice);
+      } catch (e) {
+        addTerminal(`❌ ${e.message}`, 'error');
+      }
+      return;
+    }
+
+    if (method === 'flash-prog-webusb') {
+      try {
+        addTerminal('🔨 Building your program…', 'info');
+        let pythonCode = generateFullProgram(program, microbitKit);
+        const startupIndicator = `# Startup\ntry:\n    display.show(Image.YES)\n    sleep(500)\nexcept:\n    pass\n`;
+        pythonCode = startupIndicator + pythonCode;
+        const hexStr = await buildMicrobitHex(pythonCode, (msg) => addTerminal(msg, 'info'));
+        if (!support.webusb) {
+          addTerminal('⚠️ WebUSB not available in this browser.', 'warn');
+          await runCoordinatorFlash(hexStr, 'download', 'program.hex');
+          return;
+        }
+        await runCoordinatorFlash(hexStr, 'auto', 'program.hex', webUsbDevice);
+      } catch (e) {
+        addTerminal(`❌ ${e.message}`, 'error');
+      }
+      return;
+    }
+
+    if (method === 'flash-prog-msd') {
+      try {
+        if (!isElectronNative()) {
+          addTerminal('💡 USB drive auto-flash needs the ByteBuddies desktop app (`npm run desktop`).', 'info');
+          await handleFlashMethod('flash-prog-download');
+          return;
+        }
+        addTerminal('🔨 Building your program…', 'info');
+        let pythonCode = generateFullProgram(program, microbitKit);
+        const startupIndicator = `# Startup\ntry:\n    display.show(Image.YES)\n    sleep(500)\nexcept:\n    pass\n`;
+        pythonCode = startupIndicator + pythonCode;
+        const hexStr = await buildMicrobitHex(pythonCode, (msg) => addTerminal(msg, 'info'));
+        await runCoordinatorFlash(hexStr, 'electron-usb', 'program.hex');
+      } catch (e) {
+        addTerminal(`❌ ${e.message}`, 'error');
+      }
+      return;
+    }
+
+    if (method === 'flash-prog-ble') {
+      try {
+        addTerminal('🔨 Building your program…', 'info');
+        let pythonCode = generateFullProgram(program, microbitKit);
+        const startupIndicator = `# Startup\ntry:\n    display.show(Image.YES)\n    sleep(500)\nexcept:\n    pass\n`;
+        pythonCode = startupIndicator + pythonCode;
+        const hexStr = await buildMicrobitHex(pythonCode, (msg) => addTerminal(msg, 'info'));
+
+        const hasMakeCodeMetadata = hexStr.includes(':020000040010EA') || hexStr.includes('MakeCode');
+        if (!hasMakeCodeMetadata) {
+          addTerminal('ℹ️ Block programs use MicroPython — full firmware must go over USB.', 'info');
+          addTerminal('📡 For wireless control: flash “Bluetooth bridge firmware” once, then Connect Bluetooth.', 'info');
+          if (!support.webusb) {
+            addTerminal('⚠️ WebUSB not available — downloading .hex for MICROBIT drive.', 'warn');
+            await runCoordinatorFlash(hexStr, 'download', 'program.hex');
+            return;
+          }
+          addTerminal('🔌 Flashing over USB (WebUSB)…', 'info');
+          await runCoordinatorFlash(hexStr, 'auto', 'program.hex', webUsbDevice);
+          return;
+        }
+
+        if (!support.bluetooth) {
+          addTerminal('⚠️ Web Bluetooth not available — use Chrome/Edge on HTTPS.', 'warn');
+          await runCoordinatorFlash(hexStr, 'auto', 'program.hex', webUsbDevice);
+          return;
+        }
+        addTerminal('📡 MakeCode-style hex — attempting BLE partial flash…', 'info');
+        addTerminal('💡 Put micro:bit in pairing mode if flash fails: hold A+B, tap reset, release reset.', 'info');
+        await runCoordinatorFlash(hexStr, 'ble', 'program.hex');
+      } catch (e) {
+        addTerminal(`❌ ${e.message}`, 'error');
+      }
+      return;
+    }
+
+    if (method === 'flash-prog-download') {
+      try {
+        addTerminal('🔨 Building your program…', 'info');
+        let pythonCode = generateFullProgram(program, microbitKit);
+        const startupIndicator = `# Startup\ntry:\n    display.show(Image.YES)\n    sleep(500)\nexcept:\n    pass\n`;
+        pythonCode = startupIndicator + pythonCode;
+        const hexStr = await buildMicrobitHex(pythonCode, (msg) => addTerminal(msg, 'info'));
+        await runCoordinatorFlash(hexStr, 'download', 'program.hex');
+      } catch (e) {
+        addTerminal(`❌ ${e.message}`, 'error');
+      }
+      return;
+    }
+
+    if (method === 'flash-micropython-runtime') {
+      try {
+        addTerminal(`📥 Building MicroPython ${microbitHw === 'v1' ? 'V1' : 'V2'} with startup display…`, 'info');
+        addTerminal('💡 After flash you should see ✓ then YES → BB on the LED.', 'info');
+        const { hex: hexStr } = await buildMicroPythonBootHex(microbitHw === 'v1' ? 'v1' : 'v2');
+        const rt = await runCoordinatorFlash(hexStr, 'auto', 'micropython-runtime.hex', webUsbDevice);
+        if (rt?.fallback === 'download' || rt?.method === 'download') {
+          addTerminal('📥 Finish setup: drag the downloaded file onto MICROBIT, wait for ✓ then YES/BB.', 'warn');
+        } else {
+          addTerminal('✅ MicroPython on board! You should see YES then BB. Click 🔌 USB, then ▶ Run.', 'success');
+          try { localStorage.setItem('cv_mb_runtime_flashed', microbitHw); } catch (_) {}
+        }
+      } catch (e) {
+        addTerminal(`❌ ${e.message}`, 'error');
+      }
+      return;
+    }
+
+    if (method === 'bluetooth-firmware') {
+      try {
+        addTerminal('📥 Loading MakeCode Bluetooth firmware (Cutebot bridge)…', 'info');
+        addTerminal('💡 Flash once — LED shows B, then 📡 Bluetooth + ▶ Run (no reflash).', 'info');
+        const { hex: hexStr, source } = await buildBleBridgeHex(
+          microbitHw === 'v1' ? 'v1' : 'v2',
+          (m) => m && addTerminal(m, 'info'),
+        );
+        addTerminal(`📦 ${source || 'wireless firmware'}`, 'info');
+        const ble = await runCoordinatorFlash(hexStr, 'auto', 'bluetooth-firmware.hex', webUsbDevice);
+        if (ble?.fallback === 'download' || ble?.method === 'download') {
+          addTerminal('📥 Drag the downloaded .hex onto MICROBIT. Wait for B, then Connect Bluetooth.', 'warn');
+        } else {
+          addTerminal('✅ Wireless firmware flashed. LED should show B (sad face = wrong file).', 'success');
+          addTerminal('📡 Unplug USB → reset → Connect Bluetooth → ▶ Run', 'info');
+        }
+      } catch (e) {
+        addTerminal(`❌ ${e.message}`, 'error');
+      }
+    }
+  }, [program, microbitKit, microbitHw, robotType, handleSaveHex, addTerminal, runCoordinatorFlash, disconnect]);
+
   const handleFlash = useCallback(async () => {
-    // ⚡ Flash = alias for Save .hex — DAPLink removed (unreliable with universal hex format)
-    handleSaveHex();
-  }, [handleSaveHex]);
+    if (robotType !== 'microbit') {
+      handleSaveHex();
+      return;
+    }
+    setFlashMethod(flashMethod ? null : 'showOptions');
+  }, [robotType, flashMethod, handleSaveHex]);
 
   const canvasAreaRef = useRef(null);
+  const ROBOT_BLOCK_LANE_X = 30;
+  const ROBOT_BLOCK_START_Y = 40;
+  const normalizeRobotProgram = useCallback((blocks) => (
+    columnizeBlocks(blocks || [], {
+      laneX: ROBOT_BLOCK_LANE_X,
+      startY: ROBOT_BLOCK_START_Y,
+      gap: BLOCK_STACK_GAP,
+    })
+  ), []);
   const [draggingBlock, setDraggingBlock] = useState(null);
   const [dragOffset, setDragOffsetState] = useState({ x: 0, y: 0 });
   const [selectedBlock, setSelectedBlock] = useState(null);
   const [hoveredBlock, setHoveredBlock] = useState(null);
 
+  useEffect(() => {
+    setProgram((prev) => normalizeRobotProgram(prev));
+  }, [normalizeRobotProgram]);
+
   /* ─── Program: array of block objects with x,y positions ─── */
   // program items: { uid, id, label, icon, color, cat, params, x, y }
 
-  const createBlock = (cmd, x = 60, y = 60) => {
+  const createBlock = (cmd) => {
     const params = {};
     cmd.params.forEach(p => { params[p.key] = p.default; });
     // Stack below existing blocks
     const maxY = program.reduce((m, b) => Math.max(m, b.y), 0);
-    return { uid: Date.now() + Math.random(), id: cmd.id, label: cmd.label, icon: cmd.icon, color: cmd.color, cat: cmd.cat, params, x, y: program.length ? maxY + 52 : 40 };
+    return {
+      uid: Date.now() + Math.random(),
+      id: cmd.id,
+      label: cmd.label,
+      icon: cmd.icon,
+      color: cmd.color,
+      cat: cmd.cat,
+      params,
+      x: ROBOT_BLOCK_LANE_X,
+      y: program.length ? maxY + BLOCK_STACK_GAP : ROBOT_BLOCK_START_Y,
+    };
   };
 
-  const addBlock = (cmd) => setProgram(prev => [...prev, createBlock(cmd)]);
+  const blocklyNodesToRobotProgram = useCallback((nodes = []) => {
+    const typeToCommand = {
+      bb_event_start: 'on_start',
+      bb_sprite_move: 'forward',
+      bb_sprite_turn: 'right',
+      bb_control_wait: 'wait',
+      bb_loop_repeat: 'repeat',
+      bb_loop_forever: 'forever',
+      bb_logic_if: 'if_then',
+      bb_sound_play: 'buzz',
+      bb_robot_if_dist: 'if_dist',
+      bb_robot_led_color: 'led',
+      bb_robot_led_brightness: 'led_bright',
+      bb_robot_led_rgb: 'led_rgb',
+      bb_robot_buzz: 'buzz',
+      bb_robot_play_note: 'play_note',
+      bb_robot_play_melody: 'play_melody',
+      bb_robot_show_text: 'display',
+      bb_robot_show_number: 'show_num',
+      bb_robot_show_icon: 'show_icon',
+      bb_var_create: 'var_set',
+      bb_var_change: 'var_inc',
+    };
+    const next = [];
+    const make = (id, params = {}) => {
+      const cmd = ROBOT_COMMANDS.find((c) => c.id === id);
+      if (!cmd) return null;
+      return {
+        uid: Date.now() + Math.random() + next.length,
+        id: cmd.id,
+        label: cmd.label,
+        icon: cmd.icon,
+        color: cmd.color,
+        cat: cmd.cat,
+        params: { ...Object.fromEntries((cmd.params || []).map((p) => [p.key, p.default])), ...params },
+        x: ROBOT_BLOCK_LANE_X,
+        y: 0,
+      };
+    };
+    const walk = (list = []) => {
+      list.forEach((node) => {
+        const blocklyType = resolveBlocklyNodeType(node) || node?.type;
+        let mapped = typeToCommand[blocklyType];
+        const f = node.fields || {};
+        let dataObj = null;
+        try {
+          dataObj = node?.data ? JSON.parse(node.data) : null;
+        } catch (e) {
+          dataObj = null;
+        }
+        const dataTag = String(dataObj?.directType || node?.data || '').trim().toLowerCase();
+        const robotDataMatch = /^robot:([a-z0-9_]+)$/.exec(dataTag);
+        if (robotDataMatch?.[1]) mapped = robotDataMatch[1];
+        if (!mapped && dataObj?.robotId) mapped = String(dataObj.robotId);
+        if (!mapped && blocklyType === 'bb_generic_stack') {
+          const raw = String(f.LABEL || '').trim().toLowerCase();
+          const m = /^robot:([a-z0-9_]+)$/.exec(raw);
+          if (m) mapped = m[1];
+          if (!mapped) {
+            const byLabel = ROBOT_COMMANDS.find((c) => String(c.label || '').toLowerCase() === raw);
+            if (byLabel) mapped = byLabel.id;
+          }
+        }
+        if (!mapped) return;
+        if (mapped === 'forward') {
+          const b = make('forward', { amount: String(f.STEPS || 80) });
+          if (b) next.push(b);
+          return;
+        }
+        if (mapped === 'right') {
+          const dir = String(f.DIRECTION || 'right');
+          const turnCmd = dir === 'left' ? 'left' : 'right';
+          const b = make(turnCmd, { degrees: String(f.DEGREES || 90) });
+          if (b) next.push(b);
+          return;
+        }
+        if (mapped === 'wait') {
+          const b = make('wait', { secs: String(f.SECONDS || 1) });
+          if (b) next.push(b);
+          return;
+        }
+        if (mapped === 'if_dist') {
+          const b = make('if_dist', { cm: String(f.CM || 20) });
+          if (b) next.push(b);
+          return;
+        }
+        if (mapped === 'led') {
+          const b = make('led', { color: String(f.COLOR || 'red') });
+          if (b) next.push(b);
+          return;
+        }
+        if (mapped === 'led_bright') {
+          const b = make('led_bright', { pct: String(f.PCT || 100) });
+          if (b) next.push(b);
+          return;
+        }
+        if (mapped === 'led_rgb') {
+          const b = make('led_rgb', { r: String(f.R || 255), g: String(f.G || 0), b: String(f.B || 0) });
+          if (b) next.push(b);
+          return;
+        }
+        if (mapped === 'buzz') {
+          const b = make('buzz', { secs: String(f.SECS || 0.5) });
+          if (b) next.push(b);
+          return;
+        }
+        if (mapped === 'play_note') {
+          const b = make('play_note', { note: String(f.NOTE || 'C4'), secs: String(f.SECS || 0.5) });
+          if (b) next.push(b);
+          return;
+        }
+        if (mapped === 'play_melody') {
+          const b = make('play_melody', { melody: String(f.MELODY || 'happy') });
+          if (b) next.push(b);
+          return;
+        }
+        if (mapped === 'display') {
+          const b = make('display', { text: String(f.TEXT || 'Hi!') });
+          if (b) next.push(b);
+          return;
+        }
+        if (mapped === 'show_num') {
+          const b = make('show_num', { num: String(f.NUM || 42) });
+          if (b) next.push(b);
+          return;
+        }
+        if (mapped === 'show_icon') {
+          const b = make('show_icon', { icon: String(f.ICON || 'HAPPY') });
+          if (b) next.push(b);
+          return;
+        }
+        if (blocklyType === 'bb_robot_generic') {
+          const defs = Array.isArray(dataObj?.params) ? dataObj.params : [];
+          const parsedParams = {};
+          defs.forEach((def, idx) => {
+            const k = String(def?.key || '').trim();
+            if (!k) return;
+            const rawVal = f[`V${idx + 1}`];
+            parsedParams[k] = String(rawVal ?? def?.default ?? '');
+          });
+          const b = make(mapped, parsedParams);
+          if (b) next.push(b);
+          return;
+        }
+        if (mapped === 'repeat') {
+          const head = make('repeat', { times: String(f.TIMES || 10) });
+          if (head) next.push(head);
+          walk(node?.statements?.DO || []);
+          const end = make('repeat_end');
+          if (end) next.push(end);
+          return;
+        }
+        if (mapped === 'forever') {
+          const head = make('forever');
+          if (head) next.push(head);
+          walk(node?.statements?.DO || []);
+          const end = make('repeat_end');
+          if (end) next.push(end);
+          return;
+        }
+        if (mapped === 'if_then') {
+          const head = make('if_then');
+          if (head) next.push(head);
+          walk(node?.statements?.DO || []);
+          if ((node?.statements?.ELSE || []).length) {
+            const eb = make('else_branch');
+            if (eb) next.push(eb);
+            walk(node.statements.ELSE);
+          }
+          const end = make('if_end');
+          if (end) next.push(end);
+          return;
+        }
+        const b = make(mapped);
+        if (b) next.push(b);
+      });
+    };
+    walk(nodes);
+    return normalizeRobotProgram(next);
+  }, [normalizeRobotProgram]);
 
-  const removeBlock = (uid) => { setProgram(prev => prev.filter(b => b.uid !== uid)); if (selectedBlock === uid) setSelectedBlock(null); };
+  const addBlock = (cmd) => setProgram((prev) => normalizeRobotProgram([...prev, createBlock(cmd)]));
+
+  const toBlocklySidebarName = useCallback((cmd) => {
+    const map = {
+      on_start: 'on start',
+      forward: 'move steps',
+      back: 'move steps',
+      move_left: 'move steps',
+      move_right: 'move steps',
+      left: 'turn degrees',
+      right: 'turn degrees',
+      spin_left: 'turn degrees',
+      spin_right: 'turn degrees',
+      wait: 'wait',
+      repeat: 'repeat N times',
+      forever: 'forever',
+      if_then: 'if / else',
+      buzz: 'play sound',
+      var_set: 'create variable',
+      var_inc: 'change by',
+    };
+    return map[cmd?.id] || cmd?.label || 'block';
+  }, []);
+
+  const removeBlock = (uid) => {
+    setProgram((prev) => normalizeRobotProgram(prev.filter((b) => b.uid !== uid)));
+    if (selectedBlock === uid) setSelectedBlock(null);
+  };
 
   const updateParam = (uid, key, val) => setProgram(prev => prev.map(b => b.uid === uid ? { ...b, params: { ...b.params, [key]: val } } : b));
 
@@ -3275,12 +4142,32 @@ export default function RobotPanel() {
   const handleCanvasMouseMove = useCallback((e) => {
     if (!draggingBlock || !canvasAreaRef.current) return;
     const rect = canvasAreaRef.current.getBoundingClientRect();
-    const x = Math.max(0, e.clientX - rect.left - dragOffset.x);
+    const x = ROBOT_BLOCK_LANE_X;
     const y = Math.max(0, e.clientY - rect.top - dragOffset.y);
     setProgram(prev => prev.map(b => b.uid === draggingBlock ? { ...b, x, y } : b));
   }, [draggingBlock, dragOffset]);
 
-  const handleCanvasMouseUp = () => setDraggingBlock(null);
+  const handleCanvasMouseUp = useCallback(() => {
+    if (!draggingBlock) return;
+    setProgram((prev) => {
+      const dragged = prev.find((b) => b.uid === draggingBlock);
+      if (!dragged) return normalizeRobotProgram(prev);
+      const snapped = snapCanvasStack({
+        draggedId: dragged.uid,
+        x: ROBOT_BLOCK_LANE_X,
+        y: dragged.y,
+        blocks: prev,
+        getId: (b) => b.uid,
+        minX: ROBOT_BLOCK_LANE_X,
+        minY: 0,
+      });
+      const withSnap = prev.map((b) =>
+        b.uid === draggingBlock ? { ...b, x: snapped.x, y: snapped.y } : b
+      );
+      return normalizeRobotProgram(withSnap);
+    });
+    setDraggingBlock(null);
+  }, [draggingBlock, normalizeRobotProgram]);
 
   /* ─── Drop from sidebar ─── */
   const handleCanvasDrop = (e) => {
@@ -3289,15 +4176,66 @@ export default function RobotPanel() {
     const cmd = ROBOT_COMMANDS.find(c => c.id === cmdId);
     if (!cmd || !canvasAreaRef.current) return;
     const rect = canvasAreaRef.current.getBoundingClientRect();
-    const x = Math.max(0, e.clientX - rect.left - 80);
     const y = Math.max(0, e.clientY - rect.top - 20);
     const params = {};
     cmd.params.forEach(p => { params[p.key] = p.default; });
-    setProgram(prev => [...prev, { uid: Date.now() + Math.random(), id: cmd.id, label: cmd.label, icon: cmd.icon, color: cmd.color, cat: cmd.cat, params, x, y }]);
+    setProgram((prev) => normalizeRobotProgram([
+      ...prev,
+      {
+        uid: Date.now() + Math.random(),
+        id: cmd.id,
+        label: cmd.label,
+        icon: cmd.icon,
+        color: cmd.color,
+        cat: cmd.cat,
+        params,
+        x: ROBOT_BLOCK_LANE_X,
+        y,
+      },
+    ]));
   };
 
   /* ─── Run program uses blocks sorted by Y ─── */
   const sortedProgram = [...program].sort((a, b) => a.y - b.y);
+  const useUnifiedBlocklyCanvas = true;
+  const isLightTheme = typeof document !== 'undefined' && document.documentElement.getAttribute('data-theme') === 'light';
+  const ui = isLightTheme
+    ? {
+        codeBg: '#f3f6ff',
+        codeText: '#1f2a44',
+        setupBg: '#eef2ff',
+        setupBorder: '#c7d2fe',
+        setupAccent: '#4338ca',
+        infoBg: '#e0f2fe',
+        infoBorder: '#7dd3fc',
+        infoText: '#0c4a6e',
+        successBg: '#ecfdf5',
+        successBorder: '#86efac',
+        successText: '#166534',
+        warnBg: '#eef2ff',
+        warnBorder: '#a5b4fc',
+        warnText: '#4338ca',
+        tabInactiveBg: '#eef2ff',
+        tabInactiveText: '#334155',
+      }
+    : {
+        codeBg: '#0c0c1e',
+        codeText: '#a5f3fc',
+        setupBg: '#1e1b4b',
+        setupBorder: 'var(--border)',
+        setupAccent: '#818cf8',
+        infoBg: '#0c1a2e',
+        infoBorder: '#0ea5e9',
+        infoText: '#38bdf8',
+        successBg: '#0f2a1a',
+        successBorder: '#16a34a',
+        successText: '#86efac',
+        warnBg: '#1e1b4b',
+        warnBorder: '#4338ca',
+        warnText: '#818cf8',
+        tabInactiveBg: 'rgba(12,22,48,0.75)',
+        tabInactiveText: '#cbd5e1',
+      };
 
   /* ─── Generated code viewer ─── */
   const generatedCode = profile.codeHeader + sortedProgram.map(s => profile.buildCmd(s.id, s.params)).join('');
@@ -3310,18 +4248,29 @@ export default function RobotPanel() {
     leftCol: { width: 190, borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--bg-secondary)' },
     midCol: { flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' },
     rightCol: { width: 340, borderLeft: '1px solid var(--border)', display: 'flex', flexDirection: 'column', overflow: 'hidden' },
-    runBar: { padding: '10px 12px', borderTop: '1px solid var(--border)', display: 'flex', gap: 8, alignItems: 'center', background: 'var(--bg-secondary)' },
+    runBar: {
+      padding: '10px 12px',
+      borderTop: '1px solid var(--border)',
+      display: 'flex',
+      gap: 8,
+      alignItems: 'center',
+      flexWrap: 'wrap',
+      flexShrink: 0,
+      background: 'var(--bg-secondary)',
+      position: 'relative',
+      zIndex: 20,
+    },
+    midFooter: { flexShrink: 0, display: 'flex', flexDirection: 'column', borderTop: '1px solid var(--border)' },
     btn: (bg, fg = '#fff') => ({ padding: '8px 16px', borderRadius: 8, border: 'none', background: bg, color: fg, fontWeight: 600, cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }),
-    terminal: { flex: 1, overflowY: 'auto', padding: 10, fontFamily: 'monospace', fontSize: 12, background: '#0c0c1e' },
+    terminal: { flex: 1, overflowY: 'auto', padding: 10, fontFamily: 'monospace', fontSize: 12, background: ui.codeBg },
     termLine: (type) => ({ color: type === 'send' ? '#60a5fa' : type === 'recv' ? '#4ade80' : type === 'error' ? '#f87171' : type === 'success' ? '#34d399' : type === 'warn' ? '#fbbf24' : '#94a3b8', padding: '1px 0' }),
     iconBtn: { background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 13, padding: '2px 4px', borderRadius: 4 },
     connDot: (ok) => ({ width: 10, height: 10, borderRadius: '50%', background: ok ? '#22c55e' : '#94a3b8', boxShadow: ok ? '0 0 6px #22c55e' : 'none' }),
     tabBar: { display: 'flex', borderBottom: '1px solid var(--border)', background: 'var(--bg-secondary)' },
     tab: (active) => ({ padding: '8px 16px', fontSize: 12, fontWeight: 600, cursor: 'pointer', color: active ? '#6366f1' : 'var(--text-muted)', background: 'transparent', border: 'none', borderBottom: active ? '2px solid #6366f1' : '2px solid transparent' }),
-    codeBox: { flex: 1, overflowY: 'auto', padding: 12, fontFamily: 'monospace', fontSize: 12, background: '#0c0c1e', color: '#a5f3fc', whiteSpace: 'pre', lineHeight: 1.6 },
+    codeBox: { flex: 1, overflowY: 'auto', padding: 12, fontFamily: 'monospace', fontSize: 12, background: ui.codeBg, color: ui.codeText, whiteSpace: 'pre', lineHeight: 1.6 },
   };
 
-  const [rightTab, setRightTab] = useState('virtual');
   const [activeCat, setActiveCat] = useState('Movement');
   const [showRecipe, setShowRecipe] = useState(false);
 
@@ -3355,7 +4304,7 @@ export default function RobotPanel() {
               value={microbitKit}
               onChange={e => setMicrobitKit(e.target.value)}
               disabled={connected}
-              style={{ padding: '6px 10px', borderRadius: 8, background: '#1e1b4b', border: '1px solid #6366f1', color: '#a5b4fc', fontSize: 13 }}
+              style={{ padding: '6px 10px', borderRadius: 8, background: ui.setupBg, border: `1px solid ${ui.setupBorder}`, color: isLightTheme ? '#334155' : '#a5b4fc', fontSize: 13 }}
             >
               <option value="generic">🔌 Generic H-bridge</option>
               <option value="cutebot">🐱 Elecfreaks Cutebot</option>
@@ -3365,6 +4314,23 @@ export default function RobotPanel() {
               <option value="maqueenplus">🦆 DFRobot Maqueen Plus</option>
               <option value="move">🚗 Kitronik :MOVE Motor</option>
               <option value="ringbitcar">🚙 Elecfreaks Ring:bit Car</option>
+            </select>
+          )}
+
+          {robotType === 'microbit' && (
+            <select
+              value={microbitHw}
+              onChange={(e) => {
+                const v = e.target.value;
+                setMicrobitHw(v);
+                localStorage.setItem('cv_mb_hw', v);
+              }}
+              disabled={connected}
+              title="WebUSB needs the correct board version (universal .hex contains both)"
+              style={{ padding: '6px 10px', borderRadius: 8, background: ui.setupBg, border: `1px solid ${ui.setupBorder}`, color: isLightTheme ? '#334155' : '#a5b4fc', fontSize: 13 }}
+            >
+              <option value="v2">⚡ Flash target: V2</option>
+              <option value="v1">⚡ Flash target: V1</option>
             </select>
           )}
 
@@ -3397,15 +4363,18 @@ export default function RobotPanel() {
 
       {/* Setup guide banner */}
       {showSetup && (
-        <div style={{ padding: 16, background: '#1e1b4b', borderBottom: '1px solid var(--border)' }}>
+        <div style={{ padding: 16, background: ui.setupBg, borderBottom: `1px solid ${ui.setupBorder}` }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
             <strong style={{ fontSize: 14 }}>📋 {profile.name} Setup Guide</strong>
             <button style={s.iconBtn} onClick={() => setShowSetup(false)}>✕</button>
           </div>
           <ol style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 2 }}>
             {robotType === 'microbit' && <>
-              <li><strong>🔌 USB (easiest):</strong> Connect with a USB cable → click <strong>🔌 USB</strong> → select the serial port → click <strong>Run</strong></li>
-              <li>No flashing needed over USB — ByteBuddies sends code directly to MicroPython REPL</li>
+              <li><strong>Flash once, code forever:</strong> ⚡ Flash → <strong>MicroPython (USB, flash once)</strong> — only needed one time per board</li>
+              <li>Then: USB cable → <strong>🔌 USB</strong> → build blocks → <strong>▶ Run</strong> (sends code wirelessly over USB — no reflash)</li>
+              <li><strong>Wireless:</strong> ⚡ Flash → <strong>Bluetooth bridge firmware</strong> once → wait for <strong>B</strong> → <strong>📡 Bluetooth</strong> → pick <strong>ByteBuddies</strong> → ▶ Run</li>
+              <li>Set <strong>V1/V2</strong> next to the kit menu before flashing so the correct image is used</li>
+              <li>Only use <strong>Flash program</strong> if you need a .hex file offline — normal coding does not need it</li>
             </>}
             {robotType === 'mbot' && <>
               <li>Step 1 — <strong>Download &amp; upload the sketch</strong> to your mBot (Arduino IDE + Makeblock library)</li>
@@ -3419,55 +4388,56 @@ export default function RobotPanel() {
             </>}
           </ol>
           {robotType === 'microbit' && (
-            <div style={{ marginTop: 12, padding: '12px 14px', background: '#0c1a2e', border: '1px solid #0ea5e9', borderRadius: 8 }}>
-              <strong style={{ fontSize: 13, color: '#38bdf8' }}>📡 Wireless via Bluetooth — one-click USB flash</strong>
-              <p style={{ margin: '6px 0', fontSize: 12, color: 'var(--text-secondary)' }}>
-                Connect your micro:bit via USB, then click the button below. ByteBuddies will automatically flash the BLE firmware — no MakeCode needed!
-              </p>
-              <button
-                style={{ ...s.btn('#0ea5e9'), fontSize: 13, padding: '9px 18px', fontWeight: 700, marginTop: 4 }}
-                onClick={async () => {
-                  try {
-                    addTerminal('📦 Fetching BLE firmware…', 'info');
-                    const res = await fetch('/bytebuddies_ble.hex');
-                    if (!res.ok) throw new Error('Could not load firmware file');
-                    const hexStr = await res.text();
-                    addTerminal('⚡ Flashing BLE firmware via USB…', 'info');
-                    setFlashProgress(0);
-                    await flashViaDAPLink(hexStr, p => setFlashProgress(p));
-                    setFlashProgress('done');
-                    addTerminal('✅ BLE firmware flashed! Unplug USB — screen shows "B" = ready.', 'success');
-                    addTerminal('Now click 📡 Bluetooth above to connect wirelessly!', 'info');
-                    setTimeout(() => setFlashProgress(null), 3000);
-                  } catch (e) {
-                    setFlashProgress(null);
-                    addTerminal(`❌ Flash failed: ${e.message}`, 'error');
-                  }
-                }}
-              >
-                ⚡ Flash BLE Firmware via USB
-              </button>
-              <a
-                href="/bytebuddies_ble.hex"
-                download="bytebuddies_ble.hex"
-                style={{ ...s.btn('#475569'), fontSize: 12, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 6, padding: '7px 14px' }}
-              >
-                ⬇️ Download .hex (drag to MICROBIT drive instead)
-              </a>
-              <p style={{ margin: '6px 0 0 0', fontSize: 11, color: 'var(--text-muted)' }}>
-                After flashing: unplug USB → screen shows "B" → click 📡 Bluetooth
-              </p>
-            </div>
+            <>
+              <div style={{ marginTop: 12, padding: '12px 14px', background: ui.infoBg, border: `1px solid ${ui.infoBorder}`, borderRadius: 8 }}>
+                <strong style={{ fontSize: 13, color: ui.infoText }}>⚡ How to Flash Your Program</strong>
+                <p style={{ margin: '6px 0', fontSize: 12, color: 'var(--text-secondary)' }}>
+                  Click the <strong>⚡ Flash</strong> button to choose your flashing method:
+                </p>
+                <div style={{ background: 'rgba(0,0,0,0.1)', padding: '8px 12px', borderRadius: 6, margin: '8px 0', fontSize: 11, color: 'var(--text-primary)' }}>
+                  <strong>🔌 Flash via USB:</strong>
+                  <ul style={{ margin: '4px 0 0 0', paddingLeft: 16 }}>
+                    <li><strong>Chrome/Edge:</strong> One-click direct flashing (no downloads!)</li>
+                    <li><strong>Safari/Firefox:</strong> Auto-downloads .hex file → drag onto MICROBIT drive</li>
+                  </ul>
+                </div>
+                <div style={{ background: 'rgba(0,0,0,0.1)', padding: '8px 12px', borderRadius: 6, margin: '8px 0', fontSize: 11, color: 'var(--text-primary)' }}>
+                  <strong>📡 Flash via Bluetooth:</strong>
+                  <ul style={{ margin: '4px 0 0 0', paddingLeft: 16 }}>
+                    <li>First connect via 📡 Bluetooth button</li>
+                    <li>Then click ⚡ Flash → Bluetooth to send wirelessly</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div style={{ marginTop: 12, padding: '12px 14px', background: '#f0f4f8', border: '1px solid #bfdbfe', borderRadius: 8 }}>
+                <strong style={{ fontSize: 13, color: '#1e40af' }}>🍎 Mac Users: Flashing Guide</strong>
+                <p style={{ margin: '6px 0', fontSize: 12, color: 'var(--text-secondary)' }}>
+                  <strong>Chrome on Mac:</strong> Click ⚡ Flash → USB → one-click flashing!
+                </p>
+                <p style={{ margin: '6px 0', fontSize: 12, color: 'var(--text-secondary)' }}>
+                  <strong>Safari on Mac:</strong> Click ⚡ Flash → USB → file downloads → drag to MICROBIT drive
+                </p>
+                <ol style={{ margin: '6px 0', fontSize: 11, color: 'var(--text-secondary)', paddingLeft: 16 }}>
+                  <li>Connect micro:bit via USB to your Mac</li>
+                  <li>Your Mac will show a "MICROBIT" disk</li>
+                  <li>Click ⚡ Flash button in ByteBuddies</li>
+                  <li>Choose "Flash via USB"</li>
+                  <li>If it downloads: Drag bytebuddies.hex onto the MICROBIT disk</li>
+                  <li>Micro:bit restarts automatically ✓</li>
+                </ol>
+              </div>
+            </>
           )}
           {(robotType === 'mbot' || robotType === 'arduino') && (
-            <div style={{ marginTop: 12, padding: '10px 14px', background: '#0f2a1a', border: '1px solid #16a34a', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <div style={{ marginTop: 12, padding: '10px 14px', background: ui.successBg, border: `1px solid ${ui.successBorder}`, borderRadius: 8, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
               <a
                 href={robotType === 'mbot' ? '/bytebuddies-mbot.ino' : '/bytebuddies-arduino.ino'}
                 download
                 style={{ ...s.btn('#16a34a'), fontSize: 14, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 18px', fontWeight: 700, flexShrink: 0 }}>
                 ⬇️ Download {robotType === 'mbot' ? 'mBot' : 'Arduino'} Sketch (.ino)
               </a>
-              <span style={{ fontSize: 12, color: '#86efac' }}>
+              <span style={{ fontSize: 12, color: ui.successText }}>
                 {robotType === 'mbot'
                   ? 'Upload once via Arduino IDE (needs Makeblock library) — then just Connect + Run every time'
                   : 'Upload once via Arduino IDE — then just Connect + Run every time'}
@@ -3475,10 +4445,10 @@ export default function RobotPanel() {
             </div>
           )}
           <details style={{ marginTop: 10 }}>
-            <summary style={{ cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#818cf8' }}>
+            <summary style={{ cursor: 'pointer', fontSize: 13, fontWeight: 600, color: ui.setupAccent }}>
               Show sketch source code →
             </summary>
-            <pre style={{ marginTop: 8, padding: 10, background: '#0c0c1e', borderRadius: 8, fontSize: 11, color: '#a5f3fc', overflowX: 'auto', maxHeight: 200 }}>
+            <pre style={{ marginTop: 8, padding: 10, background: ui.codeBg, borderRadius: 8, fontSize: 11, color: ui.codeText, overflowX: 'auto', maxHeight: 200 }}>
               {profile.setupCode}
             </pre>
             <button style={{ ...s.btn('#6366f1'), marginTop: 6, fontSize: 12 }}
@@ -3498,12 +4468,12 @@ export default function RobotPanel() {
         if (!noSerial || (!isFirefox && !isSafari)) return null;
         const browserName = isFirefox ? 'Firefox' : isSafari ? 'Safari' : 'your browser';
         return (
-          <div style={{ padding: '12px 20px', background: '#1e1b4b', borderBottom: '1px solid #4338ca', fontSize: 13, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <div style={{ padding: '12px 20px', background: ui.warnBg, borderBottom: `1px solid ${ui.warnBorder}`, fontSize: 13, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 20 }}>ℹ️</span>
             <div>
               <strong>You're using {browserName}</strong> — the simulator below works fine, but connecting to a real robot requires
               {' '}<strong>Google Chrome</strong> or <strong>Microsoft Edge</strong>.
-              {' '}<span style={{ color: '#818cf8' }}>The program builder and simulator work in any browser.</span>
+              {' '}<span style={{ color: ui.warnText }}>The program builder and simulator work in any browser.</span>
             </div>
           </div>
         );
@@ -3513,16 +4483,22 @@ export default function RobotPanel() {
         {/* Left: block palette sidebar */}
         <div style={s.leftCol}>
           {/* Category tabs */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 2, padding: 6, borderBottom: '1px solid var(--border)' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, padding: 6, borderBottom: '1px solid var(--border)' }}>
             {['Movement','Sensors','Control','Math','Outputs','Servo','Variables','Comms','Lights'].map(cat => {
-              const catColors = { Movement:'#22c55e', Sensors:'#3b82f6', Control:'#8b5cf6', Math:'#d97706', Outputs:'#f59e0b', Servo:'#ec4899', Variables:'#06b6d4', Comms:'#f97316', Lights:'#e879f9' };
-              const col = catColors[cat];
+              const col = getCategoryColor(cat);
               return (
                 <button key={cat} onClick={() => setActiveCat(cat)} style={{
-                  padding: '4px 8px', borderRadius: 6, border: `1.5px solid ${activeCat === cat ? col : 'transparent'}`,
-                  background: activeCat === cat ? `${col}22` : 'transparent',
-                  color: activeCat === cat ? col : 'var(--text-muted)',
-                  fontSize: 10, fontWeight: 700, cursor: 'pointer', transition: 'all 0.12s',
+                  padding: '4px 8px',
+                  borderRadius: 4,
+                  border: `1px solid ${activeCat === cat ? col : 'rgba(148,163,184,0.25)'}`,
+                  background: activeCat === cat
+                    ? `linear-gradient(180deg, ${col}, ${darkenHex(col, 30)})`
+                    : ui.tabInactiveBg,
+                  color: activeCat === cat ? '#fff' : ui.tabInactiveText,
+                  fontSize: 10,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  transition: 'all 0.12s',
                 }}>{cat}</button>
               );
             })}
@@ -3536,22 +4512,74 @@ export default function RobotPanel() {
               <div
                 key={cmd.id}
                 draggable
-                onDragStart={e => e.dataTransfer.setData('robot-cmd', cmd.id)}
-                onClick={() => addBlock(cmd)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 7,
-                  padding: '7px 10px', margin: '2px 4px', borderRadius: 8,
-                  border: `2px solid ${cmd.color}`,
-                  background: `${cmd.color}22`,
-                  color: 'var(--text-primary)', cursor: 'grab', fontSize: 12,
-                  fontWeight: 600, userSelect: 'none', transition: 'transform 0.1s, box-shadow 0.1s',
+                onDragStart={e => {
+                  e.dataTransfer.effectAllowed = 'copy';
+                  if (useUnifiedBlocklyCanvas) {
+                    const name = toBlocklySidebarName(cmd);
+                    const payload = { name, type: `robot:${cmd.id}`, color: cmd.color, meta: { robotId: cmd.id, label: cmd.label, icon: cmd.icon, params: cmd.params || [] } };
+                    e.dataTransfer.setData('text/plain', name);
+                    e.dataTransfer.setData('application/x-bb-sidebar-block', JSON.stringify(payload));
+                    return;
+                  }
+                  e.dataTransfer.setData('robot-cmd', cmd.id);
                 }}
-                onMouseEnter={e => { e.currentTarget.style.transform = 'translateX(3px)'; e.currentTarget.style.boxShadow = `0 2px 12px ${cmd.color}44`; }}
-                onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = ''; }}
+                onClick={() => {
+                  if (useUnifiedBlocklyCanvas) {
+                    emitAddSidebarBlock(
+                      toBlocklySidebarName(cmd),
+                      `robot:${cmd.id}`,
+                      cmd.color,
+                      { robotId: cmd.id, label: cmd.label, icon: cmd.icon, params: cmd.params || [] },
+                    );
+                    return;
+                  }
+                  addBlock(cmd);
+                }}
+                style={{
+                  margin: '3px 4px',
+                  cursor: 'grab',
+                }}
                 title="Click to add · Drag to place"
               >
-                <span style={{ fontSize: 15 }}>{cmd.icon}</span>
-                <span style={{ flex: 1 }}>{cmd.label}</span>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    minHeight: 30,
+                    padding: '4px 8px',
+                    borderRadius: 7,
+                    border: `1px solid ${darkenHex(cmd.color, 10)}`,
+                    background: `linear-gradient(180deg, ${cmd.color} 0%, ${darkenHex(cmd.color, 28)} 100%)`,
+                    color: '#fff',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    boxShadow: `0 2px 0 ${darkenHex(cmd.color, 56)}, inset 0 1px 0 rgba(255,255,255,0.22)`,
+                    userSelect: 'none',
+                  }}
+                >
+                  <span style={{ fontSize: 13, lineHeight: 1 }}>{cmd.icon}</span>
+                  <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{cmd.label}</span>
+                  {(cmd.params || []).slice(0, 2).map((p) => (
+                    <span
+                      key={p.key}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 3,
+                        padding: '1px 6px',
+                        borderRadius: 10,
+                        background: '#ffffff',
+                        color: '#575E75',
+                        fontSize: 10,
+                        fontWeight: 700,
+                      }}
+                    >
+                      {String(p.default ?? '')}
+                      {p.type === 'select' ? '▾' : ''}
+                    </span>
+                  ))}
+                </div>
               </div>
             ))}
           </div>
@@ -3677,8 +4705,19 @@ export default function RobotPanel() {
           })()}
 
           {/* Canvas with dot grid */}
+          {useUnifiedBlocklyCanvas ? (
+            <div className="bb-workspace-scratch-toolbox" style={{ flex: 1, minHeight: 0, background: 'var(--bg-primary)' }}>
+              <UnifiedBlocklyWorkspace
+                libraryPage="workspace"
+                scrollbarSide="top-left"
+                onModelChange={(nodes) => setProgram(blocklyNodesToRobotProgram(nodes))}
+                style={{ height: '100%' }}
+              />
+            </div>
+          ) : (
           <div
             ref={canvasAreaRef}
+            className="robot-block-canvas"
             style={{
               flex: 1, position: 'relative', overflow: 'auto',
               backgroundImage: 'radial-gradient(circle, rgba(99,102,241,0.25) 1px, transparent 1px)',
@@ -3773,38 +4812,38 @@ export default function RobotPanel() {
               const isDragging = draggingBlock === block.uid;
               const isActive = activeBlockUid === block.uid;
               const stepNum = sortedProgram.findIndex(b => b.uid === block.uid) + 1;
+              
+              // Convert to ScratchStyleBlock format
+              const scratchBlock = {
+                id: block.id,
+                category: block.cat,
+                type: block.id,
+              };
+              
               return (
-                <div
+                <ScratchStyleBlock
                   key={block.uid}
-                  style={{
-                    position: 'absolute', left: block.x, top: block.y,
-                    background: `${block.color}22`,
-                    border: `2px solid ${block.color}`,
-                    borderRadius: 10,
-                    padding: '7px 32px 7px 12px',
-                    fontSize: 13, fontWeight: 600,
-                    display: 'flex', alignItems: 'center', gap: 6,
-                    whiteSpace: 'nowrap', cursor: isDragging ? 'grabbing' : 'grab',
-                    userSelect: 'none', zIndex: isDragging ? 100 : isActive ? 100 : isSelected ? 50 : 1,
-                    boxShadow: isActive
-                      ? '0 0 16px rgba(251,191,36,0.7), 0 0 32px rgba(251,191,36,0.3)'
-                      : isSelected
-                        ? `0 0 0 3px ${block.color}88, 0 4px 20px ${block.color}44`
-                        : isDragging ? `0 6px 24px ${block.color}55` : 'none',
-                    outline: isActive ? '2px solid #fbbf24' : undefined,
-                    transform: isDragging ? 'scale(1.04)' : isActive ? 'scale(1.03)' : 'scale(1)',
-                    transition: isDragging ? 'none' : 'box-shadow 0.15s, transform 0.15s, outline 0.15s',
-                  }}
+                  block={scratchBlock}
+                  tabIndex={0}
                   onMouseDown={e => handleBlockMouseDown(e, block)}
                   onMouseEnter={() => setHoveredBlock(block.uid)}
                   onMouseLeave={() => setHoveredBlock(null)}
-                  tabIndex={0}
                   onKeyDown={e => {
                     if ((e.key === 'Delete' || e.key === 'Backspace') && e.target.tagName !== 'INPUT' && e.target.tagName !== 'SELECT' && e.target.tagName !== 'TEXTAREA') removeBlock(block.uid);
-                    if (e.key === 'ArrowUp') setProgram(p => p.map(b => b.uid === block.uid ? { ...b, y: b.y - 8 } : b));
-                    if (e.key === 'ArrowDown') setProgram(p => p.map(b => b.uid === block.uid ? { ...b, y: b.y + 8 } : b));
-                    if (e.key === 'ArrowLeft') setProgram(p => p.map(b => b.uid === block.uid ? { ...b, x: b.x - 8 } : b));
-                    if (e.key === 'ArrowRight') setProgram(p => p.map(b => b.uid === block.uid ? { ...b, x: b.x + 8 } : b));
+                    if (e.key === 'ArrowUp') setProgram((p) => normalizeRobotProgram(p.map(b => b.uid === block.uid ? { ...b, y: b.y - 8 } : b)));
+                    if (e.key === 'ArrowDown') setProgram((p) => normalizeRobotProgram(p.map(b => b.uid === block.uid ? { ...b, y: b.y + 8 } : b)));
+                  }}
+                  style={{
+                    position: 'absolute',
+                    left: block.x,
+                    top: block.y,
+                    cursor: isDragging ? 'grabbing' : 'grab',
+                    userSelect: 'none',
+                    zIndex: isDragging ? 100 : isActive ? 100 : isSelected ? 50 : 1,
+                    outline: isActive ? '3px solid #fbbf24' : isSelected ? `3px solid ${block.color}88` : 'none',
+                    outlineOffset: '2px',
+                    transform: 'none',
+                    transition: 'outline 0.15s',
                   }}
                 >
                   {/* Active block "Running" badge */}
@@ -3819,10 +4858,6 @@ export default function RobotPanel() {
                       ▶ Running
                     </div>
                   )}
-                  {/* Block notch top */}
-                  <div style={{ position: 'absolute', top: -6, left: 16, width: 24, height: 6, background: `${block.color}`, borderRadius: '4px 4px 0 0' }} />
-                  {/* Block notch bottom */}
-                  <div style={{ position: 'absolute', bottom: -6, left: 16, width: 24, height: 6, background: `${block.color}`, borderRadius: '0 0 4px 4px' }} />
 
                   {/* Step order badge */}
                   <span style={{
@@ -3834,7 +4869,7 @@ export default function RobotPanel() {
                   }}>{stepNum}</span>
 
                   <span style={{ fontSize: 16 }}>{block.icon}</span>
-                  <span style={{ color: block.color, marginRight: 2 }}>{block.label}</span>
+                  <span style={{ marginRight: 4 }}>{block.label}</span>
 
                   {/* Inline param inputs */}
                   {cmdDef?.params.map(p => (
@@ -3845,9 +4880,14 @@ export default function RobotPanel() {
                           onChange={e => updateParam(block.uid, p.key, e.target.value)}
                           onMouseDown={e => e.stopPropagation()}
                           onClick={e => e.stopPropagation()}
-                          style={{ background: 'rgba(0,0,0,0.35)', border: `1px solid ${block.color}88`, borderRadius: 4, color: '#fff', fontSize: 12, fontWeight: 700, padding: '1px 4px', fontFamily: 'var(--font-mono)' }}
+                          style={{
+                            background: '#ffffff', border: 'none', borderRadius: 10,
+                            padding: '2px 6px', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                            fontFamily: "'Helvetica Neue', 'Helvetica', 'Arial', sans-serif",
+                            color: '#575E75',
+                          }}
                         >
-                          {p.options.map(o => <option key={o} value={o}>{o}</option>)}
+                          {p.options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                         </select>
                       ) : (
                         <input
@@ -3856,32 +4896,37 @@ export default function RobotPanel() {
                           onChange={e => updateParam(block.uid, p.key, e.target.value)}
                           onMouseDown={e => e.stopPropagation()}
                           onClick={e => e.stopPropagation()}
-                          style={{ background: 'rgba(0,0,0,0.35)', border: `1px solid ${block.color}88`, borderRadius: 4, color: '#fff', fontSize: 12, fontWeight: 700, fontFamily: 'var(--font-mono)', padding: '1px 5px', width: p.type === 'text' ? 64 : 48, outline: 'none', margin: '0 2px', verticalAlign: 'middle' }}
+                          style={{
+                            background: '#ffffff', border: 'none', borderRadius: 10,
+                            padding: '2px 8px', width: p.type === 'text' ? 80 : 50,
+                            fontSize: 12, fontWeight: 600, textAlign: 'center',
+                            fontFamily: "'Helvetica Neue', 'Helvetica', 'Arial', sans-serif",
+                            color: '#575E75',
+                          }}
+                          placeholder={p.default}
                         />
                       )}
-                      <span style={{ fontSize: 10, color: `${block.color}cc` }}>{p.label}</span>
                     </span>
                   ))}
-
-                  {/* Category label */}
-                  <span style={{ position: 'absolute', bottom: 1, left: 12, fontSize: 9, color: 'var(--text-muted)' }}>{block.cat}</span>
 
                   {/* Delete button */}
                   <button
                     style={{
-                      position: 'absolute', top: 3, right: 3, width: 20, height: 20,
-                      borderRadius: '50%', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700,
+                      position: 'absolute', top: 5, right: 5, width: 18, height: 18,
+                      borderRadius: '50%', border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 700,
                       background: hoveredBlock === block.uid ? '#ef4444' : 'transparent',
                       color: hoveredBlock === block.uid ? '#fff' : 'transparent',
                       transition: 'all 0.15s', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      padding: 0, lineHeight: 1, pointerEvents: 'auto',
                     }}
                     onMouseDown={e => e.stopPropagation()}
                     onClick={e => { e.stopPropagation(); removeBlock(block.uid); }}
                   >×</button>
-                </div>
+                </ScratchStyleBlock>
               );
             })}
           </div>
+          )}
 
           <div style={s.runBar}>
             {running
@@ -3900,14 +4945,123 @@ export default function RobotPanel() {
               {savedFlash ? '✓ Saved!' : '💾 Save'}
             </button>
             {robotType === 'microbit' && (
-              <button
-                style={{ ...s.btn(flashProgress !== null ? '#f59e0b' : '#6366f1'), marginLeft: 4, minWidth: 90 }}
-                onClick={handleFlash}
-                disabled={flashProgress !== null || program.length === 0}
-                title="Flash program directly to micro:bit via USB — works with any firmware"
-              >
-                {flashProgress === 'done' ? '✅ Done!' : flashProgress !== null ? `⚡ ${flashProgress}%` : '⚡ Flash'}
-              </button>
+              <div style={{ position: 'relative' }}>
+                <button
+                  style={{ ...s.btn(flashProgress !== null ? '#f59e0b' : '#6366f1'), marginLeft: 4, minWidth: 90 }}
+                  onClick={() => setFlashMethod(flashMethod ? null : 'showOptions')}
+                  disabled={flashProgress !== null}
+                  title="Flash your program or Bluetooth bridge firmware"
+                >
+                  {flashProgress === 'done' ? '✅ Done!' : flashProgress !== null ? `⚡ ${flashProgress}%` : '⚡ Flash'}
+                </button>
+                {flashMethod === 'showOptions' && (
+                  <div style={{
+                    position: 'absolute', top: '100%', left: 0, marginTop: 6,
+                    background: 'var(--bg-primary)', border: '1px solid var(--border)',
+                    borderRadius: 8,                     boxShadow: '0 8px 24px rgba(0,0,0,0.45)',
+                    zIndex: 1000, minWidth: 300, maxHeight: 'min(360px, 50vh)', overflowY: 'auto',
+                  }}>
+                    <button
+                      onClick={() => handleFlashMethod('flash-micropython-runtime')}
+                      style={{
+                        display: 'block', width: '100%', padding: '10px 14px', textAlign: 'left',
+                        background: 'rgba(34,197,94,0.12)', border: 'none', color: 'var(--text-primary)',
+                        cursor: 'pointer', fontSize: 13, borderBottom: '1px solid var(--border)',
+                        transition: 'background 0.2s', fontWeight: 600,
+                      }}
+                      onMouseEnter={e => { e.target.style.background = 'var(--bg-secondary)'; }}
+                      onMouseLeave={e => { e.target.style.background = 'rgba(34,197,94,0.12)'; }}
+                      title="Flash MicroPython once — then use USB + Run without reflashing"
+                    >
+                      ✅ MicroPython (USB) — flash once
+                    </button>
+                    <button
+                      onClick={() => handleFlashMethod('bluetooth-firmware')}
+                      style={{
+                        display: 'block', width: '100%', padding: '10px 14px', textAlign: 'left',
+                        background: 'rgba(14,165,233,0.12)', border: 'none', color: 'var(--text-primary)',
+                        cursor: 'pointer', fontSize: 13, borderBottom: '1px solid var(--border)',
+                        transition: 'background 0.2s', fontWeight: 600,
+                      }}
+                      onMouseEnter={e => { e.target.style.background = 'var(--bg-secondary)'; }}
+                      onMouseLeave={e => { e.target.style.background = 'rgba(14,165,233,0.12)'; }}
+                      title="BLE bridge — flash once, then Connect Bluetooth + Run"
+                    >
+                      📡 Bluetooth bridge — flash once
+                    </button>
+                    <button
+                      onClick={() => handleFlashMethod('flash-prog-auto')}
+                      style={{
+                        display: 'block', width: '100%', padding: '10px 14px', textAlign: 'left',
+                        background: 'transparent', border: 'none', color: 'var(--text-muted)',
+                        cursor: 'pointer', fontSize: 12, borderBottom: '1px solid var(--border)',
+                        transition: 'background 0.2s'
+                      }}
+                      onMouseEnter={e => { e.target.style.background = 'var(--bg-secondary)'; }}
+                      onMouseLeave={e => { e.target.style.background = 'transparent'; }}
+                      title="Bakes blocks into a hex file — only if you need offline .hex"
+                    >
+                      ⚡ Flash current program (advanced)
+                    </button>
+                    <button
+                      onClick={() => handleFlashMethod('flash-prog-webusb')}
+                      style={{
+                        display: 'block', width: '100%', padding: '10px 14px', textAlign: 'left',
+                        background: 'transparent', border: 'none', color: 'var(--text-primary)',
+                        cursor: 'pointer', fontSize: 13, borderBottom: '1px solid var(--border)',
+                        transition: 'background 0.2s'
+                      }}
+                      onMouseEnter={e => { e.target.style.background = 'var(--bg-secondary)'; }}
+                      onMouseLeave={e => { e.target.style.background = 'transparent'; }}
+                      title="Chrome / Edge — direct USB like MakeCode"
+                    >
+                      🔌 WebUSB only (Chrome / Edge)
+                    </button>
+                    <button
+                      onClick={() => handleFlashMethod('flash-prog-msd')}
+                      style={{
+                        display: 'block', width: '100%', padding: '10px 14px', textAlign: 'left',
+                        background: 'transparent', border: 'none', color: 'var(--text-primary)',
+                        cursor: 'pointer', fontSize: 13, borderBottom: '1px solid var(--border)',
+                        transition: 'background 0.2s'
+                      }}
+                      onMouseEnter={e => { e.target.style.background = 'var(--bg-secondary)'; }}
+                      onMouseLeave={e => { e.target.style.background = 'transparent'; }}
+                      title="Requires ByteBuddies desktop (Electron)"
+                    >
+                      💾 USB drive copy (desktop app)
+                    </button>
+                    <button
+                      onClick={() => handleFlashMethod('flash-prog-ble')}
+                      style={{
+                        display: 'block', width: '100%', padding: '10px 14px', textAlign: 'left',
+                        background: 'transparent', border: 'none', color: 'var(--text-primary)',
+                        cursor: 'pointer', fontSize: 13, borderBottom: '1px solid var(--border)',
+                        transition: 'background 0.2s'
+                      }}
+                      onMouseEnter={e => { e.target.style.background = 'var(--bg-secondary)'; }}
+                      onMouseLeave={e => { e.target.style.background = 'transparent'; }}
+                      title="MicroPython → USB; MakeCode hex → wireless partial update"
+                    >
+                      📡 Bluetooth (USB for blocks / partial for MakeCode)
+                    </button>
+                    <button
+                      onClick={() => handleFlashMethod('flash-prog-download')}
+                      style={{
+                        display: 'block', width: '100%', padding: '10px 14px', textAlign: 'left',
+                        background: 'transparent', border: 'none', color: 'var(--text-primary)',
+                        cursor: 'pointer', fontSize: 13, borderBottom: '1px solid var(--border)',
+                        transition: 'background 0.2s'
+                      }}
+                      onMouseEnter={e => { e.target.style.background = 'var(--bg-secondary)'; }}
+                      onMouseLeave={e => { e.target.style.background = 'transparent'; }}
+                      title="Drag program.hex to the MICROBIT drive"
+                    >
+                      ⬇️ Download .hex only
+                    </button>
+                  </div>
+                )}
+              </div>
             )}
             {robotType === 'microbit' && (
               <button
@@ -4119,6 +5273,30 @@ export default function RobotPanel() {
 
           {rightTab === 'terminal' && (
             <>
+              {robotType === 'microbit' && (
+                <MicrobitDualFlashPanel
+                  buildHex={buildHexForDualFlash}
+                  hasProgram={program.length > 0}
+                  board={microbitHw === 'v1' ? 'v1' : 'v2'}
+                  onBoardChange={(hw) => {
+                    setMicrobitHw(hw);
+                    localStorage.setItem('cv_mb_hw', hw);
+                  }}
+                  disabled={flashProgress !== null}
+                  onTerminal={addTerminal}
+                  onFlashProgress={setFlashProgress}
+                  onConnectBluetooth={connectBluetooth}
+                  onConnectUsb={connect}
+                  bluetoothConnected={connected && connectionKind === 'bluetooth'}
+                  beforeUsbFlash={async () => {
+                    if (connectedRef.current && connectionTypeRef.current === 'usb') {
+                      addTerminal('🔌 Releasing USB serial for WebUSB flash…', 'info');
+                      await disconnect();
+                      await new Promise((r) => setTimeout(r, 1000));
+                    }
+                  }}
+                />
+              )}
               <div ref={terminalRef} style={s.terminal}>
                 {terminal.length === 0 && <div style={{ color: '#475569' }}>// Terminal output will appear here…</div>}
                 {terminal.map((line, i) => (
@@ -4167,12 +5345,12 @@ export default function RobotPanel() {
 
       {/* Flash progress overlay */}
       {flashProgress !== null && flashProgress !== 'done' && (
-        <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 9999, background: '#1e1b4b', border: '1px solid #6366f1', borderRadius: 12, padding: '14px 20px', minWidth: 260, boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}>
-          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 8, color: '#e0e7ff' }}>⚡ Flashing to micro:bit...</div>
-          <div style={{ background: '#312e81', borderRadius: 6, height: 8, overflow: 'hidden' }}>
+        <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 9999, background: ui.setupBg, border: `1px solid ${ui.setupBorder}`, borderRadius: 12, padding: '14px 20px', minWidth: 260, boxShadow: '0 8px 32px rgba(0,0,0,0.35)' }}>
+          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 8, color: isLightTheme ? '#1e293b' : '#e0e7ff' }}>⚡ Flashing to micro:bit...</div>
+          <div style={{ background: isLightTheme ? '#c7d2fe' : '#312e81', borderRadius: 6, height: 8, overflow: 'hidden' }}>
             <div style={{ height: '100%', background: 'linear-gradient(90deg,#6366f1,#a5b4fc)', width: `${flashProgress}%`, transition: 'width 0.3s ease', borderRadius: 6 }} />
           </div>
-          <div style={{ fontSize: 12, color: '#a5b4fc', marginTop: 6, textAlign: 'right' }}>{flashProgress}%</div>
+          <div style={{ fontSize: 12, color: isLightTheme ? '#4338ca' : '#a5b4fc', marginTop: 6, textAlign: 'right' }}>{flashProgress}%</div>
         </div>
       )}
     </div>

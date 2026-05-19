@@ -1,71 +1,69 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useProject } from '../contexts/ProjectContext';
 import { useUser } from '../contexts/UserContext';
+import { buildLibraryCategories } from '../data/blockLibraryCategories';
+import { readEnabledExtensionIds } from '../data/extensionsCatalog';
+import { BB_EXTENSIONS_CHANGED, emitAddSidebarBlock } from '../utils/blockLibraryEvents';
+import BlocklySidebarFlyout from './BlocklySidebarFlyout';
+import SidebarBlockPreview, { isPaletteBlockEntry } from './SidebarBlockPreview';
+import { markSidebarBlockDragging, setSidebarBlockDragImage } from '../utils/sidebarBlockDragImage';
 
-const blockCategories = [
-  { name: 'Motion',    icon: '🏃', color: '#4a9eff', blocks: ['move steps','turn degrees','glide to','go to x,y','set X to','set Y to','change X by','change Y by','point toward mouse','point in direction','bounce off edges','set speed'] },
-  { name: 'Looks',     icon: '👀', color: '#9b59b6', blocks: ['say','think','show / hide','switch costume','next costume','set size','grow by','shrink by','color effect','ghost effect','clear effects','go to front','go to back'] },
-  { name: 'Sound',     icon: '🔊', color: '#e91e8c', blocks: ['play sound','stop sounds','set volume','play note'] },
-  { name: 'Events',    icon: '⚡', color: '#ffab19', blocks: ['on start','on key press','on click','on collision','on message','broadcast'] },
-  { name: 'Control',   icon: '🔧', color: '#ff8c1a', blocks: ['wait','repeat N times','forever','if / else','while condition','stop all','for each in list'] },
-  { name: 'Sensing',   icon: '🔍', color: '#5bc0de', blocks: ['touching edge?','touching sprite?','key pressed?','mouse X','mouse Y','distance to mouse','timer','reset timer'] },
-  { name: 'Operators', icon: '➕', color: '#59c059', blocks: ['add / subtract','multiply / divide','random number','round / abs','compare (=, <, >)','and / or / not','modulo'] },
-  { name: 'Variables', icon: '📦', color: '#ff8c1a', blocks: ['create variable','set variable','change by','show variable','create list','add to list','get item #'] },
-  { name: 'My Blocks', icon: '🧩', color: '#ff6680', blocks: ['define my block','run my block','define function','call function','with parameters','return value'] },
-  { name: 'Physics',   icon: '💨', color: '#1abc9c', blocks: ['set velocity','set gravity','bounce off edges','jump','set friction','push'] },
-  { name: 'Game',      icon: '🎮', color: '#e74c3c', blocks: ['add to score','set score','lose a life','set lives','game over','you win','next level','spawn clone','destroy','pause game'] },
-  { name: 'AI',        icon: '🤖', color: '#f97316', blocks: ['AI classify','AI generate text','AI detect object','AI translate','train model'] },
-];
-
-const starterCategories = [
-  {
-    name: 'Move',
-    icon: '➡️',
-    color: '#6366f1',
-    blocks: ['move forward', 'move back', 'turn left', 'turn right'],
-  },
-  {
-    name: 'Repeat',
-    icon: '🔁',
-    color: '#8b5cf6',
-    blocks: ['repeat 2 times', 'repeat 3 times', 'repeat 5 times', 'repeat 10 times'],
-  },
-  {
-    name: 'Look',
-    icon: '👁️',
-    color: '#06b6d4',
-    blocks: ['show', 'hide', 'say hello', 'say goodbye'],
-  },
-  {
-    name: 'Sound',
-    icon: '🔊',
-    color: '#10b981',
-    blocks: ['play sound', 'celebrate', 'play note', 'stop sounds'],
-  },
-];
-
-const gameAssets = [
-  { category: 'Characters', items: ['🧑‍🚀 Astronaut', '🦊 Fox', '🤖 Robot', '🧙 Wizard', '🦸 Hero', '👾 Alien'] },
-  { category: 'Objects', items: ['⭐ Star', '💎 Gem', '🗝️ Key', '🎁 Gift', '💣 Bomb', '🏆 Trophy'] },
-  { category: 'Backgrounds', items: ['🌌 Space', '🏔️ Mountains', '🌊 Ocean', '🏙️ City', '🌲 Forest', '🏜️ Desert'] },
-  { category: 'Sounds', items: ['🔔 Bell', '💥 Explosion', '🎵 Music', '👏 Clap', '🎮 Game Over', '✨ Magic'] },
-];
+function darken(hex, amt = 44) {
+  const n = parseInt(String(hex).replace('#', ''), 16);
+  const r = Math.max(0, (n >> 16) - amt);
+  const g = Math.max(0, ((n >> 8) & 0xff) - amt);
+  const b = Math.max(0, (n & 0xff) - amt);
+  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+}
 
 export default function Sidebar({ currentPage }) {
   const [activeCategory, setActiveCategory] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [extVersion, setExtVersion] = useState(0);
   const { projects, activeProject, setActiveProject, createProject } = useProject();
   const { user } = useUser();
 
   const isStarter = user?.ageMode === 'starter';
 
-  const categories = currentPage === 'gamebuilder'
-    ? [...blockCategories, ...gameAssets.map(a => ({ name: a.category, icon: '🎨', color: '#f59e0b', blocks: a.items }))]
-    : isStarter ? starterCategories : blockCategories;
+  const refreshExtensions = useCallback(() => {
+    setExtVersion((v) => v + 1);
+  }, []);
+
+  useEffect(() => {
+    const onExtChange = () => refreshExtensions();
+    window.addEventListener(BB_EXTENSIONS_CHANGED, onExtChange);
+    const onStorage = (e) => {
+      if (e.key === 'bb_enabled_extensions_v1') refreshExtensions();
+    };
+    window.addEventListener('storage', onStorage);
+    return () => {
+      window.removeEventListener(BB_EXTENSIONS_CHANGED, onExtChange);
+      window.removeEventListener('storage', onStorage);
+    };
+  }, [refreshExtensions]);
+
+  const categories = useMemo(() => {
+    return buildLibraryCategories({
+      currentPage,
+      isStarter,
+      enabledExtensionIds: readEnabledExtensionIds(),
+    });
+  }, [currentPage, isStarter, extVersion]);
 
   const filtered = searchTerm
-    ? categories.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()) || c.blocks.some(b => b.toLowerCase().includes(searchTerm.toLowerCase())))
+    ? categories.filter(
+        (c) =>
+          c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (c.blocks || []).some((b) => String(b).toLowerCase().includes(searchTerm.toLowerCase())),
+      )
     : categories;
+  const pageKey = String(currentPage || '').toLowerCase();
+  const pictoStylePages = new Set(['workspace', 'gamebuilder', 'learn', 'robot']);
+  const usePictoBlockStyle = pictoStylePages.has(pageKey);
+  const useBlocklyFlyout = pageKey === 'robot';
+  const isGameBuilder = pageKey === 'gamebuilder';
+  const blocksSectionStyle = { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' };
+  const [showProjects, setShowProjects] = useState(!isGameBuilder);
 
   return (
     <div className="sidebar">
@@ -73,7 +71,7 @@ export default function Sidebar({ currentPage }) {
         <span>{currentPage === 'gamebuilder' ? 'Game Assets' : isStarter ? 'Starter Blocks' : 'Block Library'}</span>
       </div>
       {!isStarter && (
-        <div style={{padding: '8px'}}>
+        <div style={{ padding: '8px', flexShrink: 0 }}>
           <input
             className="input"
             placeholder="Search blocks..."
@@ -85,10 +83,27 @@ export default function Sidebar({ currentPage }) {
       )}
 
       <div className="sidebar-content">
-        {/* Project selector */}
-        <div className="sidebar-section">
-          <div className="sidebar-section-title">Projects</div>
-          {projects.slice(0, 5).map(p => (
+        <div className="sidebar-section" style={{ flexShrink: 0 }}>
+          <button
+            type="button"
+            className="sidebar-section-title"
+            onClick={() => setShowProjects((v) => !v)}
+            style={{
+              width: '100%',
+              border: 'none',
+              background: 'transparent',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: 0,
+              marginBottom: showProjects ? 8 : 0,
+            }}
+          >
+            <span>Projects</span>
+            <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{showProjects ? '▼' : '▶'}</span>
+          </button>
+          {showProjects && projects.slice(0, 5).map(p => (
             <button
               key={p.id}
               className={`sidebar-item ${activeProject?.id === p.id ? 'active' : ''}`}
@@ -100,6 +115,7 @@ export default function Sidebar({ currentPage }) {
               <span className="truncate">{p.name}</span>
             </button>
           ))}
+          {showProjects && (
           <button
             className="sidebar-item"
             style={{color: 'var(--accent-primary)'}}
@@ -108,17 +124,28 @@ export default function Sidebar({ currentPage }) {
             <span className="sidebar-item-icon">➕</span>
             <span>New Project</span>
           </button>
+          )}
         </div>
 
-        {/* Block categories */}
-        <div className="sidebar-section">
+        <div
+          className={`sidebar-section sidebar-section--blocks${useBlocklyFlyout ? ' sidebar-blocks-workspace' : ''}`}
+          style={blocksSectionStyle}
+        >
           <div className="sidebar-section-title">
             {currentPage === 'gamebuilder' ? 'Assets & Blocks' : 'Blocks'}
           </div>
-          {filtered.map(cat => (
-            <div key={cat.name}>
+          {useBlocklyFlyout ? (
+            <div className="sidebar-blocks-flyout-wrap">
+              <BlocklySidebarFlyout categories={filtered} />
+            </div>
+          ) : (
+          <div className="sidebar-blocks-scroll">
+          <>
+          {filtered.map((cat) => (
+            <div key={cat.extensionId || cat.name}>
               <button
-                className={`sidebar-item ${activeCategory === cat.name ? 'active' : ''}`}
+                type="button"
+                className={`sidebar-item sidebar-category-toggle ${activeCategory === cat.name ? 'active' : ''}`}
                 onClick={() => setActiveCategory(activeCategory === cat.name ? null : cat.name)}
                 style={{ borderLeft: `3px solid ${cat.color}` }}
               >
@@ -132,32 +159,102 @@ export default function Sidebar({ currentPage }) {
                 </span>
               </button>
               {activeCategory === cat.name && (
-                <div style={{paddingLeft: 16, marginBottom: 8}}>
-                  {cat.blocks.map(block => (
-                    <div
-                      key={block}
-                      className="sidebar-item"
-                      draggable
-                      onDragStart={(e) => e.dataTransfer.setData('text/plain', block)}
-                      style={{
-                        fontSize: isStarter ? 14 : 12,
-                        padding: isStarter ? '14px 12px' : '5px 10px',
-                        borderLeft: `3px solid ${cat.color}`,
-                        marginBottom: isStarter ? 6 : 2,
-                        borderRadius: '0 6px 6px 0',
-                        cursor: 'grab',
-                        minHeight: isStarter ? 48 : 'auto',
-                        display: 'flex',
-                        alignItems: 'center',
-                      }}
-                    >
-                      {block}
-                    </div>
-                  ))}
+                <div style={{ paddingLeft: 16, marginBottom: 8, maxWidth: '100%', overflow: 'auto' }}>
+                  {(cat.blocks || []).map((block, bi) => {
+                    const blockName = String(block);
+                    const showBlocklyPreview = usePictoBlockStyle && isPaletteBlockEntry(blockName);
+
+                    return showBlocklyPreview ? (
+                      <div
+                        key={`${cat.name}-${bi}-${blockName.slice(0, 32)}`}
+                        className="sidebar-block-drag-source"
+                        draggable
+                        onDragStart={(e) => {
+                          const payload = { name: blockName, color: cat.color || null };
+                          e.dataTransfer.effectAllowed = 'copy';
+                          e.dataTransfer.setData('text/plain', blockName);
+                          e.dataTransfer.setData('application/x-bb-sidebar-block', JSON.stringify(payload));
+                          markSidebarBlockDragging(e.currentTarget, true);
+                          setSidebarBlockDragImage(e);
+                        }}
+                        onDragEnd={(e) => markSidebarBlockDragging(e.currentTarget, false)}
+                        onClick={() => emitAddSidebarBlock(blockName, null, cat.color)}
+                        style={{
+                          cursor: 'pointer',
+                          marginBottom: 5,
+                          padding: '2px 0',
+                          display: 'flex',
+                          alignItems: 'center',
+                          opacity: 0.85,
+                          transition: 'opacity 0.15s ease',
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.opacity = '1'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.85'; }}
+                      >
+                        <SidebarBlockPreview blockName={blockName} categoryColor={cat.color} />
+                      </div>
+                    ) : (
+                      <div
+                        key={`${cat.name}-${bi}-${blockName.slice(0, 32)}`}
+                        className="sidebar-item"
+                        draggable
+                        onDragStart={(e) => {
+                          const payload = { name: blockName, color: cat.color || null };
+                          e.dataTransfer.effectAllowed = 'copy';
+                          e.dataTransfer.setData('text/plain', blockName);
+                          e.dataTransfer.setData('application/x-bb-sidebar-block', JSON.stringify(payload));
+                        }}
+                        onClick={() => emitAddSidebarBlock(blockName, null, cat.color)}
+                        style={{
+                          fontSize: isStarter ? 14 : 12,
+                          padding: isStarter ? '12px 12px' : '8px 10px',
+                          borderLeft: usePictoBlockStyle ? 'none' : `3px solid ${cat.color}`,
+                          marginBottom: isStarter ? 8 : 6,
+                          borderRadius: usePictoBlockStyle
+                            ? (blockName.toLowerCase().startsWith('on ') ? '14px 14px 6px 6px' : 8)
+                            : '0 6px 6px 0',
+                          cursor: 'pointer',
+                          minHeight: isStarter ? 48 : 'auto',
+                          display: 'flex',
+                          alignItems: 'center',
+                          color: usePictoBlockStyle ? '#fff' : undefined,
+                          fontWeight: usePictoBlockStyle ? 700 : undefined,
+                          background: usePictoBlockStyle
+                            ? `linear-gradient(180deg, ${cat.color} 0%, ${darken(cat.color, 30)} 100%)`
+                            : undefined,
+                          boxShadow: usePictoBlockStyle
+                            ? `0 3px 0 ${darken(cat.color, 72)}, inset 0 1px 0 rgba(255,255,255,0.2)`
+                            : undefined,
+                          position: usePictoBlockStyle ? 'relative' : undefined,
+                          textShadow: usePictoBlockStyle ? '0 1px 0 rgba(0,0,0,0.28)' : undefined,
+                        }}
+                      >
+                        <span style={{ lineHeight: 1.3 }}>{block}</span>
+                        {usePictoBlockStyle && (
+                          <span
+                            aria-hidden
+                            style={{
+                              position: 'absolute',
+                              left: 12,
+                              bottom: -7,
+                              width: 18,
+                              height: 7,
+                              borderRadius: '0 0 4px 4px',
+                              background: darken(cat.color, 72),
+                              pointerEvents: 'none',
+                            }}
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
           ))}
+          </>
+          </div>
+          )}
         </div>
       </div>
     </div>

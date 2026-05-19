@@ -1,0 +1,169 @@
+/* ============================================================================
+   NEON GLOW DESIGN SYSTEM - CSS Variables
+   Modern, vibrant block-based game builder theme
+   ============================================================================ */
+
+:root {
+  /* ─────────────────────────────────────────────────────────────────────── */
+  /* CORE THEME COLORS */
+  /* ─────────────────────────────────────────────────────────────────────── */
+
+  --bg-primary: #0a0e27;
+  --bg-secondary: #141829;
+  --bg-tertiary: #1a1f3a;
+  --text-primary: #ffffff;
+  --text-secondary: #e0e0ff;
+  --text-muted: #8899bb;
+  --border-color: #2a3f5f;
+
+  /* ─────────────────────────────────────────────────────────────────────── */
+  /* CATEGORY COLORS - NEON PALETTE */
+  /* ─────────────────────────────────────────────────────────────────────── */
+
+  /* EVENT - Yellow/Orange */
+  --color-event: #FFD700;
+  --color-event-dark: #FFA500;
+  --color-event-light: #FFED4E;
+  --color-event-glow: rgba(255, 215, 0, 0.4);
+
+  /* MOTION - Electric Blue/Cyan */
+  --color-motion: #00D9FF;
+  --color-motion-dark: #0099CC;
+  --color-motion-light: #33E9FF;
+  --color-motion-glow: rgba(0, 217, 255, 0.4);
+
+  /* LOOKS - Magenta */
+  --color-looks: #FF00FF;
+  --color-looks-dark: #CC00CC;
+  --color-looks-light: #FF33FF;
+  --color-looks-glow: rgba(255, 0, 255, 0.4);
+
+  /* CONTROL - Orange */
+  --color-control: #FF6B35;
+  --color-control-dark: #E63B00;
+  --color-control-light: #FF8C42;
+  --color-control-glow: rgba(255, 107, 53, 0.4);
+
+  /* SENSING - Cyan/Aqua */
+  --color-sensing: #00FFAA;
+  --color-sensing-dark: #00CC88;
+  --color-sensing-light: #33FFBB;
+  --color-sensing-glow: rgba(0, 255, 170, 0.4);
+
+  /* SOUND - Neon Pink */
+  --color-sound: #FF10F0;
+  --color-sound-dark: #DD00DD;
+  --color-sound-light: #FF33FF;
+  --color-sound-glow: rgba(255, 16, 240, 0.4);
+
+  /* VARIABLES - Amber/Gold */
+  --color-variables: #FFB700;
+  --color-variables-dark: #DD9500;
+  --color-variables-light: #FFCC33;
+  --color-variables-glow: rgba(255, 183, 0, 0.4);
+
+  /* MATH - Sky Blue */
+  --color-math: #00B4FF;
+  --color-math-dark: #0088CC;
+  --color-math-light: #33C9FF;
+  --color-math-glow: rgba(0, 180, 255, 0.4);
+
+  /* GAME - Electric Green */
+  --color-game: #00FF41;
+  --color-game-dark: #00CC33;
+  --color-game-light: #33FF66;
+  --color-game-glow: rgba(0, 255, 65, 0.4);
+
+  /* PHYSICS - Teal */
+  --color-physics: #00FFDD;
+  --color-physics-dark: #00CCAA;
+  --color-physics-light: #33FFEE;
+  --color-physics-glow: rgba(0, 255, 221, 0.4);
+
+  /* ACTION/OUTPUT - Red-Pink */
+  --color-action: #FF3366;
+  --color-action-dark: #DD0044;
+  --color-action-light: #FF6699;
+  --color-action-glow: rgba(255, 51, 102, 0.4);
+
+  /* ─────────────────────────────────────────────────────────────────────── */
+  /* SPACING SYSTEM */
+  /* ─────────────────────────────────────────────────────────────────────── */
+
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-lg: 16px;
+  --space-xl: 24px;
+  --space-2xl: 32px;
+
+  /* ─────────────────────────────────────────────────────────────────────── */
+  /* BORDER RADIUS */
+  /* ─────────────────────────────────────────────────────────────────────── */
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-full: 999px;
+
+  /* ─────────────────────────────────────────────────────────────────────── */
+  /* SHADOWS & GLOW EFFECTS */
+  /* ─────────────────────────────────────────────────────────────────────── */
+
+  /* Soft shadows (blocks) */
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.6);
+
+  /* Neon glow effects */
+  --glow-event: 0 0 8px var(--color-event-glow), 0 0 16px var(--color-event-glow);
+  --glow-motion: 0 0 8px var(--color-motion-glow), 0 0 16px var(--color-motion-glow);
+  --glow-looks: 0 0 8px var(--color-looks-glow), 0 0 16px var(--color-looks-glow);
+  --glow-control: 0 0 8px var(--color-control-glow), 0 0 16px var(--color-control-glow);
+  --glow-sensing: 0 0 8px var(--color-sensing-glow), 0 0 16px var(--color-sensing-glow);
+  --glow-sound: 0 0 8px var(--color-sound-glow), 0 0 16px var(--color-sound-glow);
+  --glow-variables: 0 0 8px var(--color-variables-glow), 0 0 16px var(--color-variables-glow);
+  --glow-math: 0 0 8px var(--color-math-glow), 0 0 16px var(--color-math-glow);
+  --glow-game: 0 0 8px var(--color-game-glow), 0 0 16px var(--color-game-glow);
+  --glow-physics: 0 0 8px var(--color-physics-glow), 0 0 16px var(--color-physics-glow);
+  --glow-action: 0 0 8px var(--color-action-glow), 0 0 16px var(--color-action-glow);
+
+  /* ─────────────────────────────────────────────────────────────────────── */
+  /* TYPOGRAPHY */
+  /* ─────────────────────────────────────────────────────────────────────── */
+
+  --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  --font-weight-normal: 500;
+  --font-weight-bold: 700;
+  --font-block: 13px;
+  --font-category: 12px;
+  --font-heading: 14px;
+
+  /* ─────────────────────────────────────────────────────────────────────── */
+  /* TRANSITIONS */
+  /* ─────────────────────────────────────────────────────────────────────── */
+
+  --transition-fast: 120ms ease-out;
+  --transition-normal: 200ms ease-out;
+  --transition-slow: 300ms ease-out;
+}
+
+/* Dark mode (default) */
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Already dark, no changes needed */
+  }
+}
+
+/* Light mode support (optional) */
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg-primary: #f5f5f8;
+    --bg-secondary: #ffffff;
+    --bg-tertiary: #ececf0;
+    --text-primary: #1a1a1a;
+    --text-secondary: #4a4a6a;
+    --text-muted: #8899bb;
+    --border-color: #e0e0f0;
+  }
+}

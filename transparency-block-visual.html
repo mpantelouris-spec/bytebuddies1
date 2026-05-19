@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PictoBlox Transparency Block Visualization</title>
+    <script src="https://cdn.jsdelivr.net/npm/@blockly/blockly@13.0.0/blockly_compressed.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@blockly/blockly@13.0.0/msg/en.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .description {
+            background-color: white;
+            padding: 15px;
+            border-left: 4px solid #4CAF50;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            color: #666;
+            line-height: 1.6;
+        }
+        .blocks-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .block-container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .block-container h3 {
+            margin-top: 0;
+            color: #333;
+            font-size: 16px;
+        }
+        .block-visual {
+            background-color: #f9f9f9;
+            padding: 20px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            min-height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 15px;
+        }
+        .block-mock {
+            display: inline-block;
+            padding: 10px 15px;
+            border-radius: 4px;
+            color: white;
+            font-weight: bold;
+            font-size: 13px;
+            position: relative;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            line-height: 1.5;
+        }
+        .transparency-input {
+            background-color: white;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            padding: 4px 6px;
+            font-family: monospace;
+            font-size: 12px;
+            margin: 0 3px;
+            min-width: 50px;
+            display: inline-block;
+            color: #333;
+        }
+        .block-info {
+            font-size: 12px;
+            color: #666;
+            line-height: 1.6;
+        }
+        .block-info strong {
+            display: block;
+            margin-top: 8px;
+            color: #333;
+        }
+        .code-example {
+            background-color: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 11px;
+            margin-top: 10px;
+            border-left: 2px solid #e0e0e0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>PictoBlox "Turn Video On with Transparency" Block Visualization</h1>
+        
+        <div class="description">
+            <strong>Block Overview:</strong> The "Turn video on with transparency" block is a statement block that appears in PictoBlox AI/ML extensions (Body Detection, Face Detection, Object Detection). 
+            The transparency parameter is displayed as a numeric input field allowing users to set values from 0 to 100 (representing 0% to 100% opacity).
+        </div>
+
+        <div class="blocks-grid">
+            <!-- Body Detection Block -->
+            <div class="block-container">
+                <h3>Body Detection Block</h3>
+                <div class="block-visual">
+                    <div class="block-mock" style="background-color: #8b5cf6; width: auto; max-width: 350px;">
+                        <div style="text-align: left;">
+                            [Body] Turn on video on stage with
+                            <input type="number" class="transparency-input" value="0" min="0" max="100">
+                            % transparency
+                        </div>
+                    </div>
+                </div>
+                <div class="block-info">
+                    <strong>Color:</strong> #8b5cf6 (Purple)<br>
+                    <strong>Type:</strong> Statement Block (previous/next connections)<br>
+                    <strong>Block ID:</strong> bb_body_video_on<br>
+                    <strong>Tooltip:</strong> "Turn on camera for body detection with transparency"<br>
+                    <strong>Field Name:</strong> TRANSPARENCY<br>
+                    <strong>Field Type:</strong> Blockly.FieldNumber<br>
+                    <strong>Min Value:</strong> 0<br>
+                    <strong>Max Value:</strong> 100
+                    
+                    <div class="code-example">
+// JavaScript Implementation<br>
+Blockly.Blocks['bb_body_video_on'] = {<br>
+&nbsp;&nbsp;init: function() {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;this.appendDummyInput()<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;.appendField("[Body] Turn on video on stage with")<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;.appendField(new Blockly.FieldNumber(0, 0, 100), "TRANSPARENCY")<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;.appendField("%");<br>
+&nbsp;&nbsp;&nbsp;&nbsp;this.setColour('#8b5cf6');<br>
+&nbsp;&nbsp;}<br>
+};
+                    </div>
+                </div>
+            </div>
+
+            <!-- Face Detection Block -->
+            <div class="block-container">
+                <h3>Face Detection Block</h3>
+                <div class="block-visual">
+                    <div class="block-mock" style="background-color: #e91e63; width: auto; max-width: 350px;">
+                        <div style="text-align: left;">
+                            [Face] Turn on video on stage with
+                            <input type="number" class="transparency-input" value="0" min="0" max="100">
+                            % transparency
+                        </div>
+                    </div>
+                </div>
+                <div class="block-info">
+                    <strong>Color:</strong> #e91e63 (Pink/Magenta)<br>
+                    <strong>Type:</strong> Statement Block<br>
+                    <strong>Block ID:</strong> face_turn_video_on<br>
+                    <strong>Tooltip:</strong> "Turn on face detection camera with transparency"<br>
+                    <strong>Field Name:</strong> TRANSPARENCY<br>
+                    <strong>Field Type:</strong> Blockly.FieldNumber<br>
+                    <strong>Min Value:</strong> 0<br>
+                    <strong>Max Value:</strong> 100
+                    
+                    <div class="code-example">
+// JavaScript Implementation<br>
+Blockly.Blocks['face_turn_video_on'] = {<br>
+&nbsp;&nbsp;init: function() {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;this.appendDummyInput()<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;.appendField('[Face] Turn on video on stage with')<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;.appendField(new Blockly.FieldNumber(0, 0, 100), 'TRANSPARENCY')<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;.appendField('%');<br>
+&nbsp;&nbsp;&nbsp;&nbsp;this.setColour('#e91e63');<br>
+&nbsp;&nbsp;}<br>
+};
+                    </div>
+                </div>
+            </div>
+
+            <!-- Object Detection Block -->
+            <div class="block-container">
+                <h3>Object Detection Block</h3>
+                <div class="block-visual">
+                    <div class="block-mock" style="background-color: #ff9800; width: auto; max-width: 350px;">
+                        <div style="text-align: left;">
+                            [Object] Turn on video on stage with
+                            <input type="number" class="transparency-input" value="0" min="0" max="100">
+                            % transparency
+                        </div>
+                    </div>
+                </div>
+                <div class="block-info">
+                    <strong>Color:</strong> #ff9800 (Orange)<br>
+                    <strong>Type:</strong> Statement Block<br>
+                    <strong>Block ID:</strong> object_turn_video_on<br>
+                    <strong>Tooltip:</strong> "Turn on object detection with transparency"<br>
+                    <strong>Field Name:</strong> TRANSPARENCY<br>
+                    <strong>Field Type:</strong> Blockly.FieldNumber<br>
+                    <strong>Min Value:</strong> 0<br>
+                    <strong>Max Value:</strong> 100
+                    
+                    <div class="code-example">
+// JavaScript Implementation<br>
+Blockly.Blocks['object_turn_video_on'] = {<br>
+&nbsp;&nbsp;init: function() {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;this.appendDummyInput()<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;.appendField('[Object] Turn on video on stage with')<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;.appendField(new Blockly.FieldNumber(0, 0, 100), 'TRANSPARENCY')<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;.appendField('%');<br>
+&nbsp;&nbsp;&nbsp;&nbsp;this.setColour('#ff9800');<br>
+&nbsp;&nbsp;}<br>
+};
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="block-container">
+            <h3>Transparency Parameter Field - Visual Details</h3>
+            <div class="block-info">
+                <strong>Input Field Styling:</strong>
+                <ul>
+                    <li><strong>Type:</strong> Blockly.FieldNumber</li>
+                    <li><strong>Appearance:</strong> White rectangular input box with gray border</li>
+                    <li><strong>Default Value:</strong> 0</li>
+                    <li><strong>Range:</strong> 0-100 (constrained on input)</li>
+                    <li><strong>Input Method:</strong> Direct numeric typing or spinner controls (up/down arrows)</li>
+                    <li><strong>Size:</strong> Compact inline field (~50-60px width)</li>
+                    <li><strong>Border:</strong> 1px solid gray (#cccccc or similar)</li>
+                    <li><strong>Border Radius:</strong> 3-4px (slightly rounded corners)</li>
+                    <li><strong>Padding:</strong> 4-6px internal spacing</li>
+                    <li><strong>Font:</strong> Monospace font (typically 12px)</li>
+                </ul>
+
+                <strong>Layout Structure:</strong>
+                <ul>
+                    <li><strong>Layout Type:</strong> appendDummyInput() - single line horizontal layout</li>
+                    <li><strong>Field Sequence:</strong>
+                        <ol>
+                            <li>Label text: "[Category] Turn on video on stage with"</li>
+                            <li>Transparency number input field (0-100)</li>
+                            <li>Suffix text: "%"</li>
+                        </ol>
+                    </li>
+                    <li><strong>Alignment:</strong> All fields on same horizontal line, left-aligned</li>
+                    <li><strong>Spacing:</strong> 3-5px margin between label and input, 0-3px margin between input and suffix</li>
+                </ul>
+
+                <strong>User Interaction:</strong>
+                <ul>
+                    <li>Click on the input field to focus and type a value</li>
+                    <li>Values are constrained to 0-100 range (values outside range are clamped)</li>
+                    <li>Arrow keys or spinner controls allow incremental adjustment (typically ±1)</li>
+                    <li>Selected values are stored as the "TRANSPARENCY" field value</li>
+                    <li>Used in generated code/execution as a parameter to set camera transparency</li>
+                </ul>
+
+                <strong>Actual Blockly Rendering:</strong>
+                <ul>
+                    <li>In a real Blockly workspace, the field appears as an editable white box within the colored block</li>
+                    <li>The entire block has drop-target connection points on top and bottom</li>
+                    <li>The transparency field visually "sits inside" the block (not separate)</li>
+                    <li>Text is automatically word-wrapped if the label is very long</li>
+                    <li>Font size is typically smaller than the block's primary label</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="block-container">
+            <h3>Complete Block Definition Structure</h3>
+            <div class="code-example" style="font-size: 12px; line-height: 1.5;">
+// All three blocks follow the same pattern:<br>
+<br>
+appendDummyInput()<br>
+&nbsp;&nbsp;.appendField(LABEL_TEXT)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;// "[Category] Turn on video on stage with"<br>
+&nbsp;&nbsp;.appendField(FIELD_NUMBER)&nbsp;&nbsp;&nbsp;&nbsp;// FieldNumber(0, 0, 100) - min:0, max:100, default:0<br>
+&nbsp;&nbsp;.appendField(SUFFIX_TEXT);&nbsp;&nbsp;&nbsp;&nbsp;// "%"<br>
+<br>
+setPreviousStatement(true, null);&nbsp;&nbsp;&nbsp;// Can connect to previous blocks<br>
+setNextStatement(true, null);&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;// Can connect to next blocks<br>
+setColour(HEX_COLOR);&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;// Category-specific color<br>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Make the input fields functional
+        document.querySelectorAll('.transparency-input').forEach(input => {
+            input.addEventListener('change', function() {
+                if (this.value < 0) this.value = 0;
+                if (this.value > 100) this.value = 100;
+            });
+        });
+    </script>
+</body>
+</html>
