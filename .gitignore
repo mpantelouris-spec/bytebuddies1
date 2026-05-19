@@ -3,3 +3,14 @@ dist/
 .env
 .env.*
 *.local
+
+# Large sprite assets — upload to server directly via SCP
+public/assets/characters/
+
+# Build artefacts
+ble_compile/built/
+coverage/
+dist-deploy.zip
+build*.log
+build*.txt
+build*.output
