@@ -1,0 +1,25 @@
+
+> bytebuddies@1.0.0 build
+> node scripts/build-universal-hex.mjs && vite build
+
+=== Building Universal MicroPython Hex ===
+
+✅ Universal hex up-to-date (1832.0 KB) — skipping rebuild.
+
+vite v5.4.21 building for production...
+transforming...
+✓ 1435 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                      0.92 kB │ gzip:   0.50 kB
+dist/assets/index-99VC53o0.css                      37.43 kB │ gzip:   7.75 kB
+dist/assets/coco-ssd.es2017.esm.min-ZtnuUtma.js      8.37 kB │ gzip:   3.26 kB
+dist/assets/index-BBsI0aaZ.js                       15.14 kB │ gzip:   5.22 kB
+dist/assets/dap.esm-BFMslRU0.js                     34.62 kB │ gzip:   8.50 kB
+dist/assets/vision_bundle-BKjrwyyy.js              139.03 kB │ gzip:  41.47 kB
+dist/assets/version-CI8GD8Ap.js                    169.22 kB │ gzip:  27.64 kB
+dist/assets/index-CUKb_ZV1.js                      484.06 kB │ gzip:  88.00 kB
+dist/assets/index-_Oz3MzOm.js                      603.85 kB │ gzip:  94.81 kB
+dist/assets/index-BIiI4n5X.js                      681.66 kB │ gzip: 107.34 kB
+dist/assets/index-BY30mG69.js                    2,677.06 kB │ gzip: 695.21 kB
+✓ built in 6.51s

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Lumi the Apprentice (fantasy) - layered SVG -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="1024" height="1024">
+  <metadata>{"joints":{"head":[256,120],"shoulder_left":[210,190],"shoulder_right":[302,190]}}</metadata>
+  <g id="shadow_ground" opacity="0.5"><ellipse cx="256" cy="470" rx="110" ry="26" fill="#070810"/></g>
+  <g id="body">
+    <path id="cloak" d="M160 220 Q256 140 352 220 L352 370 Q256 420 160 370 Z" fill="#2b1c40"/>
+    <path id="cloak_glow" d="M180 240 Q256 170 332 240" fill="#F59E0B" opacity="0.12"/>
+  </g>
+  <g id="head">
+    <circle id="head_base" cx="256" cy="150" r="52" fill="#E8B487"/>
+    <g id="eyes">
+      <ellipse cx="238" cy="148" rx="10" ry="14" fill="#fff"/>
+      <ellipse cx="274" cy="148" rx="10" ry="14" fill="#fff"/>
+      <circle cx="238" cy="150" r="4" fill="#111"/>
+      <circle cx="274" cy="150" r="4" fill="#111"/>
+    </g>
+  </g>
+  <g id="prop_book" transform="translate(210,200)">
+    <rect x="0" y="0" width="92" height="52" rx="6" fill="#8b5cf6"/>
+    <path d="M6 10 L86 10" stroke="#fff" stroke-width="2" opacity="0.2"/>
+  </g>
+  <g id="effects">
+    <g id="magic_glow" opacity="0.85">
+      <circle cx="256" cy="220" r="40" fill="#F59E0B" opacity="0.12"/>
+    </g>
+    <g id="particles">
+      <circle cx="286" cy="202" r="2" fill="#fff" opacity="0.9"/>
+      <circle cx="238" cy="210" r="1.6" fill="#fff" opacity="0.8"/>
+    </g>
+  </g>
+</svg>

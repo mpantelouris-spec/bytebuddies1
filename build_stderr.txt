@@ -1,0 +1,1950 @@
+[plugin:vite:esbuild] [plugin vite:esbuild] src/utils/blocks.jsx: Duplicate key "sense-timer" in object literal
+226|    'sense-mouse-y':      { label: 'Mouse Y', icon: '🖱️', color: '#f59e0b', category: 'sensing', params: {} },
+227|    'sense-distance':     { label: 'Distance to mouse', icon: '📏', color: '#f59e0b', category: 'sensing', params: {} },
+228|    'sense-timer':        { label: 'Timer', icon: '⏱️', color: '#f59e0b', category: 'sensing', params: {} },
+   |    ^
+229|    'sense-reset-timer':  { label: 'Reset timer', icon: '⏱️', color: '#f59e0b', category: 'sensing', params: {} },
+230|    // Looks
+
+[plugin:vite:esbuild] [plugin vite:esbuild] src/utils/blocks.jsx: Duplicate key "looks-clear-effects" in object literal
+235|    'looks-color-effect': { label: 'Set color effect', icon: '🎨', color: '#f59e0b', category: 'looks', params: { value: '0' } },
+236|    'looks-ghost-effect': { label: 'Set ghost effect', icon: '👻', color: '#f59e0b', category: 'looks', params: { value: '0' } },
+237|    'looks-clear-effects':{ label: 'Clear all effects', icon: '✨', color: '#f59e0b', category: 'looks', params: {} },
+   |    ^
+238|    'looks-grow':         { label: 'Grow by', icon: '🔼', color: '#f59e0b', category: 'looks', params: { amount: '10' } },
+239|    'looks-shrink':       { label: 'Shrink by', icon: '🔽', color: '#f59e0b', category: 'looks', params: { amount: '10' } },
+
+[plugin:vite:esbuild] [plugin vite:esbuild] src/utils/blocks.jsx: Duplicate key "pose-show-detections" in object literal
+277|    // HUMAN BODY / POSE DETECTION (using pose-video-on from line 100)
+278|    'body-video-on':      { label: '[body] turn [box v] video on stage with () % transparency', icon: '📹', color: '#8b5cf6', category: 'body', params: { state: 'on', transparency: '0' } },
+279|    'pose-show-detections': { label: 'Show detections', icon: '🧍', color: '#8b5cf6', category: 'body', params: {} },
+   |    ^
+280|    'pose-analyze':       { label: 'Analyse image for human pose from', icon: '🧍', color: '#8b5cf6', category: 'body', params: { source: 'camera' } },
+281|    'pose-count-people':  { label: 'Get # of people', icon: '👥', color: '#8b5cf6', category: 'body', params: {} },
+
+[plugin:vite:esbuild] [plugin vite:esbuild] src/utils/blocks.jsx: Duplicate key "pose-analyze" in object literal
+278|    'body-video-on':      { label: '[body] turn [box v] video on stage with () % transparency', icon: '📹', color: '#8b5cf6', category: 'body', params: { state: 'on', transparency: '0' } },
+279|    'pose-show-detections': { label: 'Show detections', icon: '🧍', color: '#8b5cf6', category: 'body', params: {} },
+280|    'pose-analyze':       { label: 'Analyse image for human pose from', icon: '🧍', color: '#8b5cf6', category: 'body', params: { source: 'camera' } },
+   |    ^
+281|    'pose-count-people':  { label: 'Get # of people', icon: '👥', color: '#8b5cf6', category: 'body', params: {} },
+282|    'pose-position-x':    { label: 'X position of', icon: '📍', color: '#8b5cf6', category: 'body', params: { joint: 'nose', person: '1' } },
+
+[plugin:vite:esbuild] [plugin vite:esbuild] src/utils/blocks.jsx: Duplicate key "pose-count-people" in object literal
+279|    'pose-show-detections': { label: 'Show detections', icon: '🧍', color: '#8b5cf6', category: 'body', params: {} },
+280|    'pose-analyze':       { label: 'Analyse image for human pose from', icon: '🧍', color: '#8b5cf6', category: 'body', params: { source: 'camera' } },
+281|    'pose-count-people':  { label: 'Get # of people', icon: '👥', color: '#8b5cf6', category: 'body', params: {} },
+   |    ^
+282|    'pose-position-x':    { label: 'X position of', icon: '📍', color: '#8b5cf6', category: 'body', params: { joint: 'nose', person: '1' } },
+283|    'pose-position-y':    { label: 'Y position of', icon: '📍', color: '#8b5cf6', category: 'body', params: { joint: 'nose', person: '1' } },
+
+[plugin:vite:esbuild] [plugin vite:esbuild] src/utils/blocks.jsx: Duplicate key "pose-position-x" in object literal
+280|    'pose-analyze':       { label: 'Analyse image for human pose from', icon: '🧍', color: '#8b5cf6', category: 'body', params: { source: 'camera' } },
+281|    'pose-count-people':  { label: 'Get # of people', icon: '👥', color: '#8b5cf6', category: 'body', params: {} },
+282|    'pose-position-x':    { label: 'X position of', icon: '📍', color: '#8b5cf6', category: 'body', params: { joint: 'nose', person: '1' } },
+   |    ^
+283|    'pose-position-y':    { label: 'Y position of', icon: '📍', color: '#8b5cf6', category: 'body', params: { joint: 'nose', person: '1' } },
+284|    'pose-detected':      { label: 'Is', icon: '🔍', color: '#8b5cf6', category: 'body', params: { joint: 'nose', person: '1', check: 'detected?' } },
+
+[plugin:vite:esbuild] [plugin vite:esbuild] src/utils/blocks.jsx: Duplicate key "pose-position-y" in object literal
+281|    'pose-count-people':  { label: 'Get # of people', icon: '👥', color: '#8b5cf6', category: 'body', params: {} },
+282|    'pose-position-x':    { label: 'X position of', icon: '📍', color: '#8b5cf6', category: 'body', params: { joint: 'nose', person: '1' } },
+283|    'pose-position-y':    { label: 'Y position of', icon: '📍', color: '#8b5cf6', category: 'body', params: { joint: 'nose', person: '1' } },
+   |    ^
+284|    'pose-detected':      { label: 'Is', icon: '🔍', color: '#8b5cf6', category: 'body', params: { joint: 'nose', person: '1', check: 'detected?' } },
+285|    'pose-position-z':    { label: 'Z position of', icon: '📏', color: '#8b5cf6', category: 'body', params: { joint: 'nose', person: '1' } },
+
+[plugin:vite:esbuild] [plugin vite:esbuild] src/utils/blocks.jsx: Duplicate key "pose-angle" in object literal
+284|    'pose-detected':      { label: 'Is', icon: '🔍', color: '#8b5cf6', category: 'body', params: { joint: 'nose', person: '1', check: 'detected?' } },
+285|    'pose-position-z':    { label: 'Z position of', icon: '📏', color: '#8b5cf6', category: 'body', params: { joint: 'nose', person: '1' } },
+286|    'pose-angle':         { label: 'Angle of', icon: '∠', color: '#8b5cf6', category: 'body', params: { joint: 'elbow', side: 'left' } },
+   |    ^
+287|    'pose-confidence':    { label: 'Confidence of', icon: '📊', color: '#8b5cf6', category: 'body', params: { joint: 'nose' } },
+288|    'pose-distance':      { label: 'Distance between', icon: '📐', color: '#8b5cf6', category: 'body', params: { joint1: 'nose', joint2: 'chin' } },
+
+[plugin:vite:esbuild] [plugin vite:esbuild] src/utils/blocks.jsx: Duplicate key "pose-confidence" in object literal
+285|    'pose-position-z':    { label: 'Z position of', icon: '📏', color: '#8b5cf6', category: 'body', params: { joint: 'nose', person: '1' } },
+286|    'pose-angle':         { label: 'Angle of', icon: '∠', color: '#8b5cf6', category: 'body', params: { joint: 'elbow', side: 'left' } },
+287|    'pose-confidence':    { label: 'Confidence of', icon: '📊', color: '#8b5cf6', category: 'body', params: { joint: 'nose' } },
+   |    ^
+288|    'pose-distance':      { label: 'Distance between', icon: '📐', color: '#8b5cf6', category: 'body', params: { joint1: 'nose', joint2: 'chin' } },
+289|    'pose-movement':      { label: 'Movement speed of', icon: '⚡', color: '#8b5cf6', category: 'body', params: { joint: 'body' } },
+
+[plugin:vite:esbuild] [plugin vite:esbuild] src/utils/blocks.jsx: Duplicate key "pose-distance" in object literal
+286|    'pose-angle':         { label: 'Angle of', icon: '∠', color: '#8b5cf6', category: 'body', params: { joint: 'elbow', side: 'left' } },
+287|    'pose-confidence':    { label: 'Confidence of', icon: '📊', color: '#8b5cf6', category: 'body', params: { joint: 'nose' } },
+288|    'pose-distance':      { label: 'Distance between', icon: '📐', color: '#8b5cf6', category: 'body', params: { joint1: 'nose', joint2: 'chin' } },
+   |    ^
+289|    'pose-movement':      { label: 'Movement speed of', icon: '⚡', color: '#8b5cf6', category: 'body', params: { joint: 'body' } },
+290|    'pose-gesture':       { label: 'Is gesture', icon: '🤚', color: '#8b5cf6', category: 'body', params: { gesture: 'hands raised', person: '1' } },
+
+[plugin:vite:esbuild] [plugin vite:esbuild] src/utils/blocks.jsx: Duplicate key "pose-movement" in object literal
+287|    'pose-confidence':    { label: 'Confidence of', icon: '📊', color: '#8b5cf6', category: 'body', params: { joint: 'nose' } },
+288|    'pose-distance':      { label: 'Distance between', icon: '📐', color: '#8b5cf6', category: 'body', params: { joint1: 'nose', joint2: 'chin' } },
+289|    'pose-movement':      { label: 'Movement speed of', icon: '⚡', color: '#8b5cf6', category: 'body', params: { joint: 'body' } },
+   |    ^
+290|    'pose-gesture':       { label: 'Is gesture', icon: '🤚', color: '#8b5cf6', category: 'body', params: { gesture: 'hands raised', person: '1' } },
+291|    'pose-rep-count':     { label: 'Rep counter for', icon: '📊', color: '#8b5cf6', category: 'body', params: { exercise: 'squats' } },
+
+[plugin:vite:esbuild] [plugin vite:esbuild] src/utils/blocks.jsx: Duplicate key "pose-gesture" in object literal
+288|    'pose-distance':      { label: 'Distance between', icon: '📐', color: '#8b5cf6', category: 'body', params: { joint1: 'nose', joint2: 'chin' } },
+289|    'pose-movement':      { label: 'Movement speed of', icon: '⚡', color: '#8b5cf6', category: 'body', params: { joint: 'body' } },
+290|    'pose-gesture':       { label: 'Is gesture', icon: '🤚', color: '#8b5cf6', category: 'body', params: { gesture: 'hands raised', person: '1' } },
+   |    ^
+291|    'pose-rep-count':     { label: 'Rep counter for', icon: '📊', color: '#8b5cf6', category: 'body', params: { exercise: 'squats' } },
+292|    'pose-posture':       { label: 'Posture quality score', icon: '📈', color: '#8b5cf6', category: 'body', params: {} },
+
+[plugin:vite:esbuild] [plugin vite:esbuild] src/utils/blocks.jsx: Duplicate key "pose-rep-count" in object literal
+289|    'pose-movement':      { label: 'Movement speed of', icon: '⚡', color: '#8b5cf6', category: 'body', params: { joint: 'body' } },
+290|    'pose-gesture':       { label: 'Is gesture', icon: '🤚', color: '#8b5cf6', category: 'body', params: { gesture: 'hands raised', person: '1' } },
+291|    'pose-rep-count':     { label: 'Rep counter for', icon: '📊', color: '#8b5cf6', category: 'body', params: { exercise: 'squats' } },
+   |    ^
+292|    'pose-posture':       { label: 'Posture quality score', icon: '📈', color: '#8b5cf6', category: 'body', params: {} },
+293|    'hand-analyze':       { label: 'Analyse image for hand from', icon: '✋', color: '#f472b6', category: 'hand', params: { source: 'camera' } },
+
+[plugin:vite:esbuild] [plugin vite:esbuild] src/utils/blocks.jsx: Duplicate key "pose-posture" in object literal
+290|    'pose-gesture':       { label: 'Is gesture', icon: '🤚', color: '#8b5cf6', category: 'body', params: { gesture: 'hands raised', person: '1' } },
+291|    'pose-rep-count':     { label: 'Rep counter for', icon: '📊', color: '#8b5cf6', category: 'body', params: { exercise: 'squats' } },
+292|    'pose-posture':       { label: 'Posture quality score', icon: '📈', color: '#8b5cf6', category: 'body', params: {} },
+   |    ^
+293|    'hand-analyze':       { label: 'Analyse image for hand from', icon: '✋', color: '#f472b6', category: 'hand', params: { source: 'camera' } },
+294|    'hand-detected':      { label: 'Is hand detected', icon: '✋', color: '#f472b6', category: 'hand', params: {} },
+
+[plugin:vite:esbuild] [plugin vite:esbuild] src/utils/blocks.jsx: Duplicate key "hand-gesture" in object literal
+295|    'hand-position-x':    { label: 'X position of', icon: '👆', color: '#f472b6', category: 'hand', params: { point: 'top of thumb' } },
+296|    'hand-position-y':    { label: 'Y position of', icon: '👆', color: '#f472b6', category: 'hand', params: { point: 'top of thumb' } },
+297|    'hand-gesture':       { label: 'Hand gesture is', icon: '✋', color: '#f472b6', category: 'hand', params: { gesture: 'thumbs up' } },
+   |    ^
+298|    'hand-pinch':         { label: 'Is pinching detected', icon: '🤏', color: '#f472b6', category: 'hand', params: {} },
+299|    'hand-distance':      { label: 'Distance between fingers', icon: '📐', color: '#f472b6', category: 'hand', params: { finger1: 'thumb', finger2: 'index' } },
+
+[plugin:vite:esbuild] [plugin vite:esbuild] src/utils/blocks.jsx: Duplicate key "answer" in object literal
+359|    'current year': 'sense-timer', 'days since 2000': 'sense-timer', 'username': 'action-print',
+360|    'touching [mouse-pointer v]?': 'sense-touching', 'touching color []?': 'sense-touching', 'color [] is touching []?': 'sense-touching',
+361|    'distance to [mouse-pointer v]': 'sense-distance', 'ask [] and wait': 'action-ask', 'answer': 'action-ask', 'key [space v] pressed?': 'sense-key',
+   |                                                                                        ^
+362|    'mouse down?': 'sense-mouse-x', 'mouse x': 'sense-mouse-x', 'mouse y': 'sense-mouse-y', 'set drag mode [draggable v]': 'sense-key',
+363|    'loudness': 'sense-loudness', 'timer': 'sense-timer', 'reset timer': 'sense-reset-timer',
+
+[plugin:vite:esbuild] [plugin vite:esbuild] src/utils/blocks.jsx: Duplicate key "mouse x" in object literal
+360|    'touching [mouse-pointer v]?': 'sense-touching', 'touching color []?': 'sense-touching', 'color [] is touching []?': 'sense-touching',
+361|    'distance to [mouse-pointer v]': 'sense-distance', 'ask [] and wait': 'action-ask', 'answer': 'action-ask', 'key [space v] pressed?': 'sense-key',
+362|    'mouse down?': 'sense-mouse-x', 'mouse x': 'sense-mouse-x', 'mouse y': 'sense-mouse-y', 'set drag mode [draggable v]': 'sense-key',
+   |                                    ^
+363|    'loudness': 'sense-loudness', 'timer': 'sense-timer', 'reset timer': 'sense-reset-timer',
+364|    'backdrop # of [Stage v]': 'looks-backdrop-reporter', 'current [year v]': 'sense-timer', 'days since 2000': 'sense-timer', 'username': 'action-print',
+
+[plugin:vite:esbuild] [plugin vite:esbuild] src/utils/blocks.jsx: Duplicate key "mouse y" in object literal
+360|    'touching [mouse-pointer v]?': 'sense-touching', 'touching color []?': 'sense-touching', 'color [] is touching []?': 'sense-touching',
+361|    'distance to [mouse-pointer v]': 'sense-distance', 'ask [] and wait': 'action-ask', 'answer': 'action-ask', 'key [space v] pressed?': 'sense-key',
+362|    'mouse down?': 'sense-mouse-x', 'mouse x': 'sense-mouse-x', 'mouse y': 'sense-mouse-y', 'set drag mode [draggable v]': 'sense-key',
+   |                                                                ^
+363|    'loudness': 'sense-loudness', 'timer': 'sense-timer', 'reset timer': 'sense-reset-timer',
+364|    'backdrop # of [Stage v]': 'looks-backdrop-reporter', 'current [year v]': 'sense-timer', 'days since 2000': 'sense-timer', 'username': 'action-print',
+
+[plugin:vite:esbuild] [plugin vite:esbuild] src/utils/blocks.jsx: Duplicate key "loudness" in object literal
+361|    'distance to [mouse-pointer v]': 'sense-distance', 'ask [] and wait': 'action-ask', 'answer': 'action-ask', 'key [space v] pressed?': 'sense-key',
+362|    'mouse down?': 'sense-mouse-x', 'mouse x': 'sense-mouse-x', 'mouse y': 'sense-mouse-y', 'set drag mode [draggable v]': 'sense-key',
+363|    'loudness': 'sense-loudness', 'timer': 'sense-timer', 'reset timer': 'sense-reset-timer',
+   |    ^
+364|    'backdrop # of [Stage v]': 'looks-backdrop-reporter', 'current [year v]': 'sense-timer', 'days since 2000': 'sense-timer', 'username': 'action-print',
+365|    // OPERATORS
+
+[plugin:vite:esbuild] [plugin vite:esbuild] src/utils/blocks.jsx: Duplicate key "timer" in object literal
+361|    'distance to [mouse-pointer v]': 'sense-distance', 'ask [] and wait': 'action-ask', 'answer': 'action-ask', 'key [space v] pressed?': 'sense-key',
+362|    'mouse down?': 'sense-mouse-x', 'mouse x': 'sense-mouse-x', 'mouse y': 'sense-mouse-y', 'set drag mode [draggable v]': 'sense-key',
+363|    'loudness': 'sense-loudness', 'timer': 'sense-timer', 'reset timer': 'sense-reset-timer',
+   |                                  ^
+364|    'backdrop # of [Stage v]': 'looks-backdrop-reporter', 'current [year v]': 'sense-timer', 'days since 2000': 'sense-timer', 'username': 'action-print',
+365|    // OPERATORS
+
+[plugin:vite:esbuild] [plugin vite:esbuild] src/utils/blocks.jsx: Duplicate key "reset timer" in object literal
+361|    'distance to [mouse-pointer v]': 'sense-distance', 'ask [] and wait': 'action-ask', 'answer': 'action-ask', 'key [space v] pressed?': 'sense-key',
+362|    'mouse down?': 'sense-mouse-x', 'mouse x': 'sense-mouse-x', 'mouse y': 'sense-mouse-y', 'set drag mode [draggable v]': 'sense-key',
+363|    'loudness': 'sense-loudness', 'timer': 'sense-timer', 'reset timer': 'sense-reset-timer',
+   |                                                          ^
+364|    'backdrop # of [Stage v]': 'looks-backdrop-reporter', 'current [year v]': 'sense-timer', 'days since 2000': 'sense-timer', 'username': 'action-print',
+365|    // OPERATORS
+
+[plugin:vite:esbuild] [plugin vite:esbuild] src/utils/blocks.jsx: Duplicate key "days since 2000" in object literal
+362|    'mouse down?': 'sense-mouse-x', 'mouse x': 'sense-mouse-x', 'mouse y': 'sense-mouse-y', 'set drag mode [draggable v]': 'sense-key',
+363|    'loudness': 'sense-loudness', 'timer': 'sense-timer', 'reset timer': 'sense-reset-timer',
+364|    'backdrop # of [Stage v]': 'looks-backdrop-reporter', 'current [year v]': 'sense-timer', 'days since 2000': 'sense-timer', 'username': 'action-print',
+   |                                                                                             ^
+365|    // OPERATORS
+366|    'add': 'math-add', 'subtract': 'math-add', 'multiply': 'math-mult', 'divide': 'math-mult',
+
+[plugin:vite:esbuild] [plugin vite:esbuild] src/utils/blocks.jsx: Duplicate key "username" in object literal
+362|    'mouse down?': 'sense-mouse-x', 'mouse x': 'sense-mouse-x', 'mouse y': 'sense-mouse-y', 'set drag mode [draggable v]': 'sense-key',
+363|    'loudness': 'sense-loudness', 'timer': 'sense-timer', 'reset timer': 'sense-reset-timer',
+364|    'backdrop # of [Stage v]': 'looks-backdrop-reporter', 'current [year v]': 'sense-timer', 'days since 2000': 'sense-timer', 'username': 'action-print',
+   |                                                                                                                               ^
+365|    // OPERATORS
+366|    'add': 'math-add', 'subtract': 'math-add', 'multiply': 'math-mult', 'divide': 'math-mult',
+
+[plugin:vite:esbuild] [plugin vite:esbuild] src/utils/blocks.jsx: Duplicate key "letter of" in object literal
+375|    'length of list': 'list-get', 'list contains': 'list-get', 'show list': 'list-get', 'hide list': 'list-get',
+376|    // TEXT
+377|    'letter of': 'text-length', 'contains': 'text-length',
+   |    ^
+378|    // MY BLOCKS
+379|    'define': 'func-define', 'run custom block': 'func-call',
+
+[plugin:vite:esbuild] [plugin vite:esbuild] src/utils/blocks.jsx: Duplicate key "contains" in object literal
+375|    'length of list': 'list-get', 'list contains': 'list-get', 'show list': 'list-get', 'hide list': 'list-get',
+376|    // TEXT
+377|    'letter of': 'text-length', 'contains': 'text-length',
+   |                                ^
+378|    // MY BLOCKS
+379|    'define': 'func-define', 'run custom block': 'func-call',
+
+[plugin:vite:esbuild] [plugin vite:esbuild] src/utils/blocks.jsx: Duplicate key "show variable" in object literal
+379|    'define': 'func-define', 'run custom block': 'func-call',
+380|    // LEGACY MAPPINGS (for backwards compatibility)
+381|    'create variable': 'var-create', 'set variable': 'var-set', 'change by': 'var-change', 'show variable': 'var-show',
+   |                                                                                           ^
+382|    'wait': 'control-wait',
+383|    'if / else': 'logic-if', 'and / or / not': 'logic-and', 'compare (=, <, >)': 'logic-compare', 'true / false': 'logic-bool',
+
+[plugin:vite:esbuild] [plugin vite:esbuild] src/utils/blocks.jsx: Duplicate key "forever" in object literal
+382|    'wait': 'control-wait',
+383|    'if / else': 'logic-if', 'and / or / not': 'logic-and', 'compare (=, <, >)': 'logic-compare', 'true / false': 'logic-bool',
+384|    'repeat n times': 'loop-repeat', 'forever': 'loop-forever', 'while condition': 'loop-while', 'for each in list': 'loop-foreach', 'break / continue': 'loop-break',
+   |                                     ^
+385|    'define function': 'func-define', 'call function': 'func-call', 'return value': 'func-return', 'with parameters': 'func-params',
+386|    'on start': 'event-start', 'on key press': 'event-keypress', 'on click': 'event-click', 'on collision': 'event-collision', 'on message': 'event-message',
+
+[plugin:vite:esbuild] [plugin vite:esbuild] src/utils/blocks.jsx: Duplicate key "play sound" in object literal
+391|    'turn degrees': 'sprite-turn',
+392|    'show / hide': 'sprite-show', 'say text': 'sprite-say', 'set size': 'sprite-setsize',
+393|    'play sound': 'sound-play', 'stop sounds': 'sound-stop', 'set volume': 'sound-volume', 'play note': 'sound-play',
+   |    ^
+394|    '[music] play drum': 'music-drum', '[music] rest for beats': 'music-rest', '[music] play note for beats': 'music-note',
+395|    '[music] set instrument to': 'music-instrument', '[music] set tempo to': 'music-tempo', '[music] change tempo by': 'music-tempo-change', '[music] tempo': 'music-get-tempo',
+
+[plugin:vite:esbuild] [plugin vite:esbuild] src/utils/blocks.jsx: Duplicate key "stop sounds" in object literal
+391|    'turn degrees': 'sprite-turn',
+392|    'show / hide': 'sprite-show', 'say text': 'sprite-say', 'set size': 'sprite-setsize',
+393|    'play sound': 'sound-play', 'stop sounds': 'sound-stop', 'set volume': 'sound-volume', 'play note': 'sound-play',
+   |                                ^
+394|    '[music] play drum': 'music-drum', '[music] rest for beats': 'music-rest', '[music] play note for beats': 'music-note',
+395|    '[music] set instrument to': 'music-instrument', '[music] set tempo to': 'music-tempo', '[music] change tempo by': 'music-tempo-change', '[music] tempo': 'music-get-tempo',
+
+[plugin:vite:esbuild] [plugin vite:esbuild] src/utils/blocks.jsx: Duplicate key "x position of" in object literal
+469|    'rep counter for': 'pose-rep-count', 'posture quality score': 'pose-posture',
+470|    'analyse image for hand from': 'hand-analyze', 'is hand detected': 'hand-detected',
+471|    'x position of': 'hand-position-x', 'y position of': 'hand-position-y', 'hand gesture is': 'hand-gesture',
+   |    ^
+472|    'is pinching detected': 'hand-pinch', 'distance between fingers': 'hand-distance',
+473|  
+
+[plugin:vite:esbuild] [plugin vite:esbuild] src/utils/blocks.jsx: Duplicate key "y position of" in object literal
+469|    'rep counter for': 'pose-rep-count', 'posture quality score': 'pose-posture',
+470|    'analyse image for hand from': 'hand-analyze', 'is hand detected': 'hand-detected',
+471|    'x position of': 'hand-position-x', 'y position of': 'hand-position-y', 'hand gesture is': 'hand-gesture',
+   |                                        ^
+472|    'is pinching detected': 'hand-pinch', 'distance between fingers': 'hand-distance',
+473|  
+
+[plugin:vite:esbuild] [plugin vite:esbuild] src/utils/blocks.jsx: Duplicate key "[tts] speak" in object literal
+519|    // Speech & TTS
+520|    '[speech] listen once': 'speech-listen', '[speech] last heard': 'speech-heard',
+521|    '[tts] speak': 'tts-speak',
+   |    ^
+522|  
+523|    // Translate
+
+[plugin:vite:esbuild] [plugin vite:esbuild] src/utils/blocks.jsx: Duplicate key "[music] play drum" in object literal
+551|  
+552|    // Music
+553|    '[music] play drum': 'music-drum', '[music] rest for beats': 'music-rest',
+   |    ^
+554|    '[music] play note for beats': 'music-note', '[music] set instrument to': 'music-instrument',
+555|    '[music] set tempo to': 'music-tempo', '[music] change tempo by': 'music-tempo-change',
+
+[plugin:vite:esbuild] [plugin vite:esbuild] src/utils/blocks.jsx: Duplicate key "[music] rest for beats" in object literal
+551|  
+552|    // Music
+553|    '[music] play drum': 'music-drum', '[music] rest for beats': 'music-rest',
+   |                                       ^
+554|    '[music] play note for beats': 'music-note', '[music] set instrument to': 'music-instrument',
+555|    '[music] set tempo to': 'music-tempo', '[music] change tempo by': 'music-tempo-change',
+
+[plugin:vite:esbuild] [plugin vite:esbuild] src/utils/blocks.jsx: Duplicate key "[music] play note for beats" in object literal
+552|    // Music
+553|    '[music] play drum': 'music-drum', '[music] rest for beats': 'music-rest',
+554|    '[music] play note for beats': 'music-note', '[music] set instrument to': 'music-instrument',
+   |    ^
+555|    '[music] set tempo to': 'music-tempo', '[music] change tempo by': 'music-tempo-change',
+556|    '[music] tempo': 'music-get-tempo',
+
+[plugin:vite:esbuild] [plugin vite:esbuild] src/utils/blocks.jsx: Duplicate key "[music] set instrument to" in object literal
+552|    // Music
+553|    '[music] play drum': 'music-drum', '[music] rest for beats': 'music-rest',
+554|    '[music] play note for beats': 'music-note', '[music] set instrument to': 'music-instrument',
+   |                                                 ^
+555|    '[music] set tempo to': 'music-tempo', '[music] change tempo by': 'music-tempo-change',
+556|    '[music] tempo': 'music-get-tempo',
+
+[plugin:vite:esbuild] [plugin vite:esbuild] src/utils/blocks.jsx: Duplicate key "[music] set tempo to" in object literal
+553|    '[music] play drum': 'music-drum', '[music] rest for beats': 'music-rest',
+554|    '[music] play note for beats': 'music-note', '[music] set instrument to': 'music-instrument',
+555|    '[music] set tempo to': 'music-tempo', '[music] change tempo by': 'music-tempo-change',
+   |    ^
+556|    '[music] tempo': 'music-get-tempo',
+557|  
+
+[plugin:vite:esbuild] [plugin vite:esbuild] src/utils/blocks.jsx: Duplicate key "[music] change tempo by" in object literal
+553|    '[music] play drum': 'music-drum', '[music] rest for beats': 'music-rest',
+554|    '[music] play note for beats': 'music-note', '[music] set instrument to': 'music-instrument',
+555|    '[music] set tempo to': 'music-tempo', '[music] change tempo by': 'music-tempo-change',
+   |                                           ^
+556|    '[music] tempo': 'music-get-tempo',
+557|  
+
+[plugin:vite:esbuild] [plugin vite:esbuild] src/utils/blocks.jsx: Duplicate key "[music] tempo" in object literal
+554|    '[music] play note for beats': 'music-note', '[music] set instrument to': 'music-instrument',
+555|    '[music] set tempo to': 'music-tempo', '[music] change tempo by': 'music-tempo-change',
+556|    '[music] tempo': 'music-get-tempo',
+   |    ^
+557|  
+558|    // Video Sensing
+
+[plugin:vite:resolve] [plugin vite:resolve] Module "fs" has been externalized for browser compatibility, imported by "/Users/michelle/Downloads/bytebuddies1-claude-intelligent-fermat-82adf8/Users/mishk/Downloads/bytebuddies1-claude-bold-dewdney-73f401 (1)/bytebuddies1-claude-bold-dewdney-73f401/flash/usbFlash.js". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.
+[plugin:vite:resolve] [plugin vite:resolve] Module "path" has been externalized for browser compatibility, imported by "/Users/michelle/Downloads/bytebuddies1-claude-intelligent-fermat-82adf8/Users/mishk/Downloads/bytebuddies1-claude-bold-dewdney-73f401 (1)/bytebuddies1-claude-bold-dewdney-73f401/flash/usbFlash.js". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.
+[plugin:vite:resolve] [plugin vite:resolve] Module "os" has been externalized for browser compatibility, imported by "/Users/michelle/Downloads/bytebuddies1-claude-intelligent-fermat-82adf8/Users/mishk/Downloads/bytebuddies1-claude-bold-dewdney-73f401 (1)/bytebuddies1-claude-bold-dewdney-73f401/flash/usbFlash.js". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.
+warnings when minifying css:
+▲ [WARNING] Unexpected "/" [css-syntax-error]
+
+    <stdin>:1590:6:
+      1590 │ ��/ *   B y t e B u d d i e s   B l o c k l y - S t y l e   ...
+           ╵   ^
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1591:15:
+      1591 │  : r o o t   { 
+           │                ^
+           ╵                :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1592:55:
+      1592 │      - - b b - b l o c k - b a s e :   # f 5 9 e 0 b ; 
+           │                                                        ^
+           ╵                                                        :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1593:51:
+      1593 │      - - b b - b l o c k - h i :   # f 5 9 e 0 b ; 
+           │                                                    ^
+           ╵                                                    :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1594:59:
+      1594 │      - - b b - b l o c k - s h a d o w :   # d 9 7 7 0 6 ; 
+           │                                                            ^
+           ╵                                                            :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1599:37:
+      1599 │  . w o r k s p a c e - b l o c k   { 
+           │                                      ^
+           ╵                                      :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1600:65:
+      1600 │      p o s i t i o n :   r e l a t i v e   ! i m p o r t a n t ; 
+           │                                                                  ^
+           ╵                                                                  :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1601:69:
+      1601 │ ... i s p l a y :   i n l i n e - f l e x   ! i m p o r t a n t ; 
+           │                                                                   ^
+           ╵                                                                   :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1602:67:
+      1602 │ ... a l i g n - i t e m s :   c e n t e r   ! i m p o r t a n t ; 
+           │                                                                   ^
+           ╵                                                                   :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1603:45:
+      1603 │      g a p :   6 p x   ! i m p o r t a n t ; 
+           │                                              ^
+           ╵                                              :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1604:61:
+      1604 │      m i n - h e i g h t :   3 6 p x   ! i m p o r t a n t ; 
+           │                                                              ^
+           ╵                                                              :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1605:53:
+      1605 │      h e i g h t :   3 6 p x   ! i m p o r t a n t ; 
+           │                                                      ^
+           ╵                                                      :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1606:63:
+      1606 │      p a d d i n g :   7 p x   1 2 p x   ! i m p o r t a n t ; 
+           │                                                                ^
+           ╵                                                                :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1607:55:
+      1607 │      m a r g i n :   6 p x   0   ! i m p o r t a n t ; 
+           │                                                        ^
+           ╵                                                        :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1608:65:
+      1608 │      b o r d e r - r a d i u s :   6 p x   ! i m p o r t a n t ; 
+           │                                                                  ^
+           ╵                                                                  :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1609:103:
+      1609 │ ... r g b a ( 0 ,   0 ,   0 ,   0 . 1 8 )   ! i m p o r t a n t ; 
+           │                                                                   ^
+           ╵                                                                   :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1610:61:
+      1610 │      f o n t - w e i g h t :   6 0 0   ! i m p o r t a n t ; 
+           │                                                              ^
+           ╵                                                              :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1611:59:
+      1611 │      f o n t - s i z e :   1 3 p x   ! i m p o r t a n t ; 
+           │                                                            ^
+           ╵                                                            :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1612:51:
+      1612 │      c o l o r :   # f f f   ! i m p o r t a n t ; 
+           │                                                    ^
+           ╵                                                    :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1613:63:
+      1613 │      u s e r - s e l e c t :   n o n e   ! i m p o r t a n t ; 
+           │                                                                ^
+           ╵                                                                :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1614:53:
+      1614 │      c u r s o r :   g r a b   ! i m p o r t a n t ; 
+           │                                                      ^
+           ╵                                                      :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1615:93:
+      1615 │ ... r a n s f o r m   0 . 0 8 s   e a s e   ! i m p o r t a n t ; 
+           │                                                                   ^
+           ╵                                                                   :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1616:93:
+      1616 │ ... a r ( - - b b - b l o c k - b a s e )   ! i m p o r t a n t ; 
+           │                                                                   ^
+           ╵                                                                   :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1617:61:
+      1617 │      b o x - s h a d o w :   n o n e   ! i m p o r t a n t ; 
+           │                                                              ^
+           ╵                                                              :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1620:39:
+      1620 │  d i v . p a l e t t e - b l o c k   { 
+           │                                        ^
+           ╵                                        :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1621:51:
+      1621 │      w i d t h :   1 0 0 %   ! i m p o r t a n t ; 
+           │                                                    ^
+           ╵                                                    :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1622:55:
+      1622 │      m a r g i n :   4 p x   0   ! i m p o r t a n t ; 
+           │                                                        ^
+           ╵                                                        :
+
+
+▲ [WARNING] Unexpected "/" [css-syntax-error]
+
+    <stdin>:1625:1:
+      1625 │  / *   T o p   n o t c h   ( s o c k e t )   * / 
+           ╵  ^
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1628:63:
+      1628 │  b o d y   . w o r k s p a c e - b l o c k : : b e f o r e   { 
+           │                                                                ^
+           ╵                                                                :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1629:51:
+      1629 │      c o n t e n t :   " "   ! i m p o r t a n t ; 
+           │                                                    ^
+           ╵                                                    :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1630:65:
+      1630 │      p o s i t i o n :   a b s o l u t e   ! i m p o r t a n t ; 
+           │                                                                  ^
+           ╵                                                                  :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1631:41:
+      1631 │      t o p :   0   ! i m p o r t a n t ; 
+           │                                          ^
+           ╵                                          :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1632:49:
+      1632 │      l e f t :   1 4 p x   ! i m p o r t a n t ; 
+           │                                                  ^
+           ╵                                                  :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1633:51:
+      1633 │      w i d t h :   1 8 p x   ! i m p o r t a n t ; 
+           │                                                    ^
+           ╵                                                    :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1634:51:
+      1634 │      h e i g h t :   5 p x   ! i m p o r t a n t ; 
+           │                                                    ^
+           ╵                                                    :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1635:81:
+      1635 │ ... r a d i u s :   0   0   4 p x   4 p x   ! i m p o r t a n t ; 
+           │                                                                   ^
+           ╵                                                                   :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1636:67:
+      1636 │ ... b a c k g r o u n d :   # 1 1 1 1 2 2   ! i m p o r t a n t ; 
+           │                                                                   ^
+           ╵                                                                   :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1637:123:
+      1637 │ ... r g b a ( 0 ,   0 ,   0 ,   0 . 2 4 )   ! i m p o r t a n t ; 
+           │                                                                   ^
+           ╵                                                                   :
+
+
+▲ [WARNING] Unexpected "/" [css-syntax-error]
+
+    <stdin>:1640:1:
+      1640 │  / *   B o t t o m   t a b   ( m a l e   c o n n e c t o r )   * / 
+           ╵  ^
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1643:61:
+      1643 │  b o d y   . w o r k s p a c e - b l o c k : : a f t e r   { 
+           │                                                              ^
+           ╵                                                              :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1644:51:
+      1644 │      c o n t e n t :   " "   ! i m p o r t a n t ; 
+           │                                                    ^
+           ╵                                                    :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1645:65:
+      1645 │      p o s i t i o n :   a b s o l u t e   ! i m p o r t a n t ; 
+           │                                                                  ^
+           ╵                                                                  :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1646:53:
+      1646 │      b o t t o m :   - 5 p x   ! i m p o r t a n t ; 
+           │                                                      ^
+           ╵                                                      :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1647:49:
+      1647 │      l e f t :   1 4 p x   ! i m p o r t a n t ; 
+           │                                                  ^
+           ╵                                                  :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1648:51:
+      1648 │      w i d t h :   1 8 p x   ! i m p o r t a n t ; 
+           │                                                    ^
+           ╵                                                    :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1649:51:
+      1649 │      h e i g h t :   5 p x   ! i m p o r t a n t ; 
+           │                                                    ^
+           ╵                                                    :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1650:81:
+      1650 │ ... r a d i u s :   0   0   4 p x   4 p x   ! i m p o r t a n t ; 
+           │                                                                   ^
+           ╵                                                                   :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1651:93:
+      1651 │ ... a r ( - - b b - b l o c k - b a s e )   ! i m p o r t a n t ; 
+           │                                                                   ^
+           ╵                                                                   :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1652:113:
+      1652 │ ... r g b a ( 0 ,   0 ,   0 ,   0 . 1 8 )   ! i m p o r t a n t ; 
+           │                                                                   ^
+           ╵                                                                   :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1653:115:
+      1653 │ ... r g b a ( 0 ,   0 ,   0 ,   0 . 1 8 )   ! i m p o r t a n t ; 
+           │                                                                   ^
+           ╵                                                                   :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1654:117:
+      1654 │ ... r g b a ( 0 ,   0 ,   0 ,   0 . 1 8 )   ! i m p o r t a n t ; 
+           │                                                                   ^
+           ╵                                                                   :
+
+
+▲ [WARNING] Unexpected "/" [css-syntax-error]
+
+    <stdin>:1657:1:
+      1657 │  / *   M a t c h   n o t c h   c u t o u t   t o   e a c h   p a...
+           ╵  ^
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1658:81:
+      1658 │ ... n v a s   . w o r k s p a c e - b l o c k : : b e f o r e   { 
+           │                                                                   ^
+           ╵                                                                   :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1659:87:
+      1659 │ ... :   v a r ( - - b g - p r i m a r y )   ! i m p o r t a n t ; 
+           │                                                                   ^
+           ╵                                                                   :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1662:55:
+      1662 │  d i v . p a l e t t e - b l o c k : : b e f o r e   { 
+           │                                                        ^
+           ╵                                                        :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1663:91:
+      1663 │ ... v a r ( - - b g - s e c o n d a r y )   ! i m p o r t a n t ; 
+           │                                                                   ^
+           ╵                                                                   :
+
+
+▲ [WARNING] Unexpected "/" [css-syntax-error]
+
+    <stdin>:1666:1:
+      1666 │  / *   E v e n t   h a t   b l o c k s   ( n o   t o p   n o t c...
+           ╵  ^
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1669:71:
+      1669 │ ... k s p a c e - b l o c k [ d a t a - h a t = " t r u e " ]   { 
+           │                                                                   ^
+           ╵                                                                   :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1670:93:
+      1670 │ ... :   1 4 p x   1 4 p x   6 p x   6 p x   ! i m p o r t a n t ; 
+           │                                                                   ^
+           ╵                                                                   :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1671:61:
+      1671 │      p a d d i n g - t o p :   9 p x   ! i m p o r t a n t ; 
+           │                                                              ^
+           ╵                                                              :
+
+
+▲ [WARNING] Expected "]" to go with "[" [css-syntax-error]
+
+    <stdin>:1674:39:
+      1674 │ .... b l o c k [ d a t a - h a t = " t r u e " ] : : b e f o r e , 
+           │                                    ~~~~~~~~~~~
+           ╵                                    ]
+
+  The unbalanced "[" is here:
+
+    <stdin>:1674:19:
+      1674 │  d i v . b l o c k [ d a t a - h a t = " t r u e " ] : : b e f o...
+           ╵                    ^
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1676:87:
+      1676 │ ... l o c k [ d a t a - h a t = " t r u e " ] : : b e f o r e   { 
+           │                                                                   ^
+           ╵                                                                   :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1677:55:
+      1677 │      d i s p l a y :   n o n e   ! i m p o r t a n t ; 
+           │                                                        ^
+           ╵                                                        :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1682:49:
+      1682 │  . w o r k s p a c e - b l o c k : h o v e r   { 
+           │                                                  ^
+           ╵                                                  :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1683:77:
+      1683 │ ... f o r m :   t r a n s l a t e Y ( 0 )   ! i m p o r t a n t ; 
+           │                                                                   ^
+           ╵                                                                   :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1689:55:
+      1689 │  . w o r k s p a c e - b l o c k . d r a g g i n g   { 
+           │                                                        ^
+           ╵                                                        :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1690:73:
+      1690 │ ... n s f o r m :   s c a l e ( 1 . 0 2 )   ! i m p o r t a n t ; 
+           │                                                                   ^
+           ╵                                                                   :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1698:51:
+      1698 │  . w o r k s p a c e - b l o c k   s e l e c t   { 
+           │                                                    ^
+           ╵                                                    :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1699:67:
+      1699 │ ... b a c k g r o u n d :   # f f f f f f   ! i m p o r t a n t ; 
+           │                                                                   ^
+           ╵                                                                   :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1700:47:
+      1700 │      b o r d e r :   0   ! i m p o r t a n t ; 
+           │                                                ^
+           ╵                                                :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1701:69:
+      1701 │ ... o r d e r - r a d i u s :   9 9 9 p x   ! i m p o r t a n t ; 
+           │                                                                   ^
+           ╵                                                                   :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1702:57:
+      1702 │      c o l o r :   # 3 3 4 1 5 5   ! i m p o r t a n t ; 
+           │                                                          ^
+           ╵                                                          :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1703:61:
+      1703 │      f o n t - w e i g h t :   6 0 0   ! i m p o r t a n t ; 
+           │                                                              ^
+           ╵                                                              :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1704:59:
+      1704 │      f o n t - s i z e :   1 2 p x   ! i m p o r t a n t ; 
+           │                                                            ^
+           ╵                                                            :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1705:61:
+      1705 │      p a d d i n g :   1 p x   8 p x   ! i m p o r t a n t ; 
+           │                                                              ^
+           ╵                                                              :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1706:61:
+      1706 │      m i n - h e i g h t :   2 2 p x   ! i m p o r t a n t ; 
+           │                                                              ^
+           ╵                                                              :
+
+
+▲ [WARNING] Expected "]" to go with "[" [css-syntax-error]
+
+    <stdin>:1709:31:
+      1709 │  [ d a t a - c a t e g o r y = " e v e n t " ] , 
+           │                                ~~~~~~~~~~~~~
+           ╵                                ]
+
+  The unbalanced "[" is here:
+
+    <stdin>:1709:1:
+      1709 │  [ d a t a - c a t e g o r y = " e v e n t " ] , 
+           ╵  ^
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1710:53:
+      1710 │  [ d a t a - c a t e g o r y = " e v e n t s " ]   { 
+           │                                                      ^
+           ╵                                                      :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1711:55:
+      1711 │      - - b b - b l o c k - b a s e :   # f 5 9 e 0 b ; 
+           │                                                        ^
+           ╵                                                        :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1712:51:
+      1712 │      - - b b - b l o c k - h i :   # f b b f 2 4 ; 
+           │                                                    ^
+           ╵                                                    :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1713:59:
+      1713 │      - - b b - b l o c k - s h a d o w :   # d 9 7 7 0 6 ; 
+           │                                                            ^
+           ╵                                                            :
+
+
+▲ [WARNING] Expected "]" to go with "[" [css-syntax-error]
+
+    <stdin>:1716:31:
+      1716 │  [ d a t a - c a t e g o r y = " m o t i o n " ] , 
+           │                                ~~~~~~~~~~~~~~~
+           ╵                                ]
+
+  The unbalanced "[" is here:
+
+    <stdin>:1716:1:
+      1716 │  [ d a t a - c a t e g o r y = " m o t i o n " ] , 
+           ╵  ^
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1717:53:
+      1717 │  [ d a t a - c a t e g o r y = " s p r i t e " ]   { 
+           │                                                      ^
+           ╵                                                      :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1718:55:
+      1718 │      - - b b - b l o c k - b a s e :   # 3 b 8 2 f 6 ; 
+           │                                                        ^
+           ╵                                                        :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1719:51:
+      1719 │      - - b b - b l o c k - h i :   # 6 0 a 5 f a ; 
+           │                                                    ^
+           ╵                                                    :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1720:59:
+      1720 │      - - b b - b l o c k - s h a d o w :   # 2 5 6 3 e b ; 
+           │                                                            ^
+           ╵                                                            :
+
+
+▲ [WARNING] Expected "]" to go with "[" [css-syntax-error]
+
+    <stdin>:1723:31:
+      1723 │  [ d a t a - c a t e g o r y = " l o o k s " ]   { 
+           │                                ~~~~~~~~~~~~~
+           ╵                                ]
+
+  The unbalanced "[" is here:
+
+    <stdin>:1723:1:
+      1723 │  [ d a t a - c a t e g o r y = " l o o k s " ]   { 
+           ╵  ^
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1723:51:
+      1723 │  [ d a t a - c a t e g o r y = " l o o k s " ]   { 
+           │                                                    ^
+           ╵                                                    :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1724:55:
+      1724 │      - - b b - b l o c k - b a s e :   # 8 b 5 c f 6 ; 
+           │                                                        ^
+           ╵                                                        :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1725:51:
+      1725 │      - - b b - b l o c k - h i :   # a 7 8 b f a ; 
+           │                                                    ^
+           ╵                                                    :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1726:59:
+      1726 │      - - b b - b l o c k - s h a d o w :   # 6 d 2 8 d 9 ; 
+           │                                                            ^
+           ╵                                                            :
+
+
+▲ [WARNING] Expected "]" to go with "[" [css-syntax-error]
+
+    <stdin>:1729:31:
+      1729 │  [ d a t a - c a t e g o r y = " c o n t r o l " ] , 
+           │                                ~~~~~~~~~~~~~~~~~
+           ╵                                ]
+
+  The unbalanced "[" is here:
+
+    <stdin>:1729:1:
+      1729 │  [ d a t a - c a t e g o r y = " c o n t r o l " ] , 
+           ╵  ^
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1730:49:
+      1730 │  [ d a t a - c a t e g o r y = " l o o p " ]   { 
+           │                                                  ^
+           ╵                                                  :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1731:55:
+      1731 │      - - b b - b l o c k - b a s e :   # f 9 7 3 1 6 ; 
+           │                                                        ^
+           ╵                                                        :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1732:51:
+      1732 │      - - b b - b l o c k - h i :   # f b 9 2 3 c ; 
+           │                                                    ^
+           ╵                                                    :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1733:59:
+      1733 │      - - b b - b l o c k - s h a d o w :   # e a 5 8 0 c ; 
+           │                                                            ^
+           ╵                                                            :
+
+
+▲ [WARNING] Expected "]" to go with "[" [css-syntax-error]
+
+    <stdin>:1736:31:
+      1736 │  [ d a t a - c a t e g o r y = " s e n s i n g " ]   { 
+           │                                ~~~~~~~~~~~~~~~~~
+           ╵                                ]
+
+  The unbalanced "[" is here:
+
+    <stdin>:1736:1:
+      1736 │  [ d a t a - c a t e g o r y = " s e n s i n g " ]   { 
+           ╵  ^
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1736:55:
+      1736 │  [ d a t a - c a t e g o r y = " s e n s i n g " ]   { 
+           │                                                        ^
+           ╵                                                        :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1737:55:
+      1737 │      - - b b - b l o c k - b a s e :   # 1 4 b 8 a 6 ; 
+           │                                                        ^
+           ╵                                                        :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1738:51:
+      1738 │      - - b b - b l o c k - h i :   # 2 d d 4 b f ; 
+           │                                                    ^
+           ╵                                                    :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1739:59:
+      1739 │      - - b b - b l o c k - s h a d o w :   # 0 f 7 6 6 e ; 
+           │                                                            ^
+           ╵                                                            :
+
+
+▲ [WARNING] Expected "]" to go with "[" [css-syntax-error]
+
+    <stdin>:1742:31:
+      1742 │  [ d a t a - c a t e g o r y = " s o u n d " ]   { 
+           │                                ~~~~~~~~~~~~~
+           ╵                                ]
+
+  The unbalanced "[" is here:
+
+    <stdin>:1742:1:
+      1742 │  [ d a t a - c a t e g o r y = " s o u n d " ]   { 
+           ╵  ^
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1742:51:
+      1742 │  [ d a t a - c a t e g o r y = " s o u n d " ]   { 
+           │                                                    ^
+           ╵                                                    :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1743:55:
+      1743 │      - - b b - b l o c k - b a s e :   # d 9 4 6 e f ; 
+           │                                                        ^
+           ╵                                                        :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1744:51:
+      1744 │      - - b b - b l o c k - h i :   # e 8 7 9 f 9 ; 
+           │                                                    ^
+           ╵                                                    :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1745:59:
+      1745 │      - - b b - b l o c k - s h a d o w :   # a 2 1 c a f ; 
+           │                                                            ^
+           ╵                                                            :
+
+
+▲ [WARNING] Expected "]" to go with "[" [css-syntax-error]
+
+    <stdin>:1748:31:
+      1748 │  [ d a t a - c a t e g o r y = " v a r i a b l e " ] , 
+           │                                ~~~~~~~~~~~~~~~~~~~
+           ╵                                ]
+
+  The unbalanced "[" is here:
+
+    <stdin>:1748:1:
+      1748 │  [ d a t a - c a t e g o r y = " v a r i a b l e " ] , 
+           ╵  ^
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1749:59:
+      1749 │  [ d a t a - c a t e g o r y = " v a r i a b l e s " ]   { 
+           │                                                            ^
+           ╵                                                            :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1750:55:
+      1750 │      - - b b - b l o c k - b a s e :   # f 5 9 e 0 b ; 
+           │                                                        ^
+           ╵                                                        :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1751:51:
+      1751 │      - - b b - b l o c k - h i :   # f b b f 2 4 ; 
+           │                                                    ^
+           ╵                                                    :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1752:59:
+      1752 │      - - b b - b l o c k - s h a d o w :   # d 9 7 7 0 6 ; 
+           │                                                            ^
+           ╵                                                            :
+
+
+▲ [WARNING] Expected "]" to go with "[" [css-syntax-error]
+
+    <stdin>:1755:31:
+      1755 │  [ d a t a - c a t e g o r y = " m a t h " ] , 
+           │                                ~~~~~~~~~~~
+           ╵                                ]
+
+  The unbalanced "[" is here:
+
+    <stdin>:1755:1:
+      1755 │  [ d a t a - c a t e g o r y = " m a t h " ] , 
+           ╵  ^
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1756:59:
+      1756 │  [ d a t a - c a t e g o r y = " o p e r a t o r s " ]   { 
+           │                                                            ^
+           ╵                                                            :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1757:55:
+      1757 │      - - b b - b l o c k - b a s e :   # 2 2 c 5 5 e ; 
+           │                                                        ^
+           ╵                                                        :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1758:51:
+      1758 │      - - b b - b l o c k - h i :   # 4 a d e 8 0 ; 
+           │                                                    ^
+           ╵                                                    :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1759:59:
+      1759 │      - - b b - b l o c k - s h a d o w :   # 1 5 8 0 3 d ; 
+           │                                                            ^
+           ╵                                                            :
+
+
+▲ [WARNING] Expected "]" to go with "[" [css-syntax-error]
+
+    <stdin>:1762:31:
+      1762 │  [ d a t a - c a t e g o r y = " l o g i c " ]   { 
+           │                                ~~~~~~~~~~~~~
+           ╵                                ]
+
+  The unbalanced "[" is here:
+
+    <stdin>:1762:1:
+      1762 │  [ d a t a - c a t e g o r y = " l o g i c " ]   { 
+           ╵  ^
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1762:51:
+      1762 │  [ d a t a - c a t e g o r y = " l o g i c " ]   { 
+           │                                                    ^
+           ╵                                                    :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1763:55:
+      1763 │      - - b b - b l o c k - b a s e :   # 0 e a 5 e 9 ; 
+           │                                                        ^
+           ╵                                                        :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1764:51:
+      1764 │      - - b b - b l o c k - h i :   # 3 8 b d f 8 ; 
+           │                                                    ^
+           ╵                                                    :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1765:59:
+      1765 │      - - b b - b l o c k - s h a d o w :   # 0 2 8 4 c 7 ; 
+           │                                                            ^
+           ╵                                                            :
+
+
+▲ [WARNING] Expected "]" to go with "[" [css-syntax-error]
+
+    <stdin>:1768:31:
+      1768 │  [ d a t a - c a t e g o r y = " f u n c t i o n " ] , 
+           │                                ~~~~~~~~~~~~~~~~~~~
+           ╵                                ]
+
+  The unbalanced "[" is here:
+
+    <stdin>:1768:1:
+      1768 │  [ d a t a - c a t e g o r y = " f u n c t i o n " ] , 
+           ╵  ^
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1770:57:
+      1770 │  [ d a t a - c a t e g o r y = " m y b l o c k s " ]   { 
+           │                                                          ^
+           ╵                                                          :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1771:55:
+      1771 │      - - b b - b l o c k - b a s e :   # 6 3 6 6 f 1 ; 
+           │                                                        ^
+           ╵                                                        :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1772:51:
+      1772 │      - - b b - b l o c k - h i :   # 8 1 8 c f 8 ; 
+           │                                                    ^
+           ╵                                                    :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1773:59:
+      1773 │      - - b b - b l o c k - s h a d o w :   # 4 3 3 8 c a ; 
+           │                                                            ^
+           ╵                                                            :
+
+
+▲ [WARNING] Expected "]" to go with "[" [css-syntax-error]
+
+    <stdin>:1776:31:
+      1776 │  [ d a t a - c a t e g o r y = " t e x t " ] , 
+           │                                ~~~~~~~~~~~
+           ╵                                ]
+
+  The unbalanced "[" is here:
+
+    <stdin>:1776:1:
+      1776 │  [ d a t a - c a t e g o r y = " t e x t " ] , 
+           ╵  ^
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1777:49:
+      1777 │  [ d a t a - c a t e g o r y = " l i s t " ]   { 
+           │                                                  ^
+           ╵                                                  :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1778:55:
+      1778 │      - - b b - b l o c k - b a s e :   # 0 6 b 6 d 4 ; 
+           │                                                        ^
+           ╵                                                        :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1779:51:
+      1779 │      - - b b - b l o c k - h i :   # 2 2 d 3 e e ; 
+           │                                                    ^
+           ╵                                                    :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1780:59:
+      1780 │      - - b b - b l o c k - s h a d o w :   # 0 e 7 4 9 0 ; 
+           │                                                            ^
+           ╵                                                            :
+
+
+▲ [WARNING] Expected "]" to go with "[" [css-syntax-error]
+
+    <stdin>:1783:31:
+      1783 │  [ d a t a - c a t e g o r y = " a c t i o n " ] , 
+           │                                ~~~~~~~~~~~~~~~
+           ╵                                ]
+
+  The unbalanced "[" is here:
+
+    <stdin>:1783:1:
+      1783 │  [ d a t a - c a t e g o r y = " a c t i o n " ] , 
+           ╵  ^
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1784:45:
+      1784 │  [ d a t a - c a t e g o r y = " a i " ]   { 
+           │                                              ^
+           ╵                                              :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1785:55:
+      1785 │      - - b b - b l o c k - b a s e :   # e c 4 8 9 9 ; 
+           │                                                        ^
+           ╵                                                        :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1786:51:
+      1786 │      - - b b - b l o c k - h i :   # f 4 7 2 b 6 ; 
+           │                                                    ^
+           ╵                                                    :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1787:59:
+      1787 │      - - b b - b l o c k - s h a d o w :   # b e 1 8 5 d ; 
+           │                                                            ^
+           ╵                                                            :
+
+
+▲ [WARNING] Expected "]" to go with "[" [css-syntax-error]
+
+    <stdin>:1790:31:
+      1790 │  [ d a t a - c a t e g o r y = " p h y s i c s " ]   { 
+           │                                ~~~~~~~~~~~~~~~~~
+           ╵                                ]
+
+  The unbalanced "[" is here:
+
+    <stdin>:1790:1:
+      1790 │  [ d a t a - c a t e g o r y = " p h y s i c s " ]   { 
+           ╵  ^
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1790:55:
+      1790 │  [ d a t a - c a t e g o r y = " p h y s i c s " ]   { 
+           │                                                        ^
+           ╵                                                        :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1791:55:
+      1791 │      - - b b - b l o c k - b a s e :   # 1 4 b 8 a 6 ; 
+           │                                                        ^
+           ╵                                                        :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1792:51:
+      1792 │      - - b b - b l o c k - h i :   # 2 d d 4 b f ; 
+           │                                                    ^
+           ╵                                                    :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1793:59:
+      1793 │      - - b b - b l o c k - s h a d o w :   # 0 f 7 6 6 e ; 
+           │                                                            ^
+           ╵                                                            :
+
+
+▲ [WARNING] Expected "]" to go with "[" [css-syntax-error]
+
+    <stdin>:1796:31:
+      1796 │  [ d a t a - c a t e g o r y = " g a m e " ]   { 
+           │                                ~~~~~~~~~~~
+           ╵                                ]
+
+  The unbalanced "[" is here:
+
+    <stdin>:1796:1:
+      1796 │  [ d a t a - c a t e g o r y = " g a m e " ]   { 
+           ╵  ^
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1796:49:
+      1796 │  [ d a t a - c a t e g o r y = " g a m e " ]   { 
+           │                                                  ^
+           ╵                                                  :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1797:55:
+      1797 │      - - b b - b l o c k - b a s e :   # 1 0 b 9 8 1 ; 
+           │                                                        ^
+           ╵                                                        :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1798:51:
+      1798 │      - - b b - b l o c k - h i :   # 3 4 d 3 9 9 ; 
+           │                                                    ^
+           ╵                                                    :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1799:59:
+      1799 │      - - b b - b l o c k - s h a d o w :   # 0 4 7 8 5 7 ; 
+           │                                                            ^
+           ╵                                                            :
+
+
+▲ [WARNING] Expected "]" to go with "[" [css-syntax-error]
+
+    <stdin>:1802:31:
+      1802 │  [ d a t a - c a t e g o r y = " M o v e m e n t " ]   { 
+           │                                ~~~~~~~~~~~~~~~~~~~
+           ╵                                ]
+
+  The unbalanced "[" is here:
+
+    <stdin>:1802:1:
+      1802 │  [ d a t a - c a t e g o r y = " M o v e m e n t " ]   { 
+           ╵  ^
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1802:57:
+      1802 │  [ d a t a - c a t e g o r y = " M o v e m e n t " ]   { 
+           │                                                          ^
+           ╵                                                          :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1803:55:
+      1803 │      - - b b - b l o c k - b a s e :   # 3 b 8 2 f 6 ; 
+           │                                                        ^
+           ╵                                                        :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1804:51:
+      1804 │      - - b b - b l o c k - h i :   # 6 0 a 5 f a ; 
+           │                                                    ^
+           ╵                                                    :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1805:59:
+      1805 │      - - b b - b l o c k - s h a d o w :   # 2 5 6 3 e b ; 
+           │                                                            ^
+           ╵                                                            :
+
+
+▲ [WARNING] Expected "]" to go with "[" [css-syntax-error]
+
+    <stdin>:1808:31:
+      1808 │  [ d a t a - c a t e g o r y = " S e n s o r s " ]   { 
+           │                                ~~~~~~~~~~~~~~~~~
+           ╵                                ]
+
+  The unbalanced "[" is here:
+
+    <stdin>:1808:1:
+      1808 │  [ d a t a - c a t e g o r y = " S e n s o r s " ]   { 
+           ╵  ^
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1808:55:
+      1808 │  [ d a t a - c a t e g o r y = " S e n s o r s " ]   { 
+           │                                                        ^
+           ╵                                                        :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1809:55:
+      1809 │      - - b b - b l o c k - b a s e :   # 1 4 b 8 a 6 ; 
+           │                                                        ^
+           ╵                                                        :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1810:51:
+      1810 │      - - b b - b l o c k - h i :   # 2 d d 4 b f ; 
+           │                                                    ^
+           ╵                                                    :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1811:59:
+      1811 │      - - b b - b l o c k - s h a d o w :   # 0 f 7 6 6 e ; 
+           │                                                            ^
+           ╵                                                            :
+
+
+▲ [WARNING] Expected "]" to go with "[" [css-syntax-error]
+
+    <stdin>:1814:31:
+      1814 │  [ d a t a - c a t e g o r y = " C o n t r o l " ]   { 
+           │                                ~~~~~~~~~~~~~~~~~
+           ╵                                ]
+
+  The unbalanced "[" is here:
+
+    <stdin>:1814:1:
+      1814 │  [ d a t a - c a t e g o r y = " C o n t r o l " ]   { 
+           ╵  ^
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1814:55:
+      1814 │  [ d a t a - c a t e g o r y = " C o n t r o l " ]   { 
+           │                                                        ^
+           ╵                                                        :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1815:55:
+      1815 │      - - b b - b l o c k - b a s e :   # f 9 7 3 1 6 ; 
+           │                                                        ^
+           ╵                                                        :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1816:51:
+      1816 │      - - b b - b l o c k - h i :   # f b 9 2 3 c ; 
+           │                                                    ^
+           ╵                                                    :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1817:59:
+      1817 │      - - b b - b l o c k - s h a d o w :   # e a 5 8 0 c ; 
+           │                                                            ^
+           ╵                                                            :
+
+
+▲ [WARNING] Expected "]" to go with "[" [css-syntax-error]
+
+    <stdin>:1820:31:
+      1820 │  [ d a t a - c a t e g o r y = " M a t h " ]   { 
+           │                                ~~~~~~~~~~~
+           ╵                                ]
+
+  The unbalanced "[" is here:
+
+    <stdin>:1820:1:
+      1820 │  [ d a t a - c a t e g o r y = " M a t h " ]   { 
+           ╵  ^
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1820:49:
+      1820 │  [ d a t a - c a t e g o r y = " M a t h " ]   { 
+           │                                                  ^
+           ╵                                                  :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1821:55:
+      1821 │      - - b b - b l o c k - b a s e :   # 2 2 c 5 5 e ; 
+           │                                                        ^
+           ╵                                                        :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1822:51:
+      1822 │      - - b b - b l o c k - h i :   # 4 a d e 8 0 ; 
+           │                                                    ^
+           ╵                                                    :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1823:59:
+      1823 │      - - b b - b l o c k - s h a d o w :   # 1 5 8 0 3 d ; 
+           │                                                            ^
+           ╵                                                            :
+
+
+▲ [WARNING] Expected "]" to go with "[" [css-syntax-error]
+
+    <stdin>:1826:31:
+      1826 │  [ d a t a - c a t e g o r y = " O u t p u t s " ] , 
+           │                                ~~~~~~~~~~~~~~~~~
+           ╵                                ]
+
+  The unbalanced "[" is here:
+
+    <stdin>:1826:1:
+      1826 │  [ d a t a - c a t e g o r y = " O u t p u t s " ] , 
+           ╵  ^
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1827:53:
+      1827 │  [ d a t a - c a t e g o r y = " L i g h t s " ]   { 
+           │                                                      ^
+           ╵                                                      :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1828:55:
+      1828 │      - - b b - b l o c k - b a s e :   # d 9 4 6 e f ; 
+           │                                                        ^
+           ╵                                                        :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1829:51:
+      1829 │      - - b b - b l o c k - h i :   # e 8 7 9 f 9 ; 
+           │                                                    ^
+           ╵                                                    :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1830:59:
+      1830 │      - - b b - b l o c k - s h a d o w :   # a 2 1 c a f ; 
+           │                                                            ^
+           ╵                                                            :
+
+
+▲ [WARNING] Expected "]" to go with "[" [css-syntax-error]
+
+    <stdin>:1833:31:
+      1833 │  [ d a t a - c a t e g o r y = " S e r v o " ]   { 
+           │                                ~~~~~~~~~~~~~
+           ╵                                ]
+
+  The unbalanced "[" is here:
+
+    <stdin>:1833:1:
+      1833 │  [ d a t a - c a t e g o r y = " S e r v o " ]   { 
+           ╵  ^
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1833:51:
+      1833 │  [ d a t a - c a t e g o r y = " S e r v o " ]   { 
+           │                                                    ^
+           ╵                                                    :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1834:55:
+      1834 │      - - b b - b l o c k - b a s e :   # 8 b 5 c f 6 ; 
+           │                                                        ^
+           ╵                                                        :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1835:51:
+      1835 │      - - b b - b l o c k - h i :   # a 7 8 b f a ; 
+           │                                                    ^
+           ╵                                                    :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1836:59:
+      1836 │      - - b b - b l o c k - s h a d o w :   # 6 d 2 8 d 9 ; 
+           │                                                            ^
+           ╵                                                            :
+
+
+▲ [WARNING] Expected "]" to go with "[" [css-syntax-error]
+
+    <stdin>:1839:31:
+      1839 │  [ d a t a - c a t e g o r y = " V a r i a b l e s " ]   { 
+           │                                ~~~~~~~~~~~~~~~~~~~~~
+           ╵                                ]
+
+  The unbalanced "[" is here:
+
+    <stdin>:1839:1:
+      1839 │  [ d a t a - c a t e g o r y = " V a r i a b l e s " ]   { 
+           ╵  ^
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1839:59:
+      1839 │  [ d a t a - c a t e g o r y = " V a r i a b l e s " ]   { 
+           │                                                            ^
+           ╵                                                            :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1840:55:
+      1840 │      - - b b - b l o c k - b a s e :   # f 5 9 e 0 b ; 
+           │                                                        ^
+           ╵                                                        :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1841:51:
+      1841 │      - - b b - b l o c k - h i :   # f b b f 2 4 ; 
+           │                                                    ^
+           ╵                                                    :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1842:59:
+      1842 │      - - b b - b l o c k - s h a d o w :   # d 9 7 7 0 6 ; 
+           │                                                            ^
+           ╵                                                            :
+
+
+▲ [WARNING] Expected "]" to go with "[" [css-syntax-error]
+
+    <stdin>:1845:31:
+      1845 │  [ d a t a - c a t e g o r y = " C o m m s " ]   { 
+           │                                ~~~~~~~~~~~~~
+           ╵                                ]
+
+  The unbalanced "[" is here:
+
+    <stdin>:1845:1:
+      1845 │  [ d a t a - c a t e g o r y = " C o m m s " ]   { 
+           ╵  ^
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1845:51:
+      1845 │  [ d a t a - c a t e g o r y = " C o m m s " ]   { 
+           │                                                    ^
+           ╵                                                    :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1846:55:
+      1846 │      - - b b - b l o c k - b a s e :   # e c 4 8 9 9 ; 
+           │                                                        ^
+           ╵                                                        :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1847:51:
+      1847 │      - - b b - b l o c k - h i :   # f 4 7 2 b 6 ; 
+           │                                                    ^
+           ╵                                                    :
+
+
+▲ [WARNING] Expected ":" [css-syntax-error]
+
+    <stdin>:1848:59:
+      1848 │      - - b b - b l o c k - s h a d o w :   # b e 1 8 5 d ; 
+           │                                                            ^
+           ╵                                                            :
+
+
+▲ [WARNING] Expected "{" but found end of file [css-syntax-error]
+
+    <stdin>:1851:0:
+      1851 │ 
+           │ ^
+           ╵ {
+
+
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.

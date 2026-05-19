@@ -1,0 +1,259 @@
+{
+  "category": "Vehicles",
+  "prefix": "vehicle",
+  "source": "Vehiclespng.png",
+  "items": [
+    {
+      "name": "Red Sports Car",
+      "slug": "red_sports_car",
+      "file": "vehicle_red_sports_car.png",
+      "width": 1024,
+      "height": 631
+    },
+    {
+      "name": "Blue Sports Car",
+      "slug": "blue_sports_car",
+      "file": "vehicle_blue_sports_car.png",
+      "width": 1023,
+      "height": 715
+    },
+    {
+      "name": "Muscle Car",
+      "slug": "muscle_car",
+      "file": "vehicle_muscle_car.png",
+      "width": 1024,
+      "height": 644
+    },
+    {
+      "name": "Sci-Fi Ship",
+      "slug": "sci_fi_ship",
+      "file": "vehicle_sci_fi_ship.png",
+      "width": 1023,
+      "height": 730
+    },
+    {
+      "name": "Fantasy Starship",
+      "slug": "fantasy_starship",
+      "file": "vehicle_fantasy_starship.png",
+      "width": 1024,
+      "height": 702
+    },
+    {
+      "name": "Royal Carriage",
+      "slug": "royal_carriage",
+      "file": "vehicle_royal_carriage.png",
+      "width": 1024,
+      "height": 874
+    },
+    {
+      "name": "Flame Motorcycle",
+      "slug": "flame_motorcycle",
+      "file": "vehicle_flame_motorcycle.png",
+      "width": 1024,
+      "height": 802
+    },
+    {
+      "name": "Light Cycle",
+      "slug": "light_cycle",
+      "file": "vehicle_light_cycle.png",
+      "width": 1024,
+      "height": 761
+    },
+    {
+      "name": "Chopper",
+      "slug": "chopper",
+      "file": "vehicle_chopper.png",
+      "width": 1024,
+      "height": 827
+    },
+    {
+      "name": "Magic Carpet",
+      "slug": "magic_carpet",
+      "file": "vehicle_magic_carpet.png",
+      "width": 1024,
+      "height": 635
+    },
+    {
+      "name": "Pirate Ship",
+      "slug": "pirate_ship",
+      "file": "vehicle_pirate_ship.png",
+      "width": 971,
+      "height": 1024
+    },
+    {
+      "name": "Steampunk Airship",
+      "slug": "steampunk_airship",
+      "file": "vehicle_steampunk_airship.png",
+      "width": 1024,
+      "height": 866
+    },
+    {
+      "name": "Off-Road Buggy",
+      "slug": "off_road_buggy",
+      "file": "vehicle_off_road_buggy.png",
+      "width": 1023,
+      "height": 738
+    },
+    {
+      "name": "Tank",
+      "slug": "tank",
+      "file": "vehicle_tank.png",
+      "width": 1024,
+      "height": 704
+    },
+    {
+      "name": "Attack Helicopter",
+      "slug": "attack_helicopter",
+      "file": "vehicle_attack_helicopter.png",
+      "width": 1024,
+      "height": 762
+    },
+    {
+      "name": "Private Jet",
+      "slug": "private_jet",
+      "file": "vehicle_private_jet.png",
+      "width": 1023,
+      "height": 833
+    },
+    {
+      "name": "Rocket Ship",
+      "slug": "rocket_ship",
+      "file": "vehicle_rocket_ship.png",
+      "width": 1024,
+      "height": 920
+    },
+    {
+      "name": "Submarine",
+      "slug": "submarine",
+      "file": "vehicle_submarine.png",
+      "width": 1024,
+      "height": 811
+    },
+    {
+      "name": "Sailboat",
+      "slug": "sailboat",
+      "file": "vehicle_sailboat.png",
+      "width": 962,
+      "height": 1024
+    },
+    {
+      "name": "School Bus",
+      "slug": "school_bus",
+      "file": "vehicle_school_bus.png",
+      "width": 1024,
+      "height": 751
+    },
+    {
+      "name": "Fire Truck",
+      "slug": "fire_truck",
+      "file": "vehicle_fire_truck.png",
+      "width": 1024,
+      "height": 845
+    },
+    {
+      "name": "Police Car",
+      "slug": "police_car",
+      "file": "vehicle_police_car.png",
+      "width": 1024,
+      "height": 653
+    },
+    {
+      "name": "Ambulance",
+      "slug": "ambulance",
+      "file": "vehicle_ambulance.png",
+      "width": 1024,
+      "height": 758
+    },
+    {
+      "name": "Ice Cream Truck",
+      "slug": "ice_cream_truck",
+      "file": "vehicle_ice_cream_truck.png",
+      "width": 1024,
+      "height": 881
+    },
+    {
+      "name": "Armored Rover",
+      "slug": "armored_rover",
+      "file": "vehicle_armored_rover.png",
+      "width": 1024,
+      "height": 771
+    },
+    {
+      "name": "Steam Train",
+      "slug": "steam_train",
+      "file": "vehicle_steam_train.png",
+      "width": 1024,
+      "height": 822
+    },
+    {
+      "name": "Bullet Train",
+      "slug": "bullet_train",
+      "file": "vehicle_bullet_train.png",
+      "width": 1024,
+      "height": 666
+    },
+    {
+      "name": "Jet Ski",
+      "slug": "jet_ski",
+      "file": "vehicle_jet_ski.png",
+      "width": 1023,
+      "height": 727
+    },
+    {
+      "name": "Christmas Sleigh",
+      "slug": "christmas_sleigh",
+      "file": "vehicle_christmas_sleigh.png",
+      "width": 1024,
+      "height": 713
+    },
+    {
+      "name": "UFO",
+      "slug": "ufo",
+      "file": "vehicle_ufo.png",
+      "width": 1024,
+      "height": 577
+    },
+    {
+      "name": "Monster Truck",
+      "slug": "monster_truck",
+      "file": "vehicle_monster_truck.png",
+      "width": 1024,
+      "height": 783
+    },
+    {
+      "name": "Luxury Yacht",
+      "slug": "luxury_yacht",
+      "file": "vehicle_luxury_yacht.png",
+      "width": 1024,
+      "height": 773
+    },
+    {
+      "name": "Hot Air Balloon",
+      "slug": "hot_air_balloon",
+      "file": "vehicle_hot_air_balloon.png",
+      "width": 819,
+      "height": 1024
+    },
+    {
+      "name": "Race Car",
+      "slug": "race_car",
+      "file": "vehicle_race_car.png",
+      "width": 1024,
+      "height": 685
+    },
+    {
+      "name": "Lowrider",
+      "slug": "lowrider",
+      "file": "vehicle_lowrider.png",
+      "width": 1024,
+      "height": 549
+    },
+    {
+      "name": "Tractor",
+      "slug": "tractor",
+      "file": "vehicle_tractor.png",
+      "width": 1024,
+      "height": 847
+    }
+  ]
+}

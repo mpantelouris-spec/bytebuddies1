@@ -1,0 +1,252 @@
+{
+  "category": "Effects",
+  "prefix": "effect",
+  "source": "Elements.png",
+  "items": [
+    {
+      "name": "Fire Explosion",
+      "slug": "fire_explosion",
+      "file": "effect_fire_explosion.png",
+      "width": 938,
+      "height": 1023
+    },
+    {
+      "name": "Lightning",
+      "slug": "lightning",
+      "file": "effect_lightning.png",
+      "width": 728,
+      "height": 1024
+    },
+    {
+      "name": "Shield",
+      "slug": "shield",
+      "file": "effect_shield.png",
+      "width": 775,
+      "height": 1024
+    },
+    {
+      "name": "Sparkle Star",
+      "slug": "sparkle_star",
+      "file": "effect_sparkle_star.png",
+      "width": 825,
+      "height": 1023
+    },
+    {
+      "name": "Flame",
+      "slug": "flame",
+      "file": "effect_flame.png",
+      "width": 684,
+      "height": 1023
+    },
+    {
+      "name": "Ice Crystals",
+      "slug": "ice_crystals",
+      "file": "effect_ice_crystals.png",
+      "width": 709,
+      "height": 1024
+    },
+    {
+      "name": "Magic Vortex",
+      "slug": "magic_vortex",
+      "file": "effect_magic_vortex.png",
+      "width": 939,
+      "height": 1024
+    },
+    {
+      "name": "Rain Cloud",
+      "slug": "rain_cloud",
+      "file": "effect_rain_cloud.png",
+      "width": 1024,
+      "height": 939
+    },
+    {
+      "name": "Snowflake",
+      "slug": "snowflake",
+      "file": "effect_snowflake.png",
+      "width": 919,
+      "height": 1024
+    },
+    {
+      "name": "Wind Swirl",
+      "slug": "wind_swirl",
+      "file": "effect_wind_swirl.png",
+      "width": 959,
+      "height": 1024
+    },
+    {
+      "name": "Cloud",
+      "slug": "cloud",
+      "file": "effect_cloud.png",
+      "width": 978,
+      "height": 1024
+    },
+    {
+      "name": "Rock Pile",
+      "slug": "rock_pile",
+      "file": "effect_rock_pile.png",
+      "width": 900,
+      "height": 1024
+    },
+    {
+      "name": "Magic Circle",
+      "slug": "magic_circle",
+      "file": "effect_magic_circle.png",
+      "width": 957,
+      "height": 1024
+    },
+    {
+      "name": "Heal Plus",
+      "slug": "heal_plus",
+      "file": "effect_heal_plus.png",
+      "width": 959,
+      "height": 1023
+    },
+    {
+      "name": "Energy Orb",
+      "slug": "energy_orb",
+      "file": "effect_energy_orb.png",
+      "width": 1024,
+      "height": 1019
+    },
+    {
+      "name": "Magic Beam",
+      "slug": "magic_beam",
+      "file": "effect_magic_beam.png",
+      "width": 1024,
+      "height": 624
+    },
+    {
+      "name": "Portal",
+      "slug": "portal",
+      "file": "effect_portal.png",
+      "width": 982,
+      "height": 1024
+    },
+    {
+      "name": "Poison Skull",
+      "slug": "poison_skull",
+      "file": "effect_poison_skull.png",
+      "width": 948,
+      "height": 1024
+    },
+    {
+      "name": "Shadow Skull",
+      "slug": "shadow_skull",
+      "file": "effect_shadow_skull.png",
+      "width": 885,
+      "height": 1024
+    },
+    {
+      "name": "Holy Beam",
+      "slug": "holy_beam",
+      "file": "effect_holy_beam.png",
+      "width": 813,
+      "height": 1024
+    },
+    {
+      "name": "Meteor",
+      "slug": "meteor",
+      "file": "effect_meteor.png",
+      "width": 986,
+      "height": 1024
+    },
+    {
+      "name": "Ice Comet",
+      "slug": "ice_comet",
+      "file": "effect_ice_comet.png",
+      "width": 1024,
+      "height": 884
+    },
+    {
+      "name": "Fire Comet",
+      "slug": "fire_comet",
+      "file": "effect_fire_comet.png",
+      "width": 1024,
+      "height": 890
+    },
+    {
+      "name": "Lightning Orb",
+      "slug": "lightning_orb",
+      "file": "effect_lightning_orb.png",
+      "width": 1024,
+      "height": 947
+    },
+    {
+      "name": "Earth Spikes",
+      "slug": "earth_spikes",
+      "file": "effect_earth_spikes.png",
+      "width": 1024,
+      "height": 972
+    },
+    {
+      "name": "Water Splash",
+      "slug": "water_splash",
+      "file": "effect_water_splash.png",
+      "width": 1024,
+      "height": 869
+    },
+    {
+      "name": "Lava Splash",
+      "slug": "lava_splash",
+      "file": "effect_lava_splash.png",
+      "width": 1024,
+      "height": 961
+    },
+    {
+      "name": "Pink Energy",
+      "slug": "pink_energy",
+      "file": "effect_pink_energy.png",
+      "width": 1018,
+      "height": 1023
+    },
+    {
+      "name": "Black Hole",
+      "slug": "black_hole",
+      "file": "effect_black_hole.png",
+      "width": 1024,
+      "height": 873
+    },
+    {
+      "name": "Starburst",
+      "slug": "starburst",
+      "file": "effect_starburst.png",
+      "width": 1024,
+      "height": 841
+    },
+    {
+      "name": "Rainbow",
+      "slug": "rainbow",
+      "file": "effect_rainbow.png",
+      "width": 1024,
+      "height": 779
+    },
+    {
+      "name": "Hearts",
+      "slug": "hearts",
+      "file": "effect_hearts.png",
+      "width": 984,
+      "height": 1024
+    },
+    {
+      "name": "Void Blast",
+      "slug": "void_blast",
+      "file": "effect_void_blast.png",
+      "width": 926,
+      "height": 1024
+    },
+    {
+      "name": "Water Bubble",
+      "slug": "water_bubble",
+      "file": "effect_water_bubble.png",
+      "width": 1023,
+      "height": 924
+    },
+    {
+      "name": "Wind Vortex",
+      "slug": "wind_vortex",
+      "file": "effect_wind_vortex.png",
+      "width": 1024,
+      "height": 911
+    }
+  ]
+}

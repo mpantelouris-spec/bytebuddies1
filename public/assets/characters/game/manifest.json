@@ -1,0 +1,287 @@
+{
+  "category": "Game",
+  "prefix": "game",
+  "source": "Game.png",
+  "items": [
+    {
+      "name": "Heart Icon",
+      "slug": "heart_icon",
+      "file": "game_heart_icon.png",
+      "width": 1024,
+      "height": 1012
+    },
+    {
+      "name": "Blue Potion",
+      "slug": "blue_potion",
+      "file": "game_blue_potion.png",
+      "width": 742,
+      "height": 1024
+    },
+    {
+      "name": "Gold Coin",
+      "slug": "gold_coin",
+      "file": "game_gold_coin.png",
+      "width": 910,
+      "height": 1024
+    },
+    {
+      "name": "Diamond",
+      "slug": "diamond",
+      "file": "game_diamond.png",
+      "width": 1018,
+      "height": 1024
+    },
+    {
+      "name": "Treasure Chest",
+      "slug": "treasure_chest",
+      "file": "game_treasure_chest.png",
+      "width": 980,
+      "height": 1024
+    },
+    {
+      "name": "Key",
+      "slug": "key",
+      "file": "game_key.png",
+      "width": 845,
+      "height": 1024
+    },
+    {
+      "name": "Treasure Map",
+      "slug": "treasure_map",
+      "file": "game_treasure_map.png",
+      "width": 971,
+      "height": 1024
+    },
+    {
+      "name": "Purple Crystals",
+      "slug": "purple_crystals",
+      "file": "game_purple_crystals.png",
+      "width": 755,
+      "height": 1024
+    },
+    {
+      "name": "Sword",
+      "slug": "sword",
+      "file": "game_sword.png",
+      "width": 840,
+      "height": 1024
+    },
+    {
+      "name": "Shield",
+      "slug": "shield",
+      "file": "game_shield.png",
+      "width": 765,
+      "height": 1024
+    },
+    {
+      "name": "Bow",
+      "slug": "bow",
+      "file": "game_bow.png",
+      "width": 862,
+      "height": 1024
+    },
+    {
+      "name": "Quiver",
+      "slug": "quiver",
+      "file": "game_quiver.png",
+      "width": 704,
+      "height": 1024
+    },
+    {
+      "name": "Staff",
+      "slug": "staff",
+      "file": "game_staff.png",
+      "width": 701,
+      "height": 1024
+    },
+    {
+      "name": "Spellbook",
+      "slug": "spellbook",
+      "file": "game_spellbook.png",
+      "width": 861,
+      "height": 1024
+    },
+    {
+      "name": "War Hammer",
+      "slug": "war_hammer",
+      "file": "game_war_hammer.png",
+      "width": 840,
+      "height": 1024
+    },
+    {
+      "name": "Bomb",
+      "slug": "bomb",
+      "file": "game_bomb.png",
+      "width": 756,
+      "height": 1024
+    },
+    {
+      "name": "Green Crystals",
+      "slug": "green_crystals",
+      "file": "game_green_crystals.png",
+      "width": 798,
+      "height": 1024
+    },
+    {
+      "name": "Log Stack",
+      "slug": "log_stack",
+      "file": "game_log_stack.png",
+      "width": 953,
+      "height": 1024
+    },
+    {
+      "name": "Boulder",
+      "slug": "boulder",
+      "file": "game_boulder.png",
+      "width": 991,
+      "height": 1024
+    },
+    {
+      "name": "Gold Bar",
+      "slug": "gold_bar",
+      "file": "game_gold_bar.png",
+      "width": 969,
+      "height": 1024
+    },
+    {
+      "name": "Purple Potion",
+      "slug": "purple_potion",
+      "file": "game_purple_potion.png",
+      "width": 693,
+      "height": 1024
+    },
+    {
+      "name": "Scroll",
+      "slug": "scroll",
+      "file": "game_scroll.png",
+      "width": 828,
+      "height": 1024
+    },
+    {
+      "name": "Lion Banner",
+      "slug": "lion_banner",
+      "file": "game_lion_banner.png",
+      "width": 740,
+      "height": 1024
+    },
+    {
+      "name": "Campfire",
+      "slug": "campfire",
+      "file": "game_campfire.png",
+      "width": 866,
+      "height": 1023
+    },
+    {
+      "name": "Portal Gate",
+      "slug": "portal_gate",
+      "file": "game_portal_gate.png",
+      "width": 958,
+      "height": 1024
+    },
+    {
+      "name": "Crate",
+      "slug": "crate",
+      "file": "game_crate.png",
+      "width": 906,
+      "height": 1024
+    },
+    {
+      "name": "Barrel",
+      "slug": "barrel",
+      "file": "game_barrel.png",
+      "width": 829,
+      "height": 1024
+    },
+    {
+      "name": "Money Bag",
+      "slug": "money_bag",
+      "file": "game_money_bag.png",
+      "width": 1018,
+      "height": 1024
+    },
+    {
+      "name": "Mine Cart",
+      "slug": "mine_cart",
+      "file": "game_mine_cart.png",
+      "width": 908,
+      "height": 1024
+    },
+    {
+      "name": "Anvil",
+      "slug": "anvil",
+      "file": "game_anvil.png",
+      "width": 1024,
+      "height": 918
+    },
+    {
+      "name": "Workbench",
+      "slug": "workbench",
+      "file": "game_workbench.png",
+      "width": 982,
+      "height": 1024
+    },
+    {
+      "name": "Forge",
+      "slug": "forge",
+      "file": "game_forge.png",
+      "width": 932,
+      "height": 1024
+    },
+    {
+      "name": "Trophy",
+      "slug": "trophy",
+      "file": "game_trophy.png",
+      "width": 1024,
+      "height": 949
+    },
+    {
+      "name": "XP Badge",
+      "slug": "xp_badge",
+      "file": "game_xp_badge.png",
+      "width": 1024,
+      "height": 1002
+    },
+    {
+      "name": "Level Up",
+      "slug": "level_up",
+      "file": "game_level_up.png",
+      "width": 1024,
+      "height": 632
+    },
+    {
+      "name": "Skull Banner",
+      "slug": "skull_banner",
+      "file": "game_skull_banner.png",
+      "width": 780,
+      "height": 1024
+    },
+    {
+      "name": "Health Plus",
+      "slug": "health_plus",
+      "file": "game_health_plus.png",
+      "width": 887,
+      "height": 1024
+    },
+    {
+      "name": "Buff Potion",
+      "slug": "buff_potion",
+      "file": "game_buff_potion.png",
+      "width": 963,
+      "height": 1024
+    },
+    {
+      "name": "Gold Star",
+      "slug": "gold_star",
+      "file": "game_gold_star.png",
+      "width": 946,
+      "height": 1024
+    },
+    {
+      "name": "Gear",
+      "slug": "gear",
+      "file": "game_gear.png",
+      "width": 984,
+      "height": 1024
+    }
+  ]
+}

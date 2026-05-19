@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Motion-Based Pose Detection Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 40px;
+            max-width: 800px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        }
+        
+        h1 {
+            color: #333;
+            margin-top: 0;
+            text-align: center;
+        }
+        
+        .section {
+            margin: 30px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .camera-feed {
+            width: 100%;
+            height: 300px;
+            background: #000;
+            border-radius: 8px;
+            margin: 15px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 18px;
+        }
+        
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 32px;
+            font-size: 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 10px 5px;
+            transition: transform 0.2s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+        }
+        
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .output {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 20px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 15px;
+            line-height: 1.6;
+        }
+        
+        .output-line {
+            margin: 5px 0;
+        }
+        
+        .success { color: #00ff00; }
+        .warning { color: #ffaa00; }
+        .error { color: #ff4444; }
+        .info { color: #00aaff; }
+        
+        .results {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .result-card {
+            background: white;
+            padding: 15px;
+            border-radius: 6px;
+            border: 2px solid #667eea;
+            text-align: center;
+        }
+        
+        .result-label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        
+        .result-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📹 Motion-Based Pose Detection Tester</h1>
+        
+        <div class="section">
+            <h2>Camera Feed</h2>
+            <div class="camera-feed" id="cameraContainer">
+                <video id="cameraVideo" autoplay playsinline></video>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>Controls</h2>
+            <button onclick="startCamera()">▶ Start Camera</button>
+            <button onclick="stopCamera()">⏹ Stop Camera</button>
+            <button onclick="startDetection()">🔍 Start Detection</button>
+            <button onclick="stopDetection()">🛑 Stop Detection</button>
+            <button onclick="clearOutput()">🗑️ Clear Output</button>
+        </div>
+        
+        <div class="section">
+            <h2>Detection Output</h2>
+            <div class="output" id="output">
+                <div class="output-line info">Ready to start detection...</div>
+            </div>
+        </div>
+        
+        <div class="results" id="results"></div>
+    </div>
+
+    <script>
+        let video = null;
+        let canvas = null;
+        let ctx = null;
+        let prevFrameData = null;
+        let detectionRunning = false;
+        let detectionInterval = null;
+        const poseOptions = ['dancing', 'jumping', 'waving', 't_pose', 'arms_up', 'standing', 'sitting'];
+        const detectedPoses = {};
+        
+        function log(message, type = 'info') {
+            const output = document.getElementById('output');
+            const line = document.createElement('div');
+            line.className = `output-line ${type}`;
+            line.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            output.appendChild(line);
+            output.scrollTop = output.scrollHeight;
+        }
+        
+        function clearOutput() {
+            document.getElementById('output').innerHTML = '<div class="output-line info">Output cleared</div>';
+        }
+        
+        async function startCamera() {
+            try {
+                video = document.getElementById('cameraVideo');
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+                    audio: false
+                });
+                
+                video.srcObject = stream;
+                log('✅ Camera started successfully', 'success');
+            } catch (error) {
+                log(`❌ Camera error: ${error.message}`, 'error');
+            }
+        }
+        
+        function stopCamera() {
+            if (video && video.srcObject) {
+                video.srcObject.getTracks().forEach(track => track.stop());
+                log('Camera stopped', 'warning');
+            }
+        }
+        
+        function startDetection() {
+            if (!video || !video.srcObject) {
+                log('❌ Camera not started yet', 'error');
+                return;
+            }
+            
+            if (detectionRunning) {
+                log('⚠️ Detection already running', 'warning');
+                return;
+            }
+            
+            // Create canvas for frame capture
+            canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth || 640;
+            canvas.height = video.videoHeight || 480;
+            ctx = canvas.getContext('2d');
+            
+            detectionRunning = true;
+            log('🔍 Motion detection started', 'success');
+            
+            detectionInterval = setInterval(() => {
+                if (!video || video.readyState !== 2) {
+                    return;
+                }
+                
+                // Ensure canvas size matches video
+                if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
+                    canvas.width = video.videoWidth || 640;
+                    canvas.height = video.videoHeight || 480;
+                }
+                
+                // Draw frame
+                ctx.drawImage(video, 0, 0);
+                
+                // Get pixel data
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imageData.data;
+                
+                // Initialize or calculate motion
+                let motion = 0;
+                if (prevFrameData) {
+                    let samples = 0;
+                    for (let i = 0; i < data.length; i += 16) {
+                        const diff = Math.abs(data[i] - prevFrameData[i]);
+                        motion += diff;
+                        samples++;
+                    }
+                    motion = motion / Math.max(1, samples);
+                }
+                
+                prevFrameData = new Uint8ClampedArray(data);
+                
+                // Classify pose based on motion
+                let detectedPose = 'standing';
+                if (motion < 3) {
+                    detectedPose = 'standing';
+                } else if (motion < 8) {
+                    detectedPose = 'standing';
+                } else if (motion < 15) {
+                    const opts = ['waving', 'arms_up', 'standing'];
+                    detectedPose = opts[Math.floor(Math.random() * opts.length)];
+                } else {
+                    detectedPose = poseOptions[Math.floor(Math.random() * poseOptions.length)];
+                }
+                
+                // Track detections
+                detectedPoses[detectedPose] = (detectedPoses[detectedPose] || 0) + 1;
+                
+                log(`📊 Motion: ${motion.toFixed(1)} → Pose: ${detectedPose}`, 'info');
+            }, 280); // Same interval as ByteBuddies
+        }
+        
+        function stopDetection() {
+            if (detectionInterval) {
+                clearInterval(detectionInterval);
+            }
+            detectionRunning = false;
+            log('Detection stopped', 'warning');
+            
+            // Show results
+            updateResults();
+        }
+        
+        function updateResults() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '';
+            
+            const total = Object.values(detectedPoses).reduce((a, b) => a + b, 0);
+            if (total === 0) {
+                resultsDiv.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 20px;">No detections yet</div>';
+                return;
+            }
+            
+            Object.entries(detectedPoses).forEach(([pose, count]) => {
+                const percentage = ((count / total) * 100).toFixed(1);
+                const card = document.createElement('div');
+                card.className = 'result-card';
+                card.innerHTML = `
+                    <div class="result-label">${pose}</div>
+                    <div class="result-value">${count}</div>
+                    <div class="result-label">${percentage}% of detections</div>
+                `;
+                resultsDiv.appendChild(card);
+            });
+        }
+    </script>
+</body>
+</html>

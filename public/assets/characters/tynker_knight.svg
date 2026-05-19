@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="640" viewBox="0 0 640 640">
+  <defs>
+    <linearGradient id="kg" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#38bdf8"/><stop offset="1" stop-color="#0369a1"/>
+    </linearGradient>
+  </defs>
+  <rect width="640" height="640" fill="#0c4a6e"/>
+  <ellipse cx="320" cy="560" rx="180" ry="40" fill="#000" opacity="0.25"/>
+  <!-- body -->
+  <path d="M220 380 L220 520 L420 520 L420 380 Q320 340 220 380Z" fill="url(#kg)"/>
+  <path d="M240 400 L400 400 L390 500 L250 500Z" fill="#075985" opacity="0.5"/>
+  <!-- arms -->
+  <ellipse cx="180" cy="420" rx="45" ry="120" fill="#0369a1" transform="rotate(-15 180 420)"/>
+  <ellipse cx="460" cy="420" rx="45" ry="120" fill="#0369a1" transform="rotate(15 460 420)"/>
+  <!-- head -->
+  <ellipse cx="320" cy="240" rx="110" ry="125" fill="#fcd9b8"/>
+  <!-- helmet -->
+  <path d="M200 200 Q320 80 440 200 L440 260 Q320 220 200 260Z" fill="#64748b"/>
+  <path d="M210 195 Q320 95 430 195" fill="none" stroke="#94a3b8" stroke-width="8"/>
+  <rect x="270" y="130" width="100" height="50" rx="12" fill="#475569"/>
+  <!-- face -->
+  <ellipse cx="280" cy="250" rx="14" ry="18" fill="#fff"/>
+  <ellipse cx="360" cy="250" rx="14" ry="18" fill="#fff"/>
+  <circle cx="282" cy="252" r="7" fill="#1e293b"/>
+  <circle cx="362" cy="252" r="7" fill="#1e293b"/>
+  <path d="M290 300 Q320 320 350 300" stroke="#b45309" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <!-- sword -->
+  <g transform="translate(480 360) rotate(25)">
+    <rect x="-8" y="-120" width="16" height="140" rx="4" fill="#cbd5e1"/>
+    <rect x="-24" y="20" width="48" height="12" rx="4" fill="#92400e"/>
+  </g>
+</svg>

@@ -1,0 +1,217 @@
+{
+  "category": "Monsters",
+  "prefix": "monster",
+  "source": "Monsters.png",
+  "items": [
+    {
+      "name": "Stone Golem",
+      "slug": "stone_golem",
+      "file": "monster_stone_golem.png",
+      "width": 1024,
+      "height": 1019
+    },
+    {
+      "name": "Werewolf",
+      "slug": "werewolf",
+      "file": "monster_werewolf.png",
+      "width": 971,
+      "height": 1023
+    },
+    {
+      "name": "Fire Dragon",
+      "slug": "fire_dragon",
+      "file": "monster_fire_dragon.png",
+      "width": 1024,
+      "height": 985
+    },
+    {
+      "name": "Beholder",
+      "slug": "beholder",
+      "file": "monster_beholder.png",
+      "width": 921,
+      "height": 1024
+    },
+    {
+      "name": "Ogre",
+      "slug": "ogre",
+      "file": "monster_ogre.png",
+      "width": 947,
+      "height": 1024
+    },
+    {
+      "name": "Yeti",
+      "slug": "yeti",
+      "file": "monster_yeti.png",
+      "width": 932,
+      "height": 1024
+    },
+    {
+      "name": "Fire Demon",
+      "slug": "fire_demon",
+      "file": "monster_fire_demon.png",
+      "width": 1000,
+      "height": 1024
+    },
+    {
+      "name": "Mummy",
+      "slug": "mummy",
+      "file": "monster_mummy.png",
+      "width": 1002,
+      "height": 1024
+    },
+    {
+      "name": "Swamp Monster",
+      "slug": "swamp_monster",
+      "file": "monster_swamp_monster.png",
+      "width": 1024,
+      "height": 1015
+    },
+    {
+      "name": "Vampire",
+      "slug": "vampire",
+      "file": "monster_vampire.png",
+      "width": 903,
+      "height": 1024
+    },
+    {
+      "name": "Medusa",
+      "slug": "medusa",
+      "file": "monster_medusa.png",
+      "width": 880,
+      "height": 1024
+    },
+    {
+      "name": "Minotaur",
+      "slug": "minotaur",
+      "file": "monster_minotaur.png",
+      "width": 978,
+      "height": 1023
+    },
+    {
+      "name": "Wraith",
+      "slug": "wraith",
+      "file": "monster_wraith.png",
+      "width": 1023,
+      "height": 995
+    },
+    {
+      "name": "Griffin",
+      "slug": "griffin",
+      "file": "monster_griffin.png",
+      "width": 1024,
+      "height": 1011
+    },
+    {
+      "name": "Cyclops",
+      "slug": "cyclops",
+      "file": "monster_cyclops.png",
+      "width": 1024,
+      "height": 1015
+    },
+    {
+      "name": "Earth Elemental",
+      "slug": "earth_elemental",
+      "file": "monster_earth_elemental.png",
+      "width": 1007,
+      "height": 1024
+    },
+    {
+      "name": "Lich King",
+      "slug": "lich_king",
+      "file": "monster_lich_king.png",
+      "width": 957,
+      "height": 1024
+    },
+    {
+      "name": "Shadow Beast",
+      "slug": "shadow_beast",
+      "file": "monster_shadow_beast.png",
+      "width": 1007,
+      "height": 1024
+    },
+    {
+      "name": "Hellhound",
+      "slug": "hellhound",
+      "file": "monster_hellhound.png",
+      "width": 1024,
+      "height": 991
+    },
+    {
+      "name": "Anglerfish",
+      "slug": "anglerfish",
+      "file": "monster_anglerfish.png",
+      "width": 1024,
+      "height": 966
+    },
+    {
+      "name": "Winged Demon",
+      "slug": "winged_demon",
+      "file": "monster_winged_demon.png",
+      "width": 1019,
+      "height": 1024
+    },
+    {
+      "name": "Sand Worm",
+      "slug": "sand_worm",
+      "file": "monster_sand_worm.png",
+      "width": 738,
+      "height": 1024
+    },
+    {
+      "name": "Ice Elemental",
+      "slug": "ice_elemental",
+      "file": "monster_ice_elemental.png",
+      "width": 998,
+      "height": 1023
+    },
+    {
+      "name": "Goblin",
+      "slug": "goblin",
+      "file": "monster_goblin.png",
+      "width": 983,
+      "height": 1024
+    },
+    {
+      "name": "Giant Spider",
+      "slug": "giant_spider",
+      "file": "monster_giant_spider.png",
+      "width": 1024,
+      "height": 885
+    },
+    {
+      "name": "Dark Knight",
+      "slug": "dark_knight",
+      "file": "monster_dark_knight.png",
+      "width": 955,
+      "height": 1024
+    },
+    {
+      "name": "Slime",
+      "slug": "slime",
+      "file": "monster_slime.png",
+      "width": 1024,
+      "height": 998
+    },
+    {
+      "name": "Troll",
+      "slug": "troll",
+      "file": "monster_troll.png",
+      "width": 1024,
+      "height": 965
+    },
+    {
+      "name": "Chimera",
+      "slug": "chimera",
+      "file": "monster_chimera.png",
+      "width": 988,
+      "height": 1024
+    },
+    {
+      "name": "Cthulhu",
+      "slug": "cthulhu",
+      "file": "monster_cthulhu.png",
+      "width": 1024,
+      "height": 948
+    }
+  ]
+}

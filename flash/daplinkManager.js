@@ -1,0 +1,103 @@
+/**
+ * DAPLink over WebUSB — connect, flash, disconnect with retries.
+ */
+
+import { prepareHexForDapLinkWebUSB } from './hexUtils.js';
+
+const VENDOR_ID = 0x0d28;
+
+export class DAPLinkManager {
+  /**
+   * @param {USBDevice} device
+   * @param {string} hexString raw or universal Intel HEX
+   * @param {(e:{percent:number,message:string,stage?:string})=>void} onProgress
+   * @param {{ webUsbBoard?: 'v1' | 'v2' }} [opts]
+   */
+  async flashDevice(device, hexString, onProgress = () => {}, opts = {}) {
+    const { webUsbBoard = 'v2' } = opts;
+    const { WebUSB, DAPLink } = await import('dapjs');
+
+    const report = (percent, message, stage = 'flashing') => {
+      onProgress({ percent: Math.min(100, Math.max(0, percent)), message, stage });
+    };
+
+    const cleanHex = prepareHexForDapLinkWebUSB(hexString, { board: webUsbBoard });
+    report(8, `Prepared ${String(webUsbBoard).toUpperCase()}-only image for WebUSB (~${Math.round(cleanHex.length / 1024)} KB).`, 'preparing');
+    const transport = new WebUSB(device);
+    const daplink = new DAPLink(transport);
+
+    let progressHandler;
+    try {
+      report(5, 'Opening USB device…', 'connecting');
+      let lastErr;
+      for (let attempt = 1; attempt <= 4; attempt++) {
+        try {
+          await daplink.connect();
+          lastErr = null;
+          break;
+        } catch (e) {
+          lastErr = e;
+          const msg = e?.message || String(e);
+          report(5, `Connect retry ${attempt}/4…`, 'connecting');
+          if (msg.includes('claimInterface') || msg.includes('Failed to execute')) {
+            await new Promise(r => setTimeout(r, 500 * attempt));
+          } else {
+            await new Promise(r => setTimeout(r, 300 * attempt));
+          }
+        }
+      }
+      if (lastErr) throw lastErr;
+
+      await new Promise(r => setTimeout(r, 600));
+      report(
+        12,
+        'Tip: if WebUSB keeps failing, eject the MICROBIT drive in Finder, unplug/replug, then try again.',
+        'connecting'
+      );
+      progressHandler = (p) => {
+        const pct = 15 + Math.round(Number(p) * 78);
+        report(pct, `Flashing… ${pct}%`, 'flashing');
+      };
+      daplink.on(DAPLink.EVENT_PROGRESS, progressHandler);
+      report(15, 'Programming flash…', 'flashing');
+      try {
+        const enc = new TextEncoder();
+        const bytes = enc.encode(cleanHex);
+        const payload = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+        await daplink.flash(payload);
+      } catch (err) {
+        const msg = err?.message || String(err);
+        if (msg === 'Flash error' || msg.includes('Flash error')) {
+          throw new Error(
+            'DAPLink refused the firmware (often invalid universal hex or device busy). ' +
+              'Close other tabs using the micro:bit, unplug/replug, or use Download .hex and drag to the MICROBIT drive.'
+          );
+        }
+        throw err;
+      }
+      report(96, 'Finalizing…', 'finalizing');
+      await new Promise(r => setTimeout(r, 400));
+      report(100, 'WebUSB flash complete.', 'completed');
+      return { success: true, method: 'webusb' };
+    } finally {
+      if (progressHandler) {
+        try {
+          daplink.removeListener(DAPLink.EVENT_PROGRESS, progressHandler);
+        } catch {
+          /* */
+        }
+      }
+      try {
+        await daplink.disconnect();
+      } catch {
+        /* */
+      }
+    }
+  }
+
+  static getVendorId() {
+    return VENDOR_ID;
+  }
+}
+
+export default { DAPLinkManager };

@@ -1,0 +1,343 @@
+{
+  "category": "Fantasy",
+  "prefix": "fantasy",
+  "source": "Fantasy.png",
+  "items": [
+    {
+      "name": "Spellbook",
+      "slug": "spellbook",
+      "file": "fantasy_spellbook.png",
+      "width": 1024,
+      "height": 751
+    },
+    {
+      "name": "Wizard Hat",
+      "slug": "wizard_hat",
+      "file": "fantasy_wizard_hat.png",
+      "width": 1024,
+      "height": 1013
+    },
+    {
+      "name": "Crystal Ball",
+      "slug": "crystal_ball",
+      "file": "fantasy_crystal_ball.png",
+      "width": 776,
+      "height": 1024
+    },
+    {
+      "name": "Floating Island",
+      "slug": "floating_island",
+      "file": "fantasy_floating_island.png",
+      "width": 869,
+      "height": 1023
+    },
+    {
+      "name": "Water Sword",
+      "slug": "water_sword",
+      "file": "fantasy_water_sword.png",
+      "width": 601,
+      "height": 1024
+    },
+    {
+      "name": "Lion Shield",
+      "slug": "lion_shield",
+      "file": "fantasy_lion_shield.png",
+      "width": 937,
+      "height": 1024
+    },
+    {
+      "name": "Dragon Head",
+      "slug": "dragon_head",
+      "file": "fantasy_dragon_head.png",
+      "width": 924,
+      "height": 1023
+    },
+    {
+      "name": "Fairy",
+      "slug": "fairy",
+      "file": "fantasy_fairy.png",
+      "width": 785,
+      "height": 1023
+    },
+    {
+      "name": "Golden Tree",
+      "slug": "golden_tree",
+      "file": "fantasy_golden_tree.png",
+      "width": 1024,
+      "height": 1018
+    },
+    {
+      "name": "Magic Bow",
+      "slug": "magic_bow",
+      "file": "fantasy_magic_bow.png",
+      "width": 784,
+      "height": 1024
+    },
+    {
+      "name": "Unicorn",
+      "slug": "unicorn",
+      "file": "fantasy_unicorn.png",
+      "width": 1024,
+      "height": 970
+    },
+    {
+      "name": "Red Potion",
+      "slug": "red_potion",
+      "file": "fantasy_red_potion.png",
+      "width": 770,
+      "height": 1024
+    },
+    {
+      "name": "Crescent Moon",
+      "slug": "crescent_moon",
+      "file": "fantasy_crescent_moon.png",
+      "width": 1002,
+      "height": 1024
+    },
+    {
+      "name": "Cloud Castle",
+      "slug": "cloud_castle",
+      "file": "fantasy_cloud_castle.png",
+      "width": 986,
+      "height": 1024
+    },
+    {
+      "name": "Gem Ring",
+      "slug": "gem_ring",
+      "file": "fantasy_gem_ring.png",
+      "width": 750,
+      "height": 1024
+    },
+    {
+      "name": "Green Lantern",
+      "slug": "green_lantern",
+      "file": "fantasy_green_lantern.png",
+      "width": 885,
+      "height": 1024
+    },
+    {
+      "name": "Magic Staff",
+      "slug": "magic_staff",
+      "file": "fantasy_magic_staff.png",
+      "width": 777,
+      "height": 1024
+    },
+    {
+      "name": "Purple Crystals",
+      "slug": "purple_crystals",
+      "file": "fantasy_purple_crystals.png",
+      "width": 887,
+      "height": 1024
+    },
+    {
+      "name": "Golden Chalice",
+      "slug": "golden_chalice",
+      "file": "fantasy_golden_chalice.png",
+      "width": 954,
+      "height": 1024
+    },
+    {
+      "name": "Leather Tome",
+      "slug": "leather_tome",
+      "file": "fantasy_leather_tome.png",
+      "width": 1012,
+      "height": 1024
+    },
+    {
+      "name": "Energy Portal",
+      "slug": "energy_portal",
+      "file": "fantasy_energy_portal.png",
+      "width": 1024,
+      "height": 1013
+    },
+    {
+      "name": "Shadow Wolf",
+      "slug": "shadow_wolf",
+      "file": "fantasy_shadow_wolf.png",
+      "width": 915,
+      "height": 1024
+    },
+    {
+      "name": "Magic Dagger",
+      "slug": "magic_dagger",
+      "file": "fantasy_magic_dagger.png",
+      "width": 697,
+      "height": 1024
+    },
+    {
+      "name": "Royal Crown",
+      "slug": "royal_crown",
+      "file": "fantasy_royal_crown.png",
+      "width": 943,
+      "height": 1024
+    },
+    {
+      "name": "Green Potion",
+      "slug": "green_potion",
+      "file": "fantasy_green_potion.png",
+      "width": 825,
+      "height": 1024
+    },
+    {
+      "name": "Golden Harp",
+      "slug": "golden_harp",
+      "file": "fantasy_golden_harp.png",
+      "width": 885,
+      "height": 1024
+    },
+    {
+      "name": "Phoenix",
+      "slug": "phoenix",
+      "file": "fantasy_phoenix.png",
+      "width": 1024,
+      "height": 973
+    },
+    {
+      "name": "Compass",
+      "slug": "compass",
+      "file": "fantasy_compass.png",
+      "width": 928,
+      "height": 1024
+    },
+    {
+      "name": "Blue Tree",
+      "slug": "blue_tree",
+      "file": "fantasy_blue_tree.png",
+      "width": 1024,
+      "height": 982
+    },
+    {
+      "name": "Blue Pendant",
+      "slug": "blue_pendant",
+      "file": "fantasy_blue_pendant.png",
+      "width": 904,
+      "height": 1024
+    },
+    {
+      "name": "Rune Stone",
+      "slug": "rune_stone",
+      "file": "fantasy_rune_stone.png",
+      "width": 893,
+      "height": 1024
+    },
+    {
+      "name": "Magic Mirror",
+      "slug": "magic_mirror",
+      "file": "fantasy_magic_mirror.png",
+      "width": 781,
+      "height": 1024
+    },
+    {
+      "name": "Gothic Gate",
+      "slug": "gothic_gate",
+      "file": "fantasy_gothic_gate.png",
+      "width": 1024,
+      "height": 967
+    },
+    {
+      "name": "Skull Bottle",
+      "slug": "skull_bottle",
+      "file": "fantasy_skull_bottle.png",
+      "width": 838,
+      "height": 1024
+    },
+    {
+      "name": "Island Castle",
+      "slug": "island_castle",
+      "file": "fantasy_island_castle.png",
+      "width": 1024,
+      "height": 1007
+    },
+    {
+      "name": "Treasure Map",
+      "slug": "treasure_map",
+      "file": "fantasy_treasure_map.png",
+      "width": 1012,
+      "height": 1024
+    },
+    {
+      "name": "Purple Lantern",
+      "slug": "purple_lantern",
+      "file": "fantasy_purple_lantern.png",
+      "width": 784,
+      "height": 1024
+    },
+    {
+      "name": "Light Angel",
+      "slug": "light_angel",
+      "file": "fantasy_light_angel.png",
+      "width": 1024,
+      "height": 1024
+    },
+    {
+      "name": "Treasure Chest",
+      "slug": "treasure_chest",
+      "file": "fantasy_treasure_chest.png",
+      "width": 1024,
+      "height": 928
+    },
+    {
+      "name": "Water Pegasus",
+      "slug": "water_pegasus",
+      "file": "fantasy_water_pegasus.png",
+      "width": 861,
+      "height": 1024
+    },
+    {
+      "name": "Armillary Sphere",
+      "slug": "armillary_sphere",
+      "file": "fantasy_armillary_sphere.png",
+      "width": 923,
+      "height": 1024
+    },
+    {
+      "name": "Golden Halo",
+      "slug": "golden_halo",
+      "file": "fantasy_golden_halo.png",
+      "width": 1024,
+      "height": 1000
+    },
+    {
+      "name": "Crystal Cluster",
+      "slug": "crystal_cluster",
+      "file": "fantasy_crystal_cluster.png",
+      "width": 889,
+      "height": 1024
+    },
+    {
+      "name": "Rose Dome",
+      "slug": "rose_dome",
+      "file": "fantasy_rose_dome.png",
+      "width": 884,
+      "height": 1024
+    },
+    {
+      "name": "Hooded Mage",
+      "slug": "hooded_mage",
+      "file": "fantasy_hooded_mage.png",
+      "width": 1018,
+      "height": 1024
+    },
+    {
+      "name": "Magic Hourglass",
+      "slug": "magic_hourglass",
+      "file": "fantasy_magic_hourglass.png",
+      "width": 838,
+      "height": 1024
+    },
+    {
+      "name": "Green Ship",
+      "slug": "green_ship",
+      "file": "fantasy_green_ship.png",
+      "width": 1012,
+      "height": 1024
+    },
+    {
+      "name": "Fire Eye",
+      "slug": "fire_eye",
+      "file": "fantasy_fire_eye.png",
+      "width": 785,
+      "height": 1024
+    }
+  ]
+}

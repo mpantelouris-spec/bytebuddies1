@@ -1,0 +1,1231 @@
+import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { useProject } from '../contexts/ProjectContext';
+import { useUser } from '../contexts/UserContext';
+import CodeEditor from './CodeEditor';
+import BlockEditor from './BlockEditor';
+import StarterBlocks from './StarterBlocks';
+import UnifiedBlocklyWorkspace from './UnifiedBlocklyWorkspace';
+import { runPython } from '../utils/pythonRunner';
+import { ensureBlockSoundAudio } from '../utils/blockSounds';
+import ScratchStyleBlock, { getCategoryColor } from './ScratchStyleBlock';
+import { ParamInput as SharedParamInput, ParamSelect, resolveBlocklyNodeType } from '../utils/blocks';
+import { BLOCK_STACK_GAP } from '../utils/blockStack';
+import ExtensionsModal from './ExtensionsModal';
+import { readEnabledExtensionIds, writeEnabledExtensionIds, getExtensionSidebarCategories } from '../data/extensionsCatalog';
+import { BB_OPEN_EXTENSIONS } from '../utils/blockLibraryEvents';
+
+const STACK_X = 40;
+const STACK_START_Y = 30;
+const STACK_STEP = BLOCK_STACK_GAP;
+
+/* ─── Block type definitions ─── */
+const BLOCK_DEFS = {
+  'event-start':      { label: 'When program starts', icon: '🚩', color: '#f59e0b', category: 'event', params: {} },
+  'event-keypress':   { label: 'On key press', icon: '🎯', color: '#f59e0b', category: 'event', params: { key: 'space' } },
+  'event-click':      { label: 'On click', icon: '🎯', color: '#f59e0b', category: 'event', params: {} },
+  'event-message':    { label: 'On message', icon: '🎯', color: '#f59e0b', category: 'event', params: { message: 'go' } },
+  'event-broadcast':  { label: 'Broadcast', icon: '🎯', color: '#f59e0b', category: 'event', params: { message: 'go' } },
+  'var-create':       { label: 'Create variable', icon: '📦', color: '#06b6d4', category: 'variable', params: { name: 'myVar', value: '0' } },
+  'var-set':          { label: 'Set', icon: '📦', color: '#06b6d4', category: 'variable', params: { name: 'myVar', value: '0' } },
+  'var-change':       { label: 'Change', icon: '📦', color: '#06b6d4', category: 'variable', params: { name: 'myVar', amount: '1' } },
+  'var-show':         { label: 'Show variable', icon: '📦', color: '#06b6d4', category: 'variable', params: { name: 'myVar' } },
+  'logic-if':         { label: 'If', icon: '🧠', color: '#6366f1', category: 'logic', params: { condition: 'x > 5' } },
+  'logic-and':        { label: 'And / Or', icon: '🧠', color: '#6366f1', category: 'logic', params: { left: 'a', op: 'and', right: 'b' } },
+  'logic-compare':    { label: 'Compare', icon: '🧠', color: '#6366f1', category: 'logic', params: { left: 'a', op: '=', right: 'b' } },
+  'logic-bool':       { label: 'Boolean', icon: '🧠', color: '#6366f1', category: 'logic', params: { value: 'true' } },
+  'loop-repeat':      { label: 'Repeat', icon: '🔁', color: '#8b5cf6', category: 'loop', params: { times: '10' } },
+  'loop-forever':     { label: 'Forever', icon: '🔁', color: '#8b5cf6', category: 'loop', params: {} },
+  'loop-while':       { label: 'While', icon: '🔁', color: '#8b5cf6', category: 'loop', params: { condition: 'true' } },
+  'loop-foreach':     { label: 'For each', icon: '🔁', color: '#8b5cf6', category: 'loop', params: { item: 'item', list: 'myList' } },
+  'loop-break':       { label: 'Break', icon: '🔁', color: '#8b5cf6', category: 'loop', params: {} },
+  'func-define':      { label: 'Define function', icon: '⚡', color: '#10b981', category: 'function', params: { name: 'myFunc' } },
+  'func-call':        { label: 'Call', icon: '⚡', color: '#10b981', category: 'function', params: { name: 'myFunc' } },
+  'func-return':      { label: 'Return', icon: '⚡', color: '#10b981', category: 'function', params: { value: '0' } },
+  'func-params':      { label: 'With parameters', icon: '⚡', color: '#10b981', category: 'function', params: { params: 'a, b' } },
+  'action-print':     { label: 'Print', icon: '💬', color: '#a855f7', category: 'action', params: { message: '"Hello!"' } },
+  'action-ask':       { label: 'Ask and wait', icon: '💬', color: '#a855f7', category: 'action', params: { prompt: '"What is your name?"' } },
+  'action-alert':     { label: 'Alert', icon: '💬', color: '#a855f7', category: 'action', params: { message: '"Notice"' } },
+  'math-add':         { label: 'Add / Subtract', icon: '🔢', color: '#ef4444', category: 'math', params: { a: '1', op: '+', b: '1' } },
+  'math-mult':        { label: 'Multiply / Divide', icon: '🔢', color: '#ef4444', category: 'math', params: { a: '2', op: '×', b: '3' } },
+  'math-random':      { label: 'Random number', icon: '🔢', color: '#ef4444', category: 'math', params: { min: '1', max: '100' } },
+  'math-round':       { label: 'Round / Abs', icon: '🔢', color: '#ef4444', category: 'math', params: { op: 'round', value: '3.7' } },
+  'text-create':      { label: 'Create text', icon: '📝', color: '#ec4899', category: 'text', params: { text: '"hello"' } },
+  'text-join':        { label: 'Join text', icon: '📝', color: '#ec4899', category: 'text', params: { a: '"hello"', b: '" world"' } },
+  'text-length':      { label: 'Length of', icon: '📝', color: '#ec4899', category: 'text', params: { text: '"hello"' } },
+  'list-create':      { label: 'Create list', icon: '📋', color: '#14b8a6', category: 'list', params: { name: 'myList' } },
+  'list-add':         { label: 'Add to list', icon: '📋', color: '#14b8a6', category: 'list', params: { list: 'myList', item: '"item"' } },
+  'list-get':         { label: 'Get item #', icon: '📋', color: '#14b8a6', category: 'list', params: { list: 'myList', index: '0' } },
+  'sprite-move':      { label: 'Move', icon: '🎭', color: '#06b6d4', category: 'sprite', params: { steps: '10' } },
+  'sprite-turn':      { label: 'Turn', icon: '🎭', color: '#06b6d4', category: 'sprite', params: { degrees: '90' } },
+  'sprite-goto':      { label: 'Go to', icon: '🎭', color: '#06b6d4', category: 'sprite', params: { x: '0', y: '0' } },
+  'sprite-say':       { label: 'Say', icon: '🎭', color: '#06b6d4', category: 'sprite', params: { text: '"Hi!"' } },
+  'sound-play':       { label: 'Play sound', icon: '🔊', color: '#84cc16', category: 'sound', params: { sound: 'pop' } },
+  'sound-stop':       { label: 'Stop sounds', icon: '🔇', color: '#84cc16', category: 'sound', params: {} },
+  'sound-volume':     { label: 'Set volume', icon: '🔊', color: '#84cc16', category: 'sound', params: { volume: '100' } },
+  'ai-classify':      { label: 'AI classify', icon: '🤖', color: '#f97316', category: 'ai', params: { input: '"text"' } },
+  'ai-generate':      { label: 'AI generate text', icon: '🤖', color: '#f97316', category: 'ai', params: { prompt: '"Write a poem"' } },
+};
+
+const SIDEBAR_TO_TYPE = {
+  'create variable': 'var-create', 'set variable': 'var-set', 'change by': 'var-change', 'show variable': 'var-show',
+  'if / else': 'logic-if', 'and / or / not': 'logic-and', 'compare (=, <, >)': 'logic-compare', 'true / false': 'logic-bool',
+  'repeat n times': 'loop-repeat', 'forever': 'loop-forever', 'while condition': 'loop-while', 'for each in list': 'loop-foreach', 'break / continue': 'loop-break',
+  'define function': 'func-define', 'call function': 'func-call', 'return value': 'func-return', 'with parameters': 'func-params',
+  'on start': 'event-start', 'on key press': 'event-keypress', 'on click': 'event-click', 'on message': 'event-message', 'broadcast': 'event-broadcast',
+  'add / subtract': 'math-add', 'multiply / divide': 'math-mult', 'random number': 'math-random', 'round / abs': 'math-round', 'modulo': 'math-round',
+  'create text': 'text-create', 'join text': 'text-join', 'length of': 'text-length', 'letter # of': 'text-length', 'contains': 'text-length',
+  'create list': 'list-create', 'add to list': 'list-add', 'get item #': 'list-get', 'length of list': 'list-get', 'sort list': 'list-get',
+  'print': 'action-print', 'ask and wait': 'action-ask', 'alert': 'action-alert', 'prompt': 'action-ask',
+  'move steps': 'sprite-move', 'turn degrees': 'sprite-turn', 'go to x,y': 'sprite-goto', 'set size': 'sprite-move', 'show / hide': 'sprite-move', 'say text': 'sprite-say',
+  'play sound': 'sound-play', 'stop sounds': 'sound-stop', 'set volume': 'sound-volume', 'play note': 'sound-play',
+  'ai classify': 'ai-classify', 'ai generate text': 'ai-generate', 'ai detect object': 'ai-classify', 'ai translate': 'ai-generate', 'train model': 'ai-classify',
+};
+
+// Extension block parameter definitions
+const EXTENSION_BLOCK_PARAMS = {
+  '[tc] add training example': { category: 'text', label: 'text' },
+  '[tc] classify sentence': { sentence: 'hello' },
+  '[ic] analyse frame': {},
+  '[pc] capture pose sample': {},
+  '[ac] classify sound': {},
+};
+
+function createBlockFromDrop(text, x, y) {
+  // First, try to find it in standard block types (even if it's dragged from an extension)
+  const key = SIDEBAR_TO_TYPE[text.toLowerCase()] || null;
+  const def = key ? BLOCK_DEFS[key] : null;
+  if (def) {
+    // This is a standard block - create it with proper type even from extension context
+    return { id: Date.now(), type: key, ...def, params: { ...def.params }, x, y, connected: [] };
+  }
+  // Extension blocks from sidebar (contain brackets like [TC])
+  if (text.includes('[') && text.includes(']')) {
+    const extParams = EXTENSION_BLOCK_PARAMS[text.toLowerCase()] || {};
+    return { id: Date.now(), type: 'bb_extension_block', label: text, icon: '⚡', color: '#ec4899', x, y, connected: [], params: { ...extParams } };
+  }
+  return { id: Date.now(), type: 'custom', label: text, icon: '⚡', color: '#ec4899', category: 'custom', x, y, connected: [], params: {} };
+}
+
+function normalizeStack(blocks) {
+  if (!Array.isArray(blocks) || blocks.length === 0) return [];
+  const sorted = [...blocks].sort((a, b) => (a.y - b.y) || (a.x - b.x));
+  return sorted.map((b, idx) => ({
+    ...b,
+    x: STACK_X,
+    y: STACK_START_Y + idx * STACK_STEP,
+    connected: idx < sorted.length - 1 ? [sorted[idx + 1].id] : [],
+  }));
+}
+
+function BlockContent({ block, onParamChange }) {
+  const p = block.params || {};
+  const PI = (paramKey, w) => (
+    <SharedParamInput
+      value={p[paramKey] || ''}
+      onChange={(v) => onParamChange(block.id, paramKey, v)}
+      width={w}
+      color={block.color}
+    />
+  );
+
+  switch (block.type) {
+    case 'var-create':  return <>{block.icon} Create{PI('name', 70)}={PI('value', 50)}</>;
+    case 'var-set':     return <>{block.icon} Set{PI('name', 70)}={PI('value', 50)}</>;
+    case 'var-change':  return <>{block.icon} Change{PI('name', 70)}by{PI('amount', 40)}</>;
+    case 'var-show':    return <>{block.icon} Show{PI('name', 80)}</>;
+    case 'logic-if':    return <>{block.icon} If{PI('condition', 120)}</>;
+    case 'logic-and':   return <>{block.icon}{PI('left', 50)}{PI('op', 35)}{PI('right', 50)}</>;
+    case 'logic-compare': return <>{block.icon}{PI('left', 50)}{PI('op', 30)}{PI('right', 50)}</>;
+    case 'logic-bool': return (
+      <>
+        {block.icon}
+        <ParamSelect
+          value={p.value || 'true'}
+          onChange={(v) => onParamChange(block.id, 'value', v)}
+          width={56}
+          fieldShape="hex"
+          options={['true', 'false']}
+        />
+      </>
+    );
+    case 'loop-repeat': return <>{block.icon} Repeat{PI('times', 40)}times</>;
+    case 'loop-forever': return <>{block.icon} Forever</>;
+    case 'loop-while':  return <>{block.icon} While{PI('condition', 120)}</>;
+    case 'loop-foreach': return <>{block.icon} For{PI('item', 50)}in{PI('list', 60)}</>;
+    case 'loop-break':  return <>{block.icon} Break</>;
+    case 'func-define': return <>{block.icon} Define{PI('name', 80)}</>;
+    case 'func-call':   return <>{block.icon} Call{PI('name', 80)}</>;
+    case 'func-return': return <>{block.icon} Return{PI('value', 60)}</>;
+    case 'func-params': return <>{block.icon} Params{PI('params', 100)}</>;
+    case 'action-print': return <>{block.icon} Print{PI('message', 120)}</>;
+    case 'action-ask':  return <>{block.icon} Ask{PI('prompt', 130)}</>;
+    case 'action-alert': return <>{block.icon} Alert{PI('message', 120)}</>;
+    case 'math-add':    return <>{block.icon}{PI('a', 40)}{PI('op', 25)}{PI('b', 40)}</>;
+    case 'math-mult':   return <>{block.icon}{PI('a', 40)}{PI('op', 25)}{PI('b', 40)}</>;
+    case 'math-random': return <>{block.icon} Random{PI('min', 35)}to{PI('max', 35)}</>;
+    case 'math-round':  return <>{block.icon}{PI('op', 50)}{PI('value', 50)}</>;
+    case 'text-create': return <>{block.icon} Text{PI('text', 100)}</>;
+    case 'text-join':   return <>{block.icon} Join{PI('a', 60)}+{PI('b', 60)}</>;
+    case 'text-length': return <>{block.icon} Length of{PI('text', 80)}</>;
+    case 'list-create': return <>{block.icon} Create list{PI('name', 70)}</>;
+    case 'list-add':    return <>{block.icon} Add{PI('item', 60)}to{PI('list', 60)}</>;
+    case 'list-get':    return <>{block.icon} Get #{PI('index', 30)}from{PI('list', 60)}</>;
+    case 'sprite-move': return <>{block.icon} Move{PI('steps', 40)}steps</>;
+    case 'sprite-turn': return <>{block.icon} Turn{PI('degrees', 40)}°</>;
+    case 'sprite-goto': return <>{block.icon} Go to x{PI('x', 35)}y{PI('y', 35)}</>;
+    case 'sprite-say':  return <>{block.icon} Say{PI('text', 100)}</>;
+    case 'sound-play':  return <>{block.icon} Play{PI('sound', 70)}</>;
+    case 'sound-stop': return <>{block.icon} Stop sounds</>;
+    case 'sound-volume': return <>{block.icon} Volume{PI('volume', 40)}%</>;
+    case 'ai-classify': return <>{block.icon} Classify{PI('input', 100)}</>;
+    case 'ai-generate': return <>{block.icon} Generate{PI('prompt', 120)}</>;
+    case 'event-start': return <>{block.icon} When program starts</>;
+    case 'event-keypress': return <>{block.icon} On key{PI('key', 55)}press</>;
+    case 'event-click': return <>{block.icon} On click</>;
+    case 'event-message': return <>{block.icon} On message{PI('message', 60)}</>;
+    case 'event-broadcast': return <>{block.icon} Broadcast{PI('message', 60)}</>;
+    default:            return <>{block.icon} {block.label}</>;
+  }
+}
+
+/* ─── Block Visual Editor ─── */
+const PALETTE_CATS = [
+  { id: 'event',    label: '⚡ Events',    color: '#f59e0b' },
+  { id: 'variable', label: '📦 Variables', color: '#06b6d4' },
+  { id: 'logic',    label: '🧠 Logic',     color: '#6366f1' },
+  { id: 'loop',     label: '🔁 Loops',     color: '#8b5cf6' },
+  { id: 'function', label: '⚙️ Functions', color: '#10b981' },
+  { id: 'action',   label: '💬 Actions',   color: '#a855f7' },
+  { id: 'math',     label: '🔢 Math',      color: '#ef4444' },
+  { id: 'text',     label: '📝 Text',      color: '#ec4899' },
+  { id: 'list',     label: '📋 Lists',     color: '#14b8a6' },
+  { id: 'sprite',   label: '🎭 Sprite',    color: '#06b6d4' },
+  { id: 'sound',    label: '🔊 Sound',     color: '#84cc16' },
+  { id: 'ai',       label: '🤖 AI',        color: '#f97316' },
+];
+
+function BlockPalette({ onAdd, enabledExtensions, onOpenExtensions }) {
+  const [activeCat, setActiveCat] = useState('event');
+  
+  // Merge base categories with extension categories
+  const extensionCats = useMemo(() => {
+    return getExtensionSidebarCategories(enabledExtensions).map(ext => ({
+      id: `ext-${ext.extensionId}`,
+      label: `${ext.icon} ${ext.name}`,
+      color: ext.color,
+      isExtension: true,
+      extensionId: ext.extensionId,
+    }));
+  }, [enabledExtensions]);
+  
+  const allCategories = [...PALETTE_CATS, ...extensionCats];
+  
+  const cat = allCategories.find(c => c.id === activeCat);
+  const blocks = cat?.isExtension 
+    ? [] // Extensions show placeholder blocks for now
+    : Object.entries(BLOCK_DEFS).filter(([, d]) => d.category === activeCat);
+  
+  return (
+    <div style={{ width: 180, flexShrink: 0, display: 'flex', flexDirection: 'column', borderRight: '1px solid var(--border-color)', background: 'var(--bg-secondary)', overflow: 'hidden' }}>
+      {/* Category list */}
+      <div style={{ overflowY: 'auto', borderBottom: '1px solid var(--border-color)', padding: '4px 4px', flex: 1 }}>
+        {allCategories.map(c => (
+          <button key={c.id} onClick={() => setActiveCat(c.id)} style={{
+            display: 'block', width: '100%', textAlign: 'left', padding: '5px 8px',
+            borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 600,
+            background: activeCat === c.id ? `${c.color}25` : 'transparent',
+            color: activeCat === c.id ? c.color : 'var(--text-muted)',
+            borderLeft: activeCat === c.id ? `3px solid ${c.color}` : '3px solid transparent',
+            marginBottom: 1,
+          }}>{c.label}</button>
+        ))}
+        
+        {/* Extensions button */}
+        <button 
+          onClick={onOpenExtensions}
+          style={{
+            display: 'block', width: '100%', textAlign: 'left', padding: '5px 8px',
+            borderRadius: 6, border: '1px dashed var(--border-color)', cursor: 'pointer', 
+            fontSize: 11, fontWeight: 600, marginTop: 8,
+            background: 'transparent',
+            color: 'var(--text-secondary)',
+          }}
+        >
+          ➕ Extensions
+        </button>
+      </div>
+      {/* Blocks in selected category */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '6px 6px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+        {blocks.map(([type, def]) => (
+          <button
+            key={type}
+            onClick={() => onAdd(type)}
+            style={{
+              padding: 0,
+              border: 'none',
+              background: 'transparent',
+              cursor: 'pointer',
+              width: '100%',
+              textAlign: 'left',
+            }}
+          >
+            <ScratchStyleBlock
+              block={{ id: `palette-${type}`, type, category: def.category, label: def.label }}
+              style={{
+                position: 'relative',
+                transform: 'none',
+                transition: 'none',
+                marginBottom: 2,
+              }}
+            >
+              <span>{def.icon}</span>
+              <span>{def.label}</span>
+            </ScratchStyleBlock>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function BlockCanvas({ code, onCodeChange, onBlockLineMap, activeCodeLine, onNavigate }) {
+  const canvasRef = useRef(null);
+  const { user } = useUser();
+  const defaultBlocks = [
+    { id: 1, type: 'event-start', ...BLOCK_DEFS['event-start'], params: {}, x: STACK_X, y: STACK_START_Y, connected: [2] },
+    { id: 2, type: 'var-create', ...BLOCK_DEFS['var-create'], params: { name: 'score', value: '0' }, x: STACK_X, y: STACK_START_Y + STACK_STEP, connected: [3] },
+    { id: 3, type: 'loop-repeat', ...BLOCK_DEFS['loop-repeat'], params: { times: '10' }, x: STACK_X, y: STACK_START_Y + STACK_STEP * 2, connected: [4] },
+    { id: 4, type: 'logic-if', ...BLOCK_DEFS['logic-if'], params: { condition: 'score > 5' }, x: STACK_X, y: STACK_START_Y + STACK_STEP * 3, connected: [5] },
+    { id: 5, type: 'action-print', ...BLOCK_DEFS['action-print'], params: { message: '"You win!"' }, x: STACK_X, y: STACK_START_Y + STACK_STEP * 4, connected: [6] },
+    { id: 6, type: 'var-change', ...BLOCK_DEFS['var-change'], params: { name: 'score', amount: '1' }, x: STACK_X, y: STACK_START_Y + STACK_STEP * 5, connected: [] },
+  ];
+  const [blocks, setBlocks] = useState(() => {
+    try {
+      const s = localStorage.getItem('cv_workspace_blocks');
+      return s ? JSON.parse(s) : defaultBlocks;
+    } catch {
+      return defaultBlocks;
+    }
+  });
+  const [dragging, setDragging] = useState(null);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [hoveredBlock, setHoveredBlock] = useState(null);
+  const [selectedBlock, setSelectedBlock] = useState(null);
+
+  /* Generate code from blocks + build blockLineMap */
+  useEffect(() => {
+    if (!onCodeChange) return;
+    const lines = [];
+    const lineMap = {}; // blockId → lineNumber (1-based)
+
+    for (const b of blocks) {
+      const p = b.params || {};
+      let line = '';
+      switch (b.type) {
+        case 'event-start': line = '# When program starts'; break;
+        case 'event-keypress': line = `# On key "${p.key}" press`; break;
+        case 'var-create': line = `${p.name} = ${p.value}`; break;
+        case 'var-set': line = `${p.name} = ${p.value}`; break;
+        case 'var-change': line = `${p.name} += ${p.amount}`; break;
+        case 'var-show': line = `print(${p.name})`; break;
+        case 'logic-if': line = `if ${p.condition}:`; break;
+        case 'loop-repeat': line = `for i in range(${p.times}):`; break;
+        case 'loop-forever': line = 'while True:'; break;
+        case 'loop-while': line = `while ${p.condition}:`; break;
+        case 'loop-foreach': line = `for ${p.item} in ${p.list}:`; break;
+        case 'loop-break': line = '    break'; break;
+        case 'func-define': line = `def ${p.name}():`; break;
+        case 'func-call': line = `${p.name}()`; break;
+        case 'func-return': line = `    return ${p.value}`; break;
+        case 'action-print': line = `print(${p.message})`; break;
+        case 'action-ask': line = `answer = input(${p.prompt})`; break;
+        case 'action-alert': line = `print(${p.message})`; break;
+        case 'math-random': line = `import random; random.randint(${p.min}, ${p.max})`; break;
+        case 'text-create': line = `text = ${p.text}`; break;
+        case 'text-join': line = `text = ${p.a} + ${p.b}`; break;
+        case 'list-create': line = `${p.name} = []`; break;
+        case 'list-add': line = `${p.list}.append(${p.item})`; break;
+        case 'list-get': line = `${p.list}[${p.index}]`; break;
+        default: if (b.label) line = `# ${b.label}`; break;
+      }
+      if (line) {
+        lineMap[b.id] = lines.length + 1; // 1-based line number
+        lines.push(line);
+      }
+    }
+    onCodeChange(lines.join('\n') + '\n');
+    if (onBlockLineMap) onBlockLineMap(lineMap);
+  }, [blocks, onCodeChange, onBlockLineMap]);
+
+  const handleParamChange = useCallback((blockId, paramKey, value) => {
+    setBlocks(prev => prev.map(b =>
+      b.id === blockId ? { ...b, params: { ...b.params, [paramKey]: value } } : b
+    ));
+  }, []);
+
+  const addBlockFromPalette = useCallback((type) => {
+    const def = BLOCK_DEFS[type];
+    if (!def) return;
+    const id = Date.now();
+    const newBlock = { id, type, ...def, params: { ...def.params }, x: STACK_X, y: STACK_START_Y + blocks.length * STACK_STEP, connected: [] };
+    setBlocks(prev => [...prev, newBlock]);
+  }, [blocks.length]);
+
+  const deleteBlock = useCallback((blockId) => {
+    setBlocks(prev => {
+      const filtered = prev.filter(b => b.id !== blockId);
+      return filtered.map(b => ({
+        ...b,
+        connected: b.connected.filter(cid => cid !== blockId),
+      }));
+    });
+    setSelectedBlock(null);
+  }, []);
+
+  const handleMouseDown = (e, block) => {
+    if (e.target.tagName === 'INPUT') return;
+    const rect = canvasRef.current.getBoundingClientRect();
+    setDragging(block.id);
+    setSelectedBlock(block.id);
+    setDragOffset({
+      x: e.clientX - rect.left - block.x,
+      y: e.clientY - rect.top - block.y,
+    });
+  };
+
+  const handleMouseMove = useCallback((e) => {
+    if (!dragging || !canvasRef.current) return;
+    const rect = canvasRef.current.getBoundingClientRect();
+    const x = Math.max(0, e.clientX - rect.left - dragOffset.x);
+    const y = Math.max(0, e.clientY - rect.top - dragOffset.y);
+    setBlocks(prev => prev.map(b => b.id === dragging ? { ...b, x, y } : b));
+  }, [dragging, dragOffset]);
+
+  const handleMouseUp = useCallback(() => {
+    setDragging(null);
+  }, []);
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    const text = e.dataTransfer.getData('text/plain');
+    if (!text || !canvasRef.current) return;
+    const newBlock = createBlockFromDrop(text, STACK_X, STACK_START_Y + blocks.length * STACK_STEP);
+    setBlocks(prev => [...prev, newBlock]);
+  };
+
+  // Keyboard navigation for blocks
+  const handleBlockKeyDown = (e, block) => {
+    const STEP = 8;
+    if (e.key === 'Delete' || e.key === 'Backspace') {
+      e.preventDefault();
+      deleteBlock(block.id);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setBlocks(prev => prev.map(b => b.id === block.id ? { ...b, y: Math.max(0, b.y - STEP) } : b));
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setBlocks(prev => prev.map(b => b.id === block.id ? { ...b, y: b.y + STEP } : b));
+    } else if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      setBlocks(prev => prev.map(b => b.id === block.id ? { ...b, x: Math.max(0, b.x - STEP) } : b));
+    } else if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      setBlocks(prev => prev.map(b => b.id === block.id ? { ...b, x: b.x + STEP } : b));
+    } else if (e.key === 'Escape') {
+      setSelectedBlock(null);
+    }
+  };
+
+  // Find which block corresponds to activeCodeLine
+  const syncedBlockId = activeCodeLine
+    ? Object.entries(blocks.reduce((acc, b, idx) => { acc[b.id] = idx + 1; return acc; }, {}))
+        .find(([, line]) => line === activeCodeLine)?.[0]
+    : null;
+
+  return (
+    <div style={{ display: 'flex', flex: 1, minWidth: 0, minHeight: 0 }}>
+    <div
+      ref={canvasRef}
+      className="block-canvas"
+      style={{
+        flex: 1,
+        position: 'relative',
+        overflow: 'auto',
+        background: 'var(--bg-primary)',
+        backgroundImage: 'radial-gradient(circle, var(--border-color) 1px, transparent 1px)',
+        backgroundSize: '24px 24px',
+        cursor: dragging ? 'grabbing' : 'default',
+        minHeight: 0,
+      }}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseUp}
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={handleDrop}
+    >
+      {/* Connection lines */}
+      <svg style={{ position: 'absolute', inset: 0, pointerEvents: 'none', width: '100%', height: '100%' }}>
+        {blocks.map(block =>
+          block.connected.map(targetId => {
+            const target = blocks.find(b => b.id === targetId);
+            if (!target) return null;
+            return (
+              <line
+                key={`${block.id}-${targetId}`}
+                x1={block.x + 100} y1={block.y + 50}
+                x2={target.x + 100} y2={target.y}
+                stroke={block.color} strokeWidth="2" strokeDasharray="4" opacity="0.5"
+              />
+            );
+          })
+        )}
+      </svg>
+
+      {blocks.map(block => {
+        const isSynced = syncedBlockId && String(block.id) === String(syncedBlockId);
+        const isSelected = selectedBlock === block.id;
+        return (
+          <ScratchStyleBlock
+            key={block.id}
+            block={block}
+            className={`${isSynced ? ' block-synced' : ''}${isSelected ? ' active' : ''}${dragging === block.id ? ' dragging' : ''}`}
+            tabIndex={0}
+            role="button"
+            aria-label={`${block.label || block.type} block`}
+            onMouseDown={(e) => handleMouseDown(e, block)}
+            onMouseEnter={() => setHoveredBlock(block.id)}
+            onMouseLeave={() => setHoveredBlock(null)}
+            onKeyDown={(e) => handleBlockKeyDown(e, block)}
+            onFocus={() => setSelectedBlock(block.id)}
+            style={{
+              position: 'absolute',
+              left: block.x,
+              top: block.y,
+              cursor: dragging === block.id ? 'grabbing' : 'grab',
+              userSelect: 'none',
+              transform: 'none',
+              transition: 'none',
+              zIndex: dragging === block.id ? 100 : isSelected ? 50 : 1,
+              outline: isSelected ? `3px solid ${getCategoryColor(block.category)}88` : 'none',
+              outlineOffset: '2px',
+            }}
+          >
+            <BlockContent block={block} onParamChange={handleParamChange} />
+
+            <button
+              onMouseDown={(e) => { e.stopPropagation(); deleteBlock(block.id); }}
+              style={{
+                position: 'absolute', top: 5, right: 5,
+                width: 18, height: 18, borderRadius: '50%', border: 'none',
+                background: hoveredBlock === block.id ? '#ef4444' : 'transparent',
+                color: hoveredBlock === block.id ? '#fff' : 'transparent',
+                fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                transition: 'all 0.15s', lineHeight: 1, padding: 0,
+                pointerEvents: 'auto',
+              }}
+              title="Delete block (Del)"
+            >×</button>
+          </ScratchStyleBlock>
+        );
+      })}
+
+      {blocks.length === 0 && (
+        <div className="empty-state" style={{ height: '100%' }}>
+          <div className="empty-state-icon">🧩</div>
+          <h3>Drag a block to get started</h3>
+          <p>Use the Block Library sidebar on the left</p>
+        </div>
+      )}
+    </div>
+    </div>
+  );
+}
+
+/* ─── JS Runner Template ─── */
+const buildJsRunner = (code) => `<!DOCTYPE html><html><body><script>
+const __out = [];
+const __log = (t, a) => window.parent.postMessage({ type: t, text: a.map(v => typeof v === 'object' ? JSON.stringify(v) : String(v)).join(' ') }, '*');
+console.log = (...a) => __log('output', a);
+console.error = (...a) => __log('error', a);
+console.warn = (...a) => __log('warn', a);
+window.onerror = (msg) => { __log('error', [msg]); };
+try {
+${code}
+} catch(e) { __log('error', [e.message]); }
+window.parent.postMessage({ type: 'done' }, '*');
+<\/script></body></html>`;
+
+/* ─── Live Preview ─── */
+function Preview({ code, language }) {
+  const [output, setOutput] = useState([]);
+  const [isRunning, setIsRunning] = useState(false);
+  const { addXP, incrementQuestProgress } = useUser();
+  const iframeRef = useRef(null);
+  const listenerRef = useRef(null);
+  const audioCtxRef = useRef(null);
+  const activeOscRef = useRef([]);
+
+  const stopPreviewSounds = useCallback(() => {
+    activeOscRef.current.forEach(({ osc, gain }) => {
+      try { gain?.gain?.cancelScheduledValues(0); } catch (e) { /* ignore */ }
+      try { gain?.gain?.setValueAtTime(0.0001, audioCtxRef.current?.currentTime || 0); } catch (e) { /* ignore */ }
+      try { osc?.stop(); } catch (e) { /* ignore */ }
+    });
+    activeOscRef.current = [];
+  }, []);
+
+  const playPreviewSound = useCallback((name = 'pop') => {
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return;
+      if (!audioCtxRef.current) audioCtxRef.current = new Ctx();
+      const ctx = audioCtxRef.current;
+      if (ctx.state === 'suspended') ctx.resume();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const freqByName = { pop: 440, beep: 660, coin: 880, jump: 520, success: 740, error: 220 };
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freqByName[String(name).toLowerCase()] || 600, ctx.currentTime);
+      gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.12, ctx.currentTime + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.18);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.19);
+      activeOscRef.current.push({ osc, gain });
+      osc.onended = () => {
+        activeOscRef.current = activeOscRef.current.filter((n) => n.osc !== osc);
+      };
+    } catch (e) {
+      /* ignore audio errors */
+    }
+  }, []);
+
+  // Cleanup message listener
+  useEffect(() => {
+    return () => {
+      if (listenerRef.current) window.removeEventListener('message', listenerRef.current);
+    };
+  }, []);
+
+  const runCode = () => {
+    // Unlock shared WebAudio context for extension-driven sounds during this click gesture.
+    ensureBlockSoundAudio();
+
+    setIsRunning(true);
+    setOutput([{ type: 'info', text: `▶ Running ${language}...` }]);
+
+    if (language === 'html') {
+      setOutput([{ type: 'info', text: '🌐 Rendering HTML preview...' }]);
+      setIsRunning(false);
+      return;
+    }
+
+    if (language === 'python') {
+      // Real Python subset interpreter
+      setTimeout(() => {
+        try {
+          const { output: pyOut, errors, events = [] } = runPython(code);
+          const lines = pyOut.map(t => ({ type: 'output', text: t }));
+          events.forEach((evt) => {
+            if (evt?.type === 'sound') playPreviewSound(evt.name);
+            if (evt?.type === 'sound-stop') stopPreviewSounds();
+          });
+          if (errors.length) lines.push(...errors.map(t => ({ type: 'error', text: t })));
+          if (lines.length === 0) lines.push({ type: 'info', text: '✅ Program ran (no output)' });
+          lines.push({ type: 'success', text: `✨ Done` });
+          setOutput(lines);
+          addXP(10);
+          incrementQuestProgress('q-run');
+        } catch (err) {
+          setOutput([{ type: 'error', text: `Runtime error: ${err.message}` }]);
+        }
+        setIsRunning(false);
+      }, 50);
+      return;
+    }
+
+    if (language === 'javascript') {
+      // Real JS execution via sandboxed iframe + postMessage
+      if (listenerRef.current) window.removeEventListener('message', listenerRef.current);
+      const newOutput = [];
+
+      const handler = (e) => {
+        if (!e.data || typeof e.data !== 'object') return;
+        if (e.data.type === 'done') {
+          window.removeEventListener('message', handler);
+          listenerRef.current = null;
+          if (newOutput.filter(l => l.type !== 'info').length === 0) {
+            newOutput.push({ type: 'info', text: '✅ Program ran (no output)' });
+          }
+          newOutput.push({ type: 'success', text: '✨ Done' });
+          setOutput([...newOutput]);
+          setIsRunning(false);
+          addXP(10);
+          incrementQuestProgress('q-run');
+        } else if (['output', 'error', 'warn'].includes(e.data.type)) {
+          newOutput.push({ type: e.data.type, text: e.data.text });
+          setOutput([...newOutput]);
+        }
+      };
+
+      listenerRef.current = handler;
+      window.addEventListener('message', handler);
+
+      if (iframeRef.current) {
+        iframeRef.current.srcdoc = buildJsRunner(code);
+      }
+
+      // Timeout safety
+      setTimeout(() => {
+        if (isRunning) {
+          window.removeEventListener('message', handler);
+          listenerRef.current = null;
+          setOutput(prev => [...prev, { type: 'warn', text: '⚠️ Execution timed out (5s)' }]);
+          setIsRunning(false);
+        }
+      }, 5000);
+    }
+  };
+
+  const isHtml = language === 'html' && code;
+
+  return (
+    <div className="panel" style={{ flex: 1, minWidth: 280 }}>
+      <div className="panel-header">
+        <span>▶ Output / Preview</span>
+        <div style={{ marginLeft: 'auto' }}>
+          <button className="btn btn-success btn-sm" onClick={runCode} disabled={isRunning}>
+            {isRunning ? '⏳ Running...' : '▶ Run'}
+          </button>
+        </div>
+      </div>
+      <div className="panel-body" style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 4, background: 'var(--bg-primary)', position: 'relative' }}>
+        {/* Hidden JS runner iframe */}
+        <iframe
+          ref={iframeRef}
+          title="js-runner"
+          sandbox="allow-scripts"
+          style={{ display: isHtml ? 'block' : 'none', width: '100%', flex: 1, border: 'none', background: 'white', borderRadius: 4, minHeight: 200 }}
+        />
+
+        {/* HTML preview using srcDoc */}
+        {isHtml && (
+          <iframe
+            key={code}
+            srcDoc={code}
+            title="html-preview"
+            sandbox="allow-scripts"
+            style={{ width: '100%', flex: 1, border: 'none', background: 'white', borderRadius: 4, minHeight: 200 }}
+          />
+        )}
+
+        {!isHtml && (
+          <>
+            {output.length === 0 && !isRunning && (
+              <div style={{ color: 'var(--text-muted)', fontSize: 13, padding: 20, textAlign: 'center' }}>
+                Click <strong>Run</strong> to execute your code
+              </div>
+            )}
+            {output.map((line, i) => (
+              <div
+                key={i}
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 13,
+                  color: line.type === 'output' ? 'var(--text-primary)' :
+                         line.type === 'error' ? 'var(--accent-danger)' :
+                         line.type === 'success' ? 'var(--accent-success)' :
+                         line.type === 'warn' ? '#f59e0b' :
+                         'var(--text-muted)',
+                  padding: '2px 0',
+                  whiteSpace: 'pre-wrap',
+                }}
+              >
+                {line.text}
+              </div>
+            ))}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function lineForResolvedBlocklyType(type, f) {
+  switch (type) {
+    // Event blocks
+    case 'bb_event_start': return '# when program starts';
+    case 'bb_event_keypress': return `# when key ${f.KEY || 'space'} pressed`;
+    case 'event_whenflagclicked': return '# when green flag clicked';
+    case 'event_whenkeypressed': return `# when ${f.KEY_OPTION || 'space'} key pressed`;
+    case 'event_whenthisspriteclicked': return '# when this sprite clicked';
+    case 'event_broadcast': return `broadcast(${JSON.stringify(f.BROADCAST_INPUT || 'message')})`;
+    case 'event_broadcastandwait': return `broadcast_and_wait(${JSON.stringify(f.BROADCAST_INPUT || 'message')})`;
+    case 'event_whenbroadcastreceived': return `# when I receive ${f.BROADCAST_OPTION || 'message'}`;
+
+    // Motion blocks
+    case 'bb_sprite_move': return `move_steps(${f.STEPS || 10})`;
+    case 'bb_sprite_turn': return `turn_${f.DIRECTION || 'right'}(${f.DEGREES || 90})`;
+    case 'bb_sprite_goto': return `goto(${f.X || 0}, ${f.Y || 0})`;
+    case 'bb_sprite_changex': return `change_x(${f.AMOUNT || 10})`;
+    case 'bb_sprite_changey': return `change_y(${f.AMOUNT || 10})`;
+    case 'bb_motion_glide': return `glide_to(${f.SECS || 1}, ${f.X || 0}, ${f.Y || 0})`;
+    case 'motion_movesteps': return `move_steps(${f.STEPS || 10})`;
+    case 'motion_turnright': return `turn_right(${f.DEGREES || 90})`;
+    case 'motion_turnleft': return `turn_left(${f.DEGREES || 90})`;
+    case 'motion_goto': return `goto(${f.TO === 'mouse' ? 'mouse' : 'random'})`;
+    case 'motion_glide': return `glide_to(${f.SECS || 1}, ${f.TO === 'mouse' ? 'mouse' : 'random'})`;
+    case 'motion_pointindirection': return `point_direction(${f.DIRECTION || 90})`;
+    case 'motion_pointtowards': return `point_towards(${f.TOWARDS === 'mouse' ? 'mouse' : 'random'})`;
+    case 'motion_changex': return `change_x(${f.DX || 10})`;
+    case 'motion_setx': return `set_x(${f.X || 0})`;
+    case 'motion_changey': return `change_y(${f.DY || 10})`;
+    case 'motion_sety': return `set_y(${f.Y || 0})`;
+    case 'motion_ifonedgebounce': return 'if_on_edge_bounce()';
+    case 'motion_setrotationstyle': return `set_rotation_style(${JSON.stringify(f.STYLE || 'all')})`;
+    case 'motion_xposition': return 'x_position()';
+    case 'motion_yposition': return 'y_position()';
+    case 'motion_direction': return 'direction()';
+
+    // Looks blocks
+    case 'looks_sayforsecs': return `say(${JSON.stringify(f.MESSAGE || 'Hello')}, ${f.SECS || 2})`;
+    case 'looks_say': return `say(${JSON.stringify(f.MESSAGE || 'Hello')})`;
+    case 'looks_think': return `think(${JSON.stringify(f.MESSAGE || 'Hmm...')})`;
+    case 'looks_show': return 'show()';
+    case 'looks_hide': return 'hide()';
+    case 'looks_switchcostume': return `switch_costume(${JSON.stringify(f.COSTUME || 'costume1')})`;
+    case 'looks_nextcostume': return 'next_costume()';
+    case 'looks_costumenumbername': return `costume_${f.NUMBER_NAME || 'number'}()`;
+
+    // Sound blocks
+    case 'bb_sound_play': return `play_sound("${f.SOUND || 'pop'}")`;
+    case 'bb_sound_stop': return 'stop_sounds()';
+    case 'bb_sound_volume': return `set_volume(${f.VOLUME || 100})`;
+    case 'sound_play': return `play_sound(${JSON.stringify(f.SOUND_MENU || 'sound1')})`;
+    case 'sound_playuntildone': return `play_sound_until_done(${JSON.stringify(f.SOUND_MENU || 'sound1')})`;
+    case 'sound_stopallsounds': return 'stop_all_sounds()';
+
+    // Control blocks
+    case 'bb_control_wait': return `wait(${f.SECONDS || 1})`;
+    case 'bb_loop_repeat': return `for i in range(${f.TIMES || 10}):`;
+    case 'bb_loop_forever': return 'while True:';
+    case 'bb_logic_if': return 'if condition:';
+    case 'control_wait': return `wait(${f.DURATION || 1})`;
+    case 'control_repeat': return `for i in range(${f.TIMES || 10}):`;
+    case 'control_forever': return 'while True:';
+    case 'control_if': return 'if condition:';
+    case 'control_if_else': return 'if condition:';
+    case 'control_stop': return `stop(${JSON.stringify(f.STOP_OPTION || 'all')})`;
+
+    // Sensing blocks
+    case 'sensing_touchingobject': return `touching(${JSON.stringify(f.TOUCHINGOBJECTMENU || 'mouse')})`;
+    case 'sensing_touchingcolor': return `touching_color(${JSON.stringify(f.COLOR || '#ff0000')})`;
+    case 'sensing_coloristouchingcolor': return `color_touching_color(${JSON.stringify(f.COLOR || '#ff0000')}, ${JSON.stringify(f.COLOR2 || '#0000ff')})`;
+    case 'sensing_distanceto': return `distance_to(${JSON.stringify(f.DISTANCEMENU || 'mouse')})`;
+    case 'sensing_ask': return `ask(${JSON.stringify(f.QUESTION || 'What is your name?')})`;
+    case 'sensing_answer': return 'answer()';
+    case 'sensing_keypressed': return `key_pressed(${JSON.stringify(f.KEY_OPTION || 'space')})`;
+    case 'sensing_mousedown': return 'mouse_down()';
+    case 'sensing_mousex': return 'mouse_x()';
+    case 'sensing_mousey': return 'mouse_y()';
+    case 'sensing_loudness': return 'loudness()';
+    case 'sensing_timer': return 'timer()';
+    case 'sensing_resettimer': return 'reset_timer()';
+
+    // Variables blocks
+    case 'bb_var_create': return `${f.NAME || 'myVar'} = ${f.VALUE || 0}`;
+    case 'bb_var_change': return `${f.NAME || 'myVar'} += ${f.AMOUNT || 1}`;
+    case 'data_setvariableto': return `${f.VARIABLE || 'variable'} = ${f.VALUE || 0}`;
+    case 'data_changevariableby': return `${f.VARIABLE || 'variable'} += ${f.VALUE || 1}`;
+    case 'data_variable': return f.VARIABLE || 'variable';
+
+    // Operators blocks
+    case 'bb_math_add': return `print((${f.A || 0}) ${f.OP || '+'} (${f.B || 0}))`;
+    case 'bb_math_mult': return `print((${f.A || 0}) ${f.OP || '*'} (${f.B || 1}))`;
+    case 'bb_math_random': return `print(random_int(${f.MIN || 1}, ${f.MAX || 100}))`;
+    case 'bb_math_round': return (String(f.MOP || 'round') === 'abs')
+      ? `print(abs(${f.VALUE || 0}))`
+      : `print(round(${f.VALUE || 0}))`;
+    case 'operator_add': return `(${f.NUM1 || 0} + ${f.NUM2 || 0})`;
+    case 'operator_subtract': return `(${f.NUM1 || 0} - ${f.NUM2 || 0})`;
+    case 'operator_multiply': return `(${f.NUM1 || 0} * ${f.NUM2 || 0})`;
+    case 'operator_divide': return `(${f.NUM1 || 0} / ${f.NUM2 || 1})`;
+    case 'operator_gt': return `(${f.OPERAND1 || 0} > ${f.OPERAND2 || 0})`;
+    case 'operator_lt': return `(${f.OPERAND1 || 0} < ${f.OPERAND2 || 0})`;
+    case 'operator_equals': return `(${f.OPERAND1 || 0} == ${f.OPERAND2 || 0})`;
+    case 'operator_and': return `(${f.OPERAND1 || 'True'} and ${f.OPERAND2 || 'True'})`;
+    case 'operator_or': return `(${f.OPERAND1 || 'True'} or ${f.OPERAND2 || 'True'})`;
+    case 'operator_not': return `(not ${f.OPERAND || 'True'})`;
+
+    // Human Body blocks
+    case 'body-video-on': return `run_extension_block('body|camera|${f.STATE || 'on'}|${f.TRANSPARENCY || 0}')`;
+    case 'body-show-detections': return `run_extension_block('[body] show ${f.MODE || 'detections'}')`;
+    case 'body-analyse': return `run_extension_block('[body] analyse from ${f.SOURCE || 'camera'}')`;
+    case 'body-get-count': return `get_body_count()`;
+    case 'body-x-position': return `body_x(${JSON.stringify(f.KEYPOINT || 'nose')}, ${f.PERSON || 1})`;
+    case 'body-y-position': return `body_y(${JSON.stringify(f.KEYPOINT || 'nose')}, ${f.PERSON || 1})`;
+    case 'body-is-detected': return `body_detected(${JSON.stringify(f.KEYPOINT || 'nose')}, ${f.PERSON || 1})`;
+    case 'hand-analyze': return `run_extension_block('[hand] analyse from ${f.SOURCE || 'camera'}')`;
+    case 'hand-detected': return `hand_detected()`;
+    case 'hand-position-x': return `hand_x(${JSON.stringify(f.PART || 'palm')}, ${JSON.stringify(f.WHICH || 'hand')})`;
+
+    // Music blocks
+    case 'bb_music_drum': return `run_extension_block(${JSON.stringify(`music|drum|${String(f.DRUM || 0)}|${String(f.BEATS || 0.5)}`)})`;
+    case 'bb_music_rest': return `run_extension_block(${JSON.stringify(`music|rest|${String(f.BEATS || 0.5)}`)})`;
+    case 'bb_music_note': return `run_extension_block(${JSON.stringify(`music|note|${String(f.NOTE || 60)}|${String(f.BEATS || 0.5)}`)})`;
+    case 'bb_music_instrument': return `run_extension_block(${JSON.stringify(`music|instrument|${String(f.INSTRUMENT || 0)}`)})`;
+    case 'bb_music_tempo': return `run_extension_block(${JSON.stringify(`music|tempo|${String(f.TEMPO || 60)}`)})`;
+    case 'bb_music_tempo_change': return `run_extension_block(${JSON.stringify(`music|tempo_change|${String(f.CHANGE || 10)}`)})`;
+    case 'bb_music_get_tempo': return `run_extension_block(${JSON.stringify('[music] tempo')})`;
+
+    // TTS block
+    case 'bb_tts_speak': return `run_extension_block(${JSON.stringify(`tts|speak|${String(f.VOICE || 'auto')}|${String(f.TEXT || 'Hello from ByteBuddies')}`)})`;
+
+    // Generic blocks
+    case 'bb_sprite_say': return `say("${String(f.TEXT || 'Hi!').replace(/"/g, "'")}", ${f.SECONDS || 2})`;
+    case 'bb_action_print': return `print(${JSON.stringify(f.MESSAGE != null && f.MESSAGE !== '' ? String(f.MESSAGE) : 'Hello!')})`;
+
+    // AI/ML: Face Detection
+    case 'face_turn_video_on': return `run_extension_block('face|camera|${f.MODE || 'camera'}')`;
+    case 'face_turn_video_off': return `run_extension_block('face|off')`;
+    case 'face_show_bounding': return `run_extension_block('face|show_bounding')`;
+    case 'face_hide_bounding': return `run_extension_block('face|hide_bounding')`;
+    case 'face_set_threshold': return `run_extension_block('face|threshold|${f.THRESHOLD || 0.5}')`;
+    case 'face_analyse_camera': return `run_extension_block('face|analyse|camera')`;
+    case 'face_analyse_stage': return `run_extension_block('face|analyse|stage')`;
+    case 'face_number_of': return `face_count()`;
+    case 'face_visible': return `face_visible()`;
+    case 'face_expression': return `face_expression(${f.FACE || 1})`;
+    case 'face_x': return `face_x(${f.FACE || 1})`;
+    case 'face_y': return `face_y(${f.FACE || 1})`;
+    case 'face_size': return `face_size(${f.FACE || 1})`;
+    case 'face_happy': return `face_happy(${f.FACE || 1})`;
+
+    // AI/ML: Object Detection
+    case 'object_turn_video_on': return `run_extension_block('object|camera|${f.TRANSPARENCY || 0}')`;
+    case 'object_turn_video_off': return `run_extension_block('object|off')`;
+    case 'object_show_bounding': return `run_extension_block('object|show_bounding')`;
+    case 'object_hide_bounding': return `run_extension_block('object|hide_bounding')`;
+    case 'object_set_threshold': return `run_extension_block('object|threshold|${f.THRESHOLD || 0.5}')`;
+    case 'object_analyse_camera': return `run_extension_block('object|analyse|camera')`;
+    case 'object_analyse_stage': return `run_extension_block('object|analyse|stage')`;
+    case 'object_number_of': return `object_count()`;
+    case 'object_class_of': return `object_class(${f.INDEX || 1})`;
+    case 'object_person_detected': return `person_detected()`;
+    case 'object_person_count': return `person_count()`;
+
+    // AI/ML: Speech Recognition
+    case 'speech_listen': return `run_extension_block('speech|listen')`;
+    case 'speech_last_heard': return `speech_last_heard()`;
+
+    // AI/ML: Text-to-Speech
+    case 'tts_speak': return `run_extension_block('tts|speak|${f.VOICE || 'default'}|${f.TEXT || 'Hello'}')`;
+
+    // AI/ML: NLP
+    case 'nlp_analyse_sentiment': return `run_extension_block('nlp|sentiment|${f.TEXT || 'text'}')`;
+    case 'nlp_sentiment_value': return `nlp_sentiment_value()`;
+    case 'nlp_is_positive': return `nlp_is_positive()`;
+
+    // AI/ML: Text Recognition (OCR)
+    case 'ocr_scan': return `run_extension_block('ocr|scan')`;
+    case 'ocr_recognized_text': return `ocr_text()`;
+
+    // AI/ML: Translate
+    case 'translate_text': return `run_extension_block('translate|${f.FROM || 'en'}|${f.TO || 'es'}|${f.TEXT || 'text'}')`;
+    case 'translate_result': return `translate_result()`;
+
+    // AI/ML: Chat
+    case 'chat_ask': return `run_extension_block('chat|ask|${f.PROMPT || 'prompt'}')`;
+
+    // AI/ML: Image Classifier
+    case 'ic_turn_camera_on': return `run_extension_block('ic|camera_on')`;
+    case 'ic_analyse_frame': return `run_extension_block('ic|analyse')`;
+    case 'ic_top_class': return `ic_top_class()`;
+    case 'ic_confidence': return `ic_confidence()`;
+
+    // AI/ML: Pose Classifier
+    case 'pc_turn_camera_on': return `run_extension_block('pc|camera_on|${f.TRANSPARENCY || 0}')`;
+    case 'pc_turn_camera_off': return `run_extension_block('pc|camera_off')`;
+    case 'pc_capture_pose': return `run_extension_block('pc|capture')`;
+    case 'pc_pose_name': return `pc_pose_name()`;
+    case 'pc_pose_confidence': return `pc_pose_confidence()`;
+
+    // AI/ML: Audio Classifier
+    case 'ac_classify': return `run_extension_block('ac|classify')`;
+    case 'ac_sound_label': return `ac_sound_label()`;
+
+    // AI/ML: Text Classifier
+    case 'tc_add_training': return `run_extension_block('tc|add|${f.CATEGORY || 'category'}|${f.TEXT || 'text'}')`;
+    case 'tc_classify': return `run_extension_block('tc|classify|${f.TEXT || 'text'}')`;
+    case 'tc_prediction_label': return `tc_label()`;
+    case 'tc_prediction_confidence': return `tc_confidence()`;
+
+    default: return null;
+  }
+}
+
+function blocklyModelToPreviewCode(model) {
+  if (!Array.isArray(model) || !model.length) return '# Build with blocks\n';
+  const lineForNode = (node) => {
+    const f = node?.fields || {};
+    const resolved = resolveBlocklyNodeType(node);
+    if (resolved) {
+      const line = lineForResolvedBlocklyType(resolved, f);
+      if (line) return line;
+    }
+    const t = node?.type;
+    // Handle standard text blocks that might be in extension context
+    if (t === 'text-create') {
+      const p = node?.params || {};
+      return `text = ${p.text || '"hello"'}`;
+    }
+    if (t === 'text-join') {
+      const p = node?.params || {};
+      return `text = ${p.a || '"hello"'} + ${p.b || '" world"'}`;
+    }
+    if (t === 'bb_extension_block') {
+      const label = node?.label || 'block';
+      const params = node?.params || {};
+      const lowerLabel = label.toLowerCase();
+
+      // Build parameter-enhanced commands for specific blocks
+      let command = label;
+
+      // For text classifier blocks, append the sentence parameter
+      if (lowerLabel.includes('[tc]') && lowerLabel.includes('classify')) {
+        const sentence = params.sentence ? String(params.sentence).replace(/^["']|["']$/g, '') : 'test';
+        command = `tc|classify|${sentence}`;
+      }
+      // For add training example, append category and text
+      else if (lowerLabel.includes('[tc]') && lowerLabel.includes('add')) {
+        const category = params.category ? String(params.category).replace(/^["']|["']$/g, '') : 'positive';
+        const text = params.text ? String(params.text).replace(/^["']|["']$/g, '') : 'example';
+        command = `tc|add|${category}|${text}`;
+      }
+
+      return `run_extension_block(${JSON.stringify(command)})`;
+    }
+    if (t === 'bb_sidebar_item' || (typeof t === 'string' && t.startsWith('bb_lib_'))) {
+      const blockName = f.BLOCK_NAME || 'block';
+      // Ensure brackets are present for DRAG map lookup
+      const formatted = blockName.startsWith('[') ? blockName : `[${blockName}]`;
+      return `run_extension_block(${JSON.stringify(formatted)})`;
+    }
+    if (t === 'bb_generic_stack') {
+      const label = f.LABEL || 'block';
+      // Ensure brackets are present for DRAG map lookup
+      const formatted = label.startsWith('[') ? label : `[${label}]`;
+      return `run_extension_block(${JSON.stringify(formatted)})`;
+    }
+    const fallback = lineForResolvedBlocklyType(t, f);
+    if (fallback) return fallback;
+    return `# ${t || 'block'}`;
+  };
+  const out = [];
+  const walk = (nodes, depth = 0) => {
+    nodes.forEach((n) => {
+      out.push(`${'    '.repeat(depth)}${lineForNode(n)}`);
+      const doBody = n?.statements?.DO || [];
+      const elseBody = n?.statements?.ELSE || [];
+      if (doBody.length) walk(doBody, depth + 1);
+      if (elseBody.length) {
+        out.push(`${'    '.repeat(depth)}else:`);
+        walk(elseBody, depth + 1);
+      }
+    });
+  };
+  walk(model);
+  return `${out.join('\n')}\n`;
+}
+
+/* ─── Main Workspace Editor ─── */
+export default function WorkspaceEditor() {
+  const { activeProject, viewMode, setViewMode, updateProject } = useProject();
+  const { user, addXP } = useUser();
+  const [savedFlash, setSavedFlash] = useState(false);
+  const [language, setLanguage] = useState(activeProject?.language || 'python');
+  const [extensionsOpen, setExtensionsOpen] = useState(false);
+  const [enabledExtensions, setEnabledExtensions] = useState(() => readEnabledExtensionIds());
+
+  const saveBlocks = useCallback(() => {
+    setSavedFlash(true);
+    setTimeout(() => setSavedFlash(false), 1800);
+  }, []);
+
+  const toggleExtension = useCallback((id) => {
+    setEnabledExtensions(prev => {
+      const set = new Set(prev);
+      if (set.has(id)) set.delete(id);
+      else set.add(id);
+      const next = Array.from(set);
+      writeEnabledExtensionIds(next);
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    const handleExtensionsChanged = () => {
+      setEnabledExtensions(readEnabledExtensionIds());
+    };
+    const openExt = () => setExtensionsOpen(true);
+    window.addEventListener(BB_OPEN_EXTENSIONS, openExt);
+    window.addEventListener('bb-extensions-changed', handleExtensionsChanged);
+    return () => {
+      window.removeEventListener(BB_OPEN_EXTENSIONS, openExt);
+      window.removeEventListener('bb-extensions-changed', handleExtensionsChanged);
+    };
+  }, []);
+
+  useEffect(() => {
+    const handler = (e) => { if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); saveBlocks(); } };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [saveBlocks]);
+  const [blockLineMap, setBlockLineMap] = useState({});
+  const [activeCodeLine, setActiveCodeLine] = useState(null);
+  const [hoveredBlockId, setHoveredBlockId] = useState(null);
+  const code = activeProject?.code || '';
+
+  // Derive which code line the hovered block maps to
+  const hoveredBlockLine = hoveredBlockId ? blockLineMap[hoveredBlockId] : null;
+
+  useEffect(() => {
+    if (activeProject) setLanguage(activeProject.language);
+  }, [activeProject]);
+
+  const handleCodeChange = useCallback((newCode) => {
+    if (activeProject) updateProject(activeProject.id, { code: newCode });
+  }, [activeProject, updateProject]);
+
+  const handleBlockLineMap = useCallback((map) => {
+    setBlockLineMap(map);
+  }, []);
+
+  if (!activeProject) {
+    return (
+      <div className="empty-state" style={{ height: '100%' }}>
+        <div className="empty-state-icon">💻</div>
+        <h3>No project selected</h3>
+        <p>Select a project from the sidebar or create a new one</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="workspace-page">
+      <div className="workspace-toolbar">
+        <div className="tab-nav">
+          <button className={`tab-nav-item ${viewMode === 'blocks' ? 'active' : ''}`} onClick={() => setViewMode('blocks')}>
+            🧩 Blocks
+          </button>
+          <button className={`tab-nav-item ${viewMode === 'code' ? 'active' : ''}`} onClick={() => setViewMode('code')}>
+            📝 Code
+          </button>
+          <button className={`tab-nav-item ${viewMode === 'split' ? 'active' : ''}`} onClick={() => setViewMode('split')}>
+            ⚡ Split View
+          </button>
+        </div>
+
+        <div style={{ marginLeft: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <select
+            className="select"
+            value={language}
+            onChange={(e) => {
+              setLanguage(e.target.value);
+              updateProject(activeProject.id, { language: e.target.value });
+            }}
+            style={{ fontSize: 12, padding: '4px 28px 4px 8px' }}
+          >
+            <option value="python">🐍 Python</option>
+            <option value="javascript">⚡ JavaScript</option>
+            <option value="html">🌐 HTML/CSS</option>
+          </select>
+        </div>
+
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
+          <button
+            className="btn btn-sm"
+            onClick={() => setExtensionsOpen(true)}
+            style={{ background: '#6366f1', color: '#fff' }}
+            title="Add Extensions"
+          >
+            🧩 Extensions
+          </button>
+          <button
+            className="btn btn-sm"
+            onClick={saveBlocks}
+            style={{ background: savedFlash ? '#22c55e' : '#334155', color: '#fff', transition: 'background 0.3s', minWidth: 80 }}
+          >
+            {savedFlash ? '✓ Saved!' : '💾 Save'}
+          </button>
+          <span className="tag tag-primary" style={{ alignSelf: 'center' }}>
+            {activeProject.name}
+          </span>
+        </div>
+      </div>
+
+      <div className="panel-container">
+        {/* Starter Mode (ages 5-7) overrides normal blocks view */}
+        {user.ageMode === 'starter' ? (
+          <StarterBlocks />
+        ) : (
+        <>
+        {/* Blocks View */}
+        {(viewMode === 'blocks' || viewMode === 'split') && (
+          <div className="bb-workspace-scratch-toolbox" style={{ flex: 1, minWidth: 320, minHeight: 0, padding: 8 }}>
+            <UnifiedBlocklyWorkspace
+              libraryPage="workspace"
+              extensionsKey={[...enabledExtensions].sort().join(',')}
+              onModelChange={(model) => {
+                const codeFromBlocks = blocklyModelToPreviewCode(model);
+                handleCodeChange(codeFromBlocks);
+              }}
+              style={{ height: viewMode === 'split' ? 460 : 640 }}
+            />
+          </div>
+        )}
+
+        {viewMode === 'split' && <div className="panel-resizer" />}
+
+        {/* Code View */}
+        {(viewMode === 'code' || viewMode === 'split') && (
+          <div className="panel" style={{ flex: 1, minWidth: 300 }}>
+            <div className="panel-header">
+              <span style={{ fontSize: 12 }}>📝 {language === 'python' ? 'Python' : language === 'javascript' ? 'JavaScript' : 'HTML/CSS'}</span>
+              <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--text-muted)' }}>
+                {code.split('\n').length} lines
+              </span>
+            </div>
+            <div className="panel-body" style={{ display: 'flex', flexDirection: 'column' }}>
+              <CodeEditor
+                code={code}
+                language={language}
+                onChange={handleCodeChange}
+                onCursorLine={setActiveCodeLine}
+                highlightLine={hoveredBlockLine}
+              />
+            </div>
+          </div>
+        )}
+
+        <div className="panel-resizer" />
+
+        {/* Preview */}
+        <Preview code={code} language={language} />
+        </>
+        )}
+      </div>
+      
+      {/* Extensions Modal */}
+      <ExtensionsModal
+        open={extensionsOpen}
+        onClose={() => setExtensionsOpen(false)}
+        enabledIds={enabledExtensions}
+        onToggleExtension={toggleExtension}
+      />
+    </div>
+  );
+}

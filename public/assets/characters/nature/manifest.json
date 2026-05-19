@@ -1,0 +1,252 @@
+{
+  "category": "Nature",
+  "prefix": "nature",
+  "source": "Nature.png",
+  "items": [
+    {
+      "name": "Oak Tree",
+      "slug": "oak_tree",
+      "file": "nature_oak_tree.png",
+      "width": 903,
+      "height": 1024
+    },
+    {
+      "name": "Cherry Blossom",
+      "slug": "cherry_blossom",
+      "file": "nature_cherry_blossom.png",
+      "width": 916,
+      "height": 1024
+    },
+    {
+      "name": "Pine Tree",
+      "slug": "pine_tree",
+      "file": "nature_pine_tree.png",
+      "width": 766,
+      "height": 1024
+    },
+    {
+      "name": "Waterfall",
+      "slug": "waterfall",
+      "file": "nature_waterfall.png",
+      "width": 1023,
+      "height": 1015
+    },
+    {
+      "name": "Mossy Rocks",
+      "slug": "mossy_rocks",
+      "file": "nature_mossy_rocks.png",
+      "width": 980,
+      "height": 1024
+    },
+    {
+      "name": "Rock Arch",
+      "slug": "rock_arch",
+      "file": "nature_rock_arch.png",
+      "width": 1019,
+      "height": 1024
+    },
+    {
+      "name": "Dew Leaf",
+      "slug": "dew_leaf",
+      "file": "nature_dew_leaf.png",
+      "width": 710,
+      "height": 1024
+    },
+    {
+      "name": "Floating Island",
+      "slug": "floating_island",
+      "file": "nature_floating_island.png",
+      "width": 960,
+      "height": 1024
+    },
+    {
+      "name": "Mountain Lake",
+      "slug": "mountain_lake",
+      "file": "nature_mountain_lake.png",
+      "width": 1024,
+      "height": 1001
+    },
+    {
+      "name": "Purple Crystals",
+      "slug": "purple_crystals",
+      "file": "nature_purple_crystals.png",
+      "width": 849,
+      "height": 1024
+    },
+    {
+      "name": "Wildflowers",
+      "slug": "wildflowers",
+      "file": "nature_wildflowers.png",
+      "width": 1023,
+      "height": 951
+    },
+    {
+      "name": "Bamboo",
+      "slug": "bamboo",
+      "file": "nature_bamboo.png",
+      "width": 863,
+      "height": 1024
+    },
+    {
+      "name": "Tropical Island",
+      "slug": "tropical_island",
+      "file": "nature_tropical_island.png",
+      "width": 989,
+      "height": 1024
+    },
+    {
+      "name": "Water Lily",
+      "slug": "water_lily",
+      "file": "nature_water_lily.png",
+      "width": 1024,
+      "height": 853
+    },
+    {
+      "name": "Red Mushroom",
+      "slug": "red_mushroom",
+      "file": "nature_red_mushroom.png",
+      "width": 906,
+      "height": 1024
+    },
+    {
+      "name": "Mossy Log",
+      "slug": "mossy_log",
+      "file": "nature_mossy_log.png",
+      "width": 1024,
+      "height": 862
+    },
+    {
+      "name": "Cave Entrance",
+      "slug": "cave_entrance",
+      "file": "nature_cave_entrance.png",
+      "width": 997,
+      "height": 1024
+    },
+    {
+      "name": "Sunflower",
+      "slug": "sunflower",
+      "file": "nature_sunflower.png",
+      "width": 813,
+      "height": 1024
+    },
+    {
+      "name": "Saguaro Cactus",
+      "slug": "saguaro_cactus",
+      "file": "nature_saguaro_cactus.png",
+      "width": 783,
+      "height": 1024
+    },
+    {
+      "name": "Autumn Tree",
+      "slug": "autumn_tree",
+      "file": "nature_autumn_tree.png",
+      "width": 968,
+      "height": 1024
+    },
+    {
+      "name": "Green Bush",
+      "slug": "green_bush",
+      "file": "nature_green_bush.png",
+      "width": 1013,
+      "height": 1024
+    },
+    {
+      "name": "Snow Peak",
+      "slug": "snow_peak",
+      "file": "nature_snow_peak.png",
+      "width": 1024,
+      "height": 907
+    },
+    {
+      "name": "Volcano",
+      "slug": "volcano",
+      "file": "nature_volcano.png",
+      "width": 997,
+      "height": 1024
+    },
+    {
+      "name": "Aurora",
+      "slug": "aurora",
+      "file": "nature_aurora.png",
+      "width": 1024,
+      "height": 1019
+    },
+    {
+      "name": "Slot Canyon",
+      "slug": "slot_canyon",
+      "file": "nature_slot_canyon.png",
+      "width": 1024,
+      "height": 1010
+    },
+    {
+      "name": "Ocean Wave",
+      "slug": "ocean_wave",
+      "file": "nature_ocean_wave.png",
+      "width": 1024,
+      "height": 1005
+    },
+    {
+      "name": "Forest River",
+      "slug": "forest_river",
+      "file": "nature_forest_river.png",
+      "width": 1024,
+      "height": 978
+    },
+    {
+      "name": "Sand Dunes",
+      "slug": "sand_dunes",
+      "file": "nature_sand_dunes.png",
+      "width": 1024,
+      "height": 817
+    },
+    {
+      "name": "Lotus Flower",
+      "slug": "lotus_flower",
+      "file": "nature_lotus_flower.png",
+      "width": 857,
+      "height": 1024
+    },
+    {
+      "name": "Sea Turtle",
+      "slug": "sea_turtle",
+      "file": "nature_sea_turtle.png",
+      "width": 1024,
+      "height": 765
+    },
+    {
+      "name": "Coral Reef",
+      "slug": "coral_reef",
+      "file": "nature_coral_reef.png",
+      "width": 1024,
+      "height": 991
+    },
+    {
+      "name": "Toucan",
+      "slug": "toucan",
+      "file": "nature_toucan.png",
+      "width": 996,
+      "height": 1024
+    },
+    {
+      "name": "Monarch Butterfly",
+      "slug": "monarch_butterfly",
+      "file": "nature_monarch_butterfly.png",
+      "width": 921,
+      "height": 1024
+    },
+    {
+      "name": "Ladybug",
+      "slug": "ladybug",
+      "file": "nature_ladybug.png",
+      "width": 1024,
+      "height": 956
+    },
+    {
+      "name": "Honeybee",
+      "slug": "honeybee",
+      "file": "nature_honeybee.png",
+      "width": 1024,
+      "height": 781
+    }
+  ]
+}
