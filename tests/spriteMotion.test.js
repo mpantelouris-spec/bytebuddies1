@@ -226,18 +226,19 @@ describe('spriteMotion (PictoBlox coords)', () => {
     expect(getRenderRotation(allAround)).toBeCloseTo((100 * Math.PI) / 180, 5);
   });
 
-  test('blocks in workspace do not rotate sprite until script runs', () => {
+  test('blocks in workspace do not apply rotation style until script runs', () => {
     const sprite = makeSprite({
       direction: 90,
       blocks: [{ type: 'sprite-rotation-style', params: { style: 'allaround' } }],
     });
     ensureSpriteMotionState(sprite);
     expect(sprite.rotationStyle).toBeUndefined();
-    expect(getRotationStyle(sprite)).toBe('no rotation');
-    expect(getRenderRotation(sprite)).toBe(0);
+    // Default is all around (Scratch default) — the block hasn't run yet
+    expect(getRotationStyle(sprite)).toBe('all around');
+    expect(getRenderRotation(sprite)).toBeCloseTo(Math.PI / 2, 5);
   });
 
-  test('syncPlayRotationStyle clears style until block runs', () => {
+  test('syncPlayRotationStyle clears explicit style; falls back to all around default', () => {
     const sprite = makeSprite({
       direction: 90,
       name: 'Star',
@@ -248,17 +249,18 @@ describe('spriteMotion (PictoBlox coords)', () => {
     syncPlayRotationStyle(sprite);
     expect(sprite.rotationStyle).toBeUndefined();
     expect(sprite._rotationStyleFromScript).toBe(false);
-    expect(getRenderRotation(sprite)).toBe(0);
+    // Default is all around, so direction=90 → rotation = π/2
+    expect(getRenderRotation(sprite)).toBeCloseTo(Math.PI / 2, 5);
   });
 
-  test('getRotationStyle active only after setRotationStyle', () => {
+  test('getRotationStyle defaults to all around; setRotationStyle can override', () => {
     const sprite = makeSprite({
       direction: 90,
       name: 'Star',
       svgKey: 'Star',
       blocks: [{ type: 'sprite-rotation-style', params: { style: 'allaround' } }],
     });
-    expect(getRotationStyle(sprite)).toBe('no rotation');
+    expect(getRotationStyle(sprite)).toBe('all around');
     setRotationStyle(sprite, 'allaround');
     expect(getRotationStyle(sprite)).toBe('all around');
     expect(getRenderRotation(sprite)).toBeCloseTo(Math.PI / 2, 5);
@@ -277,9 +279,10 @@ describe('spriteMotion (PictoBlox coords)', () => {
     expect(getRenderScaleX(sprite)).toBe(1);
   });
 
-  test('sprites stay upright until set rotation style block runs', () => {
+  test('sprites rotate by default (all around); set rotation style can lock to no rotation', () => {
     const sprite = makeSprite({ direction: 90, svgKey: 'Star', costumeFacing: 0 });
-    expect(getRenderRotation(sprite)).toBe(0);
+    // Default is all around — sprite rotates to face direction
+    expect(getRenderRotation(sprite)).toBeCloseTo(Math.PI / 2, 5);
     executeSpriteMotion(
       { type: 'motion_setrotationstyle', params: { STYLE: 'allaround' } },
       sprite,

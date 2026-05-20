@@ -55,8 +55,8 @@ export const ROTATION_STYLE_ALL_AROUND = 'all around';
 export const ROTATION_STYLE_LEFT_RIGHT = 'left-right';
 export const ROTATION_STYLE_NO_ROTATION = 'no rotation';
 
-/** Upright until a script runs "set rotation style". */
-export const DEFAULT_ROTATION_STYLE = ROTATION_STYLE_NO_ROTATION;
+/** Scratch default: sprites rotate to face their direction. */
+export const DEFAULT_ROTATION_STYLE = ROTATION_STYLE_ALL_AROUND;
 
 /** Canonical rotation style string for runtime + rendering. */
 export function normalizeRotationStyle(raw) {
@@ -157,10 +157,11 @@ export function findRotationStyleBlock(sprite) {
   return found;
 }
 
-/** Active rotation style — only after "set rotation style" runs in a script. */
+/** Active rotation style — defaults to "all around" (Scratch default) until a script overrides. */
 export function getRotationStyle(sprite) {
-  if (!sprite || sprite._rotationStyleFromScript !== true) {
-    return ROTATION_STYLE_NO_ROTATION;
+  if (!sprite) return ROTATION_STYLE_NO_ROTATION;
+  if (sprite._rotationStyleFromScript !== true) {
+    return ROTATION_STYLE_ALL_AROUND;
   }
   if (sprite.rotationStyle != null && String(sprite.rotationStyle).trim() !== '') {
     return normalizeRotationStyle(sprite.rotationStyle);
@@ -168,7 +169,7 @@ export function getRotationStyle(sprite) {
   if (sprite._rotationStyle != null && String(sprite._rotationStyle).trim() !== '') {
     return normalizeRotationStyle(sprite._rotationStyle);
   }
-  return ROTATION_STYLE_NO_ROTATION;
+  return ROTATION_STYLE_ALL_AROUND;
 }
 
 /**

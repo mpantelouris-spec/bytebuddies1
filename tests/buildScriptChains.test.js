@@ -42,10 +42,12 @@ describe('buildScriptChains', () => {
     expect(chains[0].body[0].type).toBe('sprite-rotation-style');
   });
 
-  test('simulated exec applies rotation only when block runs', () => {
+  test('simulated exec: rotation not explicitly set until block runs', () => {
     const sprite = { id: 's1', name: 'Star', direction: 90, blocks: [] };
     syncPlayRotationStyle(sprite);
-    expect(getRotationStyle(sprite)).not.toBe(ROTATION_STYLE_ALL_AROUND);
+    // Default is all around, but _rotationStyleFromScript is false until block runs
+    expect(sprite._rotationStyleFromScript).toBe(false);
+    expect(getRotationStyle(sprite)).toBe(ROTATION_STYLE_ALL_AROUND);
 
     const chains = buildScriptChains('s1', [{
       id: 's1',
