@@ -158,18 +158,22 @@ import {
   getSpriteVolumeReporter,
 } from '../utils/soundRuntime';
 import { ensureBlockSoundAudio } from '../utils/blockSounds';
-import { STAGE_BACKDROP_NAMES } from '../data/stageLookOptions';
+import { STAGE_BACKDROP_NAMES, STAGE_BACKDROPS, findStageBackdrop, resolveStageBackdropName } from '../data/stageBackdrops';
 
 const STAGE_W = 480;
 const STAGE_H = 360;
 const DEFAULT_STAGE_BACKDROP = 'White';
-const LEGACY_DEFAULT_BACKDROPS = new Set(['Space', 'Sky']);
+const LEGACY_DEFAULT_BACKDROPS = new Set([
+  'Sky', 'Space', 'City', 'Ocean', 'Forest', 'Desert', 'Underwater', 'Sunset', 'Snow',
+  'Jungle', 'Cave', 'Lava', 'Candy', 'Dungeon', 'Kingdom', 'Neon City', 'Mountain', 'Rainbow', 'Graveyard',
+]);
 
 function readInitialStageBackdrop() {
   try {
     const saved = localStorage.getItem('cv_gamebuilder_bg');
     if (!saved || LEGACY_DEFAULT_BACKDROPS.has(saved)) return DEFAULT_STAGE_BACKDROP;
-    return saved;
+    const resolved = resolveStageBackdropName(saved);
+    return findStageBackdrop(resolved) ? resolved : DEFAULT_STAGE_BACKDROP;
   } catch {
     return DEFAULT_STAGE_BACKDROP;
   }
@@ -658,12 +662,8 @@ function blocklyNodesToGameBlocks(nodes = []) {
       return;
     }
     const base = { ...BLOCK_DEFS[type], params: { ...BLOCK_DEFS[type].params } };
-    if (blocklyType === 'motion_goto' && type === 'sprite-goto-sprite') {
-      base.params.sprite = String(f.TARGET || 'Sprite1');
-    }
-    if (blocklyType === 'motion_glide' && type === 'motion-glide-to-sprite') {
-      base.params.sprite = String(f.TARGET || 'Sprite1');
-    }
+    // "sprite" was the old dropdown value for Sprite1 before it was fixed to use the actual name
+    const normSpriteName = (v) => (!v || v === 'sprite') ? 'Sprite1' : String(v);
     if (type === 'event-keypress') base.params.key = f.KEY || 'space';
     if (type === 'sprite-move') base.params.steps = String(f.STEPS || 10);
     if (type === 'sprite-turn') base.params.degrees = String(f.DEGREES || 90);
@@ -674,8 +674,8 @@ function blocklyNodesToGameBlocks(nodes = []) {
       base.params.degrees = String(readBlocklyFieldOrValue(node, f, 'DEGREES', 15));
     }
     if (type === 'sprite-goto') { base.params.x = String(f.X || 0); base.params.y = String(f.Y || 0); }
-    if (type === 'sprite-goto-sprite' || type === 'motion-goto-sprite') base.params.sprite = String(f.SPRITE || f.TARGET || 'any');
-    if (type === 'motion-glide-to-sprite') base.params.sprite = String(f.SPRITE || f.TARGET || 'any');
+    if (type === 'sprite-goto-sprite' || type === 'motion-goto-sprite') base.params.sprite = normSpriteName(f.SPRITE || f.TARGET);
+    if (type === 'motion-glide-to-sprite') base.params.sprite = normSpriteName(f.SPRITE || f.TARGET);
     if (blocklyType === 'motion_movesteps') base.params.steps = String(f.STEPS || 10);
     if (blocklyType === 'motion_turnright' || blocklyType === 'motion_turnleft') {
       base.params.degrees = String(readBlocklyFieldOrValue(node, f, 'DEGREES', 15));
@@ -689,8 +689,18 @@ function blocklyNodesToGameBlocks(nodes = []) {
       base.params.x = String(f.X || 0);
       base.params.y = String(f.Y || 0);
     }
+    if (blocklyType === 'motion_glide' && (
+      type === 'motion-glide-to-random-position'
+      || type === 'motion-glide-to-mouse-pointer'
+      || type === 'motion-glide-to-sprite'
+    )) {
+      base.params.secs = String(f.SECS || 1);
+    }
     if (blocklyType === 'motion_pointindirection') base.params.degrees = String(f.DIRECTION || 90);
-    if (blocklyType === 'motion_pointtowards') base.params.target = String(f.TOWARDS || f.TARGET || 'mouse-pointer');
+    if (blocklyType === 'motion_pointtowards') {
+      const rawTarget = String(f.TOWARDS || f.TARGET || 'mouse-pointer');
+      base.params.target = (rawTarget === 'sprite') ? 'Sprite1' : rawTarget;
+    }
     if (blocklyType === 'motion_changex') base.params.amount = String(f.DX || 10);
     if (blocklyType === 'motion_changey') base.params.amount = String(f.DY || 10);
     if (blocklyType === 'motion_setx') base.params.x = String(f.X || 0);
@@ -704,7 +714,10 @@ function blocklyNodesToGameBlocks(nodes = []) {
       base.params.y = String(f.Y || 0);
     }
     if (type === 'sprite-point-dir') base.params.degrees = String(f.DEGREES || 90);
-    if (type === 'sprite-point-towards') base.params.target = String(f.TARGET || 'mouse-pointer');
+    if (type === 'sprite-point-towards') {
+      const rawTarget = String(f.TARGET || 'mouse-pointer');
+      base.params.target = (rawTarget === 'sprite') ? 'Sprite1' : rawTarget;
+    }
     if (type === 'sprite-setx') base.params.x = String(f.X || 0);
     if (type === 'sprite-sety') base.params.y = String(f.Y || 0);
     if (type === 'sprite-if-bounce') {} // No params needed
@@ -1135,44 +1148,44 @@ const SPRITE_LIBRARY = [
   {
     category: 'People',
     items: [
-      { name: 'Adventurer', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#2563eb"/></svg>`, color: '#2563eb', customImage: '/assets/characters/chibi/chibi_adventurer.png?v=20' },
-      { name: 'Explorer', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#16a34a"/></svg>`, color: '#16a34a', customImage: '/assets/characters/chibi/chibi_explorer.png?v=20' },
-      { name: 'Sporty', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#dc2626"/></svg>`, color: '#dc2626', customImage: '/assets/characters/chibi/chibi_sporty.png?v=20' },
-      { name: 'Witch', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#9333ea"/></svg>`, color: '#9333ea', customImage: '/assets/characters/chibi/chibi_witch.png?v=20' },
-      { name: 'Ranger', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#15803d"/></svg>`, color: '#15803d', customImage: '/assets/characters/chibi/chibi_ranger.png?v=20' },
-      { name: 'Mechanic', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#ca8a04"/></svg>`, color: '#ca8a04', customImage: '/assets/characters/chibi/chibi_mechanic.png?v=20' },
-      { name: 'Robot', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#64748b"/></svg>`, color: '#64748b', customImage: '/assets/characters/chibi/chibi_robot.png?v=20' },
-      { name: 'Knight', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#475569"/></svg>`, color: '#475569', customImage: '/assets/characters/chibi/chibi_knight.png?v=20' },
-      { name: 'Archer', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#b45309"/></svg>`, color: '#b45309', customImage: '/assets/characters/chibi/chibi_archer.png?v=20' },
-      { name: 'Ninja', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#1e293b"/></svg>`, color: '#1e293b', customImage: '/assets/characters/chibi/chibi_ninja.png?v=20' },
-      { name: 'Pirate Captain', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#1a3a52"/></svg>`, color: '#1a3a52', customImage: '/assets/characters/chibi/chibi_pirate_captain.png?v=20' },
-      { name: 'Astronaut', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#e2e8f0"/></svg>`, color: '#e2e8f0', customImage: '/assets/characters/chibi/chibi_astronaut.png?v=20' },
-      { name: 'Fire Mage', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#ea580c"/></svg>`, color: '#ea580c', customImage: '/assets/characters/chibi/chibi_fire_mage.png?v=20' },
-      { name: 'Dino', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#84cc16"/></svg>`, color: '#84cc16', customImage: '/assets/characters/chibi/chibi_dino.png?v=20' },
-      { name: 'Ice Mage', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#06b6d4"/></svg>`, color: '#06b6d4', customImage: '/assets/characters/chibi/chibi_ice_mage.png?v=20' },
+      { name: 'Adventurer', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#2563eb"/></svg>`, color: '#2563eb', customImage: '/assets/characters/chibi/chibi_adventurer.png?v=21' },
+      { name: 'Explorer', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#16a34a"/></svg>`, color: '#16a34a', customImage: '/assets/characters/chibi/chibi_explorer.png?v=21' },
+      { name: 'Sporty', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#dc2626"/></svg>`, color: '#dc2626', customImage: '/assets/characters/chibi/chibi_sporty.png?v=21' },
+      { name: 'Witch', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#9333ea"/></svg>`, color: '#9333ea', customImage: '/assets/characters/chibi/chibi_witch.png?v=21' },
+      { name: 'Ranger', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#15803d"/></svg>`, color: '#15803d', customImage: '/assets/characters/chibi/chibi_ranger.png?v=21' },
+      { name: 'Mechanic', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#ca8a04"/></svg>`, color: '#ca8a04', customImage: '/assets/characters/chibi/chibi_mechanic.png?v=21' },
+      { name: 'Robot', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#64748b"/></svg>`, color: '#64748b', customImage: '/assets/characters/chibi/chibi_robot.png?v=21' },
+      { name: 'Knight', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#475569"/></svg>`, color: '#475569', customImage: '/assets/characters/chibi/chibi_knight.png?v=21' },
+      { name: 'Archer', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#b45309"/></svg>`, color: '#b45309', customImage: '/assets/characters/chibi/chibi_archer.png?v=21' },
+      { name: 'Ninja', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#1e293b"/></svg>`, color: '#1e293b', customImage: '/assets/characters/chibi/chibi_ninja.png?v=21' },
+      { name: 'Pirate Captain', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#1a3a52"/></svg>`, color: '#1a3a52', customImage: '/assets/characters/chibi/chibi_pirate_captain.png?v=21' },
+      { name: 'Astronaut', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#e2e8f0"/></svg>`, color: '#e2e8f0', customImage: '/assets/characters/chibi/chibi_astronaut.png?v=21' },
+      { name: 'Fire Mage', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#ea580c"/></svg>`, color: '#ea580c', customImage: '/assets/characters/chibi/chibi_fire_mage.png?v=21' },
+      { name: 'Dino', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#84cc16"/></svg>`, color: '#84cc16', customImage: '/assets/characters/chibi/chibi_dino.png?v=21' },
+      { name: 'Ice Mage', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#06b6d4"/></svg>`, color: '#06b6d4', customImage: '/assets/characters/chibi/chibi_ice_mage.png?v=21' },
     ]
   },
   {
     category: 'Animals',
     items: [
-      { name: 'Fox', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#ea580c'}"/></svg>`, color: '#ea580c', customImage: '/assets/characters/animals/animal_fox.png?v=8' },
-      { name: 'Wolf', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#64748b'}"/></svg>`, color: '#64748b', customImage: '/assets/characters/animals/animal_wolf.png?v=8' },
-      { name: 'Bear', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#92400e'}"/></svg>`, color: '#92400e', customImage: '/assets/characters/animals/animal_bear.png?v=8' },
-      { name: 'Rabbit', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#f8fafc'}"/></svg>`, color: '#f8fafc', customImage: '/assets/characters/animals/animal_rabbit.png?v=8' },
-      { name: 'Deer', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#b45309'}"/></svg>`, color: '#b45309', customImage: '/assets/characters/animals/animal_deer.png?v=8' },
-      { name: 'Turtle', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#22c55e'}"/></svg>`, color: '#22c55e', customImage: '/assets/characters/animals/animal_turtle.png?v=8' },
-      { name: 'Owl', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#78716c'}"/></svg>`, color: '#78716c', customImage: '/assets/characters/animals/animal_owl.png?v=8' },
-      { name: 'Bird', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#3b82f6'}"/></svg>`, color: '#3b82f6', customImage: '/assets/characters/animals/animal_bird.png?v=8' },
-      { name: 'Penguin', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#1e293b'}"/></svg>`, color: '#1e293b', customImage: '/assets/characters/animals/animal_penguin.png?v=8' },
-      { name: 'Frog', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#22c55e'}"/></svg>`, color: '#22c55e', customImage: '/assets/characters/animals/animal_frog.png?v=8' },
-      { name: 'Cat', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#1e293b'}"/></svg>`, color: '#1e293b', customImage: '/assets/characters/animals/animal_cat.png?v=8' },
-      { name: 'Panda', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#f8fafc'}"/></svg>`, color: '#f8fafc', customImage: '/assets/characters/animals/animal_panda.png?v=8' },
-      { name: 'Cow', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#f5f5f5'}"/></svg>`, color: '#f5f5f5', customImage: '/assets/characters/animals/animal_cow.png?v=8' },
-      { name: 'Pig', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#f472b6'}"/></svg>`, color: '#f472b6', customImage: '/assets/characters/animals/animal_pig.png?v=8' },
-      { name: 'Sheep', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#e2e8f0'}"/></svg>`, color: '#e2e8f0', customImage: '/assets/characters/animals/animal_sheep.png?v=8' },
-      { name: 'Squirrel', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#92400e'}"/></svg>`, color: '#92400e', customImage: '/assets/characters/animals/animal_squirrel.png?v=8' },
-      { name: 'Raccoon', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#6b7280'}"/></svg>`, color: '#6b7280', customImage: '/assets/characters/animals/animal_raccoon.png?v=8' },
-      { name: 'Lion', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#eab308'}"/></svg>`, color: '#eab308', customImage: '/assets/characters/animals/animal_lion.png?v=8' },
+      { name: 'Fox', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#ea580c'}"/></svg>`, color: '#ea580c', customImage: '/assets/characters/animals/animal_fox.png?v=9' },
+      { name: 'Wolf', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#64748b'}"/></svg>`, color: '#64748b', customImage: '/assets/characters/animals/animal_wolf.png?v=9' },
+      { name: 'Bear', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#92400e'}"/></svg>`, color: '#92400e', customImage: '/assets/characters/animals/animal_bear.png?v=9' },
+      { name: 'Rabbit', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#f8fafc'}"/></svg>`, color: '#f8fafc', customImage: '/assets/characters/animals/animal_rabbit.png?v=9' },
+      { name: 'Deer', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#b45309'}"/></svg>`, color: '#b45309', customImage: '/assets/characters/animals/animal_deer.png?v=9' },
+      { name: 'Turtle', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#22c55e'}"/></svg>`, color: '#22c55e', customImage: '/assets/characters/animals/animal_turtle.png?v=9' },
+      { name: 'Owl', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#78716c'}"/></svg>`, color: '#78716c', customImage: '/assets/characters/animals/animal_owl.png?v=9' },
+      { name: 'Bird', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#3b82f6'}"/></svg>`, color: '#3b82f6', customImage: '/assets/characters/animals/animal_bird.png?v=9' },
+      { name: 'Penguin', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#1e293b'}"/></svg>`, color: '#1e293b', customImage: '/assets/characters/animals/animal_penguin.png?v=9' },
+      { name: 'Frog', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#22c55e'}"/></svg>`, color: '#22c55e', customImage: '/assets/characters/animals/animal_frog.png?v=9' },
+      { name: 'Cat', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#1e293b'}"/></svg>`, color: '#1e293b', customImage: '/assets/characters/animals/animal_cat.png?v=9' },
+      { name: 'Panda', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#f8fafc'}"/></svg>`, color: '#f8fafc', customImage: '/assets/characters/animals/animal_panda.png?v=9' },
+      { name: 'Cow', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#f5f5f5'}"/></svg>`, color: '#f5f5f5', customImage: '/assets/characters/animals/animal_cow.png?v=9' },
+      { name: 'Pig', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#f472b6'}"/></svg>`, color: '#f472b6', customImage: '/assets/characters/animals/animal_pig.png?v=9' },
+      { name: 'Sheep', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#e2e8f0'}"/></svg>`, color: '#e2e8f0', customImage: '/assets/characters/animals/animal_sheep.png?v=9' },
+      { name: 'Squirrel', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#92400e'}"/></svg>`, color: '#92400e', customImage: '/assets/characters/animals/animal_squirrel.png?v=9' },
+      { name: 'Raccoon', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#6b7280'}"/></svg>`, color: '#6b7280', customImage: '/assets/characters/animals/animal_raccoon.png?v=9' },
+      { name: 'Lion', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#eab308'}"/></svg>`, color: '#eab308', customImage: '/assets/characters/animals/animal_lion.png?v=9' },
     ]
   },
   ...RASTER_SPRITE_LIBRARY,
@@ -1188,30 +1201,6 @@ const SPRITE_LIBRARY = [
   const names = new Set(objects.items.map((i) => i.name));
   objects.items = [...starters.filter((s) => !names.has(s.name)), ...objects.items];
 })();
-
-/* ─── Background Library ─── */
-const BACKGROUNDS = [
-  { name: 'White', draw: (ctx, w, h) => { ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, w, h); }},
-  { name: 'Sky', draw: (ctx, w, h) => { const g = ctx.createLinearGradient(0,0,0,h); g.addColorStop(0,'#87CEEB'); g.addColorStop(1,'#e0f2fe'); ctx.fillStyle=g; ctx.fillRect(0,0,w,h); ctx.fillStyle='#22c55e'; ctx.fillRect(0,h*0.75,w,h*0.25); for(let i=0;i<3;i++){ctx.fillStyle='#fff';ctx.beginPath();ctx.ellipse(80+i*160,60+i*20,50,18,0,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.ellipse(100+i*160,55+i*20,40,16,0,0,Math.PI*2);ctx.fill();}}},
-  { name: 'Space', draw: (ctx, w, h) => { const g = ctx.createLinearGradient(0,0,0,h); g.addColorStop(0,'#0c0c2e'); g.addColorStop(1,'#1a1a4e'); ctx.fillStyle=g; ctx.fillRect(0,0,w,h); ctx.fillStyle='#fff'; for(let i=0;i<80;i++){const x=(i*73+17)%w;const y=(i*41+29)%h;const r=((i%3)+0.5);ctx.globalAlpha=0.3+Math.random()*0.7;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();} ctx.globalAlpha=1;}},
-  { name: 'City', draw: (ctx, w, h) => { const g = ctx.createLinearGradient(0,0,0,h); g.addColorStop(0,'#1e293b'); g.addColorStop(0.6,'#334155'); g.addColorStop(1,'#475569'); ctx.fillStyle=g; ctx.fillRect(0,0,w,h); const bldgs=[[20,180],[60,240],[120,160],[170,280],[240,200],[300,260],[360,180],[400,220],[440,300]]; bldgs.forEach(([x,bh])=>{ctx.fillStyle='#1e293b';ctx.fillRect(x,h-bh,50,bh);for(let wy=h-bh+10;wy<h-10;wy+=25){for(let wx=x+8;wx<x+42;wx+=14){ctx.fillStyle=Math.random()>0.3?'#fde68a':'#334155';ctx.fillRect(wx,wy,8,12);}}});}},
-  { name: 'Ocean', draw: (ctx, w, h) => { const g = ctx.createLinearGradient(0,0,0,h); g.addColorStop(0,'#bae6fd'); g.addColorStop(0.4,'#38bdf8'); g.addColorStop(1,'#0369a1'); ctx.fillStyle=g; ctx.fillRect(0,0,w,h); ctx.strokeStyle='rgba(255,255,255,0.2)'; ctx.lineWidth=2; for(let i=0;i<6;i++){ctx.beginPath();for(let x=0;x<w;x+=4){ctx.lineTo(x,120+i*45+Math.sin(x*0.02+i)*12);}ctx.stroke();}}},
-  { name: 'Forest', draw: (ctx, w, h) => { ctx.fillStyle='#86efac'; ctx.fillRect(0,0,w,h); const g = ctx.createLinearGradient(0,0,0,h); g.addColorStop(0,'#bbf7d0'); g.addColorStop(1,'#4ade80'); ctx.fillStyle=g; ctx.fillRect(0,0,w,h); for(let i=0;i<12;i++){const tx=i*42+10;const th=80+Math.random()*60;ctx.fillStyle='#92400e';ctx.fillRect(tx+12,h-th,8,th);ctx.fillStyle='#16a34a';ctx.beginPath();ctx.moveTo(tx+16,h-th-40);ctx.lineTo(tx-6,h-th+20);ctx.lineTo(tx+38,h-th+20);ctx.closePath();ctx.fill();ctx.beginPath();ctx.moveTo(tx+16,h-th-20);ctx.lineTo(tx-2,h-th+30);ctx.lineTo(tx+34,h-th+30);ctx.closePath();ctx.fill();}}},
-  { name: 'Desert', draw: (ctx, w, h) => { const g = ctx.createLinearGradient(0,0,0,h); g.addColorStop(0,'#fed7aa'); g.addColorStop(0.5,'#fdba74'); g.addColorStop(1,'#c2410c'); ctx.fillStyle=g; ctx.fillRect(0,0,w,h); ctx.fillStyle='#ea580c'; for(let i=0;i<3;i++){const dx=80+i*170;ctx.beginPath();ctx.moveTo(dx,h*0.5);ctx.lineTo(dx+40,h*0.2);ctx.lineTo(dx+80,h*0.5);ctx.fill();} ctx.fillStyle='#fbbf24'; ctx.beginPath(); ctx.arc(w-60,50,30,0,Math.PI*2); ctx.fill();}},
-  { name: 'Underwater', draw: (ctx, w, h) => { const g = ctx.createLinearGradient(0,0,0,h); g.addColorStop(0,'#0ea5e9'); g.addColorStop(1,'#0c4a6e'); ctx.fillStyle=g; ctx.fillRect(0,0,w,h); ctx.fillStyle='rgba(255,255,255,0.06)'; for(let i=0;i<20;i++){const bx=(i*47+13)%w;const by=(i*89+37)%h;const br=2+i%4;ctx.beginPath();ctx.arc(bx,by,br,0,Math.PI*2);ctx.fill();} ctx.fillStyle='#166534'; for(let i=0;i<8;i++){const sx=i*65+10;ctx.beginPath();for(let y=h;y>h-60-i*8;y-=2){ctx.lineTo(sx+Math.sin(y*0.08)*8,y);}ctx.lineTo(sx,h);ctx.fill();}}},
-  { name: 'Sunset', draw: (ctx, w, h) => { const g = ctx.createLinearGradient(0,0,0,h); g.addColorStop(0,'#1e1b4b'); g.addColorStop(0.3,'#7c3aed'); g.addColorStop(0.5,'#f97316'); g.addColorStop(0.7,'#fbbf24'); g.addColorStop(1,'#fde68a'); ctx.fillStyle=g; ctx.fillRect(0,0,w,h); ctx.fillStyle='#fbbf24'; ctx.beginPath(); ctx.arc(w/2,h*0.55,40,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#0c0c2e'; ctx.fillRect(0,h*0.8,w,h*0.2);}},
-  { name: 'Snow', draw: (ctx, w, h) => { const g = ctx.createLinearGradient(0,0,0,h); g.addColorStop(0,'#e0f2fe'); g.addColorStop(1,'#f0f9ff'); ctx.fillStyle=g; ctx.fillRect(0,0,w,h); ctx.fillStyle='#fff'; ctx.fillRect(0,h*0.7,w,h*0.3); ctx.fillStyle='rgba(255,255,255,0.8)'; for(let i=0;i<40;i++){ctx.beginPath();ctx.arc((i*67+11)%w,(i*43+7)%h,1.5+i%2,0,Math.PI*2);ctx.fill();}}},
-  { name: 'Jungle', draw: (ctx, w, h) => { const g = ctx.createLinearGradient(0,0,0,h); g.addColorStop(0,'#064e3b'); g.addColorStop(0.5,'#065f46'); g.addColorStop(1,'#047857'); ctx.fillStyle=g; ctx.fillRect(0,0,w,h); ctx.fillStyle='#022c22'; for(let i=0;i<8;i++){const bx=i*65; ctx.beginPath();ctx.moveTo(bx,h);ctx.lineTo(bx+10,h-80-i*10);ctx.lineTo(bx+20,h);ctx.fill(); ctx.fillStyle='#065f46';ctx.beginPath();ctx.ellipse(bx+10,h-60-i*10,18,30,0,0,Math.PI*2);ctx.fill();ctx.fillStyle='#022c22';}}},
-  { name: 'Cave', draw: (ctx, w, h) => { const g = ctx.createLinearGradient(0,0,0,h); g.addColorStop(0,'#1c1917'); g.addColorStop(0.5,'#292524'); g.addColorStop(1,'#1c1917'); ctx.fillStyle=g; ctx.fillRect(0,0,w,h); ctx.fillStyle='#44403c'; for(let i=0;i<6;i++){const sx=(i*83+20)%w; ctx.beginPath();ctx.moveTo(sx,0);ctx.lineTo(sx+15,30+i*8);ctx.lineTo(sx+30,0);ctx.fill();ctx.beginPath();ctx.moveTo(sx+40,h);ctx.lineTo(sx+55,h-25-i*6);ctx.lineTo(sx+70,h);ctx.fill();} ctx.fillStyle='#78716c'; for(let i=0;i<15;i++){ctx.beginPath();ctx.arc((i*53+7)%w,(i*71+13)%(h-20)+10,1+i%2,0,Math.PI*2);ctx.fill();}}},
-  { name: 'Lava', draw: (ctx, w, h) => { const g = ctx.createLinearGradient(0,0,0,h); g.addColorStop(0,'#450a0a'); g.addColorStop(0.5,'#7f1d1d'); g.addColorStop(1,'#ef4444'); ctx.fillStyle=g; ctx.fillRect(0,0,w,h); ctx.fillStyle='#f97316'; for(let i=0;i<4;i++){ctx.beginPath();for(let x=0;x<w;x+=4){ctx.lineTo(x,h*0.75+Math.sin(x*0.03+i*2)*12+i*8);}ctx.lineTo(w,h);ctx.lineTo(0,h);ctx.fill();ctx.fillStyle='#fbbf24';}}},
-  { name: 'Candy', draw: (ctx, w, h) => { ctx.fillStyle='#fce7f3'; ctx.fillRect(0,0,w,h); const colors=['#f9a8d4','#c084fc','#67e8f9','#86efac','#fde68a']; for(let i=0;i<10;i++){ctx.fillStyle=colors[i%colors.length]; ctx.beginPath();ctx.arc((i*97+30)%w,(i*61+20)%h,20+i%3*8,0,Math.PI*2);ctx.globalAlpha=0.2;ctx.fill();} ctx.globalAlpha=1; ctx.fillStyle='#22c55e'; ctx.fillRect(0,h*0.8,w,h*0.2);}},
-  { name: 'Dungeon', draw: (ctx, w, h) => { ctx.fillStyle='#1c1917'; ctx.fillRect(0,0,w,h); for(let row=0;row<h;row+=24){const offset=row%48===0?0:24;for(let col=offset;col<w+48;col+=48){ctx.fillStyle='#44403c';ctx.fillRect(col,row,45,22);}} ctx.fillStyle='#f97316';ctx.globalAlpha=0.1;ctx.beginPath();ctx.arc(w/2,h/2,90,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;}},
-  { name: 'Kingdom', draw: (ctx, w, h) => { const g=ctx.createLinearGradient(0,0,0,h);g.addColorStop(0,'#1e3a5f');g.addColorStop(1,'#1e293b');ctx.fillStyle=g;ctx.fillRect(0,0,w,h);ctx.fillStyle='#fff';for(let i=0;i<50;i++){ctx.globalAlpha=0.15+i%3*0.1;ctx.beginPath();ctx.arc((i*71+13)%w,(i*47+9)%(h*0.65),1+i%2,0,Math.PI*2);ctx.fill();}ctx.globalAlpha=1;[[10,130],[70,160],[160,120],[250,170],[340,130],[430,170]].forEach(([tx,th])=>{ctx.fillStyle='#1e293b';ctx.fillRect(tx,h-th,50,th);for(let c=tx;c<tx+50;c+=14){ctx.fillStyle='#334155';ctx.fillRect(c,h-th-14,10,14);}for(let wy=h-th+10;wy<h-6;wy+=20){for(let wx=tx+6;wx<tx+44;wx+=12){ctx.fillStyle=(wx+wy)%2===0?'#fde68a':'#1e293b';ctx.fillRect(wx,wy,8,10);}}}); ctx.fillStyle='#0f172a';ctx.fillRect(0,h*0.86,w,h*0.14);}},
-  { name: 'Neon City', draw: (ctx, w, h) => { ctx.fillStyle='#030712';ctx.fillRect(0,0,w,h);const cols=['#f0abfc','#818cf8','#22d3ee','#34d399','#fb7185'];[[0,220],[50,180],[100,250],[150,160],[200,240],[250,200],[300,230],[350,170],[400,260],[430,190],[460,220]].forEach(([bx,bh],i)=>{const col=cols[i%cols.length];ctx.fillStyle='#0f172a';ctx.fillRect(bx,h-bh,50,bh);ctx.strokeStyle=col;ctx.lineWidth=1;ctx.globalAlpha=0.5;ctx.strokeRect(bx,h-bh,50,bh);ctx.globalAlpha=1;for(let wy=h-bh+6;wy<h-4;wy+=18){for(let wx=bx+6;wx<bx+44;wx+=12){if((wx+wy)%3!==0){ctx.fillStyle=col;ctx.globalAlpha=0.18;ctx.fillRect(wx,wy,8,10);ctx.globalAlpha=1;}}}ctx.fillStyle=col;ctx.globalAlpha=0.35;ctx.fillRect(bx,h-bh,50,3);ctx.globalAlpha=1;});}},
-  { name: 'Mountain', draw: (ctx, w, h) => { const g=ctx.createLinearGradient(0,0,0,h);g.addColorStop(0,'#bfdbfe');g.addColorStop(0.65,'#7dd3fc');g.addColorStop(1,'#38bdf8');ctx.fillStyle=g;ctx.fillRect(0,0,w,h);ctx.fillStyle='#64748b';ctx.beginPath();ctx.moveTo(0,h);ctx.lineTo(80,h*0.35);ctx.lineTo(180,h*0.6);ctx.lineTo(260,h*0.22);ctx.lineTo(360,h*0.5);ctx.lineTo(440,h*0.14);ctx.lineTo(w,h*0.42);ctx.lineTo(w,h);ctx.closePath();ctx.fill();ctx.fillStyle='#e2e8f0';ctx.beginPath();ctx.moveTo(220,h*0.3);ctx.lineTo(260,h*0.22);ctx.lineTo(300,h*0.3);ctx.closePath();ctx.fill();ctx.beginPath();ctx.moveTo(400,h*0.22);ctx.lineTo(440,h*0.14);ctx.lineTo(480,h*0.22);ctx.closePath();ctx.fill();ctx.fillStyle='#4ade80';ctx.fillRect(0,h*0.72,w,h*0.28);}},
-  { name: 'Rainbow', draw: (ctx, w, h) => { const g=ctx.createLinearGradient(0,0,0,h);g.addColorStop(0,'#bfdbfe');g.addColorStop(1,'#dbeafe');ctx.fillStyle=g;ctx.fillRect(0,0,w,h);['#ef4444','#f97316','#fbbf24','#4ade80','#60a5fa','#818cf8','#c084fc'].forEach((col,i)=>{ctx.strokeStyle=col;ctx.lineWidth=7;ctx.beginPath();ctx.arc(w/2,h+30,(7-i)*42+20,Math.PI,Math.PI*2);ctx.stroke();});ctx.fillStyle='#22c55e';ctx.fillRect(0,h*0.8,w,h*0.2);for(let i=0;i<3;i++){ctx.fillStyle='#fff';ctx.globalAlpha=0.85;ctx.beginPath();ctx.ellipse(60+i*190,64,44,16,0,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.ellipse(84+i*190,52,34,16,0,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;}}},
-  { name: 'Graveyard', draw: (ctx, w, h) => { const g=ctx.createLinearGradient(0,0,0,h);g.addColorStop(0,'#1a1a2e');g.addColorStop(1,'#0d1117');ctx.fillStyle=g;ctx.fillRect(0,0,w,h);ctx.fillStyle='#fff';for(let i=0;i<60;i++){ctx.globalAlpha=0.05+i%3*0.06;ctx.beginPath();ctx.arc((i*73+17)%w,(i*41+29)%(h*0.7),0.8+i%2,0,Math.PI*2);ctx.fill();}ctx.globalAlpha=1;ctx.fillStyle='#14532d';ctx.fillRect(0,h*0.72,w,h*0.28);for(let i=0;i<7;i++){const gx=30+i*72;ctx.fillStyle='#78716c';ctx.beginPath();ctx.rect(gx-10,h*0.52,20,34);ctx.fill();ctx.beginPath();ctx.arc(gx,h*0.52,10,Math.PI,Math.PI*2);ctx.fill();ctx.fillStyle='#57534e';ctx.fillRect(gx-2,h*0.57,4,10);ctx.fillRect(gx-7,h*0.61,14,4);}}},
-];
 
 function findSpriteTemplate(name) {
   for (const cat of SPRITE_LIBRARY) {
@@ -1230,6 +1219,29 @@ function renderSvgToImage(svgString, w, h) {
     img.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
     img.src = url;
   });
+}
+
+/** Load (or read from cache) the bitmap used to paint a sprite on the stage canvas. */
+async function resolveSpriteStageImage(sprite, cache) {
+  if (sprite.customImage) {
+    const cacheKey = `__custom__${sprite.id}_${sprite.currentCostumeIndex ?? 0}_${sprite.color || ''}_${sprite.w}_${sprite.h}`;
+    if (!cache[cacheKey]) {
+      const cImg = new Image();
+      await new Promise((r) => { cImg.onload = r; cImg.onerror = r; cImg.src = sprite.customImage; });
+      cache[cacheKey] = cImg;
+    }
+    const img = cache[cacheKey];
+    return img?.naturalWidth > 0 ? img : null;
+  }
+  const tpl = findSpriteTemplate(sprite.svgKey);
+  if (!tpl) return null;
+  const svgStr = tpl.svg(sprite.color || tpl.color);
+  const cacheKey = sprite.svgKey + (sprite.color || '') + sprite.w + sprite.h;
+  if (!cache[cacheKey]) {
+    cache[cacheKey] = await renderSvgToImage(svgStr, sprite.w, sprite.h);
+  }
+  const img = cache[cacheKey];
+  return img?.naturalWidth > 0 ? img : null;
 }
 
 /** Stage size for bitmap costumes — keeps aspect ratio (avoids squishing tall sprites). */
@@ -1263,26 +1275,20 @@ function SpriteThumb({ svgKey, color, customImage, size = 32 }) {
         style={{
           width: size,
           height: size,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
           flexShrink: 0,
-          overflow: 'visible',
+          overflow: 'hidden',
         }}
       >
         <img
           src={customImage}
           alt=""
           style={{
-            maxWidth: size,
-            maxHeight: size,
-            width: 'auto',
-            height: 'auto',
+            width: '100%',
+            height: '100%',
             objectFit: 'contain',
-            objectPosition: 'center bottom',
+            objectPosition: 'center',
             imageRendering: 'high-quality',
             display: 'block',
-            flexShrink: 0,
           }}
           onError={() => setImgFailed(true)}
         />
@@ -1303,7 +1309,7 @@ const defaultSprites = [
     name: 'Adventurer',
     svgKey: 'Adventurer',
     category: 'People',
-    customImage: '/assets/characters/chibi/chibi_adventurer.png?v=20',
+    customImage: '/assets/characters/chibi/chibi_adventurer.png?v=21',
     x: STAGE_W / 2 - 43,
     y: STAGE_H / 2 - 81,
     w: 86,
@@ -1514,6 +1520,12 @@ export default function GameBuilder() {
       if (!saved || LEGACY_DEFAULT_BACKDROPS.has(saved)) {
         localStorage.setItem('cv_gamebuilder_bg', DEFAULT_STAGE_BACKDROP);
         setBackground(DEFAULT_STAGE_BACKDROP);
+        return;
+      }
+      const resolved = resolveStageBackdropName(saved);
+      if (resolved !== saved && findStageBackdrop(resolved)) {
+        localStorage.setItem('cv_gamebuilder_bg', resolved);
+        setBackground(resolved);
       }
     } catch {
       setBackground(DEFAULT_STAGE_BACKDROP);
@@ -1576,7 +1588,7 @@ export default function GameBuilder() {
   const [customBackgrounds, setCustomBackgrounds] = useState([]);
 
   const getBackdropNames = useCallback(() => [
-    ...BACKGROUNDS.map((b) => b.name),
+    ...STAGE_BACKDROP_NAMES,
     ...(customBackgrounds || []).map((b) => b.name),
   ], [customBackgrounds]);
 
@@ -1676,7 +1688,7 @@ export default function GameBuilder() {
     setTimeout(() => setSavedFlash(false), 1800);
   };
 
-  const exportGame = () => {
+  const exportGame = async () => {
     setExporting(true);
     try {
       // Serialize sprite SVGs as base64 data URLs
@@ -1697,30 +1709,28 @@ export default function GameBuilder() {
         return { id: s.id, name: s.name, x: s.x, y: s.y, w: s.w || 48, h: s.h || 48, rotation: s.rotation || 0, dataUrl, moveBlocks };
       });
 
-      // Build background drawing code string for the exported HTML
-      const bgMap = {
-        Sky: `var g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#87CEEB');g.addColorStop(1,'#e0f2fe');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);ctx.fillStyle='#22c55e';ctx.fillRect(0,H*.75,W,H*.25);for(var i=0;i<3;i++){ctx.fillStyle='#fff';ctx.beginPath();ctx.ellipse(80+i*160,60+i*20,50,18,0,0,Math.PI*2);ctx.fill();}`,
-        Space: `var g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#0c0c2e');g.addColorStop(1,'#1a1a4e');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);ctx.fillStyle='#fff';for(var i=0;i<80;i++){var x=(i*73+17)%W,y=(i*41+29)%H,r=((i%3)+0.5);ctx.globalAlpha=0.5;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();}ctx.globalAlpha=1;`,
-        City: `var g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#1e293b');g.addColorStop(0.6,'#334155');g.addColorStop(1,'#475569');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);var bldgs=[[20,180],[60,240],[120,160],[170,280],[240,200],[300,260],[360,180],[400,220],[440,300]];bldgs.forEach(function(b){ctx.fillStyle='#1e293b';ctx.fillRect(b[0],H-b[1],50,b[1]);});`,
-        Ocean: `var g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#bae6fd');g.addColorStop(0.4,'#38bdf8');g.addColorStop(1,'#0369a1');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);`,
-        Forest: `var g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#bbf7d0');g.addColorStop(1,'#4ade80');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);`,
-        Desert: `var g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#fed7aa');g.addColorStop(0.5,'#fdba74');g.addColorStop(1,'#c2410c');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);`,
-        Underwater: `var g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#0ea5e9');g.addColorStop(1,'#0c4a6e');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);`,
-        White: `ctx.fillStyle='#ffffff';ctx.fillRect(0,0,W,H);`,
-        Sunset: `var g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#1e1b4b');g.addColorStop(0.3,'#7c3aed');g.addColorStop(0.5,'#f97316');g.addColorStop(0.7,'#fbbf24');g.addColorStop(1,'#fde68a');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);`,
-        Snow: `var g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#e0f2fe');g.addColorStop(1,'#f0f9ff');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);ctx.fillStyle='#fff';ctx.fillRect(0,H*.7,W,H*.3);`,
-        Jungle: `var g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#064e3b');g.addColorStop(1,'#047857');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);`,
-        Cave: `var g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#1c1917');g.addColorStop(1,'#1c1917');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);`,
-        Lava: `var g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#450a0a');g.addColorStop(0.5,'#7f1d1d');g.addColorStop(1,'#ef4444');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);`,
-        Candy: `ctx.fillStyle='#fce7f3';ctx.fillRect(0,0,W,H);`,
-        Dungeon: `ctx.fillStyle='#1c1917';ctx.fillRect(0,0,W,H);`,
-        Kingdom: `var g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#1e3a5f');g.addColorStop(1,'#1e293b');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);`,
-        'Neon City': `ctx.fillStyle='#030712';ctx.fillRect(0,0,W,H);`,
-        Mountain: `var g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#bfdbfe');g.addColorStop(1,'#38bdf8');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);ctx.fillStyle='#64748b';ctx.fillRect(0,H*.5,W,H*.5);`,
-        Rainbow: `var g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#bfdbfe');g.addColorStop(1,'#dbeafe');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);`,
-        Graveyard: `var g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#1a1a2e');g.addColorStop(1,'#0d1117');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);ctx.fillStyle='#14532d';ctx.fillRect(0,H*.72,W,H*.28);`,
-      };
-      const bgCode = bgMap[background] || bgMap.White;
+      const whiteBgCode = `ctx.fillStyle='#ffffff';ctx.fillRect(0,0,W,H);`;
+      let bgCode = whiteBgCode;
+      const customBg = customBackgrounds.find((b) => b.name === background);
+      const stageBg = findStageBackdrop(background);
+      let bgDataUrl = customBg?.dataUrl || null;
+      if (!bgDataUrl && stageBg?.image) {
+        try {
+          const resp = await fetch(stageBg.image);
+          if (resp.ok) {
+            const blob = await resp.blob();
+            bgDataUrl = await new Promise((resolve) => {
+              const reader = new FileReader();
+              reader.onload = () => resolve(reader.result);
+              reader.onerror = () => resolve(null);
+              reader.readAsDataURL(blob);
+            });
+          }
+        } catch { /* keep white */ }
+      }
+      if (bgDataUrl) {
+        bgCode = `ctx.fillStyle='#ffffff';ctx.fillRect(0,0,W,H);if(__bgImg.complete&&__bgImg.naturalWidth)ctx.drawImage(__bgImg,0,0,W,H);`;
+      }
 
       const htmlString = `<!DOCTYPE html>
 <html lang="en">
@@ -1766,6 +1776,7 @@ export default function GameBuilder() {
 var W=480,H=360;
 var canvas=document.getElementById('c');
 var ctx=canvas.getContext('2d');
+${bgDataUrl ? `var __bgImg=new Image();__bgImg.src='${String(bgDataUrl).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}';` : ''}
 var score=0;
 var running=false;
 var keys={};
@@ -2076,8 +2087,19 @@ loadImages(function(){
           ctx.drawImage(bgImg, 0, 0, STAGE_W, STAGE_H);
         }
       } else {
-        const bg = BACKGROUNDS.find(b => b.name === activeBgName);
-        if (bg) bg.draw(ctx, STAGE_W, STAGE_H);
+        const bg = findStageBackdrop(activeBgName);
+        if (bg?.image) {
+          const bgKey = '__stagebg__' + bg.name;
+          if (!imgCacheRef.current[bgKey]) {
+            const bgImg = new Image();
+            await new Promise((r) => { bgImg.onload = r; bgImg.onerror = r; bgImg.src = bg.image; });
+            imgCacheRef.current[bgKey] = bgImg;
+          }
+          const bgImg = imgCacheRef.current[bgKey];
+          if (bgImg?.complete && bgImg.naturalWidth) {
+            ctx.drawImage(bgImg, 0, 0, STAGE_W, STAGE_H);
+          }
+        }
       }
     }
 
@@ -2154,52 +2176,41 @@ loadImages(function(){
     }
 
     const sorted = [...spritesToDraw].sort((a, b) => (a.layer || 0) - (b.layer || 0));
-    for (const sprite of sorted) {
-      if (frameId !== drawFrameRef.current) break;
-      if (!sprite.visible) continue;
+    const visibleSprites = sorted.filter((s) => s.visible !== false);
+    const spriteImages = await Promise.all(
+      visibleSprites.map((s) => resolveSpriteStageImage(s, imgCacheRef.current)),
+    );
+    if (frameId !== drawFrameRef.current) {
+      ctx.restore();
+      return;
+    }
 
-      let img;
-      if (sprite.customImage) {
-        const cacheKey = `__custom__${sprite.id}_${sprite.currentCostumeIndex ?? 0}_${sprite.color || ''}_${sprite.w}_${sprite.h}`;
-        if (!imgCacheRef.current[cacheKey]) {
-          const cImg = new Image();
-          await new Promise(r => { cImg.onload = r; cImg.onerror = r; cImg.src = sprite.customImage; });
-          imgCacheRef.current[cacheKey] = cImg;
-        }
-        img = imgCacheRef.current[cacheKey];
-      } else {
-        const tpl = findSpriteTemplate(sprite.svgKey);
-        if (!tpl) continue;
-        const svgStr = tpl.svg(sprite.color || tpl.color);
-        const cacheKey = sprite.svgKey + (sprite.color || '') + sprite.w + sprite.h;
-        if (!imgCacheRef.current[cacheKey]) {
-          imgCacheRef.current[cacheKey] = await renderSvgToImage(svgStr, sprite.w, sprite.h);
-        }
-        img = imgCacheRef.current[cacheKey];
+    for (let i = 0; i < visibleSprites.length; i++) {
+      const sprite = visibleSprites[i];
+      const img = spriteImages[i];
+      if (!img) continue;
+
+      const effects = sprite.effects || {};
+      const ghost = Math.max(0, Math.min(100, effects.ghost || 0));
+      ctx.save();
+      ctx.translate(sprite.x + sprite.w / 2, sprite.y + sprite.h / 2);
+      if (playing) applyCanvasRotationStyle(ctx, sprite);
+      ctx.filter = buildEffectFilter(effects);
+      const prevAlpha = ctx.globalAlpha;
+      if (ghost > 0) ctx.globalAlpha = prevAlpha * (1 - ghost / 100);
+      const iw = img.naturalWidth || sprite.w;
+      const ih = img.naturalHeight || sprite.h;
+      let dw = sprite.w;
+      let dh = sprite.h;
+      if (sprite.customImage && iw > 0 && ih > 0) {
+        const fit = Math.min(sprite.w / iw, sprite.h / ih);
+        dw = iw * fit;
+        dh = ih * fit;
       }
-      if (img) {
-        const effects = sprite.effects || {};
-        const ghost = Math.max(0, Math.min(100, effects.ghost || 0));
-        ctx.save();
-        ctx.translate(sprite.x + sprite.w / 2, sprite.y + sprite.h / 2);
-        if (playing) applyCanvasRotationStyle(ctx, sprite);
-        ctx.filter = buildEffectFilter(effects);
-        const prevAlpha = ctx.globalAlpha;
-        if (ghost > 0) ctx.globalAlpha = prevAlpha * (1 - ghost / 100);
-        const iw = img.naturalWidth || sprite.w;
-        const ih = img.naturalHeight || sprite.h;
-        let dw = sprite.w;
-        let dh = sprite.h;
-        if (sprite.customImage && iw > 0 && ih > 0) {
-          const fit = Math.min(sprite.w / iw, sprite.h / ih);
-          dw = iw * fit;
-          dh = ih * fit;
-        }
-        ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh);
-        ctx.globalAlpha = prevAlpha;
-        ctx.filter = 'none';
-        ctx.restore();
-      }
+      ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh);
+      ctx.globalAlpha = prevAlpha;
+      ctx.filter = 'none';
+      ctx.restore();
 
       // Selection box and resize handles
       if (selected === sprite.id && !isPlaying) {
@@ -2251,8 +2262,8 @@ loadImages(function(){
 
   // Editor only — during Play the game loop draws playSpritesRef (with rotation style applied)
   useEffect(() => {
-    if (!isPlaying) draw(sprites);
-  }, [sprites, draw, isPlaying]);
+    if (!isPlaying) void drawRef.current?.(sprites);
+  }, [sprites, isPlaying, selected, background, customBackgrounds, stageFs]);
 
   // Initialize camera system for stage-based rendering (NOT fullscreen)
   useEffect(() => {
@@ -3374,7 +3385,7 @@ loadImages(function(){
           break;
         }
         case 'looks-backdrop':
-          applyPlayBackdropRef.current?.(p.backdrop ?? p.BACKDROP ?? 'Sky');
+          applyPlayBackdropRef.current?.(p.backdrop ?? p.BACKDROP ?? DEFAULT_STAGE_BACKDROP);
           break;
         case 'looks-next-backdrop': {
           const names = [
@@ -4882,8 +4893,6 @@ loadImages(function(){
             )}
             <canvas
               ref={canvasRef}
-              width={STAGE_W}
-              height={STAGE_H}
               onMouseDown={handleCanvasMouseDown}
               onMouseMove={handleCanvasMouseMove}
               onMouseUp={handleCanvasMouseUp}
@@ -4982,7 +4991,7 @@ loadImages(function(){
                 display: 'flex', gap: 4, padding: '6px 8px', flexWrap: 'wrap',
                 borderBottom: '1px solid var(--border-color)', background: 'var(--bg-primary)',
               }}>
-                {BACKGROUNDS.map(bg => (
+                {STAGE_BACKDROPS.map(bg => (
                   <button key={bg.name} onClick={() => pickBackdrop(bg.name)}
                     style={{
                       padding: '3px 8px', borderRadius: 4, border: background === bg.name ? '2px solid var(--accent-primary)' : '1px solid var(--border-color)',

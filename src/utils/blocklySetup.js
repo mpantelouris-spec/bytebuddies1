@@ -107,7 +107,7 @@ export const defineBytebuddiesBlocks = () => {
             .appendField(new Blockly.FieldDropdown([
               ["random position", "random"],
               ["mouse-pointer", "mouse"],
-              ["Sprite1", "sprite"]
+              ["Sprite1", "Sprite1"]
             ]), "TARGET");
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
@@ -141,7 +141,7 @@ export const defineBytebuddiesBlocks = () => {
             .appendField(new Blockly.FieldDropdown([
               ["random position", "random"],
               ["mouse-pointer", "mouse"],
-              ["Sprite1", "sprite"]
+              ["Sprite1", "Sprite1"]
             ]), "TARGET");
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
@@ -187,7 +187,7 @@ export const defineBytebuddiesBlocks = () => {
             .appendField("point towards")
             .appendField(new Blockly.FieldDropdown([
               ["mouse-pointer", "mouse"],
-              ["Sprite1", "sprite"]
+              ["Sprite1", "Sprite1"]
             ]), "TARGET");
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);

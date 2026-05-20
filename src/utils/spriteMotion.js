@@ -505,13 +505,15 @@ export function ifOnEdgeBounce(sprite) {
     lx = maxX;
     bounced = true;
   }
-  if (touchT || ly < minY - eps) {
-    dir = normalizeDirection(180 - dir);
-    ly = minY;
-    bounced = true;
-  } else if (touchB || ly > maxY + eps) {
+  // touchT = sprite.y near 0 (canvas top) = logical maxY; clamp to maxY to stay at top edge
+  // touchB = sprite.y near STAGE_H (canvas bottom) = logical minY; clamp to minY to stay at bottom edge
+  if (touchT || ly > maxY + eps) {
     dir = normalizeDirection(180 - dir);
     ly = maxY;
+    bounced = true;
+  } else if (touchB || ly < minY - eps) {
+    dir = normalizeDirection(180 - dir);
+    ly = minY;
     bounced = true;
   }
 
