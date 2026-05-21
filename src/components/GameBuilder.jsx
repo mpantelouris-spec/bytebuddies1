@@ -5005,6 +5005,8 @@ loadImages(function(){
             )}
             <canvas
               ref={canvasRef}
+              width={STAGE_W}
+              height={STAGE_H}
               onMouseDown={handleCanvasMouseDown}
               onMouseMove={handleCanvasMouseMove}
               onMouseUp={handleCanvasMouseUp}
@@ -5017,6 +5019,7 @@ loadImages(function(){
                 width: stageFs ? '100%' : '100%',
                 height: stageFs ? '100%' : 'auto',
                 maxWidth: stageFs ? '100%' : 360,
+                aspectRatio: stageFs ? 'unset' : `${STAGE_W} / ${STAGE_H}`,
                 display: 'block',
                 boxShadow: stageFs ? 'none' : '0 1px 4px rgba(0,0,0,0.08)',
               }}
