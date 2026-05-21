@@ -229,10 +229,13 @@ body {
   display: flex;
   gap: 2px;
   margin-left: 16px;
-  overflow: hidden;
-  flex-shrink: 1;
+  overflow-x: auto;
+  overflow-y: visible;
+  flex: 1;
   min-width: 0;
+  scrollbar-width: none;
 }
+.topbar-nav::-webkit-scrollbar { display: none; }
 
 .topbar-nav-btn {
   padding: 6px 9px;
@@ -501,7 +504,7 @@ body {
 
 .sprite-library-grid {
   flex: 1;
-  min-height: 120px;
+  min-height: 0;
   min-width: 0;
   overflow: auto;
   padding: 14px;

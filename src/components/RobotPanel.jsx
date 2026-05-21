@@ -226,7 +226,7 @@ const ROBOT_COMMANDS = [
   { cat: 'Lights', id: 'headlight_l',  icon: '◀️',  label: 'Left Headlight', color: '#f59e0b', params: [{ key: 'r', label: 'R', default: '255', type: 'number' }, { key: 'g', label: 'G', default: '0', type: 'number' }, { key: 'b', label: 'B', default: '0', type: 'number' }] },
   { cat: 'Lights', id: 'headlight_r',  icon: '▶️',  label: 'Right Headlight',color: '#f59e0b', params: [{ key: 'r', label: 'R', default: '0', type: 'number' }, { key: 'g', label: 'G', default: '0', type: 'number' }, { key: 'b', label: 'B', default: '255', type: 'number' }] },
   { cat: 'Lights', id: 'disp_pixel',   icon: '🔲',  label: 'Set Pixel',      color: '#f59e0b', params: [{ key: 'x', label: 'x', default: '2', type: 'number' }, { key: 'y', label: 'y', default: '2', type: 'number' }, { key: 'bright', label: 'brightness', default: '9', type: 'number' }] },
-  { cat: 'Lights', id: 'disp_image',   icon: '🖼️',  label: 'Show Image',     color: '#f59e0b', params: [{ key: 'icon', label: 'icon', default: 'HAPPY', type: 'select', options: ['HAPPY','SAD','HEART','SURPRISED','ANGRY','YES','NO','ARROW_N','ARROW_S','ARROW_E','ARROW_W','ASLEEP','CONFUSED','SKULL','DIAMOND','SNAKE','RABBIT','COW','DUCK','TORTOISE','BUTTERFLY','STICKFIGURE','GHOST','SWORD','TARGET','PITCHFORK','PACMAN','ROLLERSKATE','HOUSE','TSHIRT','ROLLERSKATE','CHESSBOARD','XMAS','UMBRELLA'] }] },
+  { cat: 'Lights', id: 'disp_image',   icon: '🖼️',  label: 'Show Image',     color: '#f59e0b', params: [{ key: 'icon', label: 'icon', default: 'HAPPY', type: 'select', options: ['HAPPY','SAD','HEART','SURPRISED','ANGRY','ASLEEP','CONFUSED','YES','NO','ARROW_N','ARROW_S','ARROW_E','ARROW_W','SKULL','DIAMOND','SNAKE','RABBIT','COW','DUCK','TORTOISE','BUTTERFLY','STICKFIGURE','GHOST','SWORD','TARGET','PITCHFORK','PACMAN','ROLLERSKATE','HOUSE','TSHIRT','CHESSBOARD','XMAS','UMBRELLA'], labels: ['😊 Happy','😢 Sad','❤️ Heart','😲 Surprised','😠 Angry','😴 Asleep','😕 Confused','✅ Yes','❌ No','⬆️ Arrow Up','⬇️ Arrow Down','➡️ Arrow Right','⬅️ Arrow Left','💀 Skull','💎 Diamond','🐍 Snake','🐰 Rabbit','🐮 Cow','🦆 Duck','🐢 Tortoise','🦋 Butterfly','🧍 Stick Figure','👻 Ghost','⚔️ Sword','🎯 Target','🔱 Pitchfork','👾 Pac-Man','⛸️ Rollerskate','🏠 House','👕 T-Shirt','♟️ Chessboard','🎄 Xmas','☂️ Umbrella'] }] },
   { cat: 'Lights', id: 'disp_scroll',  icon: '📜',  label: 'Scroll Text',    color: '#f59e0b', params: [{ key: 'text', label: 'text', default: 'Hello!', type: 'text' }] },
   { cat: 'Lights', id: 'disp_show',    icon: '📟',  label: 'Show Value',     color: '#f59e0b', params: [{ key: 'val', label: 'value', default: '42', type: 'text' }] },
   { cat: 'Lights', id: 'disp_clear',   icon: '🧹',  label: 'Clear Screen',   color: '#f59e0b', params: [] },
@@ -2684,6 +2684,7 @@ export default function RobotPanel() {
   const rawReplDoneRef = useRef(null); // resolves when micro:bit raw REPL sends \x04\x04 completion
   const serialSniffRef = useRef(null); // { pattern, resolve } — used for firmware detection
   const bridgeModeRef  = useRef(false); // true when USB is connected to pxt bridge firmware (not MicroPython)
+  const bleKeepaliveRef = useRef(null); // interval id for BLE GATT keepalive pings
 
   // BLE — Nordic UART (NUS). ByteBuddies firmware uses B5B3; MakeCode uses B5A3 — support both.
   const BLE_NUS_VARIANTS = [
@@ -2814,6 +2815,8 @@ export default function RobotPanel() {
       addTerminal(`📶 Signal ${formatSignalBars(sig.bars)} ${sig.label}`, 'info');
 
       device.addEventListener('gattserverdisconnected', () => {
+        clearInterval(bleKeepaliveRef.current);
+        bleKeepaliveRef.current = null;
         btUartRef.current?.disconnect?.();
         btUartRef.current = null;
         btWriteCharRef.current = null;
@@ -2873,6 +2876,20 @@ export default function RobotPanel() {
       setConnectionKind('bluetooth');
       setFirmwareOk(true);
       firmwareOkRef.current = true;
+
+      // Keep the GATT connection alive — OS/browser will drop it after ~30s of inactivity.
+      clearInterval(bleKeepaliveRef.current);
+      bleKeepaliveRef.current = setInterval(async () => {
+        if (!connectedRef.current) { clearInterval(bleKeepaliveRef.current); return; }
+        try {
+          if (btUartServiceRef.current) {
+            await btUartServiceRef.current.sendText('\n');
+          } else if (btWriteCharRef.current) {
+            await btWriteCharRef.current.writeValueWithoutResponse(new Uint8Array([0x00]));
+          }
+        } catch (_) { /* ignore — disconnect event will fire if link is truly gone */ }
+      }, 20000);
+
       addTerminal('🤖 Bluetooth ready — press ▶ Run', 'success');
     } catch (e) {
       if (e.name === 'NotFoundError') {
@@ -3079,6 +3096,8 @@ export default function RobotPanel() {
   };
 
   const disconnect = async () => {
+    clearInterval(bleKeepaliveRef.current);
+    bleKeepaliveRef.current = null;
     if (connectionTypeRef.current === 'bluetooth') {
       try { btUartRef.current?.disconnect(); } catch (_) {}
       btUartRef.current = null;
@@ -3981,6 +4000,23 @@ export default function RobotPanel() {
           }
         }
         if (!mapped) return;
+
+        // bb_robot_generic blocks store values in V1/V2/V3 fields — read those directly
+        // rather than falling through to the named-field handlers below (which target old block types).
+        if (blocklyType === 'bb_robot_generic') {
+          const defs = Array.isArray(dataObj?.params) ? dataObj.params : [];
+          const parsedParams = {};
+          defs.forEach((def, idx) => {
+            const k = String(def?.key || '').trim();
+            if (!k) return;
+            const rawVal = f[`V${idx + 1}`];
+            parsedParams[k] = String(rawVal ?? def?.default ?? '');
+          });
+          const b = make(mapped, parsedParams);
+          if (b) next.push(b);
+          return;
+        }
+
         if (mapped === 'forward') {
           const b = make('forward', { amount: String(f.STEPS || 80) });
           if (b) next.push(b);
@@ -4045,19 +4081,6 @@ export default function RobotPanel() {
         }
         if (mapped === 'show_icon') {
           const b = make('show_icon', { icon: String(f.ICON || 'HAPPY') });
-          if (b) next.push(b);
-          return;
-        }
-        if (blocklyType === 'bb_robot_generic') {
-          const defs = Array.isArray(dataObj?.params) ? dataObj.params : [];
-          const parsedParams = {};
-          defs.forEach((def, idx) => {
-            const k = String(def?.key || '').trim();
-            if (!k) return;
-            const rawVal = f[`V${idx + 1}`];
-            parsedParams[k] = String(rawVal ?? def?.default ?? '');
-          });
-          const b = make(mapped, parsedParams);
           if (b) next.push(b);
           return;
         }
@@ -4277,7 +4300,10 @@ export default function RobotPanel() {
   return (
     <div style={s.panel}>
       {/* Keyframe for active block pulse animation */}
-      <style>{`@keyframes cv-running-pulse { from { opacity: 1; box-shadow: 0 0 6px #fbbf24; } to { opacity: 0.7; box-shadow: 0 0 14px #fbbf24; } }`}</style>
+      <style>{`
+        @keyframes cv-running-pulse { from { opacity: 1; box-shadow: 0 0 6px #fbbf24; } to { opacity: 0.7; box-shadow: 0 0 14px #fbbf24; } }
+        @keyframes lh-scroll { 0% { transform: translateX(60%); } 100% { transform: translateX(-110%); } }
+      `}</style>
       {/* Header */}
       <div style={s.header}>
         <span style={{ fontSize: 28 }}>🤖</span>
@@ -4575,7 +4601,7 @@ export default function RobotPanel() {
                         fontWeight: 700,
                       }}
                     >
-                      {String(p.default ?? '')}
+                      {p.labels ? (p.labels[p.options?.indexOf(p.default)] ?? String(p.default ?? '')) : String(p.default ?? '')}
                       {p.type === 'select' ? '▾' : ''}
                     </span>
                   ))}
@@ -4887,7 +4913,7 @@ export default function RobotPanel() {
                             color: '#575E75',
                           }}
                         >
-                          {p.options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                          {p.options.map((opt, i) => <option key={opt} value={opt}>{p.labels ? p.labels[i] : opt}</option>)}
                         </select>
                       ) : (
                         <input

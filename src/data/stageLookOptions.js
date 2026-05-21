@@ -1,26 +1,7 @@
-/** Stage backdrop names (must match GameBuilder BACKGROUNDS). */
-export const STAGE_BACKDROP_NAMES = [
-  'White',
-  'Sky',
-  'Space',
-  'City',
-  'Ocean',
-  'Forest',
-  'Desert',
-  'Underwater',
-  'Sunset',
-  'Snow',
-  'Jungle',
-  'Cave',
-  'Lava',
-  'Candy',
-  'Dungeon',
-  'Kingdom',
-  'Neon City',
-  'Mountain',
-  'Rainbow',
-  'Graveyard',
-];
+/** Stage backdrop names (must match GameBuilder stage backdrops). */
+export { STAGE_BACKDROP_NAMES, STAGE_BACKDROPS, findStageBackdrop } from './stageBackdrops';
+
+import { STAGE_BACKDROP_NAMES } from './stageBackdrops';
 
 /** Default costume slots (Scratch-style names + 1-based numbers). */
 export const COSTUME_OPTION_VALUES = [

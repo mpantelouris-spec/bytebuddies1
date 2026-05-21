@@ -117,8 +117,6 @@ export default function TopBar({ currentPage, onNavigate, onExport, onAuth }) {
         )}
       </div>
 
-      <div className="topbar-spacer" />
-
       <div className="topbar-actions" style={{ flexShrink: 0 }}>
         <div className="xp-bar" title={`${user.xp} / ${user.xpToNext} XP`} style={{ gap: 4 }}>
           <span style={{ fontSize: 11, whiteSpace: 'nowrap' }}>⚡ Lv.{user.level}</span>
