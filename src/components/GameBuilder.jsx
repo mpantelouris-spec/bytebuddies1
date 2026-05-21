@@ -1255,7 +1255,7 @@ function fitSpriteDimensions(naturalW, naturalH, maxDim = 160) {
 }
 
 function loadImageDimensions(src, options = {}) {
-  const maxDim = options.maxDim ?? (String(src).includes('/chibi/') ? 360 : 240);
+  const maxDim = options.maxDim ?? (String(src).includes('/chibi/') ? 160 : 120);
   return new Promise((resolve) => {
     const img = new Image();
     img.onload = () => resolve(fitSpriteDimensions(img.naturalWidth, img.naturalHeight, maxDim));
@@ -1356,8 +1356,25 @@ function bumpTinyRasterSprites(sprites) {
   });
 }
 
+/** Shrink sprites that are unreasonably large (e.g. saved when maxDim was 360). */
+function capOversizedSprites(sprites) {
+  const MAX_W = Math.round(STAGE_W * 0.45); // ~216px
+  const MAX_H = Math.round(STAGE_H * 0.60); // ~216px
+  return (sprites || []).map((s) => {
+    if (!s.customImage) return s;
+    if (s.w <= MAX_W && s.h <= MAX_H) return s;
+    const scale = Math.min(MAX_W / s.w, MAX_H / s.h);
+    const nw = Math.max(16, Math.round(s.w * scale));
+    const nh = Math.max(16, Math.round(s.h * scale));
+    return { ...s, w: nw, h: nh,
+      x: Math.round(Math.max(0, Math.min(STAGE_W - nw, s.x + (s.w - nw) / 2))),
+      y: Math.round(Math.max(0, Math.min(STAGE_H - nh, s.y + (s.h - nh) / 2))),
+    };
+  });
+}
+
 function normalizeStartupSprites(sprites) {
-  const cleaned = bumpTinyRasterSprites(stripStarterAutoScripts(sprites || []));
+  const cleaned = capOversizedSprites(bumpTinyRasterSprites(stripStarterAutoScripts(sprites || [])));
   if (shouldResetToAdventurerOnly(cleaned)) return defaultSprites;
   return cleaned;
 }
@@ -4936,10 +4953,10 @@ loadImages(function(){
 
           {/* Stage */}
           <div ref={stageFsRef} data-bb-game-stage style={{
-            padding: stageFs ? 0 : 8,
+            padding: 0,
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
             position: 'relative',
-            background: '#ffffff',
+            background: 'var(--bg-secondary)',
             ...(stageFs ? { width: '100vw', height: '100vh' } : {}),
           }}>
             {/* Fullscreen toggle */}
@@ -5012,16 +5029,13 @@ loadImages(function(){
               onMouseUp={handleCanvasMouseUp}
               onMouseLeave={handleCanvasMouseUp}
               style={{
-                borderRadius: stageFs ? 0 : 8,
-                border: stageFs ? 'none' : '1px solid #e5e7eb',
+                borderRadius: stageFs ? 0 : 6,
+                border: 'none',
                 backgroundColor: '#ffffff',
                 cursor: draggingSprite || playDragSpriteRef.current ? 'grabbing' : 'default',
-                width: stageFs ? '100%' : '100%',
-                height: stageFs ? '100%' : 'auto',
-                maxWidth: stageFs ? '100%' : 360,
-                aspectRatio: stageFs ? 'unset' : `${STAGE_W} / ${STAGE_H}`,
+                width: stageFs ? '100%' : `${STAGE_W * 0.75}px`,
+                height: stageFs ? '100%' : `${STAGE_H * 0.75}px`,
                 display: 'block',
-                boxShadow: stageFs ? 'none' : '0 1px 4px rgba(0,0,0,0.08)',
               }}
             />
             {askDialog && isPlaying && (
