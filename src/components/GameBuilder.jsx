@@ -5202,7 +5202,7 @@ loadImages(function(){
           onClick={(e) => { if (e.target === e.currentTarget) setShowLibrary(false); }}>
           <div className="sprite-library-modal" onClick={(e) => e.stopPropagation()}>
             <div className="sprite-library-header">
-              <span style={{ fontWeight: 700, fontSize: 15 }}>🎭 Choose a Sprite</span>
+              <span style={{ fontWeight: 700, fontSize: 15 }}>{libCategory === '__backgrounds__' ? '🌄 Choose a Background' : '🎭 Choose a Sprite'}</span>
               <button onClick={() => setShowLibrary(false)} style={{
                 width: 26, height: 26, borderRadius: '50%', border: 'none', background: 'var(--bg-primary)',
                 color: 'var(--text-primary)', fontSize: 15, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -5241,6 +5241,22 @@ loadImages(function(){
                     {cat.category}
                   </button>
                 ))}
+                <button
+                  type="button"
+                  onClick={() => setLibCategory('__backgrounds__')}
+                  style={{
+                    padding: '4px 10px',
+                    borderRadius: 16,
+                    border: libCategory === '__backgrounds__' ? 'none' : '1px dashed var(--accent-primary)',
+                    fontSize: 11,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    background: libCategory === '__backgrounds__' ? 'var(--accent-primary)' : 'transparent',
+                    color: libCategory === '__backgrounds__' ? '#fff' : 'var(--accent-primary)',
+                  }}
+                >
+                  🌄 Backgrounds
+                </button>
               </div>
               <button
                 type="button"
@@ -5251,29 +5267,58 @@ loadImages(function(){
                 ›
               </button>
             </div>
-            <div className="sprite-library-grid">
-              {SPRITE_LIBRARY.find(c => c.category === libCategory)?.items.map(item => (
-                <button key={item.name} onClick={() => addSprite(item, libCategory)}
-                  style={{
-                    padding: 10, borderRadius: 10, border: '1px solid var(--border-color)',
-                    background: 'var(--bg-primary)', cursor: 'pointer',
-                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
-                    transition: 'all 0.15s', overflow: 'visible',
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--accent-primary)'; e.currentTarget.style.transform = 'scale(1.05)'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-color)'; e.currentTarget.style.transform = 'scale(1)'; }}
-                >
-                  <SpriteThumb svgKey={item.name} customImage={item.customImage} size={38} />
-                  <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-primary)' }}>{item.name}</span>
-                </button>
-              ))}
-            </div>
+            {libCategory === '__backgrounds__' ? (
+              <div className="backdrop-library-grid">
+                {STAGE_BACKDROPS.map(bg => (
+                  <button key={bg.name} onClick={() => { pickBackdrop(bg.name); setShowLibrary(false); }}
+                    style={{
+                      padding: 8, borderRadius: 10, border: background === bg.name ? '2px solid var(--accent-primary)' : '1px solid var(--border-color)',
+                      background: background === bg.name ? 'var(--accent-primary)15' : 'var(--bg-primary)', cursor: 'pointer',
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+                      transition: 'all 0.15s', overflow: 'hidden',
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--accent-primary)'; e.currentTarget.style.transform = 'scale(1.03)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = background === bg.name ? 'var(--accent-primary)' : 'var(--border-color)'; e.currentTarget.style.transform = 'scale(1)'; }}
+                  >
+                    {bg.image
+                      ? <img src={bg.image} alt={bg.name} style={{ width: '100%', height: 100, objectFit: 'cover', borderRadius: 6, display: 'block' }} />
+                      : <div style={{ width: '100%', height: 100, background: '#ffffff', borderRadius: 6, border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <span style={{ fontSize: 22 }}>⬜</span>
+                        </div>
+                    }
+                    <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-primary)', textAlign: 'center', lineHeight: 1.2 }}>{bg.name}</span>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="sprite-library-grid">
+                {SPRITE_LIBRARY.find(c => c.category === libCategory)?.items.map(item => (
+                  <button key={item.name} onClick={() => addSprite(item, libCategory)}
+                    style={{
+                      padding: 10, borderRadius: 10, border: '1px solid var(--border-color)',
+                      background: 'var(--bg-primary)', cursor: 'pointer',
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+                      transition: 'all 0.15s', overflow: 'visible',
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--accent-primary)'; e.currentTarget.style.transform = 'scale(1.05)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-color)'; e.currentTarget.style.transform = 'scale(1)'; }}
+                  >
+                    <SpriteThumb svgKey={item.name} customImage={item.customImage} size={72} />
+                    <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-primary)' }}>{item.name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
             <div className="sprite-library-footer">
-              <button type="button" onClick={() => spriteUploadRef.current?.click()}
-                className="btn btn-secondary"
-                style={{ padding: '8px 16px', fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}
-              >⬆ Upload Your Own Sprite</button>
-              <input ref={spriteUploadRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleSpriteUpload} />
+              {libCategory !== '__backgrounds__' && (
+                <>
+                  <button type="button" onClick={() => spriteUploadRef.current?.click()}
+                    className="btn btn-secondary"
+                    style={{ padding: '8px 16px', fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}
+                  >⬆ Upload Your Own Sprite</button>
+                  <input ref={spriteUploadRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleSpriteUpload} />
+                </>
+              )}
             </div>
           </div>
         </div>
