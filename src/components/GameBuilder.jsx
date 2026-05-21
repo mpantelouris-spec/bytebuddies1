@@ -1533,6 +1533,15 @@ export default function GameBuilder() {
   }, []);
   const [savedFlash, setSavedFlash] = useState(false);
   const [submitFlash, setSubmitFlash] = useState(false);
+  // Multi-project save/load
+  const [currentProjectId, setCurrentProjectId] = useState(null);
+  const [currentProjectName, setCurrentProjectName] = useState('');
+  const [showProjectsModal, setShowProjectsModal] = useState(false);
+  const [showSaveAsModal, setShowSaveAsModal] = useState(false);
+  const [saveAsName, setSaveAsName] = useState('');
+  const [savedProjects, setSavedProjects] = useState(() => {
+    try { const p = localStorage.getItem('cv_gamebuilder_projects'); return p ? JSON.parse(p) : []; } catch { return []; }
+  });
   const [pendingAssignment] = useState(() => {
     try { const a = sessionStorage.getItem('bb-pending-assignment'); return a ? JSON.parse(a) : null; } catch { return null; }
   });
@@ -1679,13 +1688,91 @@ export default function GameBuilder() {
   // Selected sprite owns its own block list; no name/owner cross-filtering needed.
   const selectedSpriteBlocks = useMemo(() => (selectedSprite?.blocks || []), [selectedSprite?.id, selectedSprite?.blocks]);
 
+  const getLatestSprites = () => {
+    // Flush current Blockly workspace into the sprite's blocks array before saving
+    const selId = selectedRef.current ?? selected;
+    const base = spritesRef.current || sprites;
+    if (!selId) return base;
+    const selectedSpriteObj = base.find((s) => s.id === selId);
+    if (!selectedSpriteObj) return base;
+    const flushed = blocklyWorkspaceRef.current?.flush?.();
+    if (!flushed?.nodes?.length) return base;
+    const converted = blocklyNodesToGameBlocks(flushed.nodes);
+    if (!converted.length) return base;
+    const blocks = converted.map((b) => ({ ...b, owner: selectedSpriteObj.name }));
+    const blocklyXml = flushed.xmlText || selectedSpriteObj.blocklyXml || '';
+    return base.map((s) => s.id === selId ? { ...s, blocks, blocklyXml } : s);
+  };
+
+  const persistProjects = (list) => {
+    try { localStorage.setItem('cv_gamebuilder_projects', JSON.stringify(list)); } catch {}
+    setSavedProjects(list);
+  };
+
   const saveProject = () => {
+    // If we have a current named project, save over it. Otherwise open Save As dialog.
+    if (currentProjectId) {
+      const flushedSprites = getLatestSprites();
+      const updated = savedProjects.map(p =>
+        p.id === currentProjectId
+          ? { ...p, sprites: flushedSprites, background, savedAt: Date.now() }
+          : p
+      );
+      persistProjects(updated);
+      try {
+        localStorage.setItem('cv_gamebuilder_sprites', JSON.stringify(flushedSprites));
+        localStorage.setItem('cv_gamebuilder_bg', background);
+      } catch {}
+      setSavedFlash(true);
+      setTimeout(() => setSavedFlash(false), 1800);
+    } else {
+      setSaveAsName(currentProjectName || '');
+      setShowSaveAsModal(true);
+    }
+  };
+
+  const saveProjectAs = (name) => {
+    if (!name.trim()) return;
+    const flushedSprites = getLatestSprites();
+    const id = Date.now().toString(36) + Math.random().toString(36).slice(2);
+    const newProject = { id, name: name.trim(), sprites: flushedSprites, background, savedAt: Date.now() };
+    const updated = [...savedProjects, newProject];
+    persistProjects(updated);
+    setCurrentProjectId(id);
+    setCurrentProjectName(name.trim());
     try {
-      localStorage.setItem('cv_gamebuilder_sprites', JSON.stringify(sprites));
+      localStorage.setItem('cv_gamebuilder_sprites', JSON.stringify(flushedSprites));
       localStorage.setItem('cv_gamebuilder_bg', background);
     } catch {}
+    setShowSaveAsModal(false);
     setSavedFlash(true);
     setTimeout(() => setSavedFlash(false), 1800);
+  };
+
+  const loadProject = (project) => {
+    // Use bumpTinyRasterSprites only (safe geometry fix) — do NOT strip scripts.
+    // normalizeStartupSprites would wipe user code via isDefaultStarterScript.
+    const raw = project.sprites || [];
+    const loaded = bumpTinyRasterSprites(raw);
+    setSprites(loaded);
+    setBackground(project.background || DEFAULT_STAGE_BACKDROP);
+    setCurrentProjectId(project.id);
+    setCurrentProjectName(project.name);
+    setSelected(null);
+    setShowProjectsModal(false);
+    try {
+      localStorage.setItem('cv_gamebuilder_sprites', JSON.stringify(loaded));
+      localStorage.setItem('cv_gamebuilder_bg', project.background || DEFAULT_STAGE_BACKDROP);
+    } catch {}
+  };
+
+  const deleteProject = (id) => {
+    const updated = savedProjects.filter(p => p.id !== id);
+    persistProjects(updated);
+    if (currentProjectId === id) {
+      setCurrentProjectId(null);
+      setCurrentProjectName('');
+    }
   };
 
   const exportGame = async () => {
@@ -1866,7 +1953,7 @@ function drawSprites(){
     if(!img||!img.complete)return;
     ctx.save();
     ctx.translate(s.x+s.w/2,s.y+s.h/2);
-    if(s.rotation)ctx.rotate(s.rotation*Math.PI/180);
+    if(s.rotation)ctx.rotate((s.rotation-90)*Math.PI/180);
     ctx.drawImage(img,-s.w/2,-s.h/2,s.w,s.h);
     ctx.restore();
   });
@@ -4692,6 +4779,11 @@ loadImages(function(){
       {/* Toolbar */}
       <div className="workspace-toolbar" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', borderBottom: '1px solid var(--border-color)', flexShrink: 0 }}>
         <span style={{ fontWeight: 700, fontSize: 14 }}>🎮 Game Builder</span>
+        {currentProjectName && (
+          <span style={{ fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            — {currentProjectName}
+          </span>
+        )}
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 6, alignItems: 'center' }}>
           {isPlaying && <span className="tag tag-warning" style={{ fontSize: 12 }}>Score: {score}</span>}
           <button
@@ -4701,12 +4793,32 @@ loadImages(function(){
           >
             🧩 Extensions
           </button>
+          {/* My Projects button */}
           <button
-            onClick={saveProject}
-            style={{ background: savedFlash ? '#22c55e' : '#334155', color: '#fff', border: 'none', borderRadius: 6, padding: '5px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'background 0.3s', minWidth: 80 }}
+            onClick={() => setShowProjectsModal(true)}
+            style={{ background: '#0f172a', color: '#fff', border: '1px solid #334155', borderRadius: 6, padding: '5px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+            title="Open a saved project"
           >
-            {savedFlash ? '✓ Saved!' : '💾 Save'}
+            📂 My Projects
           </button>
+          {/* Save / Save As buttons */}
+          <div style={{ display: 'flex', gap: 0 }}>
+            <button
+              onClick={saveProject}
+              style={{ background: savedFlash ? '#22c55e' : '#334155', color: '#fff', border: 'none', borderRadius: currentProjectId ? '6px 0 0 6px' : 6, padding: '5px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'background 0.3s', minWidth: 70 }}
+            >
+              {savedFlash ? '✓ Saved!' : '💾 Save'}
+            </button>
+            {currentProjectId && (
+              <button
+                onClick={() => { setSaveAsName(currentProjectName); setShowSaveAsModal(true); }}
+                style={{ background: '#475569', color: '#fff', border: 'none', borderLeft: '1px solid #64748b', borderRadius: '0 6px 6px 0', padding: '5px 8px', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}
+                title="Save as new project"
+              >
+                + New
+              </button>
+            )}
+          </div>
           <button onClick={exportGame} disabled={exporting} style={{ background: '#7c3aed', color: '#fff', border: 'none', borderRadius: 6, padding: '5px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', minWidth: 90, opacity: exporting ? 0.7 : 1 }}>
             📤 Export
           </button>
@@ -5174,6 +5286,85 @@ loadImages(function(){
         enabledIds={enabledExtensions}
         onToggleExtension={toggleExtension}
       />
+
+      {/* Save As Modal */}
+      {showSaveAsModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={(e) => { if (e.target === e.currentTarget) setShowSaveAsModal(false); }}>
+          <div style={{ background: '#1e293b', borderRadius: 12, padding: 28, width: 360, boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }}>
+            <h3 style={{ margin: '0 0 16px', fontSize: 16, fontWeight: 700, color: '#f8fafc' }}>💾 Save Project As</h3>
+            <input
+              autoFocus
+              type="text"
+              placeholder="Enter a project name..."
+              value={saveAsName}
+              onChange={(e) => setSaveAsName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') saveProjectAs(saveAsName); if (e.key === 'Escape') setShowSaveAsModal(false); }}
+              style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #334155', background: '#0f172a', color: '#f8fafc', fontSize: 14, boxSizing: 'border-box', outline: 'none' }}
+            />
+            <div style={{ display: 'flex', gap: 8, marginTop: 16, justifyContent: 'flex-end' }}>
+              <button onClick={() => setShowSaveAsModal(false)} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #334155', background: 'transparent', color: '#94a3b8', fontSize: 13, cursor: 'pointer' }}>Cancel</button>
+              <button onClick={() => saveProjectAs(saveAsName)} disabled={!saveAsName.trim()} style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: saveAsName.trim() ? '#22c55e' : '#334155', color: '#fff', fontSize: 13, fontWeight: 700, cursor: saveAsName.trim() ? 'pointer' : 'default' }}>Save</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* My Projects Modal */}
+      {showProjectsModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={(e) => { if (e.target === e.currentTarget) setShowProjectsModal(false); }}>
+          <div style={{ background: '#1e293b', borderRadius: 12, padding: 28, width: 480, maxHeight: '70vh', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 16 }}>
+              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#f8fafc' }}>📂 My Projects</h3>
+              <button onClick={() => setShowProjectsModal(false)} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#94a3b8', fontSize: 20, cursor: 'pointer', lineHeight: 1 }}>✕</button>
+            </div>
+            {savedProjects.length === 0 ? (
+              <div style={{ color: '#64748b', fontSize: 14, textAlign: 'center', padding: '32px 0' }}>
+                No saved projects yet.<br />
+                <span style={{ fontSize: 12 }}>Click 💾 Save to save your current project.</span>
+              </div>
+            ) : (
+              <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {[...savedProjects].sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0)).map(project => (
+                  <div key={project.id} style={{ display: 'flex', alignItems: 'center', gap: 10, background: project.id === currentProjectId ? '#1e3a5f' : '#0f172a', border: `1px solid ${project.id === currentProjectId ? '#3b82f6' : '#1e293b'}`, borderRadius: 8, padding: '10px 14px' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 600, fontSize: 14, color: '#f1f5f9', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {project.id === currentProjectId && <span style={{ color: '#3b82f6', marginRight: 6 }}>●</span>}
+                        {project.name}
+                      </div>
+                      <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>
+                        {project.sprites?.length ?? 0} sprite{(project.sprites?.length ?? 0) !== 1 ? 's' : ''} · Saved {project.savedAt ? new Date(project.savedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'unknown'}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => loadProject(project)}
+                      style={{ padding: '6px 14px', borderRadius: 6, border: 'none', background: '#3b82f6', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}
+                    >
+                      Open
+                    </button>
+                    <button
+                      onClick={() => { if (window.confirm(`Delete "${project.name}"?`)) deleteProject(project.id); }}
+                      style={{ padding: '6px 10px', borderRadius: 6, border: 'none', background: '#7f1d1d', color: '#fca5a5', fontSize: 12, cursor: 'pointer', flexShrink: 0 }}
+                      title="Delete project"
+                    >
+                      🗑
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #1e293b' }}>
+              <button
+                onClick={() => { setSaveAsName(''); setShowSaveAsModal(true); setShowProjectsModal(false); }}
+                style={{ width: '100%', padding: '10px', borderRadius: 8, border: '1px dashed #334155', background: 'transparent', color: '#94a3b8', fontSize: 13, cursor: 'pointer', fontWeight: 600 }}
+              >
+                + Save current project as new...
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

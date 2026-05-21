@@ -30,7 +30,7 @@ export default function MicrobitDualFlashPanel({
   onConnectUsb,
   bluetoothConnected = false,
 }) {
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(false);
   const [scan, setScan] = useState(null);
   const [connectionMode, setConnectionMode] = useState(CONNECTION_MODE.DISCONNECTED);
   const [progress, setProgress] = useState(null);

@@ -535,6 +535,7 @@ const UnifiedBlocklyWorkspace = forwardRef(function UnifiedBlocklyWorkspace({
           display: 'bb_robot_show_text',
           show_num: 'bb_robot_show_number',
           show_icon: 'bb_robot_show_icon',
+          disp_image: 'bb_robot_disp_image',
         };
         const typeToCreate = robotToBlockly[robotId] || 'bb_robot_generic';
         if (Blockly.Blocks[typeToCreate]) {

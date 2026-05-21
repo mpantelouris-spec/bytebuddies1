@@ -2227,10 +2227,16 @@ const VirtualRobot = forwardRef(function VirtualRobot({ simRobotType, simTrack, 
       if (id === 'neo_show' || id === 'neo_bright') { resolve(); return; }
 
       // ── Display / micro:bit ──
-      if (id === 'disp_scroll' || id === 'show_num' || id === 'show_icon') {
-        const txt = params?.text || String(params?.num ?? '') || params?.icon || '';
+      if (id === 'display' || id === 'disp_scroll' || id === 'show_num') {
+        const txt = params?.text || String(params?.num ?? '') || '';
         updateOut({ displayText: txt, displayIcon: null, ledMatrix: Array(25).fill(0) });
         setTimeout(resolve, Math.max(600, txt.length * 120)); return;
+      }
+      if (id === 'show_icon') {
+        const icon = params?.icon || 'HAPPY';
+        const matrix = MB_ICONS[icon] || Array(25).fill(0);
+        updateOut({ displayIcon: icon, displayText: '', ledMatrix: matrix });
+        setTimeout(resolve, 800); return;
       }
       if (id === 'disp_show') { updateOut({ displayText: String(params?.val ?? ''), displayIcon: null }); resolve(); return; }
       if (id === 'disp_image') {
@@ -3435,8 +3441,7 @@ export default function RobotPanel() {
   const runProgram = async () => {
     if (!program.length) return;
     if (robotType === 'microbit' && !connectedRef.current) {
-      addTerminal('⚠️ Connect first: 🔌 USB (easiest) or 📡 Bluetooth after one-time flash.', 'warn');
-      return;
+      addTerminal('ℹ️ No robot connected — running in simulation only', 'info');
     }
     if (connectedRef.current && robotType === 'microbit' && firmwareOkRef.current === false) {
       addTerminal('⚠️ Flash once first: ⚡ Flash → “MicroPython (USB, flash once)” or “Bluetooth bridge firmware”.', 'warn');
@@ -3470,9 +3475,11 @@ export default function RobotPanel() {
       'if_touch','if_shake','if_tilt','if_light','if_temp','if_compass','for_range','while_do']);
     const hasComplexFlow = orderedSteps.some(s => COMPLEX_IDS.has(s.id));
 
+    // BLE firmware splits on \n before \x04, so multi-line programs don't exec correctly over BT.
+    // Only use the full-program path for USB; Bluetooth always runs commands one-at-a-time.
     const canRunFullPython =
       firmwareOkRef.current === true &&
-      (connectionTypeRef.current === 'usb' || bridgeModeRef.current);
+      connectionTypeRef.current === 'usb';
 
     if (robotType === 'microbit' && connectedRef.current && canRunFullPython) {
       robotRef.current?.resetState();
@@ -3956,6 +3963,7 @@ export default function RobotPanel() {
       bb_robot_show_text: 'display',
       bb_robot_show_number: 'show_num',
       bb_robot_show_icon: 'show_icon',
+      bb_robot_disp_image: 'disp_image',
       bb_var_create: 'var_set',
       bb_var_change: 'var_inc',
     };
@@ -4081,6 +4089,11 @@ export default function RobotPanel() {
         }
         if (mapped === 'show_icon') {
           const b = make('show_icon', { icon: String(f.ICON || 'HAPPY') });
+          if (b) next.push(b);
+          return;
+        }
+        if (mapped === 'disp_image') {
+          const b = make('disp_image', { icon: String(f.ICON || 'HAPPY') });
           if (b) next.push(b);
           return;
         }

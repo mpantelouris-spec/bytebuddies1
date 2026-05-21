@@ -74,10 +74,12 @@ export const defineBytebuddiesBlocks = () => {
     // 2. turn clockwise () degrees — adds to direction (0°=up, 90°=right, 180°=down)
     Blockly.Blocks['motion_turnright'] = {
       init: function() {
+        this.appendValueInput("DEGREES")
+            .setCheck("Number")
+            .appendField("turn clockwise");
         this.appendDummyInput()
-            .appendField("turn clockwise")
-            .appendField(new Blockly.FieldNumber(15, -Infinity, Infinity), "DEGREES")
             .appendField("degrees");
+        this.setInputsInline(true);
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
         this.setColour('#4C97FF');
@@ -88,10 +90,12 @@ export const defineBytebuddiesBlocks = () => {
     // 3. turn anticlockwise () degrees — subtracts from direction
     Blockly.Blocks['motion_turnleft'] = {
       init: function() {
+        this.appendValueInput("DEGREES")
+            .setCheck("Number")
+            .appendField("turn anticlockwise");
         this.appendDummyInput()
-            .appendField("turn anticlockwise")
-            .appendField(new Blockly.FieldNumber(15, -Infinity, Infinity), "DEGREES")
             .appendField("degrees");
+        this.setInputsInline(true);
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
         this.setColour('#4C97FF');
@@ -2927,15 +2931,42 @@ export const defineBytebuddiesBlocks = () => {
         this.appendDummyInput()
             .appendField("show icon")
             .appendField(new Blockly.FieldDropdown([
-              ["HAPPY", "HAPPY"], ["SAD", "SAD"], ["HEART", "HEART"], ["SURPRISED", "SURPRISED"],
-              ["ANGRY", "ANGRY"], ["YES", "YES"], ["NO", "NO"], ["ARROW_N", "ARROW_N"], ["ARROW_S", "ARROW_S"],
-              ["ARROW_E", "ARROW_E"], ["ARROW_W", "ARROW_W"], ["ASLEEP", "ASLEEP"], ["CONFUSED", "CONFUSED"],
-              ["SKULL", "SKULL"], ["DIAMOND", "DIAMOND"],
+              ["😊 Happy", "HAPPY"], ["😢 Sad", "SAD"], ["❤️ Heart", "HEART"], ["😲 Surprised", "SURPRISED"],
+              ["😠 Angry", "ANGRY"], ["✅ Yes", "YES"], ["❌ No", "NO"],
+              ["⬆️ Arrow Up", "ARROW_N"], ["⬇️ Arrow Down", "ARROW_S"],
+              ["➡️ Arrow Right", "ARROW_E"], ["⬅️ Arrow Left", "ARROW_W"],
+              ["😴 Asleep", "ASLEEP"], ["😕 Confused", "CONFUSED"],
+              ["💀 Skull", "SKULL"], ["💎 Diamond", "DIAMOND"],
             ]), "ICON");
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
         this.setColour('#8b5cf6');
         this.setTooltip("Show icon on display");
+      }
+    };
+
+    Blockly.Blocks['bb_robot_disp_image'] = {
+      init: function() {
+        this.appendDummyInput()
+            .appendField("show image")
+            .appendField(new Blockly.FieldDropdown([
+              ["😊 Happy", "HAPPY"], ["😢 Sad", "SAD"], ["❤️ Heart", "HEART"], ["😲 Surprised", "SURPRISED"],
+              ["😠 Angry", "ANGRY"], ["😴 Asleep", "ASLEEP"], ["😕 Confused", "CONFUSED"],
+              ["✅ Yes", "YES"], ["❌ No", "NO"],
+              ["⬆️ Arrow Up", "ARROW_N"], ["⬇️ Arrow Down", "ARROW_S"],
+              ["➡️ Arrow Right", "ARROW_E"], ["⬅️ Arrow Left", "ARROW_W"],
+              ["💀 Skull", "SKULL"], ["💎 Diamond", "DIAMOND"],
+              ["🐍 Snake", "SNAKE"], ["🐰 Rabbit", "RABBIT"], ["🐮 Cow", "COW"],
+              ["🦆 Duck", "DUCK"], ["🐢 Tortoise", "TORTOISE"], ["🦋 Butterfly", "BUTTERFLY"],
+              ["🧍 Stick Figure", "STICKFIGURE"], ["👻 Ghost", "GHOST"], ["⚔️ Sword", "SWORD"],
+              ["🎯 Target", "TARGET"], ["🔱 Pitchfork", "PITCHFORK"], ["👾 Pac-Man", "PACMAN"],
+              ["⛸️ Rollerskate", "ROLLERSKATE"], ["🏠 House", "HOUSE"], ["👕 T-Shirt", "TSHIRT"],
+              ["♟️ Chessboard", "CHESSBOARD"], ["🎄 Xmas", "XMAS"], ["☂️ Umbrella", "UMBRELLA"],
+            ]), "ICON");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour('#8b5cf6');
+        this.setTooltip("Show image on display");
       }
     };
 
@@ -4088,11 +4119,13 @@ export const defineBytebuddiesBlocks = () => {
       BlocklyJS.javascriptGenerator.forBlock['bb_motion_set_rotation_style'] = rotationStyleGen;
 
       BlocklyJS.javascriptGenerator.forBlock['motion_turnright'] = function(block) {
-        const deg = block.getFieldValue('DEGREES') || 15;
+        const degCode = BlocklyJS.javascriptGenerator.valueToCode(block, 'DEGREES', BlocklyJS.javascriptGenerator.ORDER_ATOMIC) || '15';
+        const deg = block.getFieldValue('DEGREES') || degCode;
         return `turn_right(${deg});\n`;
       };
       BlocklyJS.javascriptGenerator.forBlock['motion_turnleft'] = function(block) {
-        const deg = block.getFieldValue('DEGREES') || 15;
+        const degCode = BlocklyJS.javascriptGenerator.valueToCode(block, 'DEGREES', BlocklyJS.javascriptGenerator.ORDER_ATOMIC) || '15';
+        const deg = block.getFieldValue('DEGREES') || degCode;
         return `turn_left(${deg});\n`;
       };
       BlocklyJS.javascriptGenerator.forBlock['motion_movesteps'] = function(block) {
@@ -4413,8 +4446,12 @@ export const generateToolbox = () => {
       </category>
       <category name="Motion" colour="4">
         <block type="motion_movesteps"></block>
-        <block type="motion_turnright"></block>
-        <block type="motion_turnleft"></block>
+        <block type="motion_turnright">
+          <value name="DEGREES"><shadow type="math_number"><field name="NUM">15</field></shadow></value>
+        </block>
+        <block type="motion_turnleft">
+          <value name="DEGREES"><shadow type="math_number"><field name="NUM">15</field></shadow></value>
+        </block>
         <block type="motion_goto"></block>
         <block type="motion_glide"></block>
         <block type="motion_pointindirection"></block>
@@ -4450,7 +4487,12 @@ export const generateToolbox = () => {
         <block type="control_forever"></block>
         <block type="control_if"></block>
         <block type="control_if_else"></block>
+        <block type="control_waituntil"></block>
+        <block type="control_repeatuntil"></block>
         <block type="control_stop"></block>
+        <block type="control_start_as_clone"></block>
+        <block type="control_create_clone"></block>
+        <block type="control_delete_this_clone"></block>
       </category>
       <category name="Sensing" colour="#00BCD4">
         <block type="sensing_touchingobject"></block>

@@ -805,13 +805,16 @@ export function getRenderScaleX(sprite) {
   return isLeftRightFacingLeft(getDirection(sprite)) ? -1 : 1;
 }
 
-/** Radians to rotate for "all around" (0 = none). */
+/** Radians to rotate for "all around" (0 = none).
+ *  Scratch convention: direction=90 is the natural "facing right" orientation → 0° canvas rotation.
+ *  Formula: (dir - 90) * PI/180 so that direction=90 → 0°, direction=180 → 90°, direction=0 → -90°.
+ */
 export function getRenderRotation(sprite) {
   ensureSpriteMotionState(sprite);
   const style = getRotationStyle(sprite);
   if (style !== ROTATION_STYLE_ALL_AROUND) return 0;
   const dir = getDirection(sprite);
-  const rot = (dir * Math.PI) / 180;
+  const rot = ((dir - 90) * Math.PI) / 180;
   return rot;
 }
 

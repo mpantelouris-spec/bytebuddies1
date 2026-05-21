@@ -909,7 +909,6 @@ export const BLOCKLY_TO_GAME_TYPE = {
   bb_list_add: 'list-add',
   bb_func_define: 'func-define',
   bb_func_call: 'func-call',
-  control_if_else: 'logic-if-else',
   ...EXTENSION_BLOCKLY_TO_GAME,
 };
 
