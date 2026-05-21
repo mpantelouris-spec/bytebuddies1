@@ -2142,10 +2142,11 @@ loadImages(function(){
     ctx.imageSmoothingEnabled = true;
     if ('imageSmoothingQuality' in ctx) ctx.imageSmoothingQuality = 'high';
 
-    // Scale to logical STAGE_W×STAGE_H space (native resolution in fullscreen)
+    // Hard-reset the transform every draw so concurrent async draws can't stack scales.
+    // (draw() is async — if two draws fire while one awaits an image load the second
+    //  inherits the first's ctx.scale, doubling it and making content appear zoomed.)
     const sx = canvas.width / STAGE_W, sy = canvas.height / STAGE_H;
-    ctx.save();
-    ctx.scale(sx, sy);
+    ctx.setTransform(sx, 0, 0, sy, 0, 0);
     ctx.clearRect(0, 0, STAGE_W, STAGE_H);
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, STAGE_W, STAGE_H);
@@ -2285,7 +2286,7 @@ loadImages(function(){
       visibleSprites.map((s) => resolveSpriteStageImage(s, imgCacheRef.current)),
     );
     if (frameId !== drawFrameRef.current) {
-      ctx.restore();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
       return;
     }
 
@@ -2357,7 +2358,7 @@ loadImages(function(){
       ctx.textBaseline = 'middle';
       ctx.fillText(`Score: ${gameState.score} | Lives: ${gameState.lives} | Level: ${gameState.level}`, 10, 16);
     }
-    ctx.restore(); // pop scale transform
+    ctx.setTransform(1, 0, 0, 1, 0, 0); // reset transform when done
   }, [selected, isPlaying, gameState, background, customBackgrounds, stageFs, getBackdropNames]);
 
   useEffect(() => {
