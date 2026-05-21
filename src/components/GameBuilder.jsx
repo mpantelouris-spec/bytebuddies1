@@ -1191,16 +1191,6 @@ const SPRITE_LIBRARY = [
   ...RASTER_SPRITE_LIBRARY,
 ];
 
-(() => {
-  const objects = SPRITE_LIBRARY.find((c) => c.category === 'Objects');
-  if (!objects) return;
-  const starters = [
-    { name: 'Star', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><polygon points="32,4 40,24 60,24 44,38 50,58 32,46 14,58 20,38 4,24 24,24" fill="${c || '#f59e0b'}"/></svg>`, color: '#f59e0b' },
-    { name: 'Platform', svg: (c) => `<svg viewBox="0 0 128 32" xmlns="http://www.w3.org/2000/svg"><rect width="128" height="32" rx="4" fill="${c || '#78716c'}"/></svg>`, color: '#78716c', defaultW: 128, defaultH: 24 },
-  ];
-  const names = new Set(objects.items.map((i) => i.name));
-  objects.items = [...starters.filter((s) => !names.has(s.name)), ...objects.items];
-})();
 
 function findSpriteTemplate(name) {
   for (const cat of SPRITE_LIBRARY) {
