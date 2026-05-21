@@ -546,6 +546,124 @@ const ROBOT_PROFILES = {
     codeHeader: '// Arduino Serial Protocol\n\n',
     setupCode: `/* ByteBuddies — Generic Arduino Robot\n   Adjust pin numbers below to match your motor driver (e.g. L298N).\n   Board: Arduino Uno  |  Baud: 9600\n   TIP: if Forward goes backward, flip the sign in driveL/driveR calls on FWD/BWD lines */\n\nconst int PIN_MA_DIR=2, PIN_MA_PWM=3;  // Left  motor  direction + PWM\nconst int PIN_MB_DIR=4, PIN_MB_PWM=5;  // Right motor  direction + PWM\n\nint spd = 200;\nunsigned long stopAt = 0;\n\nvoid driveL(int v) { digitalWrite(PIN_MA_DIR, v>=0?HIGH:LOW); analogWrite(PIN_MA_PWM, abs(v)); }\nvoid driveR(int v) { digitalWrite(PIN_MB_DIR, v>=0?HIGH:LOW); analogWrite(PIN_MB_PWM, abs(v)); }\nvoid drive(int l, int r, long ms) { driveL(l); driveR(r); stopAt = ms>0 ? millis()+ms : 0; }\nvoid halt() { analogWrite(PIN_MA_PWM,0); analogWrite(PIN_MB_PWM,0); stopAt=0; }\n\nString pCmd(String s){int i=s.indexOf(':');return i>=0?s.substring(0,i):s;}\nlong pVal(String s,int n){int p=0;for(int k=0;k<n;k++){p=s.indexOf(':',p)+1;if(!p)return 0;}int e=s.indexOf(':',p);return e>=0?s.substring(p,e).toInt():s.substring(p).toInt();}\n\nvoid setup() {\n  Serial.begin(9600);\n  pinMode(PIN_MA_DIR,OUTPUT);pinMode(PIN_MA_PWM,OUTPUT);\n  pinMode(PIN_MB_DIR,OUTPUT);pinMode(PIN_MB_PWM,OUTPUT);\n  halt();\n}\nvoid loop() {\n  if (stopAt>0 && millis()>=stopAt) halt();\n  if (!Serial.available()) return;\n  String s=Serial.readStringUntil('\\n');s.trim();\n  if (!s.length()) return;\n  String c=pCmd(s);long v=pVal(s,1);\n  if      (c=="STP"||c=="CST"||c=="END") halt();\n  else if (c=="FWD") drive( spd,  spd,  v*50);\n  else if (c=="BWD") drive(-spd, -spd,  v*50);\n  else if (c=="LFT") drive( spd/2, spd, v*8);\n  else if (c=="RGT") drive( spd, spd/2, v*8);\n  else if (c=="SPL") drive(-spd,  spd,  v*5);\n  else if (c=="SPR") drive( spd, -spd,  v*5);\n  else if (c=="SPD") spd=map(v,0,100,0,255);\n  else if (c=="ML")  driveL(map(v,-100,100,-255,255));\n  else if (c=="MR")  driveR(map(v,-100,100,-255,255));\n  else if (c=="MV")  { long l=pVal(s,1),r=pVal(s,2); drive(map(l,-100,100,-255,255),map(r,-100,100,-255,255),0); }\n}`,
   },
+  quarky: {
+    name: 'Quarky',
+    icon: '🤖',
+    baud: 115200,
+    buildCmd: (cmd, params) => {
+      // ESP32 MicroPython commands for Quarky
+      const p = params || {};
+      const ms  = (steps) => Math.round((steps||20)*10);
+      const tms = (deg)   => Math.round((deg||90)*5);
+      const colMap = { red:'255,0,0', green:'0,255,0', blue:'0,0,255', yellow:'255,255,0',
+                       cyan:'0,255,255', magenta:'255,0,255', white:'255,255,255', off:'0,0,0' };
+      const iconCol = { HAPPY:'0,255,0', SAD:'255,0,0', HEART:'255,0,100', ANGRY:'255,80,0',
+                        YES:'0,255,0', NO:'255,0,0', ARROW_N:'0,0,255' };
+      switch (cmd) {
+        case 'forward':    return `fw(${ms(p.amount)})\r\n`;
+        case 'back':       return `bk(${ms(p.amount)})\r\n`;
+        case 'left':       return `lt(${tms(p.degrees)})\r\n`;
+        case 'right':      return `rt(${tms(p.degrees)})\r\n`;
+        case 'spin_left':  return `lt(${tms(p.degrees)})\r\n`;
+        case 'spin_right': return `rt(${tms(p.degrees)})\r\n`;
+        case 'move_left':  return `lt(${ms(p.amount)})\r\n`;
+        case 'move_right': return `rt(${ms(p.amount)})\r\n`;
+        case 'stop':       return `sp()\r\n`;
+        case 'coast':      return `sp()\r\n`;
+        case 'speed':      return `# speed ${p.pct||75}%\r\n`;
+        case 'motor_l':    return `_LA.duty(${Math.round((p.power||50)*10.23)});_LB.duty(0)\r\n`;
+        case 'motor_r':    return `_RA.duty(${Math.round((p.power||50)*10.23)});_RB.duty(0)\r\n`;
+        case 'motors':     return `_LA.duty(${Math.round((p.left||50)*10.23)});_LB.duty(0);_RA.duty(${Math.round((p.right||50)*10.23)});_RB.duty(0)\r\n`;
+        case 'if_dist':    return `if ls()[0]==1 or ls()[1]==1:\r\n    `;
+        case 'if_line':    return `if ls()[0]==1:\r\n    `;
+        case 'if_btn_a':   return `if not Pin(0,Pin.IN,Pin.PULL_UP).value():\r\n    `;
+        case 'if_btn_b':   return `if not Pin(35,Pin.IN,Pin.PULL_UP).value():\r\n    `;
+        case 'if_touch':   return `if Pin(${p.pin||4},Pin.IN).value():\r\n    `;
+        case 'if_shake':   return `if True:  # shake gesture not available on Quarky\r\n    `;
+        case 'if_tilt':    return `if True:  # tilt gesture not available on Quarky\r\n    `;
+        case 'if_light':   return `if True:  # light sensor not available on Quarky\r\n    `;
+        case 'wait_dist':  return `while ls()[0]==0 and ls()[1]==0: time.sleep_ms(50)\r\n`;
+        case 'wait_line':  return `while ls()[0]==0: time.sleep_ms(50)\r\n`;
+        case 'read_dist':  return `${p.var||'dist'} = 0  # no sonar on Quarky\r\n`;
+        case 'read_light': return `${p.var||'light'} = 0  # no light sensor\r\n`;
+        case 'follow_line':return `fw(${Math.round((p.secs||3)*1000)})\r\n`;
+        case 'avoid_wall': return `sp()\r\n`;
+        case 'wait':       return `time.sleep_ms(${Math.round((p.secs||1)*1000)})\r\n`;
+        case 'repeat':     return `for _i in range(${p.times||3}):\r\n`;
+        case 'repeat_end': return `pass\r\n`;
+        case 'if_then':    { const op=(p.op||'<')==='='?'==':(p.op||'<'); return `if ${p.cond||'x'} ${op} ${p.val||20}:\r\n`; }
+        case 'if_end':     return `pass\r\n`;
+        case 'forever':    return `while True:\r\n`;
+        case 'break':      return `break\r\n`;
+        case 'stop_all':   return `sp()\r\n`;
+        case 'led':        return `hl(${colMap[p.color||'red']||'255,0,0'})\r\n`;
+        case 'led_bright': return `# brightness ${p.pct||100}%\r\n`;
+        case 'led_rgb':    return `hl(${p.r||255},${p.g||0},${p.b||0})\r\n`;
+        case 'buzz':       return `# buzzer: ${p.secs||0.5}s (not available on Quarky)\r\n`;
+        case 'play_note':  return `# note (not available on Quarky)\r\n`;
+        case 'play_melody':return `# melody (not available on Quarky)\r\n`;
+        case 'display':    return `print('${(p.text||'Hi!').replace(/'/g,"\\'")}' )\r\n`;
+        case 'show_num':   return `print(${p.num||42})\r\n`;
+        case 'show_icon':  return `hl(${iconCol[p.icon||'HAPPY']||'0,255,0'})\r\n`;
+        case 'clear_disp': return `hl(0,0,0)\r\n`;
+        case 'servo':      return `_s${p.pin||1}=PWM(Pin(${p.pin===2?17:16}),freq=50,duty=int(40+${p.angle||90}/180*102));time.sleep_ms(300);_s${p.pin||1}.deinit()\r\n`;
+        case 'servo_sweep':return `_s${p.pin||1}=PWM(Pin(${p.pin===2?17:16}),freq=50,duty=int(40+${p.to||180}/180*102));time.sleep_ms(300);_s${p.pin||1}.deinit()\r\n`;
+        case 'servo_stop': return `Pin(${p.pin===2?17:16},Pin.OUT).value(0)\r\n`;
+        case 'pin_high':   return `Pin(${p.pin||0},Pin.OUT).value(1)\r\n`;
+        case 'pin_low':    return `Pin(${p.pin||0},Pin.OUT).value(0)\r\n`;
+        case 'pwm':        return `PWM(Pin(${p.pin||0}),freq=1000,duty=${p.val||128})\r\n`;
+        case 'var_set':    return `${p.name||'x'} = ${p.val||0}\r\n`;
+        case 'var_inc':    return `${p.name||'x'} += ${p.val||1}\r\n`;
+        case 'var_dec':    return `${p.name||'x'} -= ${p.val||1}\r\n`;
+        case 'var_show':   return `print(${p.name||'x'})\r\n`;
+        case 'send_msg':   return `print('${(p.msg||'hello').replace(/'/g,"\\'")}' )\r\n`;
+        case 'radio_send': return `print('radio:${(p.msg||'go').replace(/'/g,"\\'")}' )\r\n`;
+        case 'radio_group':return `# radio group ${p.grp||1} (WiFi/BLE not set up here)\r\n`;
+        case 'radio_recv': return `${p.var||'msg'} = None  # radio not available\r\n`;
+        case 'log':        return `print('${(p.msg||'hello').replace(/'/g,"\\'")}' )\r\n`;
+        case 'neo_init':   return `_NP2=neopixel.NeoPixel(Pin(${p.pin||0}),${p.n||8})\r\n`;
+        case 'neo_color':  { const c=colMap[p.color||'red']||'255,0,0'; return `_NP[${p.idx||0}]=(${c});_NP.write()\r\n`; }
+        case 'neo_rgb':    return `_NP[${p.idx||0}]=(${p.r||255},${p.g||0},${p.b||0});_NP.write()\r\n`;
+        case 'neo_all':    return `hl(${p.r||0},${p.g||0},${p.b||0})\r\n`;
+        case 'neo_show':   return `_NP.write()\r\n`;
+        case 'neo_clear':  return `hl(0,0,0)\r\n`;
+        case 'neo_bright': return `# brightness ${p.pct||50}%\r\n`;
+        case 'headlight':  return `hl(${p.r||255},${p.g||255},${p.b||255})\r\n`;
+        case 'headlight_l':return `_NP[0]=(${p.r||255},${p.g||0},${p.b||0});_NP.write()\r\n`;
+        case 'headlight_r':return `_NP[34]=(${p.r||0},${p.g||0},${p.b||255});_NP.write()\r\n`;
+        case 'disp_pixel': return `_NP[${p.x||0}+${p.y||0}*7]=(255,255,255);_NP.write()\r\n`;
+        case 'disp_image': return `hl(${iconCol[p.icon||'HAPPY']||'0,255,0'})\r\n`;
+        case 'disp_scroll':return `print('${(p.text||'Hello!').replace(/'/g,"\\'")}' )\r\n`;
+        case 'disp_show':  return `print(${p.val||42})\r\n`;
+        case 'disp_clear': return `hl(0,0,0)\r\n`;
+        case 'read_line_l':return `${p.var||'lineL'},_ = ls()\r\n`;
+        case 'read_line_r':return `_,${p.var||'lineR'} = ls()\r\n`;
+        case 'read_sonar': return `${p.var||'dist'} = 0  # no sonar on Quarky\r\n`;
+        case 'on_start':   return `# --- on start ---\r\n`;
+        case 'while_do':   { const op=(p.op||'<')==='='?'==':(p.op||'<'); return `while ${p.cond||'x'} ${op} ${p.val||10}:\r\n`; }
+        case 'while_end':  return `pass\r\n`;
+        case 'for_range':  return `for ${p.var||'i'} in range(${p.from||0}, ${parseInt(p.to||5)+1}):\r\n`;
+        case 'for_end':    return `pass\r\n`;
+        case 'else_branch':return `else:\r\n`;
+        case 'else_if':    { const op=(p.op||'<')==='='?'==':(p.op||'<'); return `elif ${p.cond||'x'} ${op} ${p.val||0}:\r\n`; }
+        case 'read_temp':  return `${p.var||'temp'} = 0  # temp sensor not available\r\n`;
+        case 'read_compass':return `${p.var||'heading'} = 0  # compass not available\r\n`;
+        case 'read_accel': return `${p.var||'ax'} = 0  # accelerometer not available\r\n`;
+        case 'read_btn_a': return `${p.var||'btnA'} = not Pin(0,Pin.IN,Pin.PULL_UP).value()\r\n`;
+        case 'read_btn_b': return `${p.var||'btnB'} = not Pin(35,Pin.IN,Pin.PULL_UP).value()\r\n`;
+        case 'if_temp':    return `if True:  # temp sensor not available\r\n`;
+        case 'if_compass': return `if True:  # compass not available\r\n`;
+        case 'math_random':return `${p.var||'n'} = random.randint(${p.min||1}, ${p.max||10})\r\n`;
+        case 'math_abs':   return `${p.var||'x'} = abs(${p.src||p.var||'x'})\r\n`;
+        case 'math_map':   return `${p.var||'mapped'} = int((${p.src||'x'} - ${p.low1||0}) * (${p.hi2||1023} - ${p.low2||0}) / max(1, ${p.hi1||100} - ${p.low1||0}) + ${p.low2||0})\r\n`;
+        case 'math_constrain':return `${p.var||'x'} = max(${p.min||0}, min(${p.max||100}, ${p.var||'x'}))\r\n`;
+        case 'math_expr':  return `${p.var||'x'} = ${p.expr||'x + 1'}\r\n`;
+        default: return '';
+      }
+    },
+    codeHeader: '# Quarky (ESP32 MicroPython)\nfrom machine import Pin, PWM\nimport time, neopixel, random\n\n',
+    setupCode: `# Quarky — ByteBuddies Setup\n# Flash MicroPython to your Quarky first (see setup guide below)\n\nfrom machine import Pin, PWM\nimport time, neopixel\n\n# Motor driver pins — Left: GPIO26/27, Right: GPIO14/12\n_LA = PWM(Pin(26), freq=1000, duty=0)  # Left forward\n_LB = PWM(Pin(27), freq=1000, duty=0)  # Left backward\n_RA = PWM(Pin(14), freq=1000, duty=0)  # Right forward\n_RB = PWM(Pin(12), freq=1000, duty=0)  # Right backward\n_NP = neopixel.NeoPixel(Pin(5), 35)   # 35-LED matrix\n\ndef sp(): _LA.duty(0); _LB.duty(0); _RA.duty(0); _RB.duty(0)\ndef fw(ms): _LA.duty(800); _LB.duty(0); _RA.duty(800); _RB.duty(0); time.sleep_ms(ms); sp()\ndef bk(ms): _LA.duty(0); _LB.duty(800); _RA.duty(0); _RB.duty(800); time.sleep_ms(ms); sp()\ndef lt(ms): _LA.duty(0); _LB.duty(600); _RA.duty(800); _RB.duty(0); time.sleep_ms(ms); sp()\ndef rt(ms): _LA.duty(800); _LB.duty(0); _RA.duty(0); _RB.duty(600); time.sleep_ms(ms); sp()\ndef hl(r, g, b):\n    for i in range(35): _NP[i] = (r, g, b)\n    _NP.write()\ndef ls(): return Pin(34, Pin.IN).value(), Pin(35, Pin.IN).value()\n\nhl(0, 255, 0)\ntime.sleep_ms(300)\nhl(0, 0, 0)\nprint("Quarky ready!")\n`,
+  },
 };
 
 /* ─── micro:bit kit setup code (sent at connect via raw REPL) ─── */
@@ -662,6 +780,30 @@ const MICROBIT_KIT_SETUPS = {
     'display.show(Image.HAPPY)',
   ],
 };
+
+/* ─── Quarky (ESP32 MicroPython) setup lines ─── */
+const QUARKY_SETUP = [
+  'from machine import Pin, PWM',
+  'import time, neopixel',
+  // Motor driver: DRV8833/L298N style — Left motor AIN1/AIN2, Right motor BIN1/BIN2
+  // Adjust pin numbers here if your Quarky hardware differs
+  '_LA=PWM(Pin(26),freq=1000,duty=0)',   // Left forward
+  '_LB=PWM(Pin(27),freq=1000,duty=0)',   // Left backward
+  '_RA=PWM(Pin(14),freq=1000,duty=0)',   // Right forward
+  '_RB=PWM(Pin(12),freq=1000,duty=0)',   // Right backward
+  '_NP=neopixel.NeoPixel(Pin(5),35)',    // 35-LED NeoPixel matrix
+  'def sp(): _LA.duty(0);_LB.duty(0);_RA.duty(0);_RB.duty(0)',
+  'def fw(ms): _LA.duty(800);_LB.duty(0);_RA.duty(800);_RB.duty(0);time.sleep_ms(ms);sp()',
+  'def bk(ms): _LA.duty(0);_LB.duty(800);_RA.duty(0);_RB.duty(800);time.sleep_ms(ms);sp()',
+  'def lt(ms): _LA.duty(0);_LB.duty(600);_RA.duty(800);_RB.duty(0);time.sleep_ms(ms);sp()',
+  'def rt(ms): _LA.duty(800);_LB.duty(0);_RA.duty(0);_RB.duty(600);time.sleep_ms(ms);sp()',
+  'def hl(r,g,b):\n for i in range(35): _NP[i]=(r,g,b)\n _NP.write()',
+  'def ls(): return Pin(34,Pin.IN).value(),Pin(35,Pin.IN).value()',
+  'hl(0,255,0)',
+  'time.sleep_ms(300)',
+  'hl(0,0,0)',
+  'print("Quarky ready!")',
+];
 
 /* ─── Sim robot type definitions ─── */
 const SIM_ROBOTS = [
@@ -2646,6 +2788,83 @@ function generateFullProgram(blocks, kit) {
   ].join('\n') + '\n';
 }
 
+/* ─── Quarky full-program generator (ESP32 MicroPython) ─── */
+function generateQuarkyProgram(blocks) {
+  const profile = ROBOT_PROFILES.quarky;
+  const ordered = [...blocks].sort((a, b) => a.y - b.y);
+  let indent = 0;
+  const bodyLines = [];
+  const needsRandom = blocks.some(b => b.id === 'math_random');
+
+  const INDENT_OPENERS = new Set([
+    'repeat', 'forever', 'while_do', 'for_range',
+    'if_then', 'if_temp', 'if_compass',
+    'if_dist', 'if_line', 'if_btn_a', 'if_btn_b',
+    'if_touch', 'if_shake', 'if_tilt', 'if_light',
+  ]);
+
+  for (const block of ordered) {
+    const raw = profile.buildCmd(block.id, block.params)
+      .replace(/\r\n\s*$/, '').replace(/\n\s*$/, '');
+
+    if (block.id === 'on_start') { bodyLines.push(''); bodyLines.push('# --- on start ---'); continue; }
+
+    if (['repeat_end','if_end','while_end','for_end'].includes(block.id)) {
+      bodyLines.push(' '.repeat(indent) + 'pass');
+      indent = Math.max(0, indent - 4);
+      continue;
+    }
+    if (block.id === 'else_branch') {
+      bodyLines.push(' '.repeat(indent) + 'pass');
+      indent = Math.max(0, indent - 4);
+      bodyLines.push(' '.repeat(indent) + 'else:');
+      indent += 4;
+      continue;
+    }
+    if (block.id === 'else_if') {
+      const op = block.params?.op === '=' ? '==' : (block.params?.op || '<');
+      bodyLines.push(' '.repeat(indent) + 'pass');
+      indent = Math.max(0, indent - 4);
+      bodyLines.push(' '.repeat(indent) + `elif ${block.params?.cond||'x'} ${op} ${block.params?.val||0}:`);
+      indent += 4;
+      continue;
+    }
+    if (!raw) continue;
+    bodyLines.push(' '.repeat(indent) + raw);
+    if (INDENT_OPENERS.has(block.id)) indent += 4;
+  }
+
+  return [
+    '# Quarky — ESP32 MicroPython (generated by ByteBuddies)',
+    'from machine import Pin, PWM',
+    'import time, neopixel',
+    ...(needsRandom ? ['import random'] : []),
+    '',
+    '# Motor driver (DRV8833) — left: GPIO26/27, right: GPIO14/12',
+    '_LA=PWM(Pin(26),freq=1000,duty=0)',
+    '_LB=PWM(Pin(27),freq=1000,duty=0)',
+    '_RA=PWM(Pin(14),freq=1000,duty=0)',
+    '_RB=PWM(Pin(12),freq=1000,duty=0)',
+    '_NP=neopixel.NeoPixel(Pin(5),35)',
+    '',
+    'def sp(): _LA.duty(0);_LB.duty(0);_RA.duty(0);_RB.duty(0)',
+    'def fw(ms): _LA.duty(800);_LB.duty(0);_RA.duty(800);_RB.duty(0);time.sleep_ms(ms);sp()',
+    'def bk(ms): _LA.duty(0);_LB.duty(800);_RA.duty(0);_RB.duty(800);time.sleep_ms(ms);sp()',
+    'def lt(ms): _LA.duty(0);_LB.duty(600);_RA.duty(800);_RB.duty(0);time.sleep_ms(ms);sp()',
+    'def rt(ms): _LA.duty(800);_LB.duty(0);_RA.duty(0);_RB.duty(600);time.sleep_ms(ms);sp()',
+    'def hl(r,g,b):\n    for i in range(35): _NP[i]=(r,g,b)\n    _NP.write()',
+    'def ls(): return Pin(34,Pin.IN).value(),Pin(35,Pin.IN).value()',
+    '',
+    '# Startup: flash green',
+    'hl(0,255,0)',
+    'time.sleep_ms(300)',
+    'hl(0,0,0)',
+    '',
+    '# Your program',
+    ...bodyLines,
+  ].join('\n') + '\n';
+}
+
 /* ─── Main RobotPanel component ─── */
 export default function RobotPanel() {
   const [connected, setConnected] = useState(false);
@@ -2662,9 +2881,9 @@ export default function RobotPanel() {
   const [terminal, setTerminal] = useState([]);
   const [running, setRunning] = useState(false);
   const [showSetup, setShowSetup] = useState(false);
-  // Auto-open setup guide for robots that need a sketch upload
+  // Auto-open setup guide for robots that need initial configuration
   React.useEffect(() => {
-    if (robotType === 'mbot' || robotType === 'arduino') setShowSetup(true);
+    if (robotType === 'mbot' || robotType === 'arduino' || robotType === 'quarky') setShowSetup(true);
   }, [robotType]);
   const [flashProgress, setFlashProgress] = useState(null); // null=idle, 0-100+=flashing, 'done'=complete
   const [rightTab, setRightTab] = useState('virtual');
@@ -3000,8 +3219,8 @@ export default function RobotPanel() {
       setConnected(true);
       setConnectionKind('usb');
 
-      // For micro:bit: detect firmware then set up raw REPL if MicroPython is present
-      if (robotType === 'microbit') {
+      // For micro:bit and Quarky: detect firmware then set up raw REPL if MicroPython is present
+      if (robotType === 'microbit' || robotType === 'quarky') {
         const enc = new TextEncoder();
         const writeChunked = async (data) => {
           const bytes = typeof data === 'string' ? enc.encode(data) : data;
@@ -3070,11 +3289,14 @@ export default function RobotPanel() {
 
           setFirmwareOk(true);
           firmwareOkRef.current = true;
-          addTerminal('✅ MicroPython detected — loading kit…', 'success');
+          const kitLabel = robotType === 'quarky' ? 'Quarky' : 'kit';
+          addTerminal(`✅ MicroPython detected — loading ${kitLabel}…`, 'success');
 
           // Step 3: send kit setup lines one by one via raw REPL
           // Device stays in raw REPL between executions — just send each line + \x04.
-          const lines = MICROBIT_KIT_SETUPS[microbitKit] || MICROBIT_KIT_SETUPS.generic;
+          const lines = robotType === 'quarky'
+            ? QUARKY_SETUP
+            : (MICROBIT_KIT_SETUPS[microbitKit] || MICROBIT_KIT_SETUPS.generic);
           let setupOk = 0;
           for (const line of lines) {
             const done = new Promise(resolve => {
@@ -3093,7 +3315,7 @@ export default function RobotPanel() {
       }
 
       addTerminal(`✅ Connected! (${profile.name})`, 'success');
-      if (robotType === 'microbit') addTerminal('💡 Press ▶ Run to send your program — no need to re-flash each time!', 'info');
+      if (robotType === 'microbit' || robotType === 'quarky') addTerminal('💡 Press ▶ Run to send your program — no need to re-flash each time!', 'info');
     } catch (e) {
       if (e.name !== 'NotFoundError') addTerminal(`❌ ${e.message}`, 'error');
     } finally {
@@ -3404,7 +3626,7 @@ export default function RobotPanel() {
       setActiveBlockUid(step.uid);
       applyRuntimeMathAndVars(step);
       if (connectedRef.current && !simOnly) {
-        if (robotType === 'microbit') {
+        if (robotType === 'microbit' || robotType === 'quarky') {
           // Run physical and simulation in parallel; physical uses raw REPL with completion wait
           await Promise.all([
             sendMicrobitRaw(profile.buildCmd(step.id, step.params)),
@@ -3440,11 +3662,15 @@ export default function RobotPanel() {
 
   const runProgram = async () => {
     if (!program.length) return;
-    if (robotType === 'microbit' && !connectedRef.current) {
+    if ((robotType === 'microbit' || robotType === 'quarky') && !connectedRef.current) {
       addTerminal('ℹ️ No robot connected — running in simulation only', 'info');
     }
     if (connectedRef.current && robotType === 'microbit' && firmwareOkRef.current === false) {
       addTerminal('⚠️ Flash once first: ⚡ Flash → “MicroPython (USB, flash once)” or “Bluetooth bridge firmware”.', 'warn');
+      return;
+    }
+    if (connectedRef.current && robotType === 'quarky' && firmwareOkRef.current === false) {
+      addTerminal('⚠️ MicroPython not detected. Flash MicroPython to your Quarky first (see Setup Guide).', 'warn');
       return;
     }
     setRunning(true);
@@ -3481,9 +3707,11 @@ export default function RobotPanel() {
       firmwareOkRef.current === true &&
       connectionTypeRef.current === 'usb';
 
-    if (robotType === 'microbit' && connectedRef.current && canRunFullPython) {
+    if ((robotType === 'microbit' || robotType === 'quarky') && connectedRef.current && canRunFullPython) {
       robotRef.current?.resetState();
-      const pythonCode = generateFullProgram(program, microbitKit);
+      const pythonCode = robotType === 'quarky'
+        ? generateQuarkyProgram(program)
+        : generateFullProgram(program, microbitKit);
       const hasForever = orderedSteps.some(s => s.id === 'forever');
       const isBridge = bridgeModeRef.current;
 
@@ -3519,7 +3747,7 @@ export default function RobotPanel() {
     setRunning(false);
     setActiveBlockUid(null);
     if (connectedRef.current) {
-      if (robotType === 'microbit' && firmwareOkRef.current === true) {
+      if ((robotType === 'microbit' || robotType === 'quarky') && firmwareOkRef.current === true) {
         if (bridgeModeRef.current) {
           await writeChunked('sp()\x04');
         } else if (connectionTypeRef.current === 'bluetooth') {
@@ -4337,7 +4565,7 @@ export default function RobotPanel() {
             ))}
           </select>
 
-          {/* micro:bit kit selector */}
+          {/* micro:bit kit selector — hidden for Quarky (it has its own setup) */}
           {robotType === 'microbit' && (
             <select
               value={microbitKit}
@@ -4390,6 +4618,10 @@ export default function RobotPanel() {
                     {connecting ? 'Connecting…' : '📡 Bluetooth'}
                   </button>
                 </span>
+              : robotType === 'quarky'
+              ? <button style={s.btn('#6366f1')} onClick={connect} disabled={connecting} title="Connect Quarky via USB cable (MicroPython REPL)">
+                  {connecting ? 'Connecting…' : '🔌 USB'}
+                </button>
               : <button style={s.btn('#6366f1')} onClick={connect} disabled={connecting}>
                   {connecting ? 'Connecting…' : '🔌 Connect Robot'}
                 </button>
@@ -4414,6 +4646,14 @@ export default function RobotPanel() {
               <li><strong>Wireless:</strong> ⚡ Flash → <strong>Bluetooth bridge firmware</strong> once → wait for <strong>B</strong> → <strong>📡 Bluetooth</strong> → pick <strong>ByteBuddies</strong> → ▶ Run</li>
               <li>Set <strong>V1/V2</strong> next to the kit menu before flashing so the correct image is used</li>
               <li>Only use <strong>Flash program</strong> if you need a .hex file offline — normal coding does not need it</li>
+            </>}
+            {robotType === 'quarky' && <>
+              <li><strong>One-time setup:</strong> Flash <strong>MicroPython for ESP32</strong> to your Quarky using <a href="https://thonny.org" target="_blank" rel="noopener noreferrer" style={{color:'#6366f1'}}>Thonny IDE</a> (Tools → Options → Interpreter → ESP32 → Install MicroPython)</li>
+              <li>Plug in your Quarky via <strong>USB-C cable</strong></li>
+              <li>Click <strong>🔌 USB</strong> → select the Quarky COM/serial port → ByteBuddies loads motor helpers automatically</li>
+              <li>Build your blocks → click <strong>▶ Run</strong> — no re-flashing needed!</li>
+              <li><strong>LEDs:</strong> Use "LED RGB" or "Set All LEDs" blocks to light up the 35-pixel matrix</li>
+              <li><strong>IR sensors:</strong> "If Line Found" reads the two infrared sensors (GPIO 34 &amp; 35)</li>
             </>}
             {robotType === 'mbot' && <>
               <li>Step 1 — <strong>Download &amp; upload the sketch</strong> to your mBot (Arduino IDE + Makeblock library)</li>
@@ -5115,7 +5355,8 @@ export default function RobotPanel() {
             <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{program.length} block{program.length !== 1 ? 's' : ''}</span>
             {!connected && program.length > 0 && robotType === 'microbit' && <span style={{ fontSize: 12, color: '#a5b4fc', marginLeft: 'auto' }}>💡 Click ⚡ Flash to program your micro:bit</span>}
             {!connected && program.length > 0 && robotType !== 'microbit' && <span style={{ fontSize: 12, color: '#fbbf24', marginLeft: 'auto' }}>⚠️ Sim only — connect robot first</span>}
-            {connected && firmwareOk === false && <span style={{ fontSize: 12, color: '#fbbf24', marginLeft: 'auto' }}>💡 MakeCode detected — click ⚡ Flash</span>}
+            {connected && firmwareOk === false && robotType === 'microbit' && <span style={{ fontSize: 12, color: '#fbbf24', marginLeft: 'auto' }}>💡 MakeCode detected — click ⚡ Flash</span>}
+            {connected && firmwareOk === false && robotType === 'quarky' && <span style={{ fontSize: 12, color: '#fbbf24', marginLeft: 'auto' }}>💡 No MicroPython detected — flash it via Thonny first</span>}
             {connected && firmwareOk === true && <span style={{ fontSize: 12, color: '#4ade80', marginLeft: 'auto' }}>✅ {profile.name} live ready</span>}
             {connected && firmwareOk === null && robotType !== 'microbit' && <span style={{ fontSize: 12, color: '#4ade80', marginLeft: 'auto' }}>✅ {profile.name} ready</span>}
           </div>
