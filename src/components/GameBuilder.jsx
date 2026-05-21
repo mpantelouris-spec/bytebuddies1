@@ -5100,34 +5100,43 @@ loadImages(function(){
             {/* Backdrop picker */}
             {showBgPicker && (
               <div style={{
-                display: 'flex', gap: 4, padding: '6px 8px', flexWrap: 'wrap',
                 borderBottom: '1px solid var(--border-color)', background: 'var(--bg-primary)',
+                maxHeight: 220, overflowY: 'auto', padding: '8px 10px',
               }}>
-                {STAGE_BACKDROPS.map(bg => (
-                  <button key={bg.name} onClick={() => pickBackdrop(bg.name)}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))', gap: 8 }}>
+                  {[...STAGE_BACKDROPS, ...customBackgrounds.map(b => ({ ...b, isCustom: true }))].map(bg => (
+                    <button key={bg.name} onClick={() => pickBackdrop(bg.name)}
+                      style={{
+                        padding: 4, borderRadius: 7,
+                        border: background === bg.name ? '2px solid var(--accent-primary)' : '1px solid var(--border-color)',
+                        background: background === bg.name ? 'var(--accent-primary)18' : 'var(--bg-secondary)',
+                        cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+                        transition: 'all 0.12s',
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--accent-primary)'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.borderColor = background === bg.name ? 'var(--accent-primary)' : 'var(--border-color)'; }}
+                    >
+                      {bg.image
+                        ? <img src={bg.image} alt={bg.name} style={{ width: '100%', height: 56, objectFit: 'cover', borderRadius: 4, display: 'block' }} />
+                        : <div style={{ width: '100%', height: 56, background: '#ffffff', borderRadius: 4, border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>⬜</div>
+                      }
+                      <span style={{ fontSize: 9, fontWeight: 600, color: 'var(--text-primary)', textAlign: 'center', lineHeight: 1.2, maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {bg.isCustom ? '📷 ' : ''}{bg.name}
+                      </span>
+                    </button>
+                  ))}
+                  <button onClick={() => bgUploadRef.current?.click()}
                     style={{
-                      padding: '3px 8px', borderRadius: 4, border: background === bg.name ? '2px solid var(--accent-primary)' : '1px solid var(--border-color)',
-                      background: background === bg.name ? 'var(--accent-primary)22' : 'var(--bg-input)',
-                      color: 'var(--text-primary)', fontSize: 10, fontWeight: 600, cursor: 'pointer',
+                      padding: 4, borderRadius: 7, border: '1px dashed var(--accent-primary)',
+                      background: 'transparent', cursor: 'pointer',
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, minHeight: 76,
                     }}
-                  >{bg.name}</button>
-                ))}
-                {customBackgrounds.map(bg => (
-                  <button key={bg.name} onClick={() => pickBackdrop(bg.name)}
-                    style={{
-                      padding: '3px 8px', borderRadius: 4, border: background === bg.name ? '2px solid var(--accent-primary)' : '1px solid var(--border-color)',
-                      background: background === bg.name ? 'var(--accent-primary)22' : 'var(--bg-input)',
-                      color: 'var(--text-primary)', fontSize: 10, fontWeight: 600, cursor: 'pointer',
-                    }}
-                  >📷 {bg.name}</button>
-                ))}
-                <button onClick={() => bgUploadRef.current?.click()}
-                  style={{
-                    padding: '3px 8px', borderRadius: 4, border: '1px dashed var(--accent-primary)',
-                    background: 'transparent', color: 'var(--accent-primary)', fontSize: 10, fontWeight: 600, cursor: 'pointer',
-                  }}
-                >⬆ Upload</button>
-                <input ref={bgUploadRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleBgUpload} />
+                  >
+                    <span style={{ fontSize: 18 }}>⬆</span>
+                    <span style={{ fontSize: 9, fontWeight: 600, color: 'var(--accent-primary)' }}>Upload</span>
+                  </button>
+                  <input ref={bgUploadRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleBgUpload} />
+                </div>
               </div>
             )}
 
