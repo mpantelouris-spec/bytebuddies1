@@ -1,0 +1,217 @@
+{
+  "category": "Space",
+  "prefix": "space",
+  "source": "Space.png",
+  "items": [
+    {
+      "name": "Spiral Galaxy",
+      "slug": "spiral_galaxy",
+      "file": "space_spiral_galaxy.png",
+      "width": 1024,
+      "height": 829
+    },
+    {
+      "name": "Earth",
+      "slug": "earth",
+      "file": "space_earth.png",
+      "width": 981,
+      "height": 1023
+    },
+    {
+      "name": "Moon",
+      "slug": "moon",
+      "file": "space_moon.png",
+      "width": 949,
+      "height": 1024
+    },
+    {
+      "name": "Mars",
+      "slug": "mars",
+      "file": "space_mars.png",
+      "width": 961,
+      "height": 1024
+    },
+    {
+      "name": "Jupiter",
+      "slug": "jupiter",
+      "file": "space_jupiter.png",
+      "width": 975,
+      "height": 1024
+    },
+    {
+      "name": "Saturn",
+      "slug": "saturn",
+      "file": "space_saturn.png",
+      "width": 1024,
+      "height": 873
+    },
+    {
+      "name": "Sun",
+      "slug": "sun",
+      "file": "space_sun.png",
+      "width": 1024,
+      "height": 982
+    },
+    {
+      "name": "Nebula",
+      "slug": "nebula",
+      "file": "space_nebula.png",
+      "width": 1010,
+      "height": 1024
+    },
+    {
+      "name": "Black Hole",
+      "slug": "black_hole",
+      "file": "space_black_hole.png",
+      "width": 1024,
+      "height": 779
+    },
+    {
+      "name": "Comet",
+      "slug": "comet",
+      "file": "space_comet.png",
+      "width": 1023,
+      "height": 989
+    },
+    {
+      "name": "Asteroid",
+      "slug": "asteroid",
+      "file": "space_asteroid.png",
+      "width": 1024,
+      "height": 1007
+    },
+    {
+      "name": "Meteor",
+      "slug": "meteor",
+      "file": "space_meteor.png",
+      "width": 1024,
+      "height": 1011
+    },
+    {
+      "name": "Space Shuttle",
+      "slug": "space_shuttle",
+      "file": "space_space_shuttle.png",
+      "width": 1011,
+      "height": 1024
+    },
+    {
+      "name": "Space Telescope",
+      "slug": "space_telescope",
+      "file": "space_space_telescope.png",
+      "width": 1024,
+      "height": 833
+    },
+    {
+      "name": "Space Station",
+      "slug": "space_station",
+      "file": "space_space_station.png",
+      "width": 1024,
+      "height": 922
+    },
+    {
+      "name": "Rocket",
+      "slug": "rocket",
+      "file": "space_rocket.png",
+      "width": 528,
+      "height": 1024
+    },
+    {
+      "name": "Lunar Lander",
+      "slug": "lunar_lander",
+      "file": "space_lunar_lander.png",
+      "width": 1019,
+      "height": 1024
+    },
+    {
+      "name": "Mars Rover",
+      "slug": "mars_rover",
+      "file": "space_mars_rover.png",
+      "width": 1024,
+      "height": 994
+    },
+    {
+      "name": "Pulsar",
+      "slug": "pulsar",
+      "file": "space_pulsar.png",
+      "width": 1023,
+      "height": 906
+    },
+    {
+      "name": "Star Cluster",
+      "slug": "star_cluster",
+      "file": "space_star_cluster.png",
+      "width": 1000,
+      "height": 1024
+    },
+    {
+      "name": "Planetary Nebula",
+      "slug": "planetary_nebula",
+      "file": "space_planetary_nebula.png",
+      "width": 1024,
+      "height": 980
+    },
+    {
+      "name": "Protoplanetary Disk",
+      "slug": "protoplanetary_disk",
+      "file": "space_protoplanetary_disk.png",
+      "width": 1024,
+      "height": 838
+    },
+    {
+      "name": "Binary Sun Planet",
+      "slug": "binary_sun_planet",
+      "file": "space_binary_sun_planet.png",
+      "width": 944,
+      "height": 1024
+    },
+    {
+      "name": "Neptune",
+      "slug": "neptune",
+      "file": "space_neptune.png",
+      "width": 962,
+      "height": 1024
+    },
+    {
+      "name": "Astronaut",
+      "slug": "astronaut",
+      "file": "space_astronaut.png",
+      "width": 1019,
+      "height": 1024
+    },
+    {
+      "name": "Face-On Galaxy",
+      "slug": "face_on_galaxy",
+      "file": "space_face_on_galaxy.png",
+      "width": 1024,
+      "height": 861
+    },
+    {
+      "name": "Space Capsule",
+      "slug": "space_capsule",
+      "file": "space_space_capsule.png",
+      "width": 999,
+      "height": 1024
+    },
+    {
+      "name": "Fighter Ship",
+      "slug": "fighter_ship",
+      "file": "space_fighter_ship.png",
+      "width": 1023,
+      "height": 916
+    },
+    {
+      "name": "Satellite Probe",
+      "slug": "satellite_probe",
+      "file": "space_satellite_probe.png",
+      "width": 1023,
+      "height": 933
+    },
+    {
+      "name": "Colliding Galaxies",
+      "slug": "colliding_galaxies",
+      "file": "space_colliding_galaxies.png",
+      "width": 1024,
+      "height": 869
+    }
+  ]
+}

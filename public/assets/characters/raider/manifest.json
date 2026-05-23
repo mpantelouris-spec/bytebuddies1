@@ -1,0 +1,308 @@
+{
+  "category": "Space Raiders",
+  "prefix": "raider",
+  "source": "Space Raiders.png",
+  "items": [
+    {
+      "name": "sprite_01",
+      "slug": "sprite_01",
+      "file": "raider_sprite_01.png",
+      "width": 873,
+      "height": 1024
+    },
+    {
+      "name": "sprite_02",
+      "slug": "sprite_02",
+      "file": "raider_sprite_02.png",
+      "width": 866,
+      "height": 1024
+    },
+    {
+      "name": "sprite_03",
+      "slug": "sprite_03",
+      "file": "raider_sprite_03.png",
+      "width": 866,
+      "height": 1024
+    },
+    {
+      "name": "sprite_04",
+      "slug": "sprite_04",
+      "file": "raider_sprite_04.png",
+      "width": 860,
+      "height": 1024
+    },
+    {
+      "name": "sprite_05",
+      "slug": "sprite_05",
+      "file": "raider_sprite_05.png",
+      "width": 625,
+      "height": 1024
+    },
+    {
+      "name": "sprite_06",
+      "slug": "sprite_06",
+      "file": "raider_sprite_06.png",
+      "width": 1024,
+      "height": 880
+    },
+    {
+      "name": "sprite_07",
+      "slug": "sprite_07",
+      "file": "raider_sprite_07.png",
+      "width": 1024,
+      "height": 841
+    },
+    {
+      "name": "sprite_08",
+      "slug": "sprite_08",
+      "file": "raider_sprite_08.png",
+      "width": 1024,
+      "height": 889
+    },
+    {
+      "name": "sprite_09",
+      "slug": "sprite_09",
+      "file": "raider_sprite_09.png",
+      "width": 1024,
+      "height": 841
+    },
+    {
+      "name": "sprite_10",
+      "slug": "sprite_10",
+      "file": "raider_sprite_10.png",
+      "width": 1024,
+      "height": 889
+    },
+    {
+      "name": "sprite_11",
+      "slug": "sprite_11",
+      "file": "raider_sprite_11.png",
+      "width": 1024,
+      "height": 870
+    },
+    {
+      "name": "sprite_12",
+      "slug": "sprite_12",
+      "file": "raider_sprite_12.png",
+      "width": 1024,
+      "height": 860
+    },
+    {
+      "name": "sprite_13",
+      "slug": "sprite_13",
+      "file": "raider_sprite_13.png",
+      "width": 1024,
+      "height": 879
+    },
+    {
+      "name": "sprite_14",
+      "slug": "sprite_14",
+      "file": "raider_sprite_14.png",
+      "width": 1024,
+      "height": 868
+    },
+    {
+      "name": "sprite_15",
+      "slug": "sprite_15",
+      "file": "raider_sprite_15.png",
+      "width": 1024,
+      "height": 879
+    },
+    {
+      "name": "sprite_16",
+      "slug": "sprite_16",
+      "file": "raider_sprite_16.png",
+      "width": 1024,
+      "height": 860
+    },
+    {
+      "name": "sprite_17",
+      "slug": "sprite_17",
+      "file": "raider_sprite_17.png",
+      "width": 1024,
+      "height": 860
+    },
+    {
+      "name": "sprite_18",
+      "slug": "sprite_18",
+      "file": "raider_sprite_18.png",
+      "width": 1024,
+      "height": 868
+    },
+    {
+      "name": "sprite_19",
+      "slug": "sprite_19",
+      "file": "raider_sprite_19.png",
+      "width": 1024,
+      "height": 860
+    },
+    {
+      "name": "sprite_20",
+      "slug": "sprite_20",
+      "file": "raider_sprite_20.png",
+      "width": 1024,
+      "height": 860
+    },
+    {
+      "name": "sprite_21",
+      "slug": "sprite_21",
+      "file": "raider_sprite_21.png",
+      "width": 1024,
+      "height": 880
+    },
+    {
+      "name": "sprite_22",
+      "slug": "sprite_22",
+      "file": "raider_sprite_22.png",
+      "width": 1024,
+      "height": 880
+    },
+    {
+      "name": "sprite_23",
+      "slug": "sprite_23",
+      "file": "raider_sprite_23.png",
+      "width": 1024,
+      "height": 889
+    },
+    {
+      "name": "sprite_24",
+      "slug": "sprite_24",
+      "file": "raider_sprite_24.png",
+      "width": 1024,
+      "height": 880
+    },
+    {
+      "name": "sprite_25",
+      "slug": "sprite_25",
+      "file": "raider_sprite_25.png",
+      "width": 1024,
+      "height": 880
+    },
+    {
+      "name": "sprite_26",
+      "slug": "sprite_26",
+      "file": "raider_sprite_26.png",
+      "width": 1024,
+      "height": 801
+    },
+    {
+      "name": "sprite_27",
+      "slug": "sprite_27",
+      "file": "raider_sprite_27.png",
+      "width": 1024,
+      "height": 806
+    },
+    {
+      "name": "sprite_28",
+      "slug": "sprite_28",
+      "file": "raider_sprite_28.png",
+      "width": 1024,
+      "height": 812
+    },
+    {
+      "name": "sprite_29",
+      "slug": "sprite_29",
+      "file": "raider_sprite_29.png",
+      "width": 1024,
+      "height": 757
+    },
+    {
+      "name": "sprite_30",
+      "slug": "sprite_30",
+      "file": "raider_sprite_30.png",
+      "width": 1024,
+      "height": 746
+    },
+    {
+      "name": "sprite_31",
+      "slug": "sprite_31",
+      "file": "raider_sprite_31.png",
+      "width": 737,
+      "height": 1024
+    },
+    {
+      "name": "sprite_32",
+      "slug": "sprite_32",
+      "file": "raider_sprite_32.png",
+      "width": 1024,
+      "height": 461
+    },
+    {
+      "name": "sprite_33",
+      "slug": "sprite_33",
+      "file": "raider_sprite_33.png",
+      "width": 1024,
+      "height": 448
+    },
+    {
+      "name": "sprite_34",
+      "slug": "sprite_34",
+      "file": "raider_sprite_34.png",
+      "width": 1024,
+      "height": 633
+    },
+    {
+      "name": "sprite_35",
+      "slug": "sprite_35",
+      "file": "raider_sprite_35.png",
+      "width": 1003,
+      "height": 1024
+    },
+    {
+      "name": "sprite_36",
+      "slug": "sprite_36",
+      "file": "raider_sprite_36.png",
+      "width": 1024,
+      "height": 965
+    },
+    {
+      "name": "sprite_37",
+      "slug": "sprite_37",
+      "file": "raider_sprite_37.png",
+      "width": 1024,
+      "height": 1024
+    },
+    {
+      "name": "sprite_38",
+      "slug": "sprite_38",
+      "file": "raider_sprite_38.png",
+      "width": 838,
+      "height": 1024
+    },
+    {
+      "name": "sprite_39",
+      "slug": "sprite_39",
+      "file": "raider_sprite_39.png",
+      "width": 1024,
+      "height": 989
+    },
+    {
+      "name": "sprite_40",
+      "slug": "sprite_40",
+      "file": "raider_sprite_40.png",
+      "width": 1004,
+      "height": 1024
+    },
+    {
+      "name": "sprite_41",
+      "slug": "sprite_41",
+      "file": "raider_sprite_41.png",
+      "width": 936,
+      "height": 1024
+    },
+    {
+      "name": "sprite_42",
+      "slug": "sprite_42",
+      "file": "raider_sprite_42.png",
+      "width": 916,
+      "height": 1024
+    },
+    {
+      "name": "sprite_43",
+      "slug": "sprite_43",
+      "file": "raider_sprite_43.png",
+      "width": 948,
+      "height": 1024
+    }
+  ]
+}

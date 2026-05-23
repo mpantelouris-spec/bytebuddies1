@@ -1,0 +1,252 @@
+{
+  "category": "Objects",
+  "prefix": "object",
+  "source": "Objects.png",
+  "items": [
+    {
+      "name": "Wooden Chest",
+      "slug": "wooden_chest",
+      "file": "object_wooden_chest.png",
+      "width": 976,
+      "height": 1023
+    },
+    {
+      "name": "Blue Potion",
+      "slug": "blue_potion",
+      "file": "object_blue_potion.png",
+      "width": 751,
+      "height": 1024
+    },
+    {
+      "name": "Green Potion",
+      "slug": "green_potion",
+      "file": "object_green_potion.png",
+      "width": 697,
+      "height": 1024
+    },
+    {
+      "name": "Gold Coin",
+      "slug": "gold_coin",
+      "file": "object_gold_coin.png",
+      "width": 930,
+      "height": 1023
+    },
+    {
+      "name": "Purple Gem",
+      "slug": "purple_gem",
+      "file": "object_purple_gem.png",
+      "width": 872,
+      "height": 1023
+    },
+    {
+      "name": "Blue Diamond",
+      "slug": "blue_diamond",
+      "file": "object_blue_diamond.png",
+      "width": 972,
+      "height": 1024
+    },
+    {
+      "name": "Money Bag",
+      "slug": "money_bag",
+      "file": "object_money_bag.png",
+      "width": 789,
+      "height": 1024
+    },
+    {
+      "name": "Dynamite",
+      "slug": "dynamite",
+      "file": "object_dynamite.png",
+      "width": 862,
+      "height": 1024
+    },
+    {
+      "name": "Bomb",
+      "slug": "bomb",
+      "file": "object_bomb.png",
+      "width": 943,
+      "height": 1024
+    },
+    {
+      "name": "Archery Target",
+      "slug": "archery_target",
+      "file": "object_archery_target.png",
+      "width": 959,
+      "height": 1023
+    },
+    {
+      "name": "Blue Banner",
+      "slug": "blue_banner",
+      "file": "object_blue_banner.png",
+      "width": 809,
+      "height": 1024
+    },
+    {
+      "name": "Sword",
+      "slug": "sword",
+      "file": "object_sword.png",
+      "width": 886,
+      "height": 1024
+    },
+    {
+      "name": "Battle Axe",
+      "slug": "battle_axe",
+      "file": "object_battle_axe.png",
+      "width": 1024,
+      "height": 1024
+    },
+    {
+      "name": "Longbow",
+      "slug": "longbow",
+      "file": "object_longbow.png",
+      "width": 768,
+      "height": 1024
+    },
+    {
+      "name": "Magic Staff",
+      "slug": "magic_staff",
+      "file": "object_magic_staff.png",
+      "width": 723,
+      "height": 1024
+    },
+    {
+      "name": "Golden Key",
+      "slug": "golden_key",
+      "file": "object_golden_key.png",
+      "width": 692,
+      "height": 1024
+    },
+    {
+      "name": "Shield",
+      "slug": "shield",
+      "file": "object_shield.png",
+      "width": 706,
+      "height": 1024
+    },
+    {
+      "name": "Campfire",
+      "slug": "campfire",
+      "file": "object_campfire.png",
+      "width": 657,
+      "height": 1024
+    },
+    {
+      "name": "Anvil",
+      "slug": "anvil",
+      "file": "object_anvil.png",
+      "width": 1012,
+      "height": 1024
+    },
+    {
+      "name": "Tree",
+      "slug": "tree",
+      "file": "object_tree.png",
+      "width": 1024,
+      "height": 991
+    },
+    {
+      "name": "Rocks",
+      "slug": "rocks",
+      "file": "object_rocks.png",
+      "width": 1018,
+      "height": 1024
+    },
+    {
+      "name": "Signpost",
+      "slug": "signpost",
+      "file": "object_signpost.png",
+      "width": 816,
+      "height": 1024
+    },
+    {
+      "name": "Fence",
+      "slug": "fence",
+      "file": "object_fence.png",
+      "width": 1024,
+      "height": 825
+    },
+    {
+      "name": "Lantern Post",
+      "slug": "lantern_post",
+      "file": "object_lantern_post.png",
+      "width": 618,
+      "height": 1024
+    },
+    {
+      "name": "Well",
+      "slug": "well",
+      "file": "object_well.png",
+      "width": 831,
+      "height": 1024
+    },
+    {
+      "name": "Crystal Cluster",
+      "slug": "crystal_cluster",
+      "file": "object_crystal_cluster.png",
+      "width": 762,
+      "height": 1024
+    },
+    {
+      "name": "Axe in Stump",
+      "slug": "axe_in_stump",
+      "file": "object_axe_in_stump.png",
+      "width": 838,
+      "height": 1024
+    },
+    {
+      "name": "Red Banner",
+      "slug": "red_banner",
+      "file": "object_red_banner.png",
+      "width": 769,
+      "height": 1024
+    },
+    {
+      "name": "Bed",
+      "slug": "bed",
+      "file": "object_bed.png",
+      "width": 1024,
+      "height": 934
+    },
+    {
+      "name": "Table",
+      "slug": "table",
+      "file": "object_table.png",
+      "width": 1024,
+      "height": 990
+    },
+    {
+      "name": "Bookshelf",
+      "slug": "bookshelf",
+      "file": "object_bookshelf.png",
+      "width": 788,
+      "height": 1024
+    },
+    {
+      "name": "Chair",
+      "slug": "chair",
+      "file": "object_chair.png",
+      "width": 808,
+      "height": 1024
+    },
+    {
+      "name": "Pedestal",
+      "slug": "pedestal",
+      "file": "object_pedestal.png",
+      "width": 718,
+      "height": 1024
+    },
+    {
+      "name": "Stone Oven",
+      "slug": "stone_oven",
+      "file": "object_stone_oven.png",
+      "width": 975,
+      "height": 1024
+    },
+    {
+      "name": "Potted Plant",
+      "slug": "potted_plant",
+      "file": "object_potted_plant.png",
+      "width": 852,
+      "height": 1024
+    }
+  ]
+}
