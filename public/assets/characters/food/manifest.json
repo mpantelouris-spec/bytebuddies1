@@ -1,0 +1,301 @@
+{
+  "category": "Food",
+  "prefix": "food",
+  "source": "Food.png",
+  "items": [
+    {
+      "name": "Apple",
+      "slug": "apple",
+      "file": "food_apple.png",
+      "width": 900,
+      "height": 1024
+    },
+    {
+      "name": "Cookie",
+      "slug": "cookie",
+      "file": "food_cookie.png",
+      "width": 1024,
+      "height": 889
+    },
+    {
+      "name": "Pancakes",
+      "slug": "pancakes",
+      "file": "food_pancakes.png",
+      "width": 1024,
+      "height": 914
+    },
+    {
+      "name": "Burger",
+      "slug": "burger",
+      "file": "food_burger.png",
+      "width": 1008,
+      "height": 1024
+    },
+    {
+      "name": "Pizza",
+      "slug": "pizza",
+      "file": "food_pizza.png",
+      "width": 1024,
+      "height": 962
+    },
+    {
+      "name": "Sushi",
+      "slug": "sushi",
+      "file": "food_sushi.png",
+      "width": 1024,
+      "height": 917
+    },
+    {
+      "name": "Chocolate Cake",
+      "slug": "chocolate_cake",
+      "file": "food_chocolate_cake.png",
+      "width": 805,
+      "height": 1024
+    },
+    {
+      "name": "Ramen",
+      "slug": "ramen",
+      "file": "food_ramen.png",
+      "width": 994,
+      "height": 1024
+    },
+    {
+      "name": "Donut",
+      "slug": "donut",
+      "file": "food_donut.png",
+      "width": 1024,
+      "height": 950
+    },
+    {
+      "name": "Taco",
+      "slug": "taco",
+      "file": "food_taco.png",
+      "width": 964,
+      "height": 1024
+    },
+    {
+      "name": "Salad",
+      "slug": "salad",
+      "file": "food_salad.png",
+      "width": 1024,
+      "height": 931
+    },
+    {
+      "name": "Roast Chicken",
+      "slug": "roast_chicken",
+      "file": "food_roast_chicken.png",
+      "width": 1024,
+      "height": 990
+    },
+    {
+      "name": "Fries",
+      "slug": "fries",
+      "file": "food_fries.png",
+      "width": 853,
+      "height": 1024
+    },
+    {
+      "name": "Ice Cream Cone",
+      "slug": "ice_cream_cone",
+      "file": "food_ice_cream_cone.png",
+      "width": 696,
+      "height": 1024
+    },
+    {
+      "name": "Grapes",
+      "slug": "grapes",
+      "file": "food_grapes.png",
+      "width": 1024,
+      "height": 995
+    },
+    {
+      "name": "Strawberry Cake",
+      "slug": "strawberry_cake",
+      "file": "food_strawberry_cake.png",
+      "width": 821,
+      "height": 1024
+    },
+    {
+      "name": "Macarons",
+      "slug": "macarons",
+      "file": "food_macarons.png",
+      "width": 934,
+      "height": 1024
+    },
+    {
+      "name": "Hot Dog",
+      "slug": "hot_dog",
+      "file": "food_hot_dog.png",
+      "width": 1024,
+      "height": 898
+    },
+    {
+      "name": "Blueberries",
+      "slug": "blueberries",
+      "file": "food_blueberries.png",
+      "width": 1024,
+      "height": 986
+    },
+    {
+      "name": "Cupcake",
+      "slug": "cupcake",
+      "file": "food_cupcake.png",
+      "width": 822,
+      "height": 1024
+    },
+    {
+      "name": "Watermelon",
+      "slug": "watermelon",
+      "file": "food_watermelon.png",
+      "width": 1024,
+      "height": 967
+    },
+    {
+      "name": "Orange Juice",
+      "slug": "orange_juice",
+      "file": "food_orange_juice.png",
+      "width": 799,
+      "height": 1023
+    },
+    {
+      "name": "Hot Chocolate",
+      "slug": "hot_chocolate",
+      "file": "food_hot_chocolate.png",
+      "width": 918,
+      "height": 1023
+    },
+    {
+      "name": "Grilled Cheese",
+      "slug": "grilled_cheese",
+      "file": "food_grilled_cheese.png",
+      "width": 1024,
+      "height": 962
+    },
+    {
+      "name": "Kebab",
+      "slug": "kebab",
+      "file": "food_kebab.png",
+      "width": 1023,
+      "height": 1000
+    },
+    {
+      "name": "Waffles",
+      "slug": "waffles",
+      "file": "food_waffles.png",
+      "width": 1024,
+      "height": 940
+    },
+    {
+      "name": "Tomato Soup",
+      "slug": "tomato_soup",
+      "file": "food_tomato_soup.png",
+      "width": 1024,
+      "height": 836
+    },
+    {
+      "name": "Pretzel",
+      "slug": "pretzel",
+      "file": "food_pretzel.png",
+      "width": 1024,
+      "height": 946
+    },
+    {
+      "name": "Kiwi",
+      "slug": "kiwi",
+      "file": "food_kiwi.png",
+      "width": 1024,
+      "height": 848
+    },
+    {
+      "name": "Cinnamon Roll",
+      "slug": "cinnamon_roll",
+      "file": "food_cinnamon_roll.png",
+      "width": 1024,
+      "height": 953
+    },
+    {
+      "name": "Fried Rice",
+      "slug": "fried_rice",
+      "file": "food_fried_rice.png",
+      "width": 1024,
+      "height": 887
+    },
+    {
+      "name": "Popcorn",
+      "slug": "popcorn",
+      "file": "food_popcorn.png",
+      "width": 875,
+      "height": 1024
+    },
+    {
+      "name": "Fried Chicken",
+      "slug": "fried_chicken",
+      "file": "food_fried_chicken.png",
+      "width": 1024,
+      "height": 884
+    },
+    {
+      "name": "Milkshake",
+      "slug": "milkshake",
+      "file": "food_milkshake.png",
+      "width": 765,
+      "height": 1023
+    },
+    {
+      "name": "Brownies",
+      "slug": "brownies",
+      "file": "food_brownies.png",
+      "width": 1024,
+      "height": 993
+    },
+    {
+      "name": "Bubble Tea",
+      "slug": "bubble_tea",
+      "file": "food_bubble_tea.png",
+      "width": 744,
+      "height": 1024
+    },
+    {
+      "name": "Steak",
+      "slug": "steak",
+      "file": "food_steak.png",
+      "width": 1024,
+      "height": 858
+    },
+    {
+      "name": "Corn on Cob",
+      "slug": "corn_on_cob",
+      "file": "food_corn_on_cob.png",
+      "width": 1024,
+      "height": 906
+    },
+    {
+      "name": "Croissant",
+      "slug": "croissant",
+      "file": "food_croissant.png",
+      "width": 1024,
+      "height": 842
+    },
+    {
+      "name": "Berry Pancakes",
+      "slug": "berry_pancakes",
+      "file": "food_berry_pancakes.png",
+      "width": 1023,
+      "height": 929
+    },
+    {
+      "name": "Lollipop",
+      "slug": "lollipop",
+      "file": "food_lollipop.png",
+      "width": 755,
+      "height": 1024
+    },
+    {
+      "name": "Iced Boba",
+      "slug": "iced_boba",
+      "file": "food_iced_boba.png",
+      "width": 739,
+      "height": 1024
+    }
+  ]
+}

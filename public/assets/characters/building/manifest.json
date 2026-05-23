@@ -1,0 +1,217 @@
+{
+  "category": "Buildings",
+  "prefix": "building",
+  "source": "Buildings.png",
+  "items": [
+    {
+      "name": "Cottage",
+      "slug": "cottage",
+      "file": "building_cottage.png",
+      "width": 1024,
+      "height": 1011
+    },
+    {
+      "name": "Pagoda",
+      "slug": "pagoda",
+      "file": "building_pagoda.png",
+      "width": 1024,
+      "height": 985
+    },
+    {
+      "name": "Luxury Villa",
+      "slug": "luxury_villa",
+      "file": "building_luxury_villa.png",
+      "width": 1024,
+      "height": 771
+    },
+    {
+      "name": "Skyscraper",
+      "slug": "skyscraper",
+      "file": "building_skyscraper.png",
+      "width": 757,
+      "height": 1024
+    },
+    {
+      "name": "Museum",
+      "slug": "museum",
+      "file": "building_museum.png",
+      "width": 1024,
+      "height": 894
+    },
+    {
+      "name": "Log Cabin",
+      "slug": "log_cabin",
+      "file": "building_log_cabin.png",
+      "width": 1024,
+      "height": 992
+    },
+    {
+      "name": "Modern House",
+      "slug": "modern_house",
+      "file": "building_modern_house.png",
+      "width": 1024,
+      "height": 773
+    },
+    {
+      "name": "Gothic Cathedral",
+      "slug": "gothic_cathedral",
+      "file": "building_gothic_cathedral.png",
+      "width": 987,
+      "height": 1023
+    },
+    {
+      "name": "Adobe House",
+      "slug": "adobe_house",
+      "file": "building_adobe_house.png",
+      "width": 1024,
+      "height": 715
+    },
+    {
+      "name": "Lighthouse",
+      "slug": "lighthouse",
+      "file": "building_lighthouse.png",
+      "width": 874,
+      "height": 1024
+    },
+    {
+      "name": "Shopping Mall",
+      "slug": "shopping_mall",
+      "file": "building_shopping_mall.png",
+      "width": 1024,
+      "height": 744
+    },
+    {
+      "name": "Castle",
+      "slug": "castle",
+      "file": "building_castle.png",
+      "width": 1019,
+      "height": 1024
+    },
+    {
+      "name": "Futuristic Dome",
+      "slug": "futuristic_dome",
+      "file": "building_futuristic_dome.png",
+      "width": 1024,
+      "height": 755
+    },
+    {
+      "name": "Farm Barn",
+      "slug": "farm_barn",
+      "file": "building_farm_barn.png",
+      "width": 1023,
+      "height": 874
+    },
+    {
+      "name": "Office Tower",
+      "slug": "office_tower",
+      "file": "building_office_tower.png",
+      "width": 989,
+      "height": 1024
+    },
+    {
+      "name": "Town Hall",
+      "slug": "town_hall",
+      "file": "building_town_hall.png",
+      "width": 1024,
+      "height": 981
+    },
+    {
+      "name": "Hospital",
+      "slug": "hospital",
+      "file": "building_hospital.png",
+      "width": 1024,
+      "height": 910
+    },
+    {
+      "name": "Stadium",
+      "slug": "stadium",
+      "file": "building_stadium.png",
+      "width": 1024,
+      "height": 689
+    },
+    {
+      "name": "Control Tower",
+      "slug": "control_tower",
+      "file": "building_control_tower.png",
+      "width": 997,
+      "height": 1024
+    },
+    {
+      "name": "Resort Hotel",
+      "slug": "resort_hotel",
+      "file": "building_resort_hotel.png",
+      "width": 1024,
+      "height": 859
+    },
+    {
+      "name": "Factory",
+      "slug": "factory",
+      "file": "building_factory.png",
+      "width": 1024,
+      "height": 807
+    },
+    {
+      "name": "Fire Station",
+      "slug": "fire_station",
+      "file": "building_fire_station.png",
+      "width": 1024,
+      "height": 592
+    },
+    {
+      "name": "Windmill",
+      "slug": "windmill",
+      "file": "building_windmill.png",
+      "width": 892,
+      "height": 1024
+    },
+    {
+      "name": "Observatory",
+      "slug": "observatory",
+      "file": "building_observatory.png",
+      "width": 1024,
+      "height": 919
+    },
+    {
+      "name": "Train Station",
+      "slug": "train_station",
+      "file": "building_train_station.png",
+      "width": 1024,
+      "height": 667
+    },
+    {
+      "name": "Stone Fortress",
+      "slug": "stone_fortress",
+      "file": "building_stone_fortress.png",
+      "width": 1024,
+      "height": 819
+    },
+    {
+      "name": "Glass House",
+      "slug": "glass_house",
+      "file": "building_glass_house.png",
+      "width": 1024,
+      "height": 701
+    },
+    {
+      "name": "Mosque",
+      "slug": "mosque",
+      "file": "building_mosque.png",
+      "width": 1023,
+      "height": 715
+    },
+    {
+      "name": "Greenhouse",
+      "slug": "greenhouse",
+      "file": "building_greenhouse.png",
+      "width": 1024,
+      "height": 709
+    },
+    {
+      "name": "Cafe",
+      "slug": "cafe",
+      "file": "building_cafe.png",
+      "width": 1024,
+      "height": 810
+    }
+  ]
+}
