@@ -1,0 +1,3194 @@
+[
+  {
+    "category": "Objects",
+    "prefix": "object",
+    "source": "Objects.png",
+    "items": [
+      {
+        "name": "Wooden Chest",
+        "slug": "wooden_chest",
+        "file": "object_wooden_chest.png",
+        "width": 976,
+        "height": 1023
+      },
+      {
+        "name": "Iron Chest",
+        "slug": "iron_chest",
+        "file": "object_iron_chest.png",
+        "width": 863,
+        "height": 1024
+      },
+      {
+        "name": "Magic Chest",
+        "slug": "magic_chest",
+        "file": "object_magic_chest.png",
+        "width": 721,
+        "height": 1024
+      },
+      {
+        "name": "Barrel",
+        "slug": "barrel",
+        "file": "object_barrel.png",
+        "width": 576,
+        "height": 1024
+      },
+      {
+        "name": "Crate",
+        "slug": "crate",
+        "file": "object_crate.png",
+        "width": 647,
+        "height": 1024
+      },
+      {
+        "name": "Red Potion",
+        "slug": "red_potion",
+        "file": "object_red_potion.png",
+        "width": 518,
+        "height": 1024
+      },
+      {
+        "name": "Blue Potion",
+        "slug": "blue_potion",
+        "file": "object_blue_potion.png",
+        "width": 751,
+        "height": 1024
+      },
+      {
+        "name": "Green Potion",
+        "slug": "green_potion",
+        "file": "object_green_potion.png",
+        "width": 697,
+        "height": 1024
+      },
+      {
+        "name": "Gold Coin",
+        "slug": "gold_coin",
+        "file": "object_gold_coin.png",
+        "width": 930,
+        "height": 1023
+      },
+      {
+        "name": "Purple Gem",
+        "slug": "purple_gem",
+        "file": "object_purple_gem.png",
+        "width": 872,
+        "height": 1023
+      },
+      {
+        "name": "Blue Diamond",
+        "slug": "blue_diamond",
+        "file": "object_blue_diamond.png",
+        "width": 972,
+        "height": 1024
+      },
+      {
+        "name": "Money Bag",
+        "slug": "money_bag",
+        "file": "object_money_bag.png",
+        "width": 789,
+        "height": 1024
+      },
+      {
+        "name": "Dynamite",
+        "slug": "dynamite",
+        "file": "object_dynamite.png",
+        "width": 862,
+        "height": 1024
+      },
+      {
+        "name": "Bomb",
+        "slug": "bomb",
+        "file": "object_bomb.png",
+        "width": 943,
+        "height": 1024
+      },
+      {
+        "name": "Archery Target",
+        "slug": "archery_target",
+        "file": "object_archery_target.png",
+        "width": 959,
+        "height": 1023
+      },
+      {
+        "name": "Blue Banner",
+        "slug": "blue_banner",
+        "file": "object_blue_banner.png",
+        "width": 809,
+        "height": 1024
+      },
+      {
+        "name": "Sword",
+        "slug": "sword",
+        "file": "object_sword.png",
+        "width": 886,
+        "height": 1024
+      },
+      {
+        "name": "Battle Axe",
+        "slug": "battle_axe",
+        "file": "object_battle_axe.png",
+        "width": 1024,
+        "height": 1024
+      },
+      {
+        "name": "Longbow",
+        "slug": "longbow",
+        "file": "object_longbow.png",
+        "width": 768,
+        "height": 1024
+      },
+      {
+        "name": "Magic Staff",
+        "slug": "magic_staff",
+        "file": "object_magic_staff.png",
+        "width": 723,
+        "height": 1024
+      },
+      {
+        "name": "Golden Key",
+        "slug": "golden_key",
+        "file": "object_golden_key.png",
+        "width": 692,
+        "height": 1024
+      },
+      {
+        "name": "Shield",
+        "slug": "shield",
+        "file": "object_shield.png",
+        "width": 706,
+        "height": 1024
+      },
+      {
+        "name": "Campfire",
+        "slug": "campfire",
+        "file": "object_campfire.png",
+        "width": 657,
+        "height": 1024
+      },
+      {
+        "name": "Anvil",
+        "slug": "anvil",
+        "file": "object_anvil.png",
+        "width": 1012,
+        "height": 1024
+      },
+      {
+        "name": "Tree",
+        "slug": "tree",
+        "file": "object_tree.png",
+        "width": 1024,
+        "height": 991
+      },
+      {
+        "name": "Rocks",
+        "slug": "rocks",
+        "file": "object_rocks.png",
+        "width": 1018,
+        "height": 1024
+      },
+      {
+        "name": "Signpost",
+        "slug": "signpost",
+        "file": "object_signpost.png",
+        "width": 816,
+        "height": 1024
+      },
+      {
+        "name": "Fence",
+        "slug": "fence",
+        "file": "object_fence.png",
+        "width": 1024,
+        "height": 825
+      },
+      {
+        "name": "Lantern Post",
+        "slug": "lantern_post",
+        "file": "object_lantern_post.png",
+        "width": 618,
+        "height": 1024
+      },
+      {
+        "name": "Well",
+        "slug": "well",
+        "file": "object_well.png",
+        "width": 831,
+        "height": 1024
+      },
+      {
+        "name": "Crystal Cluster",
+        "slug": "crystal_cluster",
+        "file": "object_crystal_cluster.png",
+        "width": 762,
+        "height": 1024
+      },
+      {
+        "name": "Axe in Stump",
+        "slug": "axe_in_stump",
+        "file": "object_axe_in_stump.png",
+        "width": 838,
+        "height": 1024
+      },
+      {
+        "name": "Red Banner",
+        "slug": "red_banner",
+        "file": "object_red_banner.png",
+        "width": 769,
+        "height": 1024
+      },
+      {
+        "name": "Bed",
+        "slug": "bed",
+        "file": "object_bed.png",
+        "width": 1024,
+        "height": 934
+      },
+      {
+        "name": "Table",
+        "slug": "table",
+        "file": "object_table.png",
+        "width": 1024,
+        "height": 990
+      },
+      {
+        "name": "Bookshelf",
+        "slug": "bookshelf",
+        "file": "object_bookshelf.png",
+        "width": 788,
+        "height": 1024
+      },
+      {
+        "name": "Chair",
+        "slug": "chair",
+        "file": "object_chair.png",
+        "width": 808,
+        "height": 1024
+      },
+      {
+        "name": "Pedestal",
+        "slug": "pedestal",
+        "file": "object_pedestal.png",
+        "width": 718,
+        "height": 1024
+      },
+      {
+        "name": "Stone Oven",
+        "slug": "stone_oven",
+        "file": "object_stone_oven.png",
+        "width": 975,
+        "height": 1024
+      },
+      {
+        "name": "Potted Plant",
+        "slug": "potted_plant",
+        "file": "object_potted_plant.png",
+        "width": 852,
+        "height": 1024
+      }
+    ]
+  },
+  {
+    "category": "Effects",
+    "prefix": "effect",
+    "source": "Elements.png",
+    "items": [
+      {
+        "name": "Fire Explosion",
+        "slug": "fire_explosion",
+        "file": "effect_fire_explosion.png",
+        "width": 938,
+        "height": 1023
+      },
+      {
+        "name": "Lightning",
+        "slug": "lightning",
+        "file": "effect_lightning.png",
+        "width": 728,
+        "height": 1024
+      },
+      {
+        "name": "Shield",
+        "slug": "shield",
+        "file": "effect_shield.png",
+        "width": 775,
+        "height": 1024
+      },
+      {
+        "name": "Sparkle Star",
+        "slug": "sparkle_star",
+        "file": "effect_sparkle_star.png",
+        "width": 825,
+        "height": 1023
+      },
+      {
+        "name": "Flame",
+        "slug": "flame",
+        "file": "effect_flame.png",
+        "width": 684,
+        "height": 1023
+      },
+      {
+        "name": "Ice Crystals",
+        "slug": "ice_crystals",
+        "file": "effect_ice_crystals.png",
+        "width": 709,
+        "height": 1024
+      },
+      {
+        "name": "Magic Vortex",
+        "slug": "magic_vortex",
+        "file": "effect_magic_vortex.png",
+        "width": 939,
+        "height": 1024
+      },
+      {
+        "name": "Rain Cloud",
+        "slug": "rain_cloud",
+        "file": "effect_rain_cloud.png",
+        "width": 1024,
+        "height": 939
+      },
+      {
+        "name": "Snowflake",
+        "slug": "snowflake",
+        "file": "effect_snowflake.png",
+        "width": 919,
+        "height": 1024
+      },
+      {
+        "name": "Wind Swirl",
+        "slug": "wind_swirl",
+        "file": "effect_wind_swirl.png",
+        "width": 959,
+        "height": 1024
+      },
+      {
+        "name": "Cloud",
+        "slug": "cloud",
+        "file": "effect_cloud.png",
+        "width": 978,
+        "height": 1024
+      },
+      {
+        "name": "Rock Pile",
+        "slug": "rock_pile",
+        "file": "effect_rock_pile.png",
+        "width": 900,
+        "height": 1024
+      },
+      {
+        "name": "Magic Circle",
+        "slug": "magic_circle",
+        "file": "effect_magic_circle.png",
+        "width": 957,
+        "height": 1024
+      },
+      {
+        "name": "Heal Plus",
+        "slug": "heal_plus",
+        "file": "effect_heal_plus.png",
+        "width": 959,
+        "height": 1023
+      },
+      {
+        "name": "Energy Orb",
+        "slug": "energy_orb",
+        "file": "effect_energy_orb.png",
+        "width": 1024,
+        "height": 1019
+      },
+      {
+        "name": "Magic Beam",
+        "slug": "magic_beam",
+        "file": "effect_magic_beam.png",
+        "width": 1024,
+        "height": 624
+      },
+      {
+        "name": "Portal",
+        "slug": "portal",
+        "file": "effect_portal.png",
+        "width": 982,
+        "height": 1024
+      },
+      {
+        "name": "Poison Skull",
+        "slug": "poison_skull",
+        "file": "effect_poison_skull.png",
+        "width": 948,
+        "height": 1024
+      },
+      {
+        "name": "Shadow Skull",
+        "slug": "shadow_skull",
+        "file": "effect_shadow_skull.png",
+        "width": 885,
+        "height": 1024
+      },
+      {
+        "name": "Holy Beam",
+        "slug": "holy_beam",
+        "file": "effect_holy_beam.png",
+        "width": 813,
+        "height": 1024
+      },
+      {
+        "name": "Meteor",
+        "slug": "meteor",
+        "file": "effect_meteor.png",
+        "width": 986,
+        "height": 1024
+      },
+      {
+        "name": "Ice Comet",
+        "slug": "ice_comet",
+        "file": "effect_ice_comet.png",
+        "width": 1024,
+        "height": 884
+      },
+      {
+        "name": "Fire Comet",
+        "slug": "fire_comet",
+        "file": "effect_fire_comet.png",
+        "width": 1024,
+        "height": 890
+      },
+      {
+        "name": "Lightning Orb",
+        "slug": "lightning_orb",
+        "file": "effect_lightning_orb.png",
+        "width": 1024,
+        "height": 947
+      },
+      {
+        "name": "Earth Spikes",
+        "slug": "earth_spikes",
+        "file": "effect_earth_spikes.png",
+        "width": 1024,
+        "height": 972
+      },
+      {
+        "name": "Water Splash",
+        "slug": "water_splash",
+        "file": "effect_water_splash.png",
+        "width": 1024,
+        "height": 869
+      },
+      {
+        "name": "Lava Splash",
+        "slug": "lava_splash",
+        "file": "effect_lava_splash.png",
+        "width": 1024,
+        "height": 961
+      },
+      {
+        "name": "Pink Energy",
+        "slug": "pink_energy",
+        "file": "effect_pink_energy.png",
+        "width": 1018,
+        "height": 1023
+      },
+      {
+        "name": "Black Hole",
+        "slug": "black_hole",
+        "file": "effect_black_hole.png",
+        "width": 1024,
+        "height": 873
+      },
+      {
+        "name": "Starburst",
+        "slug": "starburst",
+        "file": "effect_starburst.png",
+        "width": 1024,
+        "height": 841
+      },
+      {
+        "name": "Rainbow",
+        "slug": "rainbow",
+        "file": "effect_rainbow.png",
+        "width": 1024,
+        "height": 779
+      },
+      {
+        "name": "Hearts",
+        "slug": "hearts",
+        "file": "effect_hearts.png",
+        "width": 984,
+        "height": 1024
+      },
+      {
+        "name": "Void Blast",
+        "slug": "void_blast",
+        "file": "effect_void_blast.png",
+        "width": 926,
+        "height": 1024
+      },
+      {
+        "name": "Water Bubble",
+        "slug": "water_bubble",
+        "file": "effect_water_bubble.png",
+        "width": 1023,
+        "height": 924
+      },
+      {
+        "name": "Wind Vortex",
+        "slug": "wind_vortex",
+        "file": "effect_wind_vortex.png",
+        "width": 1024,
+        "height": 911
+      }
+    ]
+  },
+  {
+    "category": "Fantasy",
+    "prefix": "fantasy",
+    "source": "Fantasy.png",
+    "items": [
+      {
+        "name": "Spellbook",
+        "slug": "spellbook",
+        "file": "fantasy_spellbook.png",
+        "width": 1024,
+        "height": 751
+      },
+      {
+        "name": "Wizard Hat",
+        "slug": "wizard_hat",
+        "file": "fantasy_wizard_hat.png",
+        "width": 1024,
+        "height": 1013
+      },
+      {
+        "name": "Crystal Ball",
+        "slug": "crystal_ball",
+        "file": "fantasy_crystal_ball.png",
+        "width": 776,
+        "height": 1024
+      },
+      {
+        "name": "Floating Island",
+        "slug": "floating_island",
+        "file": "fantasy_floating_island.png",
+        "width": 869,
+        "height": 1023
+      },
+      {
+        "name": "Water Sword",
+        "slug": "water_sword",
+        "file": "fantasy_water_sword.png",
+        "width": 601,
+        "height": 1024
+      },
+      {
+        "name": "Lion Shield",
+        "slug": "lion_shield",
+        "file": "fantasy_lion_shield.png",
+        "width": 937,
+        "height": 1024
+      },
+      {
+        "name": "Dragon Head",
+        "slug": "dragon_head",
+        "file": "fantasy_dragon_head.png",
+        "width": 924,
+        "height": 1023
+      },
+      {
+        "name": "Fairy",
+        "slug": "fairy",
+        "file": "fantasy_fairy.png",
+        "width": 785,
+        "height": 1023
+      },
+      {
+        "name": "Golden Tree",
+        "slug": "golden_tree",
+        "file": "fantasy_golden_tree.png",
+        "width": 1024,
+        "height": 1018
+      },
+      {
+        "name": "Magic Bow",
+        "slug": "magic_bow",
+        "file": "fantasy_magic_bow.png",
+        "width": 784,
+        "height": 1024
+      },
+      {
+        "name": "Unicorn",
+        "slug": "unicorn",
+        "file": "fantasy_unicorn.png",
+        "width": 1024,
+        "height": 970
+      },
+      {
+        "name": "Red Potion",
+        "slug": "red_potion",
+        "file": "fantasy_red_potion.png",
+        "width": 770,
+        "height": 1024
+      },
+      {
+        "name": "Crescent Moon",
+        "slug": "crescent_moon",
+        "file": "fantasy_crescent_moon.png",
+        "width": 1002,
+        "height": 1024
+      },
+      {
+        "name": "Cloud Castle",
+        "slug": "cloud_castle",
+        "file": "fantasy_cloud_castle.png",
+        "width": 986,
+        "height": 1024
+      },
+      {
+        "name": "Gem Ring",
+        "slug": "gem_ring",
+        "file": "fantasy_gem_ring.png",
+        "width": 750,
+        "height": 1024
+      },
+      {
+        "name": "Green Lantern",
+        "slug": "green_lantern",
+        "file": "fantasy_green_lantern.png",
+        "width": 885,
+        "height": 1024
+      },
+      {
+        "name": "Magic Staff",
+        "slug": "magic_staff",
+        "file": "fantasy_magic_staff.png",
+        "width": 777,
+        "height": 1024
+      },
+      {
+        "name": "Purple Crystals",
+        "slug": "purple_crystals",
+        "file": "fantasy_purple_crystals.png",
+        "width": 887,
+        "height": 1024
+      },
+      {
+        "name": "Golden Chalice",
+        "slug": "golden_chalice",
+        "file": "fantasy_golden_chalice.png",
+        "width": 954,
+        "height": 1024
+      },
+      {
+        "name": "Leather Tome",
+        "slug": "leather_tome",
+        "file": "fantasy_leather_tome.png",
+        "width": 1012,
+        "height": 1024
+      },
+      {
+        "name": "Energy Portal",
+        "slug": "energy_portal",
+        "file": "fantasy_energy_portal.png",
+        "width": 1024,
+        "height": 1013
+      },
+      {
+        "name": "Shadow Wolf",
+        "slug": "shadow_wolf",
+        "file": "fantasy_shadow_wolf.png",
+        "width": 915,
+        "height": 1024
+      },
+      {
+        "name": "Magic Dagger",
+        "slug": "magic_dagger",
+        "file": "fantasy_magic_dagger.png",
+        "width": 697,
+        "height": 1024
+      },
+      {
+        "name": "Royal Crown",
+        "slug": "royal_crown",
+        "file": "fantasy_royal_crown.png",
+        "width": 943,
+        "height": 1024
+      },
+      {
+        "name": "Green Potion",
+        "slug": "green_potion",
+        "file": "fantasy_green_potion.png",
+        "width": 825,
+        "height": 1024
+      },
+      {
+        "name": "Golden Harp",
+        "slug": "golden_harp",
+        "file": "fantasy_golden_harp.png",
+        "width": 885,
+        "height": 1024
+      },
+      {
+        "name": "Phoenix",
+        "slug": "phoenix",
+        "file": "fantasy_phoenix.png",
+        "width": 1024,
+        "height": 973
+      },
+      {
+        "name": "Compass",
+        "slug": "compass",
+        "file": "fantasy_compass.png",
+        "width": 928,
+        "height": 1024
+      },
+      {
+        "name": "Blue Tree",
+        "slug": "blue_tree",
+        "file": "fantasy_blue_tree.png",
+        "width": 1024,
+        "height": 982
+      },
+      {
+        "name": "Blue Pendant",
+        "slug": "blue_pendant",
+        "file": "fantasy_blue_pendant.png",
+        "width": 904,
+        "height": 1024
+      },
+      {
+        "name": "Rune Stone",
+        "slug": "rune_stone",
+        "file": "fantasy_rune_stone.png",
+        "width": 893,
+        "height": 1024
+      },
+      {
+        "name": "Magic Mirror",
+        "slug": "magic_mirror",
+        "file": "fantasy_magic_mirror.png",
+        "width": 781,
+        "height": 1024
+      },
+      {
+        "name": "Gothic Gate",
+        "slug": "gothic_gate",
+        "file": "fantasy_gothic_gate.png",
+        "width": 1024,
+        "height": 967
+      },
+      {
+        "name": "Skull Bottle",
+        "slug": "skull_bottle",
+        "file": "fantasy_skull_bottle.png",
+        "width": 838,
+        "height": 1024
+      },
+      {
+        "name": "Island Castle",
+        "slug": "island_castle",
+        "file": "fantasy_island_castle.png",
+        "width": 1024,
+        "height": 1007
+      },
+      {
+        "name": "Treasure Map",
+        "slug": "treasure_map",
+        "file": "fantasy_treasure_map.png",
+        "width": 1012,
+        "height": 1024
+      },
+      {
+        "name": "Purple Lantern",
+        "slug": "purple_lantern",
+        "file": "fantasy_purple_lantern.png",
+        "width": 784,
+        "height": 1024
+      },
+      {
+        "name": "Light Angel",
+        "slug": "light_angel",
+        "file": "fantasy_light_angel.png",
+        "width": 1024,
+        "height": 1024
+      },
+      {
+        "name": "Treasure Chest",
+        "slug": "treasure_chest",
+        "file": "fantasy_treasure_chest.png",
+        "width": 1024,
+        "height": 928
+      },
+      {
+        "name": "Water Pegasus",
+        "slug": "water_pegasus",
+        "file": "fantasy_water_pegasus.png",
+        "width": 861,
+        "height": 1024
+      },
+      {
+        "name": "Armillary Sphere",
+        "slug": "armillary_sphere",
+        "file": "fantasy_armillary_sphere.png",
+        "width": 923,
+        "height": 1024
+      },
+      {
+        "name": "Golden Halo",
+        "slug": "golden_halo",
+        "file": "fantasy_golden_halo.png",
+        "width": 1024,
+        "height": 1000
+      },
+      {
+        "name": "Crystal Cluster",
+        "slug": "crystal_cluster",
+        "file": "fantasy_crystal_cluster.png",
+        "width": 889,
+        "height": 1024
+      },
+      {
+        "name": "Rose Dome",
+        "slug": "rose_dome",
+        "file": "fantasy_rose_dome.png",
+        "width": 884,
+        "height": 1024
+      },
+      {
+        "name": "Hooded Mage",
+        "slug": "hooded_mage",
+        "file": "fantasy_hooded_mage.png",
+        "width": 1018,
+        "height": 1024
+      },
+      {
+        "name": "Magic Hourglass",
+        "slug": "magic_hourglass",
+        "file": "fantasy_magic_hourglass.png",
+        "width": 838,
+        "height": 1024
+      },
+      {
+        "name": "Green Ship",
+        "slug": "green_ship",
+        "file": "fantasy_green_ship.png",
+        "width": 1012,
+        "height": 1024
+      },
+      {
+        "name": "Fire Eye",
+        "slug": "fire_eye",
+        "file": "fantasy_fire_eye.png",
+        "width": 785,
+        "height": 1024
+      }
+    ]
+  },
+  {
+    "category": "Food",
+    "prefix": "food",
+    "source": "Food.png",
+    "items": [
+      {
+        "name": "Apple",
+        "slug": "apple",
+        "file": "food_apple.png",
+        "width": 900,
+        "height": 1024
+      },
+      {
+        "name": "Cookie",
+        "slug": "cookie",
+        "file": "food_cookie.png",
+        "width": 1024,
+        "height": 889
+      },
+      {
+        "name": "Pancakes",
+        "slug": "pancakes",
+        "file": "food_pancakes.png",
+        "width": 1024,
+        "height": 914
+      },
+      {
+        "name": "Burger",
+        "slug": "burger",
+        "file": "food_burger.png",
+        "width": 1008,
+        "height": 1024
+      },
+      {
+        "name": "Pizza",
+        "slug": "pizza",
+        "file": "food_pizza.png",
+        "width": 1024,
+        "height": 962
+      },
+      {
+        "name": "Sushi",
+        "slug": "sushi",
+        "file": "food_sushi.png",
+        "width": 1024,
+        "height": 917
+      },
+      {
+        "name": "Chocolate Cake",
+        "slug": "chocolate_cake",
+        "file": "food_chocolate_cake.png",
+        "width": 805,
+        "height": 1024
+      },
+      {
+        "name": "Ramen",
+        "slug": "ramen",
+        "file": "food_ramen.png",
+        "width": 994,
+        "height": 1024
+      },
+      {
+        "name": "Donut",
+        "slug": "donut",
+        "file": "food_donut.png",
+        "width": 1024,
+        "height": 950
+      },
+      {
+        "name": "Taco",
+        "slug": "taco",
+        "file": "food_taco.png",
+        "width": 964,
+        "height": 1024
+      },
+      {
+        "name": "Salad",
+        "slug": "salad",
+        "file": "food_salad.png",
+        "width": 1024,
+        "height": 931
+      },
+      {
+        "name": "Roast Chicken",
+        "slug": "roast_chicken",
+        "file": "food_roast_chicken.png",
+        "width": 1024,
+        "height": 990
+      },
+      {
+        "name": "Fries",
+        "slug": "fries",
+        "file": "food_fries.png",
+        "width": 853,
+        "height": 1024
+      },
+      {
+        "name": "Ice Cream Cone",
+        "slug": "ice_cream_cone",
+        "file": "food_ice_cream_cone.png",
+        "width": 696,
+        "height": 1024
+      },
+      {
+        "name": "Grapes",
+        "slug": "grapes",
+        "file": "food_grapes.png",
+        "width": 1024,
+        "height": 995
+      },
+      {
+        "name": "Strawberry Cake",
+        "slug": "strawberry_cake",
+        "file": "food_strawberry_cake.png",
+        "width": 821,
+        "height": 1024
+      },
+      {
+        "name": "Macarons",
+        "slug": "macarons",
+        "file": "food_macarons.png",
+        "width": 934,
+        "height": 1024
+      },
+      {
+        "name": "Hot Dog",
+        "slug": "hot_dog",
+        "file": "food_hot_dog.png",
+        "width": 1024,
+        "height": 898
+      },
+      {
+        "name": "Blueberries",
+        "slug": "blueberries",
+        "file": "food_blueberries.png",
+        "width": 1024,
+        "height": 986
+      },
+      {
+        "name": "Cupcake",
+        "slug": "cupcake",
+        "file": "food_cupcake.png",
+        "width": 822,
+        "height": 1024
+      },
+      {
+        "name": "Watermelon",
+        "slug": "watermelon",
+        "file": "food_watermelon.png",
+        "width": 1024,
+        "height": 967
+      },
+      {
+        "name": "Orange Juice",
+        "slug": "orange_juice",
+        "file": "food_orange_juice.png",
+        "width": 799,
+        "height": 1023
+      },
+      {
+        "name": "Hot Chocolate",
+        "slug": "hot_chocolate",
+        "file": "food_hot_chocolate.png",
+        "width": 918,
+        "height": 1023
+      },
+      {
+        "name": "Grilled Cheese",
+        "slug": "grilled_cheese",
+        "file": "food_grilled_cheese.png",
+        "width": 1024,
+        "height": 962
+      },
+      {
+        "name": "Kebab",
+        "slug": "kebab",
+        "file": "food_kebab.png",
+        "width": 1023,
+        "height": 1000
+      },
+      {
+        "name": "Waffles",
+        "slug": "waffles",
+        "file": "food_waffles.png",
+        "width": 1024,
+        "height": 940
+      },
+      {
+        "name": "Tomato Soup",
+        "slug": "tomato_soup",
+        "file": "food_tomato_soup.png",
+        "width": 1024,
+        "height": 836
+      },
+      {
+        "name": "Pretzel",
+        "slug": "pretzel",
+        "file": "food_pretzel.png",
+        "width": 1024,
+        "height": 946
+      },
+      {
+        "name": "Kiwi",
+        "slug": "kiwi",
+        "file": "food_kiwi.png",
+        "width": 1024,
+        "height": 848
+      },
+      {
+        "name": "Cinnamon Roll",
+        "slug": "cinnamon_roll",
+        "file": "food_cinnamon_roll.png",
+        "width": 1024,
+        "height": 953
+      },
+      {
+        "name": "Fried Rice",
+        "slug": "fried_rice",
+        "file": "food_fried_rice.png",
+        "width": 1024,
+        "height": 887
+      },
+      {
+        "name": "Popcorn",
+        "slug": "popcorn",
+        "file": "food_popcorn.png",
+        "width": 875,
+        "height": 1024
+      },
+      {
+        "name": "Fried Chicken",
+        "slug": "fried_chicken",
+        "file": "food_fried_chicken.png",
+        "width": 1024,
+        "height": 884
+      },
+      {
+        "name": "Milkshake",
+        "slug": "milkshake",
+        "file": "food_milkshake.png",
+        "width": 765,
+        "height": 1023
+      },
+      {
+        "name": "Brownies",
+        "slug": "brownies",
+        "file": "food_brownies.png",
+        "width": 1024,
+        "height": 993
+      },
+      {
+        "name": "Bubble Tea",
+        "slug": "bubble_tea",
+        "file": "food_bubble_tea.png",
+        "width": 744,
+        "height": 1024
+      },
+      {
+        "name": "Steak",
+        "slug": "steak",
+        "file": "food_steak.png",
+        "width": 1024,
+        "height": 858
+      },
+      {
+        "name": "Corn on Cob",
+        "slug": "corn_on_cob",
+        "file": "food_corn_on_cob.png",
+        "width": 1024,
+        "height": 906
+      },
+      {
+        "name": "Croissant",
+        "slug": "croissant",
+        "file": "food_croissant.png",
+        "width": 1024,
+        "height": 842
+      },
+      {
+        "name": "Berry Pancakes",
+        "slug": "berry_pancakes",
+        "file": "food_berry_pancakes.png",
+        "width": 1023,
+        "height": 929
+      },
+      {
+        "name": "Lollipop",
+        "slug": "lollipop",
+        "file": "food_lollipop.png",
+        "width": 755,
+        "height": 1024
+      },
+      {
+        "name": "Iced Boba",
+        "slug": "iced_boba",
+        "file": "food_iced_boba.png",
+        "width": 739,
+        "height": 1024
+      }
+    ]
+  },
+  {
+    "category": "Vehicles",
+    "prefix": "vehicle",
+    "source": "Vehiclespng.png",
+    "items": [
+      {
+        "name": "Red Sports Car",
+        "slug": "red_sports_car",
+        "file": "vehicle_red_sports_car.png",
+        "width": 1024,
+        "height": 631
+      },
+      {
+        "name": "Blue Sports Car",
+        "slug": "blue_sports_car",
+        "file": "vehicle_blue_sports_car.png",
+        "width": 1023,
+        "height": 715
+      },
+      {
+        "name": "Muscle Car",
+        "slug": "muscle_car",
+        "file": "vehicle_muscle_car.png",
+        "width": 1024,
+        "height": 644
+      },
+      {
+        "name": "Sci-Fi Ship",
+        "slug": "sci_fi_ship",
+        "file": "vehicle_sci_fi_ship.png",
+        "width": 1023,
+        "height": 730
+      },
+      {
+        "name": "Fantasy Starship",
+        "slug": "fantasy_starship",
+        "file": "vehicle_fantasy_starship.png",
+        "width": 1024,
+        "height": 702
+      },
+      {
+        "name": "Royal Carriage",
+        "slug": "royal_carriage",
+        "file": "vehicle_royal_carriage.png",
+        "width": 1024,
+        "height": 874
+      },
+      {
+        "name": "Flame Motorcycle",
+        "slug": "flame_motorcycle",
+        "file": "vehicle_flame_motorcycle.png",
+        "width": 1024,
+        "height": 802
+      },
+      {
+        "name": "Light Cycle",
+        "slug": "light_cycle",
+        "file": "vehicle_light_cycle.png",
+        "width": 1024,
+        "height": 761
+      },
+      {
+        "name": "Chopper",
+        "slug": "chopper",
+        "file": "vehicle_chopper.png",
+        "width": 1024,
+        "height": 827
+      },
+      {
+        "name": "Magic Carpet",
+        "slug": "magic_carpet",
+        "file": "vehicle_magic_carpet.png",
+        "width": 1024,
+        "height": 635
+      },
+      {
+        "name": "Pirate Ship",
+        "slug": "pirate_ship",
+        "file": "vehicle_pirate_ship.png",
+        "width": 971,
+        "height": 1024
+      },
+      {
+        "name": "Steampunk Airship",
+        "slug": "steampunk_airship",
+        "file": "vehicle_steampunk_airship.png",
+        "width": 1024,
+        "height": 866
+      },
+      {
+        "name": "Off-Road Buggy",
+        "slug": "off_road_buggy",
+        "file": "vehicle_off_road_buggy.png",
+        "width": 1023,
+        "height": 738
+      },
+      {
+        "name": "Tank",
+        "slug": "tank",
+        "file": "vehicle_tank.png",
+        "width": 1024,
+        "height": 704
+      },
+      {
+        "name": "Attack Helicopter",
+        "slug": "attack_helicopter",
+        "file": "vehicle_attack_helicopter.png",
+        "width": 1024,
+        "height": 762
+      },
+      {
+        "name": "Private Jet",
+        "slug": "private_jet",
+        "file": "vehicle_private_jet.png",
+        "width": 1023,
+        "height": 833
+      },
+      {
+        "name": "Rocket Ship",
+        "slug": "rocket_ship",
+        "file": "vehicle_rocket_ship.png",
+        "width": 1024,
+        "height": 920
+      },
+      {
+        "name": "Submarine",
+        "slug": "submarine",
+        "file": "vehicle_submarine.png",
+        "width": 1024,
+        "height": 811
+      },
+      {
+        "name": "Sailboat",
+        "slug": "sailboat",
+        "file": "vehicle_sailboat.png",
+        "width": 962,
+        "height": 1024
+      },
+      {
+        "name": "School Bus",
+        "slug": "school_bus",
+        "file": "vehicle_school_bus.png",
+        "width": 1024,
+        "height": 751
+      },
+      {
+        "name": "Fire Truck",
+        "slug": "fire_truck",
+        "file": "vehicle_fire_truck.png",
+        "width": 1024,
+        "height": 845
+      },
+      {
+        "name": "Police Car",
+        "slug": "police_car",
+        "file": "vehicle_police_car.png",
+        "width": 1024,
+        "height": 653
+      },
+      {
+        "name": "Ambulance",
+        "slug": "ambulance",
+        "file": "vehicle_ambulance.png",
+        "width": 1024,
+        "height": 758
+      },
+      {
+        "name": "Ice Cream Truck",
+        "slug": "ice_cream_truck",
+        "file": "vehicle_ice_cream_truck.png",
+        "width": 1024,
+        "height": 881
+      },
+      {
+        "name": "Armored Rover",
+        "slug": "armored_rover",
+        "file": "vehicle_armored_rover.png",
+        "width": 1024,
+        "height": 771
+      },
+      {
+        "name": "Steam Train",
+        "slug": "steam_train",
+        "file": "vehicle_steam_train.png",
+        "width": 1024,
+        "height": 822
+      },
+      {
+        "name": "Bullet Train",
+        "slug": "bullet_train",
+        "file": "vehicle_bullet_train.png",
+        "width": 1024,
+        "height": 666
+      },
+      {
+        "name": "Jet Ski",
+        "slug": "jet_ski",
+        "file": "vehicle_jet_ski.png",
+        "width": 1023,
+        "height": 727
+      },
+      {
+        "name": "Christmas Sleigh",
+        "slug": "christmas_sleigh",
+        "file": "vehicle_christmas_sleigh.png",
+        "width": 1024,
+        "height": 713
+      },
+      {
+        "name": "UFO",
+        "slug": "ufo",
+        "file": "vehicle_ufo.png",
+        "width": 1024,
+        "height": 577
+      },
+      {
+        "name": "Monster Truck",
+        "slug": "monster_truck",
+        "file": "vehicle_monster_truck.png",
+        "width": 1024,
+        "height": 783
+      },
+      {
+        "name": "Luxury Yacht",
+        "slug": "luxury_yacht",
+        "file": "vehicle_luxury_yacht.png",
+        "width": 1024,
+        "height": 773
+      },
+      {
+        "name": "Hot Air Balloon",
+        "slug": "hot_air_balloon",
+        "file": "vehicle_hot_air_balloon.png",
+        "width": 819,
+        "height": 1024
+      },
+      {
+        "name": "Race Car",
+        "slug": "race_car",
+        "file": "vehicle_race_car.png",
+        "width": 1024,
+        "height": 685
+      },
+      {
+        "name": "Lowrider",
+        "slug": "lowrider",
+        "file": "vehicle_lowrider.png",
+        "width": 1024,
+        "height": 549
+      },
+      {
+        "name": "Tractor",
+        "slug": "tractor",
+        "file": "vehicle_tractor.png",
+        "width": 1024,
+        "height": 847
+      }
+    ]
+  },
+  {
+    "category": "Monsters",
+    "prefix": "monster",
+    "source": "Monsters.png",
+    "items": [
+      {
+        "name": "Stone Golem",
+        "slug": "stone_golem",
+        "file": "monster_stone_golem.png",
+        "width": 1024,
+        "height": 1019
+      },
+      {
+        "name": "Werewolf",
+        "slug": "werewolf",
+        "file": "monster_werewolf.png",
+        "width": 971,
+        "height": 1023
+      },
+      {
+        "name": "Fire Dragon",
+        "slug": "fire_dragon",
+        "file": "monster_fire_dragon.png",
+        "width": 1024,
+        "height": 985
+      },
+      {
+        "name": "Beholder",
+        "slug": "beholder",
+        "file": "monster_beholder.png",
+        "width": 921,
+        "height": 1024
+      },
+      {
+        "name": "Ogre",
+        "slug": "ogre",
+        "file": "monster_ogre.png",
+        "width": 947,
+        "height": 1024
+      },
+      {
+        "name": "Yeti",
+        "slug": "yeti",
+        "file": "monster_yeti.png",
+        "width": 932,
+        "height": 1024
+      },
+      {
+        "name": "Fire Demon",
+        "slug": "fire_demon",
+        "file": "monster_fire_demon.png",
+        "width": 1000,
+        "height": 1024
+      },
+      {
+        "name": "Mummy",
+        "slug": "mummy",
+        "file": "monster_mummy.png",
+        "width": 1002,
+        "height": 1024
+      },
+      {
+        "name": "Swamp Monster",
+        "slug": "swamp_monster",
+        "file": "monster_swamp_monster.png",
+        "width": 1024,
+        "height": 1015
+      },
+      {
+        "name": "Vampire",
+        "slug": "vampire",
+        "file": "monster_vampire.png",
+        "width": 903,
+        "height": 1024
+      },
+      {
+        "name": "Medusa",
+        "slug": "medusa",
+        "file": "monster_medusa.png",
+        "width": 880,
+        "height": 1024
+      },
+      {
+        "name": "Minotaur",
+        "slug": "minotaur",
+        "file": "monster_minotaur.png",
+        "width": 978,
+        "height": 1023
+      },
+      {
+        "name": "Wraith",
+        "slug": "wraith",
+        "file": "monster_wraith.png",
+        "width": 1023,
+        "height": 995
+      },
+      {
+        "name": "Griffin",
+        "slug": "griffin",
+        "file": "monster_griffin.png",
+        "width": 1024,
+        "height": 1011
+      },
+      {
+        "name": "Cyclops",
+        "slug": "cyclops",
+        "file": "monster_cyclops.png",
+        "width": 1024,
+        "height": 1015
+      },
+      {
+        "name": "Earth Elemental",
+        "slug": "earth_elemental",
+        "file": "monster_earth_elemental.png",
+        "width": 1007,
+        "height": 1024
+      },
+      {
+        "name": "Lich King",
+        "slug": "lich_king",
+        "file": "monster_lich_king.png",
+        "width": 957,
+        "height": 1024
+      },
+      {
+        "name": "Shadow Beast",
+        "slug": "shadow_beast",
+        "file": "monster_shadow_beast.png",
+        "width": 1007,
+        "height": 1024
+      },
+      {
+        "name": "Hellhound",
+        "slug": "hellhound",
+        "file": "monster_hellhound.png",
+        "width": 1024,
+        "height": 991
+      },
+      {
+        "name": "Anglerfish",
+        "slug": "anglerfish",
+        "file": "monster_anglerfish.png",
+        "width": 1024,
+        "height": 966
+      },
+      {
+        "name": "Winged Demon",
+        "slug": "winged_demon",
+        "file": "monster_winged_demon.png",
+        "width": 1019,
+        "height": 1024
+      },
+      {
+        "name": "Sand Worm",
+        "slug": "sand_worm",
+        "file": "monster_sand_worm.png",
+        "width": 738,
+        "height": 1024
+      },
+      {
+        "name": "Ice Elemental",
+        "slug": "ice_elemental",
+        "file": "monster_ice_elemental.png",
+        "width": 998,
+        "height": 1023
+      },
+      {
+        "name": "Goblin",
+        "slug": "goblin",
+        "file": "monster_goblin.png",
+        "width": 983,
+        "height": 1024
+      },
+      {
+        "name": "Giant Spider",
+        "slug": "giant_spider",
+        "file": "monster_giant_spider.png",
+        "width": 1024,
+        "height": 885
+      },
+      {
+        "name": "Dark Knight",
+        "slug": "dark_knight",
+        "file": "monster_dark_knight.png",
+        "width": 955,
+        "height": 1024
+      },
+      {
+        "name": "Slime",
+        "slug": "slime",
+        "file": "monster_slime.png",
+        "width": 1024,
+        "height": 998
+      },
+      {
+        "name": "Troll",
+        "slug": "troll",
+        "file": "monster_troll.png",
+        "width": 1024,
+        "height": 965
+      },
+      {
+        "name": "Chimera",
+        "slug": "chimera",
+        "file": "monster_chimera.png",
+        "width": 988,
+        "height": 1024
+      },
+      {
+        "name": "Cthulhu",
+        "slug": "cthulhu",
+        "file": "monster_cthulhu.png",
+        "width": 1024,
+        "height": 948
+      }
+    ]
+  },
+  {
+    "category": "Buildings",
+    "prefix": "building",
+    "source": "Buildings.png",
+    "items": [
+      {
+        "name": "Cottage",
+        "slug": "cottage",
+        "file": "building_cottage.png",
+        "width": 1024,
+        "height": 1011
+      },
+      {
+        "name": "Pagoda",
+        "slug": "pagoda",
+        "file": "building_pagoda.png",
+        "width": 1024,
+        "height": 985
+      },
+      {
+        "name": "Luxury Villa",
+        "slug": "luxury_villa",
+        "file": "building_luxury_villa.png",
+        "width": 1024,
+        "height": 771
+      },
+      {
+        "name": "Skyscraper",
+        "slug": "skyscraper",
+        "file": "building_skyscraper.png",
+        "width": 757,
+        "height": 1024
+      },
+      {
+        "name": "Museum",
+        "slug": "museum",
+        "file": "building_museum.png",
+        "width": 1024,
+        "height": 894
+      },
+      {
+        "name": "Log Cabin",
+        "slug": "log_cabin",
+        "file": "building_log_cabin.png",
+        "width": 1024,
+        "height": 992
+      },
+      {
+        "name": "Modern House",
+        "slug": "modern_house",
+        "file": "building_modern_house.png",
+        "width": 1024,
+        "height": 773
+      },
+      {
+        "name": "Gothic Cathedral",
+        "slug": "gothic_cathedral",
+        "file": "building_gothic_cathedral.png",
+        "width": 987,
+        "height": 1023
+      },
+      {
+        "name": "Adobe House",
+        "slug": "adobe_house",
+        "file": "building_adobe_house.png",
+        "width": 1024,
+        "height": 715
+      },
+      {
+        "name": "Lighthouse",
+        "slug": "lighthouse",
+        "file": "building_lighthouse.png",
+        "width": 874,
+        "height": 1024
+      },
+      {
+        "name": "Shopping Mall",
+        "slug": "shopping_mall",
+        "file": "building_shopping_mall.png",
+        "width": 1024,
+        "height": 744
+      },
+      {
+        "name": "Castle",
+        "slug": "castle",
+        "file": "building_castle.png",
+        "width": 1019,
+        "height": 1024
+      },
+      {
+        "name": "Futuristic Dome",
+        "slug": "futuristic_dome",
+        "file": "building_futuristic_dome.png",
+        "width": 1024,
+        "height": 755
+      },
+      {
+        "name": "Farm Barn",
+        "slug": "farm_barn",
+        "file": "building_farm_barn.png",
+        "width": 1023,
+        "height": 874
+      },
+      {
+        "name": "Office Tower",
+        "slug": "office_tower",
+        "file": "building_office_tower.png",
+        "width": 989,
+        "height": 1024
+      },
+      {
+        "name": "Town Hall",
+        "slug": "town_hall",
+        "file": "building_town_hall.png",
+        "width": 1024,
+        "height": 981
+      },
+      {
+        "name": "Hospital",
+        "slug": "hospital",
+        "file": "building_hospital.png",
+        "width": 1024,
+        "height": 910
+      },
+      {
+        "name": "Stadium",
+        "slug": "stadium",
+        "file": "building_stadium.png",
+        "width": 1024,
+        "height": 689
+      },
+      {
+        "name": "Control Tower",
+        "slug": "control_tower",
+        "file": "building_control_tower.png",
+        "width": 997,
+        "height": 1024
+      },
+      {
+        "name": "Resort Hotel",
+        "slug": "resort_hotel",
+        "file": "building_resort_hotel.png",
+        "width": 1024,
+        "height": 859
+      },
+      {
+        "name": "Factory",
+        "slug": "factory",
+        "file": "building_factory.png",
+        "width": 1024,
+        "height": 807
+      },
+      {
+        "name": "Fire Station",
+        "slug": "fire_station",
+        "file": "building_fire_station.png",
+        "width": 1024,
+        "height": 592
+      },
+      {
+        "name": "Windmill",
+        "slug": "windmill",
+        "file": "building_windmill.png",
+        "width": 892,
+        "height": 1024
+      },
+      {
+        "name": "Observatory",
+        "slug": "observatory",
+        "file": "building_observatory.png",
+        "width": 1024,
+        "height": 919
+      },
+      {
+        "name": "Train Station",
+        "slug": "train_station",
+        "file": "building_train_station.png",
+        "width": 1024,
+        "height": 667
+      },
+      {
+        "name": "Stone Fortress",
+        "slug": "stone_fortress",
+        "file": "building_stone_fortress.png",
+        "width": 1024,
+        "height": 819
+      },
+      {
+        "name": "Glass House",
+        "slug": "glass_house",
+        "file": "building_glass_house.png",
+        "width": 1024,
+        "height": 701
+      },
+      {
+        "name": "Mosque",
+        "slug": "mosque",
+        "file": "building_mosque.png",
+        "width": 1023,
+        "height": 715
+      },
+      {
+        "name": "Greenhouse",
+        "slug": "greenhouse",
+        "file": "building_greenhouse.png",
+        "width": 1024,
+        "height": 709
+      },
+      {
+        "name": "Cafe",
+        "slug": "cafe",
+        "file": "building_cafe.png",
+        "width": 1024,
+        "height": 810
+      }
+    ]
+  },
+  {
+    "category": "Nature",
+    "prefix": "nature",
+    "source": "Nature.png",
+    "items": [
+      {
+        "name": "Oak Tree",
+        "slug": "oak_tree",
+        "file": "nature_oak_tree.png",
+        "width": 903,
+        "height": 1024
+      },
+      {
+        "name": "Cherry Blossom",
+        "slug": "cherry_blossom",
+        "file": "nature_cherry_blossom.png",
+        "width": 916,
+        "height": 1024
+      },
+      {
+        "name": "Pine Tree",
+        "slug": "pine_tree",
+        "file": "nature_pine_tree.png",
+        "width": 766,
+        "height": 1024
+      },
+      {
+        "name": "Waterfall",
+        "slug": "waterfall",
+        "file": "nature_waterfall.png",
+        "width": 1023,
+        "height": 1015
+      },
+      {
+        "name": "Mossy Rocks",
+        "slug": "mossy_rocks",
+        "file": "nature_mossy_rocks.png",
+        "width": 980,
+        "height": 1024
+      },
+      {
+        "name": "Rock Arch",
+        "slug": "rock_arch",
+        "file": "nature_rock_arch.png",
+        "width": 1019,
+        "height": 1024
+      },
+      {
+        "name": "Dew Leaf",
+        "slug": "dew_leaf",
+        "file": "nature_dew_leaf.png",
+        "width": 710,
+        "height": 1024
+      },
+      {
+        "name": "Floating Island",
+        "slug": "floating_island",
+        "file": "nature_floating_island.png",
+        "width": 960,
+        "height": 1024
+      },
+      {
+        "name": "Mountain Lake",
+        "slug": "mountain_lake",
+        "file": "nature_mountain_lake.png",
+        "width": 1024,
+        "height": 1001
+      },
+      {
+        "name": "Purple Crystals",
+        "slug": "purple_crystals",
+        "file": "nature_purple_crystals.png",
+        "width": 849,
+        "height": 1024
+      },
+      {
+        "name": "Wildflowers",
+        "slug": "wildflowers",
+        "file": "nature_wildflowers.png",
+        "width": 1023,
+        "height": 951
+      },
+      {
+        "name": "Bamboo",
+        "slug": "bamboo",
+        "file": "nature_bamboo.png",
+        "width": 863,
+        "height": 1024
+      },
+      {
+        "name": "Tropical Island",
+        "slug": "tropical_island",
+        "file": "nature_tropical_island.png",
+        "width": 989,
+        "height": 1024
+      },
+      {
+        "name": "Water Lily",
+        "slug": "water_lily",
+        "file": "nature_water_lily.png",
+        "width": 1024,
+        "height": 853
+      },
+      {
+        "name": "Red Mushroom",
+        "slug": "red_mushroom",
+        "file": "nature_red_mushroom.png",
+        "width": 906,
+        "height": 1024
+      },
+      {
+        "name": "Mossy Log",
+        "slug": "mossy_log",
+        "file": "nature_mossy_log.png",
+        "width": 1024,
+        "height": 862
+      },
+      {
+        "name": "Cave Entrance",
+        "slug": "cave_entrance",
+        "file": "nature_cave_entrance.png",
+        "width": 997,
+        "height": 1024
+      },
+      {
+        "name": "Sunflower",
+        "slug": "sunflower",
+        "file": "nature_sunflower.png",
+        "width": 813,
+        "height": 1024
+      },
+      {
+        "name": "Saguaro Cactus",
+        "slug": "saguaro_cactus",
+        "file": "nature_saguaro_cactus.png",
+        "width": 783,
+        "height": 1024
+      },
+      {
+        "name": "Autumn Tree",
+        "slug": "autumn_tree",
+        "file": "nature_autumn_tree.png",
+        "width": 968,
+        "height": 1024
+      },
+      {
+        "name": "Green Bush",
+        "slug": "green_bush",
+        "file": "nature_green_bush.png",
+        "width": 1013,
+        "height": 1024
+      },
+      {
+        "name": "Snow Peak",
+        "slug": "snow_peak",
+        "file": "nature_snow_peak.png",
+        "width": 1024,
+        "height": 907
+      },
+      {
+        "name": "Volcano",
+        "slug": "volcano",
+        "file": "nature_volcano.png",
+        "width": 997,
+        "height": 1024
+      },
+      {
+        "name": "Aurora",
+        "slug": "aurora",
+        "file": "nature_aurora.png",
+        "width": 1024,
+        "height": 1019
+      },
+      {
+        "name": "Slot Canyon",
+        "slug": "slot_canyon",
+        "file": "nature_slot_canyon.png",
+        "width": 1024,
+        "height": 1010
+      },
+      {
+        "name": "Ocean Wave",
+        "slug": "ocean_wave",
+        "file": "nature_ocean_wave.png",
+        "width": 1024,
+        "height": 1005
+      },
+      {
+        "name": "Forest River",
+        "slug": "forest_river",
+        "file": "nature_forest_river.png",
+        "width": 1024,
+        "height": 978
+      },
+      {
+        "name": "Sand Dunes",
+        "slug": "sand_dunes",
+        "file": "nature_sand_dunes.png",
+        "width": 1024,
+        "height": 817
+      },
+      {
+        "name": "Lotus Flower",
+        "slug": "lotus_flower",
+        "file": "nature_lotus_flower.png",
+        "width": 857,
+        "height": 1024
+      },
+      {
+        "name": "Sea Turtle",
+        "slug": "sea_turtle",
+        "file": "nature_sea_turtle.png",
+        "width": 1024,
+        "height": 765
+      },
+      {
+        "name": "Coral Reef",
+        "slug": "coral_reef",
+        "file": "nature_coral_reef.png",
+        "width": 1024,
+        "height": 991
+      },
+      {
+        "name": "Toucan",
+        "slug": "toucan",
+        "file": "nature_toucan.png",
+        "width": 996,
+        "height": 1024
+      },
+      {
+        "name": "Monarch Butterfly",
+        "slug": "monarch_butterfly",
+        "file": "nature_monarch_butterfly.png",
+        "width": 921,
+        "height": 1024
+      },
+      {
+        "name": "Ladybug",
+        "slug": "ladybug",
+        "file": "nature_ladybug.png",
+        "width": 1024,
+        "height": 956
+      },
+      {
+        "name": "Honeybee",
+        "slug": "honeybee",
+        "file": "nature_honeybee.png",
+        "width": 1024,
+        "height": 781
+      }
+    ]
+  },
+  {
+    "category": "Space",
+    "prefix": "space",
+    "source": "Space.png",
+    "items": [
+      {
+        "name": "Spiral Galaxy",
+        "slug": "spiral_galaxy",
+        "file": "space_spiral_galaxy.png",
+        "width": 1024,
+        "height": 829
+      },
+      {
+        "name": "Earth",
+        "slug": "earth",
+        "file": "space_earth.png",
+        "width": 981,
+        "height": 1023
+      },
+      {
+        "name": "Moon",
+        "slug": "moon",
+        "file": "space_moon.png",
+        "width": 949,
+        "height": 1024
+      },
+      {
+        "name": "Mars",
+        "slug": "mars",
+        "file": "space_mars.png",
+        "width": 961,
+        "height": 1024
+      },
+      {
+        "name": "Jupiter",
+        "slug": "jupiter",
+        "file": "space_jupiter.png",
+        "width": 975,
+        "height": 1024
+      },
+      {
+        "name": "Saturn",
+        "slug": "saturn",
+        "file": "space_saturn.png",
+        "width": 1024,
+        "height": 873
+      },
+      {
+        "name": "Sun",
+        "slug": "sun",
+        "file": "space_sun.png",
+        "width": 1024,
+        "height": 982
+      },
+      {
+        "name": "Nebula",
+        "slug": "nebula",
+        "file": "space_nebula.png",
+        "width": 1010,
+        "height": 1024
+      },
+      {
+        "name": "Black Hole",
+        "slug": "black_hole",
+        "file": "space_black_hole.png",
+        "width": 1024,
+        "height": 779
+      },
+      {
+        "name": "Comet",
+        "slug": "comet",
+        "file": "space_comet.png",
+        "width": 1023,
+        "height": 989
+      },
+      {
+        "name": "Asteroid",
+        "slug": "asteroid",
+        "file": "space_asteroid.png",
+        "width": 1024,
+        "height": 1007
+      },
+      {
+        "name": "Meteor",
+        "slug": "meteor",
+        "file": "space_meteor.png",
+        "width": 1024,
+        "height": 1011
+      },
+      {
+        "name": "Space Shuttle",
+        "slug": "space_shuttle",
+        "file": "space_space_shuttle.png",
+        "width": 1011,
+        "height": 1024
+      },
+      {
+        "name": "Space Telescope",
+        "slug": "space_telescope",
+        "file": "space_space_telescope.png",
+        "width": 1024,
+        "height": 833
+      },
+      {
+        "name": "Space Station",
+        "slug": "space_station",
+        "file": "space_space_station.png",
+        "width": 1024,
+        "height": 922
+      },
+      {
+        "name": "Rocket",
+        "slug": "rocket",
+        "file": "space_rocket.png",
+        "width": 528,
+        "height": 1024
+      },
+      {
+        "name": "Lunar Lander",
+        "slug": "lunar_lander",
+        "file": "space_lunar_lander.png",
+        "width": 1019,
+        "height": 1024
+      },
+      {
+        "name": "Mars Rover",
+        "slug": "mars_rover",
+        "file": "space_mars_rover.png",
+        "width": 1024,
+        "height": 994
+      },
+      {
+        "name": "Pulsar",
+        "slug": "pulsar",
+        "file": "space_pulsar.png",
+        "width": 1023,
+        "height": 906
+      },
+      {
+        "name": "Star Cluster",
+        "slug": "star_cluster",
+        "file": "space_star_cluster.png",
+        "width": 1000,
+        "height": 1024
+      },
+      {
+        "name": "Planetary Nebula",
+        "slug": "planetary_nebula",
+        "file": "space_planetary_nebula.png",
+        "width": 1024,
+        "height": 980
+      },
+      {
+        "name": "Protoplanetary Disk",
+        "slug": "protoplanetary_disk",
+        "file": "space_protoplanetary_disk.png",
+        "width": 1024,
+        "height": 838
+      },
+      {
+        "name": "Binary Sun Planet",
+        "slug": "binary_sun_planet",
+        "file": "space_binary_sun_planet.png",
+        "width": 944,
+        "height": 1024
+      },
+      {
+        "name": "Neptune",
+        "slug": "neptune",
+        "file": "space_neptune.png",
+        "width": 962,
+        "height": 1024
+      },
+      {
+        "name": "Astronaut",
+        "slug": "astronaut",
+        "file": "space_astronaut.png",
+        "width": 1019,
+        "height": 1024
+      },
+      {
+        "name": "Face-On Galaxy",
+        "slug": "face_on_galaxy",
+        "file": "space_face_on_galaxy.png",
+        "width": 1024,
+        "height": 861
+      },
+      {
+        "name": "Space Capsule",
+        "slug": "space_capsule",
+        "file": "space_space_capsule.png",
+        "width": 999,
+        "height": 1024
+      },
+      {
+        "name": "Fighter Ship",
+        "slug": "fighter_ship",
+        "file": "space_fighter_ship.png",
+        "width": 1023,
+        "height": 916
+      },
+      {
+        "name": "Satellite Probe",
+        "slug": "satellite_probe",
+        "file": "space_satellite_probe.png",
+        "width": 1023,
+        "height": 933
+      },
+      {
+        "name": "Colliding Galaxies",
+        "slug": "colliding_galaxies",
+        "file": "space_colliding_galaxies.png",
+        "width": 1024,
+        "height": 869
+      }
+    ]
+  },
+  {
+    "category": "Sports",
+    "prefix": "sport",
+    "source": "Sports.png",
+    "items": [
+      {
+        "name": "Soccer Ball",
+        "slug": "soccer_ball",
+        "file": "sport_soccer_ball.png",
+        "width": 1024,
+        "height": 1000
+      },
+      {
+        "name": "Basketball",
+        "slug": "basketball",
+        "file": "sport_basketball.png",
+        "width": 951,
+        "height": 1024
+      },
+      {
+        "name": "Football",
+        "slug": "football",
+        "file": "sport_football.png",
+        "width": 1024,
+        "height": 1008
+      },
+      {
+        "name": "Baseball",
+        "slug": "baseball",
+        "file": "sport_baseball.png",
+        "width": 905,
+        "height": 1024
+      },
+      {
+        "name": "Tennis Ball",
+        "slug": "tennis_ball",
+        "file": "sport_tennis_ball.png",
+        "width": 930,
+        "height": 1024
+      },
+      {
+        "name": "Golf Ball",
+        "slug": "golf_ball",
+        "file": "sport_golf_ball.png",
+        "width": 630,
+        "height": 1024
+      },
+      {
+        "name": "Volleyball",
+        "slug": "volleyball",
+        "file": "sport_volleyball.png",
+        "width": 1024,
+        "height": 981
+      },
+      {
+        "name": "Hockey Puck",
+        "slug": "hockey_puck",
+        "file": "sport_hockey_puck.png",
+        "width": 1024,
+        "height": 977
+      },
+      {
+        "name": "Cricket Ball",
+        "slug": "cricket_ball",
+        "file": "sport_cricket_ball.png",
+        "width": 952,
+        "height": 1024
+      },
+      {
+        "name": "Shuttlecock",
+        "slug": "shuttlecock",
+        "file": "sport_shuttlecock.png",
+        "width": 974,
+        "height": 1024
+      },
+      {
+        "name": "Ping Pong",
+        "slug": "ping_pong",
+        "file": "sport_ping_pong.png",
+        "width": 979,
+        "height": 1024
+      },
+      {
+        "name": "Eight Ball",
+        "slug": "eight_ball",
+        "file": "sport_eight_ball.png",
+        "width": 945,
+        "height": 1024
+      },
+      {
+        "name": "Boxing Glove",
+        "slug": "boxing_glove",
+        "file": "sport_boxing_glove.png",
+        "width": 786,
+        "height": 1024
+      },
+      {
+        "name": "Octagon Cage",
+        "slug": "octagon_cage",
+        "file": "sport_octagon_cage.png",
+        "width": 1024,
+        "height": 913
+      },
+      {
+        "name": "Baseball Bat",
+        "slug": "baseball_bat",
+        "file": "sport_baseball_bat.png",
+        "width": 820,
+        "height": 1023
+      },
+      {
+        "name": "Lacrosse",
+        "slug": "lacrosse",
+        "file": "sport_lacrosse.png",
+        "width": 872,
+        "height": 1024
+      },
+      {
+        "name": "Bowling",
+        "slug": "bowling",
+        "file": "sport_bowling.png",
+        "width": 1023,
+        "height": 937
+      },
+      {
+        "name": "Cyclist",
+        "slug": "cyclist",
+        "file": "sport_cyclist.png",
+        "width": 795,
+        "height": 1024
+      },
+      {
+        "name": "Swimmer",
+        "slug": "swimmer",
+        "file": "sport_swimmer.png",
+        "width": 1024,
+        "height": 703
+      },
+      {
+        "name": "Dumbbell",
+        "slug": "dumbbell",
+        "file": "sport_dumbbell.png",
+        "width": 1023,
+        "height": 867
+      },
+      {
+        "name": "Carabiner",
+        "slug": "carabiner",
+        "file": "sport_carabiner.png",
+        "width": 776,
+        "height": 1024
+      },
+      {
+        "name": "Runner",
+        "slug": "runner",
+        "file": "sport_runner.png",
+        "width": 1024,
+        "height": 964
+      },
+      {
+        "name": "Surfer",
+        "slug": "surfer",
+        "file": "sport_surfer.png",
+        "width": 977,
+        "height": 1024
+      },
+      {
+        "name": "Skier",
+        "slug": "skier",
+        "file": "sport_skier.png",
+        "width": 912,
+        "height": 1024
+      },
+      {
+        "name": "Snowboarder",
+        "slug": "snowboarder",
+        "file": "sport_snowboarder.png",
+        "width": 924,
+        "height": 1023
+      },
+      {
+        "name": "Sailboat",
+        "slug": "sailboat",
+        "file": "sport_sailboat.png",
+        "width": 905,
+        "height": 1024
+      },
+      {
+        "name": "Dartboard",
+        "slug": "dartboard",
+        "file": "sport_dartboard.png",
+        "width": 1014,
+        "height": 1023
+      },
+      {
+        "name": "Curling Stone",
+        "slug": "curling_stone",
+        "file": "sport_curling_stone.png",
+        "width": 1024,
+        "height": 964
+      },
+      {
+        "name": "Equestrian",
+        "slug": "equestrian",
+        "file": "sport_equestrian.png",
+        "width": 1024,
+        "height": 957
+      },
+      {
+        "name": "Beach Volleyball",
+        "slug": "beach_volleyball",
+        "file": "sport_beach_volleyball.png",
+        "width": 919,
+        "height": 1024
+      },
+      {
+        "name": "Martial Arts Belt",
+        "slug": "martial_arts_belt",
+        "file": "sport_martial_arts_belt.png",
+        "width": 1024,
+        "height": 933
+      },
+      {
+        "name": "Gymnastic Rings",
+        "slug": "gymnastic_rings",
+        "file": "sport_gymnastic_rings.png",
+        "width": 773,
+        "height": 1024
+      },
+      {
+        "name": "Mountain Biker",
+        "slug": "mountain_biker",
+        "file": "sport_mountain_biker.png",
+        "width": 880,
+        "height": 1024
+      },
+      {
+        "name": "Water Polo",
+        "slug": "water_polo",
+        "file": "sport_water_polo.png",
+        "width": 959,
+        "height": 1024
+      },
+      {
+        "name": "Skateboard",
+        "slug": "skateboard",
+        "file": "sport_skateboard.png",
+        "width": 1024,
+        "height": 979
+      }
+    ]
+  },
+  {
+    "category": "Game",
+    "prefix": "game",
+    "source": "Game.png",
+    "items": [
+      {
+        "name": "Heart Icon",
+        "slug": "heart_icon",
+        "file": "game_heart_icon.png",
+        "width": 1024,
+        "height": 1012
+      },
+      {
+        "name": "Blue Potion",
+        "slug": "blue_potion",
+        "file": "game_blue_potion.png",
+        "width": 742,
+        "height": 1024
+      },
+      {
+        "name": "Gold Coin",
+        "slug": "gold_coin",
+        "file": "game_gold_coin.png",
+        "width": 910,
+        "height": 1024
+      },
+      {
+        "name": "Diamond",
+        "slug": "diamond",
+        "file": "game_diamond.png",
+        "width": 1018,
+        "height": 1024
+      },
+      {
+        "name": "Treasure Chest",
+        "slug": "treasure_chest",
+        "file": "game_treasure_chest.png",
+        "width": 980,
+        "height": 1024
+      },
+      {
+        "name": "Key",
+        "slug": "key",
+        "file": "game_key.png",
+        "width": 845,
+        "height": 1024
+      },
+      {
+        "name": "Treasure Map",
+        "slug": "treasure_map",
+        "file": "game_treasure_map.png",
+        "width": 971,
+        "height": 1024
+      },
+      {
+        "name": "Purple Crystals",
+        "slug": "purple_crystals",
+        "file": "game_purple_crystals.png",
+        "width": 755,
+        "height": 1024
+      },
+      {
+        "name": "Sword",
+        "slug": "sword",
+        "file": "game_sword.png",
+        "width": 840,
+        "height": 1024
+      },
+      {
+        "name": "Shield",
+        "slug": "shield",
+        "file": "game_shield.png",
+        "width": 765,
+        "height": 1024
+      },
+      {
+        "name": "Bow",
+        "slug": "bow",
+        "file": "game_bow.png",
+        "width": 862,
+        "height": 1024
+      },
+      {
+        "name": "Quiver",
+        "slug": "quiver",
+        "file": "game_quiver.png",
+        "width": 704,
+        "height": 1024
+      },
+      {
+        "name": "Staff",
+        "slug": "staff",
+        "file": "game_staff.png",
+        "width": 701,
+        "height": 1024
+      },
+      {
+        "name": "Spellbook",
+        "slug": "spellbook",
+        "file": "game_spellbook.png",
+        "width": 861,
+        "height": 1024
+      },
+      {
+        "name": "War Hammer",
+        "slug": "war_hammer",
+        "file": "game_war_hammer.png",
+        "width": 840,
+        "height": 1024
+      },
+      {
+        "name": "Bomb",
+        "slug": "bomb",
+        "file": "game_bomb.png",
+        "width": 756,
+        "height": 1024
+      },
+      {
+        "name": "Green Crystals",
+        "slug": "green_crystals",
+        "file": "game_green_crystals.png",
+        "width": 798,
+        "height": 1024
+      },
+      {
+        "name": "Log Stack",
+        "slug": "log_stack",
+        "file": "game_log_stack.png",
+        "width": 953,
+        "height": 1024
+      },
+      {
+        "name": "Boulder",
+        "slug": "boulder",
+        "file": "game_boulder.png",
+        "width": 991,
+        "height": 1024
+      },
+      {
+        "name": "Gold Bar",
+        "slug": "gold_bar",
+        "file": "game_gold_bar.png",
+        "width": 969,
+        "height": 1024
+      },
+      {
+        "name": "Purple Potion",
+        "slug": "purple_potion",
+        "file": "game_purple_potion.png",
+        "width": 693,
+        "height": 1024
+      },
+      {
+        "name": "Scroll",
+        "slug": "scroll",
+        "file": "game_scroll.png",
+        "width": 828,
+        "height": 1024
+      },
+      {
+        "name": "Lion Banner",
+        "slug": "lion_banner",
+        "file": "game_lion_banner.png",
+        "width": 740,
+        "height": 1024
+      },
+      {
+        "name": "Campfire",
+        "slug": "campfire",
+        "file": "game_campfire.png",
+        "width": 866,
+        "height": 1023
+      },
+      {
+        "name": "Portal Gate",
+        "slug": "portal_gate",
+        "file": "game_portal_gate.png",
+        "width": 958,
+        "height": 1024
+      },
+      {
+        "name": "Crate",
+        "slug": "crate",
+        "file": "game_crate.png",
+        "width": 906,
+        "height": 1024
+      },
+      {
+        "name": "Barrel",
+        "slug": "barrel",
+        "file": "game_barrel.png",
+        "width": 829,
+        "height": 1024
+      },
+      {
+        "name": "Money Bag",
+        "slug": "money_bag",
+        "file": "game_money_bag.png",
+        "width": 1018,
+        "height": 1024
+      },
+      {
+        "name": "Mine Cart",
+        "slug": "mine_cart",
+        "file": "game_mine_cart.png",
+        "width": 908,
+        "height": 1024
+      },
+      {
+        "name": "Anvil",
+        "slug": "anvil",
+        "file": "game_anvil.png",
+        "width": 1024,
+        "height": 918
+      },
+      {
+        "name": "Workbench",
+        "slug": "workbench",
+        "file": "game_workbench.png",
+        "width": 982,
+        "height": 1024
+      },
+      {
+        "name": "Forge",
+        "slug": "forge",
+        "file": "game_forge.png",
+        "width": 932,
+        "height": 1024
+      },
+      {
+        "name": "Trophy",
+        "slug": "trophy",
+        "file": "game_trophy.png",
+        "width": 1024,
+        "height": 949
+      },
+      {
+        "name": "XP Badge",
+        "slug": "xp_badge",
+        "file": "game_xp_badge.png",
+        "width": 1024,
+        "height": 1002
+      },
+      {
+        "name": "Level Up",
+        "slug": "level_up",
+        "file": "game_level_up.png",
+        "width": 1024,
+        "height": 632
+      },
+      {
+        "name": "Skull Banner",
+        "slug": "skull_banner",
+        "file": "game_skull_banner.png",
+        "width": 780,
+        "height": 1024
+      },
+      {
+        "name": "Health Plus",
+        "slug": "health_plus",
+        "file": "game_health_plus.png",
+        "width": 887,
+        "height": 1024
+      },
+      {
+        "name": "Buff Potion",
+        "slug": "buff_potion",
+        "file": "game_buff_potion.png",
+        "width": 963,
+        "height": 1024
+      },
+      {
+        "name": "Gold Star",
+        "slug": "gold_star",
+        "file": "game_gold_star.png",
+        "width": 946,
+        "height": 1024
+      },
+      {
+        "name": "Gear",
+        "slug": "gear",
+        "file": "game_gear.png",
+        "width": 984,
+        "height": 1024
+      }
+    ]
+  },
+  {
+    "category": "Space Raiders",
+    "prefix": "raider",
+    "source": "Space Raiders.png",
+    "items": [
+      {
+        "name": "sprite_01",
+        "slug": "sprite_01",
+        "file": "raider_sprite_01.png",
+        "width": 873,
+        "height": 1024
+      },
+      {
+        "name": "sprite_02",
+        "slug": "sprite_02",
+        "file": "raider_sprite_02.png",
+        "width": 866,
+        "height": 1024
+      },
+      {
+        "name": "sprite_03",
+        "slug": "sprite_03",
+        "file": "raider_sprite_03.png",
+        "width": 866,
+        "height": 1024
+      },
+      {
+        "name": "sprite_04",
+        "slug": "sprite_04",
+        "file": "raider_sprite_04.png",
+        "width": 860,
+        "height": 1024
+      },
+      {
+        "name": "sprite_05",
+        "slug": "sprite_05",
+        "file": "raider_sprite_05.png",
+        "width": 625,
+        "height": 1024
+      },
+      {
+        "name": "sprite_06",
+        "slug": "sprite_06",
+        "file": "raider_sprite_06.png",
+        "width": 1024,
+        "height": 880
+      },
+      {
+        "name": "sprite_07",
+        "slug": "sprite_07",
+        "file": "raider_sprite_07.png",
+        "width": 1024,
+        "height": 841
+      },
+      {
+        "name": "sprite_08",
+        "slug": "sprite_08",
+        "file": "raider_sprite_08.png",
+        "width": 1024,
+        "height": 889
+      },
+      {
+        "name": "sprite_09",
+        "slug": "sprite_09",
+        "file": "raider_sprite_09.png",
+        "width": 1024,
+        "height": 841
+      },
+      {
+        "name": "sprite_10",
+        "slug": "sprite_10",
+        "file": "raider_sprite_10.png",
+        "width": 1024,
+        "height": 889
+      },
+      {
+        "name": "sprite_11",
+        "slug": "sprite_11",
+        "file": "raider_sprite_11.png",
+        "width": 1024,
+        "height": 870
+      },
+      {
+        "name": "sprite_12",
+        "slug": "sprite_12",
+        "file": "raider_sprite_12.png",
+        "width": 1024,
+        "height": 860
+      },
+      {
+        "name": "sprite_13",
+        "slug": "sprite_13",
+        "file": "raider_sprite_13.png",
+        "width": 1024,
+        "height": 879
+      },
+      {
+        "name": "sprite_14",
+        "slug": "sprite_14",
+        "file": "raider_sprite_14.png",
+        "width": 1024,
+        "height": 868
+      },
+      {
+        "name": "sprite_15",
+        "slug": "sprite_15",
+        "file": "raider_sprite_15.png",
+        "width": 1024,
+        "height": 879
+      },
+      {
+        "name": "sprite_16",
+        "slug": "sprite_16",
+        "file": "raider_sprite_16.png",
+        "width": 1024,
+        "height": 860
+      },
+      {
+        "name": "sprite_17",
+        "slug": "sprite_17",
+        "file": "raider_sprite_17.png",
+        "width": 1024,
+        "height": 860
+      },
+      {
+        "name": "sprite_18",
+        "slug": "sprite_18",
+        "file": "raider_sprite_18.png",
+        "width": 1024,
+        "height": 868
+      },
+      {
+        "name": "sprite_19",
+        "slug": "sprite_19",
+        "file": "raider_sprite_19.png",
+        "width": 1024,
+        "height": 860
+      },
+      {
+        "name": "sprite_20",
+        "slug": "sprite_20",
+        "file": "raider_sprite_20.png",
+        "width": 1024,
+        "height": 860
+      },
+      {
+        "name": "sprite_21",
+        "slug": "sprite_21",
+        "file": "raider_sprite_21.png",
+        "width": 1024,
+        "height": 880
+      },
+      {
+        "name": "sprite_22",
+        "slug": "sprite_22",
+        "file": "raider_sprite_22.png",
+        "width": 1024,
+        "height": 880
+      },
+      {
+        "name": "sprite_23",
+        "slug": "sprite_23",
+        "file": "raider_sprite_23.png",
+        "width": 1024,
+        "height": 889
+      },
+      {
+        "name": "sprite_24",
+        "slug": "sprite_24",
+        "file": "raider_sprite_24.png",
+        "width": 1024,
+        "height": 880
+      },
+      {
+        "name": "sprite_25",
+        "slug": "sprite_25",
+        "file": "raider_sprite_25.png",
+        "width": 1024,
+        "height": 880
+      },
+      {
+        "name": "sprite_26",
+        "slug": "sprite_26",
+        "file": "raider_sprite_26.png",
+        "width": 1024,
+        "height": 801
+      },
+      {
+        "name": "sprite_27",
+        "slug": "sprite_27",
+        "file": "raider_sprite_27.png",
+        "width": 1024,
+        "height": 806
+      },
+      {
+        "name": "sprite_28",
+        "slug": "sprite_28",
+        "file": "raider_sprite_28.png",
+        "width": 1024,
+        "height": 812
+      },
+      {
+        "name": "sprite_29",
+        "slug": "sprite_29",
+        "file": "raider_sprite_29.png",
+        "width": 1024,
+        "height": 757
+      },
+      {
+        "name": "sprite_30",
+        "slug": "sprite_30",
+        "file": "raider_sprite_30.png",
+        "width": 1024,
+        "height": 746
+      },
+      {
+        "name": "sprite_31",
+        "slug": "sprite_31",
+        "file": "raider_sprite_31.png",
+        "width": 737,
+        "height": 1024
+      },
+      {
+        "name": "sprite_32",
+        "slug": "sprite_32",
+        "file": "raider_sprite_32.png",
+        "width": 1024,
+        "height": 461
+      },
+      {
+        "name": "sprite_33",
+        "slug": "sprite_33",
+        "file": "raider_sprite_33.png",
+        "width": 1024,
+        "height": 448
+      },
+      {
+        "name": "sprite_34",
+        "slug": "sprite_34",
+        "file": "raider_sprite_34.png",
+        "width": 1024,
+        "height": 633
+      },
+      {
+        "name": "sprite_35",
+        "slug": "sprite_35",
+        "file": "raider_sprite_35.png",
+        "width": 1003,
+        "height": 1024
+      },
+      {
+        "name": "sprite_36",
+        "slug": "sprite_36",
+        "file": "raider_sprite_36.png",
+        "width": 1024,
+        "height": 965
+      },
+      {
+        "name": "sprite_37",
+        "slug": "sprite_37",
+        "file": "raider_sprite_37.png",
+        "width": 1024,
+        "height": 1024
+      },
+      {
+        "name": "sprite_38",
+        "slug": "sprite_38",
+        "file": "raider_sprite_38.png",
+        "width": 838,
+        "height": 1024
+      },
+      {
+        "name": "sprite_39",
+        "slug": "sprite_39",
+        "file": "raider_sprite_39.png",
+        "width": 1024,
+        "height": 989
+      },
+      {
+        "name": "sprite_40",
+        "slug": "sprite_40",
+        "file": "raider_sprite_40.png",
+        "width": 1004,
+        "height": 1024
+      },
+      {
+        "name": "sprite_41",
+        "slug": "sprite_41",
+        "file": "raider_sprite_41.png",
+        "width": 936,
+        "height": 1024
+      },
+      {
+        "name": "sprite_42",
+        "slug": "sprite_42",
+        "file": "raider_sprite_42.png",
+        "width": 916,
+        "height": 1024
+      },
+      {
+        "name": "sprite_43",
+        "slug": "sprite_43",
+        "file": "raider_sprite_43.png",
+        "width": 948,
+        "height": 1024
+      }
+    ]
+  }
+]

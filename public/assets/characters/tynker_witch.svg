@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="640" viewBox="0 0 640 640">
+  <defs>
+    <linearGradient id="wg" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#581c87"/><stop offset="1" stop-color="#3b0764"/>
+    </linearGradient>
+  </defs>
+  <rect width="640" height="640" fill="#1e1b4b"/>
+  <ellipse cx="320" cy="560" rx="180" ry="40" fill="#000" opacity="0.3"/>
+  <!-- dress -->
+  <path d="M180 360 Q320 320 460 360 L520 540 L120 540Z" fill="url(#wg)"/>
+  <path d="M220 380 Q320 350 420 380 L460 500 L180 500Z" fill="#6b21a8" opacity="0.45"/>
+  <!-- arms -->
+  <ellipse cx="160" cy="400" rx="38" ry="100" fill="#7e22ce" transform="rotate(-25 160 400)"/>
+  <ellipse cx="480" cy="400" rx="38" ry="100" fill="#7e22ce" transform="rotate(25 480 400)"/>
+  <!-- head -->
+  <ellipse cx="320" cy="270" rx="95" ry="110" fill="#fcd9b8"/>
+  <!-- witch hat -->
+  <path d="M160 220 L320 40 L480 220 Q320 180 160 220Z" fill="#1e1b4b"/>
+  <ellipse cx="320" cy="230" rx="200" ry="28" fill="#312e81"/>
+  <ellipse cx="320" cy="230" rx="130" ry="18" fill="#4c1d95"/>
+  <!-- face -->
+  <ellipse cx="285" cy="275" rx="12" ry="16" fill="#fff"/>
+  <ellipse cx="355" cy="275" rx="12" ry="16" fill="#fff"/>
+  <circle cx="286" cy="277" r="6" fill="#1e1b4b"/>
+  <circle cx="356" cy="277" r="6" fill="#1e1b4b"/>
+  <path d="M295 320 Q320 345 345 320" stroke="#9d174d" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <!-- moon wand -->
+  <g transform="translate(500 320)">
+    <line x1="0" y1="80" x2="0" y2="-40" stroke="#fde68a" stroke-width="10" stroke-linecap="round"/>
+    <path d="M0 -60 L8 -44 L24 -44 L10 -34 L16 -18 L0 -28 L-16 -18 L-10 -34 L-24 -44 L-8 -44Z" fill="#fef08a"/>
+  </g>
+</svg>

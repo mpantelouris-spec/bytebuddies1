@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="640" viewBox="0 0 640 640">
+  <defs>
+    <linearGradient id="a" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#8ff07a"/><stop offset="1" stop-color="#3fbf3f"/></linearGradient>
+    <filter id="sh" x="-50%" y="-50%" width="200%" height="200%"><feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000" flood-opacity="0.2"/></filter>
+  </defs>
+  <g transform="translate(160,120)" filter="url(#sh)">
+    <ellipse cx="160" cy="360" rx="160" ry="90" fill="#20232a"/>
+    <rect x="160" y="160" width="140" height="220" rx="36" fill="url(#a)"/>
+  </g>
+  <g transform="translate(210,40)">
+    <ellipse cx="120" cy="140" rx="100" ry="120" fill="url(#a)"/>
+    <ellipse cx="70" cy="120" rx="26" ry="36" fill="#000" opacity="0.95"/>
+    <ellipse cx="170" cy="120" rx="26" ry="36" fill="#000" opacity="0.95"/>
+    <path d="M100 180 Q120 200 140 180" stroke="#183214" stroke-width="4" fill="none" stroke-linecap="round"/>
+  </g>
+</svg>
