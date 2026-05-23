@@ -1,0 +1,252 @@
+{
+  "category": "Sports",
+  "prefix": "sport",
+  "source": "Sports.png",
+  "items": [
+    {
+      "name": "Soccer Ball",
+      "slug": "soccer_ball",
+      "file": "sport_soccer_ball.png",
+      "width": 1024,
+      "height": 1000
+    },
+    {
+      "name": "Basketball",
+      "slug": "basketball",
+      "file": "sport_basketball.png",
+      "width": 951,
+      "height": 1024
+    },
+    {
+      "name": "Football",
+      "slug": "football",
+      "file": "sport_football.png",
+      "width": 1024,
+      "height": 1008
+    },
+    {
+      "name": "Baseball",
+      "slug": "baseball",
+      "file": "sport_baseball.png",
+      "width": 905,
+      "height": 1024
+    },
+    {
+      "name": "Tennis Ball",
+      "slug": "tennis_ball",
+      "file": "sport_tennis_ball.png",
+      "width": 930,
+      "height": 1024
+    },
+    {
+      "name": "Golf Ball",
+      "slug": "golf_ball",
+      "file": "sport_golf_ball.png",
+      "width": 630,
+      "height": 1024
+    },
+    {
+      "name": "Volleyball",
+      "slug": "volleyball",
+      "file": "sport_volleyball.png",
+      "width": 1024,
+      "height": 981
+    },
+    {
+      "name": "Hockey Puck",
+      "slug": "hockey_puck",
+      "file": "sport_hockey_puck.png",
+      "width": 1024,
+      "height": 977
+    },
+    {
+      "name": "Cricket Ball",
+      "slug": "cricket_ball",
+      "file": "sport_cricket_ball.png",
+      "width": 952,
+      "height": 1024
+    },
+    {
+      "name": "Shuttlecock",
+      "slug": "shuttlecock",
+      "file": "sport_shuttlecock.png",
+      "width": 974,
+      "height": 1024
+    },
+    {
+      "name": "Ping Pong",
+      "slug": "ping_pong",
+      "file": "sport_ping_pong.png",
+      "width": 979,
+      "height": 1024
+    },
+    {
+      "name": "Eight Ball",
+      "slug": "eight_ball",
+      "file": "sport_eight_ball.png",
+      "width": 945,
+      "height": 1024
+    },
+    {
+      "name": "Boxing Glove",
+      "slug": "boxing_glove",
+      "file": "sport_boxing_glove.png",
+      "width": 786,
+      "height": 1024
+    },
+    {
+      "name": "Octagon Cage",
+      "slug": "octagon_cage",
+      "file": "sport_octagon_cage.png",
+      "width": 1024,
+      "height": 913
+    },
+    {
+      "name": "Baseball Bat",
+      "slug": "baseball_bat",
+      "file": "sport_baseball_bat.png",
+      "width": 820,
+      "height": 1023
+    },
+    {
+      "name": "Lacrosse",
+      "slug": "lacrosse",
+      "file": "sport_lacrosse.png",
+      "width": 872,
+      "height": 1024
+    },
+    {
+      "name": "Bowling",
+      "slug": "bowling",
+      "file": "sport_bowling.png",
+      "width": 1023,
+      "height": 937
+    },
+    {
+      "name": "Cyclist",
+      "slug": "cyclist",
+      "file": "sport_cyclist.png",
+      "width": 795,
+      "height": 1024
+    },
+    {
+      "name": "Swimmer",
+      "slug": "swimmer",
+      "file": "sport_swimmer.png",
+      "width": 1024,
+      "height": 703
+    },
+    {
+      "name": "Dumbbell",
+      "slug": "dumbbell",
+      "file": "sport_dumbbell.png",
+      "width": 1023,
+      "height": 867
+    },
+    {
+      "name": "Carabiner",
+      "slug": "carabiner",
+      "file": "sport_carabiner.png",
+      "width": 776,
+      "height": 1024
+    },
+    {
+      "name": "Runner",
+      "slug": "runner",
+      "file": "sport_runner.png",
+      "width": 1024,
+      "height": 964
+    },
+    {
+      "name": "Surfer",
+      "slug": "surfer",
+      "file": "sport_surfer.png",
+      "width": 977,
+      "height": 1024
+    },
+    {
+      "name": "Skier",
+      "slug": "skier",
+      "file": "sport_skier.png",
+      "width": 912,
+      "height": 1024
+    },
+    {
+      "name": "Snowboarder",
+      "slug": "snowboarder",
+      "file": "sport_snowboarder.png",
+      "width": 924,
+      "height": 1023
+    },
+    {
+      "name": "Sailboat",
+      "slug": "sailboat",
+      "file": "sport_sailboat.png",
+      "width": 905,
+      "height": 1024
+    },
+    {
+      "name": "Dartboard",
+      "slug": "dartboard",
+      "file": "sport_dartboard.png",
+      "width": 1014,
+      "height": 1023
+    },
+    {
+      "name": "Curling Stone",
+      "slug": "curling_stone",
+      "file": "sport_curling_stone.png",
+      "width": 1024,
+      "height": 964
+    },
+    {
+      "name": "Equestrian",
+      "slug": "equestrian",
+      "file": "sport_equestrian.png",
+      "width": 1024,
+      "height": 957
+    },
+    {
+      "name": "Beach Volleyball",
+      "slug": "beach_volleyball",
+      "file": "sport_beach_volleyball.png",
+      "width": 919,
+      "height": 1024
+    },
+    {
+      "name": "Martial Arts Belt",
+      "slug": "martial_arts_belt",
+      "file": "sport_martial_arts_belt.png",
+      "width": 1024,
+      "height": 933
+    },
+    {
+      "name": "Gymnastic Rings",
+      "slug": "gymnastic_rings",
+      "file": "sport_gymnastic_rings.png",
+      "width": 773,
+      "height": 1024
+    },
+    {
+      "name": "Mountain Biker",
+      "slug": "mountain_biker",
+      "file": "sport_mountain_biker.png",
+      "width": 880,
+      "height": 1024
+    },
+    {
+      "name": "Water Polo",
+      "slug": "water_polo",
+      "file": "sport_water_polo.png",
+      "width": 959,
+      "height": 1024
+    },
+    {
+      "name": "Skateboard",
+      "slug": "skateboard",
+      "file": "sport_skateboard.png",
+      "width": 1024,
+      "height": 979
+    }
+  ]
+}
