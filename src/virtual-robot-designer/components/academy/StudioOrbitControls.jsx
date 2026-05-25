@@ -1,18 +1,22 @@
 import React, { useEffect, useRef } from 'react';
 import { OrbitControls } from '@react-three/drei';
 
-/** Wraps drei OrbitControls with a stable API for UI buttons */
+/** Wraps drei OrbitControls with a stable API for UI buttons + workshop auto-orbit */
 export default function StudioOrbitControls({
   apiRef,
   minDistance = 2.2,
   maxDistance = 6,
-  target = [0, 0.15, 0],
+  target = [0, 0.35, 0],
+  userInteractingRef,
 }) {
   const controlsRef = useRef();
 
   useEffect(() => {
     if (!apiRef) return undefined;
     apiRef.current = {
+      get controls() {
+        return controlsRef.current;
+      },
       rotateLeft(angle = Math.PI / 8) {
         const c = controlsRef.current;
         if (!c) return;
@@ -51,11 +55,17 @@ export default function StudioOrbitControls({
       enablePan={false}
       minDistance={minDistance}
       maxDistance={maxDistance}
-      maxPolarAngle={Math.PI / 2 + 0.05}
-      minPolarAngle={0.35}
+      maxPolarAngle={Math.PI / 2.15}
+      minPolarAngle={0.42}
       target={target}
       enableDamping
-      dampingFactor={0.06}
+      dampingFactor={0.08}
+      onStart={() => {
+        if (userInteractingRef) userInteractingRef.current = true;
+      }}
+      onEnd={() => {
+        if (userInteractingRef) userInteractingRef.current = false;
+      }}
     />
   );
 }

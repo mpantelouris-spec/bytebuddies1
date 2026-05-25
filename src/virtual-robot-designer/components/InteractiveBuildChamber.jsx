@@ -9,6 +9,11 @@ import InteractiveRobotModel from './InteractiveRobotModel.jsx';
 import HeroRobotModel from './HeroRobotModel.jsx';
 import AssemblyAttachmentMeshes from './AssemblyAttachmentMeshes.jsx';
 import SnapSocketMarkers from './SnapSocketMarkers.jsx';
+import WorkshopStage3D from './workshop/WorkshopStage3D.jsx';
+import WorkshopBackdrop3D from './workshop/WorkshopBackdrop3D.jsx';
+import WorkshopSceneLighting from './workshop/WorkshopSceneLighting.jsx';
+import RobotAssemblyRoot from './workshop/RobotAssemblyRoot.jsx';
+import { PLATFORM } from '../constants/workshop-scene.js';
 import BlockGrid3D from './BlockGrid3D.jsx';
 import BlockPlacement3D from './BlockPlacement3D.jsx';
 import { migrateDesign } from '../config.js';
@@ -231,6 +236,8 @@ export default function InteractiveBuildChamber({
   const slotFilled = highlightSlot ? !!asm.slots[highlightSlot] : false;
   const isArm = asm.base?.shape === 'arm';
   const isProduct = visualStyle === 'product';
+  const isWorkshop = visualStyle === 'workshop';
+  const isBrightStudio = isProduct || isWorkshop;
   const modeLabel = buildMode === 'blocks' ? 'LEGO BUILD' : 'EXPLORER BOT';
   const placedCount = Object.values(asm.slots || {}).filter(Boolean).length;
   const buildPhase = isProduct ? getBuildPhase(asm, asm.base?.shape === 'arm') : null;
@@ -287,20 +294,26 @@ export default function InteractiveBuildChamber({
         <Canvas
           shadows
           dpr={[1, 2]}
-          camera={{ position: isProduct ? [0, 1.35, 3.5] : [0, 1.5, 4], fov: isProduct ? 68 : 75, near: 0.1, far: 1000 }}
-          gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: isProduct ? 1.55 : 1.15 }}
+          camera={{ position: isWorkshop ? [0, 0.9, 2.4] : isProduct ? [0, 1.35, 3.5] : [0, 1.5, 4], fov: isWorkshop ? 42 : isProduct ? 68 : 75, near: 0.1, far: isWorkshop ? 50 : 1000 }}
+          gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: isWorkshop ? 1.02 : isProduct ? 1.55 : 1.15 }}
         >
           <Suspense fallback={null}>
-            <color attach="background" args={[isProduct ? '#e8e8e8' : '#0A0A1A']} />
-            <fog attach="fog" args={[isProduct ? '#e8e8e8' : '#0A0A1A', 12, 28]} />
-            <Environment preset={isProduct ? 'studio' : 'night'} />
-            <ambientLight intensity={isProduct ? 0.85 : 0.6} color="#ffffff" />
-            <hemisphereLight intensity={isProduct ? 0.7 : 0.45} color="#ffffff" groundColor={isProduct ? '#374151' : '#0A0A1A'} />
-            <directionalLight position={[5, 8, 4]} intensity={isProduct ? 1.35 : 1.0} castShadow shadow-mapSize={[2048, 2048]} color="#ffffff" />
-            <directionalLight position={[-4, 5, -2]} intensity={isProduct ? 0.5 : 0.2} color="#e0f2fe" />
-            {isProduct && <pointLight position={[0, 2.5, 2]} intensity={0.55} color="#ffffff" />}
-            {isProduct && <pointLight position={[2, 1, -1]} intensity={0.35} color="#00D9FF" />}
-            {isProduct && <pointLight position={[-2, 1.5, 1]} intensity={0.2} color="#8B00FF" />}
+            <color attach="background" args={[isBrightStudio ? '#eef2f7' : '#0A0A1A']} />
+            <fog attach="fog" args={[isBrightStudio ? '#eef2f7' : '#0A0A1A', isWorkshop ? 16 : 12, isWorkshop ? 36 : 28]} />
+            {!isWorkshop && <Environment preset={isProduct ? 'studio' : 'night'} />}
+            {isWorkshop ? (
+              <WorkshopSceneLighting />
+            ) : (
+              <>
+                <ambientLight intensity={isProduct ? 0.85 : 0.6} color="#ffffff" />
+                <hemisphereLight intensity={isProduct ? 0.7 : 0.45} color="#ffffff" groundColor={isProduct ? '#374151' : '#0A0A1A'} />
+                <directionalLight position={[5, 8, 4]} intensity={isProduct ? 1.35 : 1.0} castShadow shadow-mapSize={[2048, 2048]} color="#ffffff" />
+                <directionalLight position={[-4, 5, -2]} intensity={isProduct ? 0.5 : 0.2} color="#e0f2fe" />
+                {isProduct && <pointLight position={[0, 2.5, 2]} intensity={0.55} color="#ffffff" />}
+                {isProduct && <pointLight position={[2, 1, -1]} intensity={0.35} color="#00D9FF" />}
+                {isProduct && <pointLight position={[-2, 1.5, 1]} intensity={0.2} color="#8B00FF" />}
+              </>
+            )}
             {!isProduct && <pointLight position={[-4, 3, 3]} intensity={0.3} color="#8B00FF" />}
             {!isProduct && <pointLight position={[4, 2, -3]} intensity={0.2} color="#00D9FF" />}
             {!isProduct && <Stars radius={90} depth={45} count={3500} factor={3} saturation={0} fade speed={0.5} />}
@@ -320,7 +333,12 @@ export default function InteractiveBuildChamber({
               infiniteGrid
             />
             )}
-            {isProduct ? (
+            {isWorkshop ? (
+              <>
+                <WorkshopBackdrop3D />
+                <WorkshopStage3D />
+              </>
+            ) : isProduct ? (
               <ProductPlatform color="#00D9FF" snapPulse={snapPulse} />
             ) : (
               <>
@@ -333,7 +351,14 @@ export default function InteractiveBuildChamber({
                 <AssemblyArm position={[2.5, 0.5, -0.5]} rotation={[0, -0.4, -0.5]} color="#00d4ff" />
               </>
             )}
-            <ContactShadows position={[0, -0.55, 0]} opacity={isProduct ? 0.5 : 0.65} scale={9} blur={2.5} far={5} color="#000000" />
+            <ContactShadows
+              position={[0, isWorkshop ? PLATFORM.topY + 0.002 : -0.55, 0]}
+              opacity={isBrightStudio ? 0.45 : 0.65}
+              scale={isWorkshop ? 8 : 9}
+              blur={2.2}
+              far={5}
+              color={isWorkshop ? '#64748b' : '#000000'}
+            />
             {(buildMode === 'blocks' || buildMode === 'hybrid') && (
               <BlockGrid3D design={d} highlightLayer={blockLayer} pulse={!!snapPulse} />
             )}
@@ -348,34 +373,54 @@ export default function InteractiveBuildChamber({
               />
             )}
             {(buildMode === 'blocks' || buildMode === 'hybrid') ? (
-              <InteractiveRobotModel
-                design={d}
-                autoSpin={autoSpin}
-                highlightSlot={highlightSlot}
-                snapPulse={snapPulse}
-                buildMode={buildMode}
-                blockLayer={blockLayer}
-                heroScale={1.35}
-              />
-            ) : isProduct ? (
-              <>
-                <HeroRobotModel
-                  key={`hero-${placedCount}-${asm.base?.chassisType}-${asm.base?.color}`}
+              isWorkshop ? (
+                <RobotAssemblyRoot
                   design={d}
-                  productVisual
-                />
-                {showExtrasMeshes && <AssemblyAttachmentMeshes design={d} />}
-                <SnapSocketMarkers
-                  base={asm.base}
-                  slots={asm.slots}
                   highlightSlot={highlightSlot}
                   snapPulse={snapPulse}
-                  productMode
-                  visibleSlots={visibleSockets}
                   onSocketSelect={onSocketSelect}
                   onSocketRemove={onSocketRemove}
                 />
-              </>
+              ) : (
+                <InteractiveRobotModel
+                  design={d}
+                  autoSpin={autoSpin}
+                  highlightSlot={highlightSlot}
+                  snapPulse={snapPulse}
+                  buildMode={buildMode}
+                  blockLayer={blockLayer}
+                  heroScale={1.35}
+                />
+              )
+            ) : isWorkshop || isProduct ? (
+              isWorkshop ? (
+                <RobotAssemblyRoot
+                  design={d}
+                  highlightSlot={highlightSlot}
+                  snapPulse={snapPulse}
+                  onSocketSelect={onSocketSelect}
+                  onSocketRemove={onSocketRemove}
+                />
+              ) : (
+                <>
+                  <HeroRobotModel
+                    key={`hero-${placedCount}-${asm.base?.chassisType}-${asm.base?.color}`}
+                    design={d}
+                    productVisual
+                  />
+                  {showExtrasMeshes && <AssemblyAttachmentMeshes design={d} />}
+                  <SnapSocketMarkers
+                    base={asm.base}
+                    slots={asm.slots}
+                    highlightSlot={highlightSlot}
+                    snapPulse={snapPulse}
+                    productMode
+                    visibleSlots={visibleSockets}
+                    onSocketSelect={onSocketSelect}
+                    onSocketRemove={onSocketRemove}
+                  />
+                </>
+              )
             ) : (
               <InteractiveRobotModel
                 design={d}
@@ -395,7 +440,7 @@ export default function InteractiveBuildChamber({
               </>
             )}
             <ChamberCamera isArm={isArm} controlsRef={controlsRef} isProduct={isProduct} />
-            {isProduct ? (
+            {isWorkshop ? null : isProduct ? (
               <EffectComposer multisampling={0}>
                 <Bloom luminanceThreshold={0.75} luminanceSmoothing={0.9} intensity={0.35} mipmapBlur />
               </EffectComposer>

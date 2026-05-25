@@ -11,6 +11,7 @@ function SocketPillar({
   filled,
   pulse,
   invalid,
+  validDrop,
   productMode,
   onSelect,
   onRemove,
@@ -102,6 +103,20 @@ function SocketPillar({
           <meshBasicMaterial color="#00FF41" transparent opacity={0.55} blending={THREE.AdditiveBlending} />
         </mesh>
       )}
+
+      {validDrop && !filled && (
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
+          <ringGeometry args={[0.14, 0.26, 32]} />
+          <meshBasicMaterial color="#00FF41" transparent opacity={0.35} blending={THREE.AdditiveBlending} />
+        </mesh>
+      )}
+
+      {invalid && !filled && (
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
+          <ringGeometry args={[0.12, 0.22, 32]} />
+          <meshBasicMaterial color="#ef4444" transparent opacity={0.45} blending={THREE.AdditiveBlending} />
+        </mesh>
+      )}
     </group>
   );
 }
@@ -126,6 +141,7 @@ export default function SnapSocketMarkers({
         const filled = !!slots[slotId];
         const active = highlightSlot === slotId;
         const invalid = dragCategory && !filled && !slotAcceptsPart(slotId, dragCategory);
+        const validDrop = dragCategory && !filled && slotAcceptsPart(slotId, dragCategory);
         if (base?.shape === 'arm' && !['front', 'right', 'left', 'top'].includes(slotId)) return null;
         return (
           <SocketPillar
@@ -135,6 +151,7 @@ export default function SnapSocketMarkers({
             active={active}
             filled={filled}
             invalid={invalid}
+            validDrop={validDrop}
             pulse={active && snapPulse}
             productMode={productMode}
             onSelect={() => onSocketSelect?.(slotId)}

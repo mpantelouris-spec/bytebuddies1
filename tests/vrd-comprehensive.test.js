@@ -242,6 +242,19 @@ describe('FT-009–FT-012 stats', () => {
   });
 });
 
+describe('Workshop scene scale', () => {
+  test('computeWorkshopRobotScale grows with parts', async () => {
+    const { computeWorkshopRobotScale } = await import('../src/virtual-robot-designer/constants/workshop-scene.js');
+    const empty = computeWorkshopRobotScale(fresh());
+    let d = placePartOnSlot(fresh(), 'movement', 'movement', 'standard');
+    d = placePartOnSlot(d, 'head', 'head', 'camera');
+    const withParts = computeWorkshopRobotScale(d);
+    expect(withParts).toBeGreaterThanOrEqual(empty);
+    expect(empty).toBeGreaterThan(1);
+    expect(empty).toBeLessThan(3);
+  });
+});
+
 describe('Blockly unlock report', () => {
   test('ultrasonic part unlocks scan blocks in report', async () => {
     const { getBlocklyUnlockReport } = await import('../src/virtual-robot-designer/services/block-unlocks.js');

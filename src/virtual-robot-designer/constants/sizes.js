@@ -14,11 +14,11 @@ export const VIEWPORT = {
   heroScale: 2.35,
 };
 
-/** Invention workshop — robot closer and larger (hero-first) */
+/** Invention workshop — camera tuned via workshop-scene.js computeCameraFrame */
 export const WORKSHOP_VIEWPORT = {
-  cameraPos: [0, 0.78, 1.75],
-  cameraFov: 44,
-  orbitMin: 1.35,
-  orbitMax: 3.8,
-  heroScale: 2.85,
+  cameraPos: [0, 0.9, 2.4],
+  cameraFov: 42,
+  orbitMin: 1.5,
+  orbitMax: 3.2,
+  heroScale: 1,
 };

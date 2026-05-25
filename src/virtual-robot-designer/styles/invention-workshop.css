@@ -97,12 +97,12 @@
   grid-row: 2;
   display: flex;
   flex-direction: column;
-  margin: 10px 0 10px 10px;
-  background: var(--iw-surface);
-  backdrop-filter: blur(12px);
+  margin: 6px 0 6px 6px;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
   border-radius: var(--iw-radius);
-  border: 1px solid var(--iw-border);
-  box-shadow: 0 8px 32px rgba(30, 60, 120, 0.08);
+  border: none;
+  box-shadow: 0 4px 20px rgba(30, 60, 100, 0.06);
   overflow: hidden;
   z-index: 10;
 }
@@ -268,15 +268,17 @@
   grid-column: 2;
   grid-row: 2;
   position: relative;
-  margin: 10px 8px;
-  border-radius: 20px;
+  margin: 6px 4px;
+  border-radius: 18px;
   overflow: hidden;
-  background: linear-gradient(180deg, #f8fafc 0%, #e2e8f0 100%);
-  border: 1px solid rgba(255, 255, 255, 0.8);
-  box-shadow:
-    inset 0 0 80px rgba(0, 217, 255, 0.06),
-    0 12px 40px rgba(30, 60, 100, 0.12);
+  background: #eef2f7;
+  border: none;
+  box-shadow: 0 8px 32px rgba(30, 60, 100, 0.1);
   min-height: 0;
+}
+
+.iw-drop-valid {
+  color: #00c853;
 }
 
 .iw-hero-canvas {

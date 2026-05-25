@@ -510,7 +510,13 @@ function LegoRobot({ blocks = [], primaryColor = '#4a90e2', accentColor = '#00d4
    MAIN HERO ROBOT COMPONENT
    ═══════════════════════════════════════════════════════════ */
 
-export default function HeroRobotModel({ design, onPartAdd, productVisual = false, heroScale: heroScaleProp }) {
+export default function HeroRobotModel({
+  design,
+  onPartAdd,
+  productVisual = false,
+  workshopGrounded = false,
+  heroScale: heroScaleProp,
+}) {
   const groupRef   = useRef();
   const headRef    = useRef();
   const antennaRef = useRef();
@@ -567,10 +573,12 @@ export default function HeroRobotModel({ design, onPartAdd, productVisual = fals
     timeRef.current += delta;
     const t = timeRef.current;
 
-    // Body breathe + product showcase spin
     if (groupRef.current) {
-      groupRef.current.position.y = Math.sin(t * 0.8) * (productVisual ? 0.012 : 0.025);
-      if (productVisual) {
+      const breathe = workshopGrounded ? 0.004 : productVisual ? 0.012 : 0.025;
+      groupRef.current.position.y = Math.sin(t * 0.8) * breathe;
+      if (workshopGrounded) {
+        groupRef.current.rotation.y = 0;
+      } else if (productVisual) {
         groupRef.current.rotation.y += delta * 0.22;
       } else {
         groupRef.current.rotation.y = Math.sin(t * 0.12) * 0.04;
@@ -597,7 +605,7 @@ export default function HeroRobotModel({ design, onPartAdd, productVisual = fals
 
   if (buildMode === 'blocks') {
     return (
-      <group ref={groupRef} position={[0, 0.5, 0]}>
+      <group ref={groupRef} position={[0, workshopGrounded ? 0.08 : 0.5, 0]}>
         <LegoRobot blocks={asm.blocks} primaryColor={primaryColor} accentColor={accentColor} />
       </group>
     );
@@ -611,15 +619,18 @@ export default function HeroRobotModel({ design, onPartAdd, productVisual = fals
   const useHover = wheelType === 'hover' || hoverIds.includes(movementType);
   const baseHero = heroScaleProp ?? (productVisual ? VIEWPORT.heroScale : 1.4);
   const heroScale = baseHero * chassisMul;
-  const bodyYOffset = useHover ? 0.22 : hasMovement ? 0 : -0.08;
+  const bodyYOffset = workshopGrounded
+    ? (useHover ? 0.12 : hasMovement ? 0 : 0.02)
+    : (useHover ? 0.22 : hasMovement ? 0 : -0.08);
 
   return (
     <group ref={groupRef} position={[0, bodyYOffset, 0]} scale={[heroScale, heroScale, heroScale]}>
-      {/* Ground contact shadow helper light */}
-      <pointLight position={[0, -0.3, 0]} color="#1a2850" intensity={0.4} distance={3} decay={2} />
-
-      {/* Core glow ambient */}
-      <pointLight position={[0, 0.56, 0.5]} color={accentColor} intensity={0.6} distance={3} decay={2} />
+      {!workshopGrounded && (
+        <>
+          <pointLight position={[0, -0.3, 0]} color="#1a2850" intensity={0.4} distance={3} decay={2} />
+          <pointLight position={[0, 0.56, 0.5]} color={accentColor} intensity={0.6} distance={3} decay={2} />
+        </>
+      )}
 
       {/* Main body */}
       <RoverBody primaryColor={primaryColor} accentColor={accentColor} product={productVisual} />

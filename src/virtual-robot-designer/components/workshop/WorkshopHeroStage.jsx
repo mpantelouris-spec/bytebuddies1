@@ -1,60 +1,49 @@
 /**
- * Cinematic hero stage — robot dominates the center of the invention workshop.
+ * Cinematic hero stage — grounded robot on assembly platform, pro lighting & camera.
  */
-import React, { Suspense, useRef } from 'react';
+import React, { Suspense, useRef, useMemo } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { Environment, ContactShadows } from '@react-three/drei';
-import { EffectComposer, Bloom } from '@react-three/postprocessing';
+import { ContactShadows } from '@react-three/drei';
 import * as THREE from 'three';
-import HeroRobotModel from '../HeroRobotModel.jsx';
-import AssemblyAttachmentMeshes from '../AssemblyAttachmentMeshes.jsx';
-import SnapSocketMarkers from '../SnapSocketMarkers.jsx';
-import WorkshopEnvironment3D from './WorkshopEnvironment3D.jsx';
-import StudioOrbitControls from '../academy/StudioOrbitControls.jsx';
+import RobotAssemblyRoot from './RobotAssemblyRoot.jsx';
+import WorkshopStage3D from './WorkshopStage3D.jsx';
+import WorkshopBackdrop3D from './WorkshopBackdrop3D.jsx';
+import WorkshopSceneLighting from './WorkshopSceneLighting.jsx';
+import WorkshopCameraRig from './WorkshopCameraRig.jsx';
 import SnapParticles from '../common/SnapParticles.jsx';
 import { migrateDesign } from '../../config.js';
-import { migrateAssembly } from '../../services/assembly-service.js';
-import { getVisibleSockets } from '../../utils/build-slots.js';
+import { migrateAssembly, countPlacedParts } from '../../services/assembly-service.js';
 import { useUiStore } from '../../store/uiStore.js';
-import { WORKSHOP_VIEWPORT } from '../../constants/sizes.js';
+import { computeWorkshopRobotScale } from '../../constants/workshop-scene.js';
+import { PLATFORM } from '../../constants/workshop-scene.js';
 
-function RobotScene({
-  design,
-  highlightSlot,
-  snapPulse,
-  dragCategory,
-  onSocketSelect,
-  onSocketRemove,
-}) {
-  const d = migrateDesign(design);
+function WorkshopScene(props) {
+  const d = migrateDesign(props.design);
   const asm = migrateAssembly(d);
-  const placedCount = Object.values(asm.slots || {}).filter(Boolean).length;
-  const visibleSockets = getVisibleSockets(asm, asm.base?.shape === 'arm', { freeBuild: true });
+  const displayScale = useMemo(() => computeWorkshopRobotScale(d), [d]);
+  const placedCount = countPlacedParts(asm);
 
   return (
     <>
-      <WorkshopEnvironment3D />
-      <group position={[0, 0.05, 0]}>
-        <HeroRobotModel
-          key={`hero-${placedCount}-${asm.base?.chassisType}-${asm.base?.color}`}
-          design={d}
-          productVisual
-          heroScale={WORKSHOP_VIEWPORT.heroScale}
-        />
-        <AssemblyAttachmentMeshes design={d} />
-        <SnapSocketMarkers
-          base={asm.base}
-          slots={asm.slots}
-          highlightSlot={highlightSlot}
-          snapPulse={snapPulse}
-          dragCategory={dragCategory}
-          productMode
-          visibleSlots={visibleSockets}
-          onSocketSelect={onSocketSelect}
-          onSocketRemove={onSocketRemove}
-        />
-      </group>
-      <ContactShadows position={[0, -0.54, 0]} opacity={0.55} scale={14} blur={2.8} far={9} color="#8aa4c0" />
+      <WorkshopBackdrop3D />
+      <WorkshopStage3D />
+      <WorkshopSceneLighting />
+      <RobotAssemblyRoot {...props} />
+      <ContactShadows
+        position={[0, PLATFORM.topY + 0.002, 0]}
+        opacity={0.45}
+        scale={8}
+        blur={2.2}
+        far={4.5}
+        color="#64748b"
+        frames={1}
+      />
+      <WorkshopCameraRig
+        controlsRef={props.controlsRef}
+        displayScale={displayScale}
+        placedCount={placedCount}
+        userInteractingRef={props.userInteractingRef}
+      />
     </>
   );
 }
@@ -77,6 +66,7 @@ export default function WorkshopHeroStage({
   evolutionLevel,
 }) {
   const controlsRef = useRef();
+  const userInteractingRef = useRef(false);
   const snapBurst = useUiStore((s) => s.snapBurst);
   const draggingPart = useUiStore((s) => s.draggingPart);
   const dragOverStore = useUiStore((s) => s.dragOverViewport);
@@ -110,38 +100,35 @@ export default function WorkshopHeroStage({
 
       {showDrag && (
         <div className="iw-drop-hint" role="status">
-          Drop on a glowing socket
+          Drop on a <span className="iw-drop-valid">green</span> socket
         </div>
       )}
 
       <Canvas
         className="iw-hero-canvas"
         shadows
-        dpr={[1, 2]}
-        camera={{ position: WORKSHOP_VIEWPORT.cameraPos, fov: WORKSHOP_VIEWPORT.cameraFov, near: 0.1, far: 80 }}
-        gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.75 }}
+        dpr={[1, 1.75]}
+        camera={{ position: [0, 0.9, 2.4], fov: 42, near: 0.15, far: 50 }}
+        gl={{
+          antialias: true,
+          toneMapping: THREE.ACESFilmicToneMapping,
+          toneMappingExposure: 1.02,
+          outputColorSpace: THREE.SRGBColorSpace,
+        }}
       >
-        <color attach="background" args={['#e8edf4']} />
-        <fog attach="fog" args={['#e8edf4', 18, 40]} />
-        <Environment preset="warehouse" />
+        <color attach="background" args={['#eef2f7']} />
+        <fog attach="fog" args={['#eef2f7', 16, 36]} />
         <Suspense fallback={null}>
-          <RobotScene
+          <WorkshopScene
             design={design}
             highlightSlot={highlightSlot}
             snapPulse={snapPulse}
             dragCategory={draggingPart?.category}
             onSocketSelect={onSocketSelect}
             onSocketRemove={onSocketRemove}
+            controlsRef={controlsRef}
+            userInteractingRef={userInteractingRef}
           />
-          <StudioOrbitControls
-            apiRef={controlsRef}
-            minDistance={WORKSHOP_VIEWPORT.orbitMin}
-            maxDistance={WORKSHOP_VIEWPORT.orbitMax}
-            target={[0, 0.5, 0]}
-          />
-          <EffectComposer multisampling={0}>
-            <Bloom luminosityThreshold={0.72} luminanceSmoothing={0.9} intensity={0.35} mipmapBlur />
-          </EffectComposer>
         </Suspense>
       </Canvas>
 

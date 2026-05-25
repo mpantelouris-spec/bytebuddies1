@@ -63,7 +63,7 @@ export default function InventionWorkshop({
             highlightSlot={w.selectedSlot}
             snapPulse={w.snapPulse}
             buildMode="blocks"
-            visualStyle="product"
+            visualStyle="workshop"
             blockLayer={w.blockLayer}
             selectedBlockType={w.selectedBlockType}
             onPlaceBlock={w.placeBlock}
