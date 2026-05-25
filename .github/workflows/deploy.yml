@@ -19,6 +19,9 @@ jobs:
       - name: Install dependencies
         run: npm ci --legacy-peer-deps
 
+      - name: Virtual Robot Designer tests
+        run: npm run test:vrd
+
       - name: Build
         env:
           VITE_GROQ_API_KEY: ${{ secrets.VITE_GROQ_API_KEY }}

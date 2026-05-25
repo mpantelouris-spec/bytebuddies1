@@ -1,0 +1,43 @@
+name: VRD tests
+
+on:
+  push:
+    branches: [main, clean-deploy]
+    paths:
+      - 'src/virtual-robot-designer/**'
+      - 'tests/vrd-*.test.js'
+      - 'tests/e2e/vrd.spec.js'
+      - 'scripts/vrd-*.mjs'
+      - 'scripts/run-vrd-test-plan.mjs'
+  pull_request:
+    paths:
+      - 'src/virtual-robot-designer/**'
+      - 'tests/vrd-*.test.js'
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+      - run: npm ci --legacy-peer-deps
+      - run: npm run test:vrd
+
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+      - run: npm ci --legacy-peer-deps
+      - run: npx playwright install chromium
+      - name: Build for preview
+        env:
+          VITE_GROQ_API_KEY: ${{ secrets.VITE_GROQ_API_KEY }}
+        run: npm run build
+      - run: npm run test:e2e:vrd
