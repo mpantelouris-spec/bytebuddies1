@@ -7,6 +7,8 @@
 import React, { useRef, useMemo, useCallback } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { VIEWPORT } from '../constants/sizes.js';
+import { VRD_COLORS } from '../constants/colors.js';
 
 /* ── Material helpers ───────────────────────────────────────── */
 function steelMat({ color = '#1a2a50', metalness = 0.88, roughness = 0.28, emissive = '#000000', emissiveIntensity = 0, product = false } = {}) {
@@ -523,10 +525,10 @@ export default function HeroRobotModel({ design, onPartAdd, productVisual = fals
   const cosmetics   = design?.cosmetics || {};
 
   const primaryColor = productVisual
-    ? (base.color && base.color !== '#8B00FF' ? base.color : '#FFFFFF')
+    ? (base.color && base.color !== '#8B00FF' ? base.color : VRD_COLORS.chassis)
     : (cosmetics.primaryColor || base.color || '#1a3060');
   const accentColor = productVisual
-    ? (cosmetics.ledColor || '#00D9FF')
+    ? (cosmetics.ledColor || VRD_COLORS.cyan)
     : (cosmetics.ledColor || '#00d4ff');
   const template     = design?.template || 'rover';
 
@@ -607,7 +609,7 @@ export default function HeroRobotModel({ design, onPartAdd, productVisual = fals
   const useTracks = wheelType === 'tracks' || trackIds.includes(movementType);
   const useLegs = wheelType === 'legs' || legIds.includes(movementType);
   const useHover = wheelType === 'hover' || hoverIds.includes(movementType);
-  const heroScale = (productVisual ? 2.35 : 1.4) * chassisMul;
+  const heroScale = (productVisual ? VIEWPORT.heroScale : 1.4) * chassisMul;
   const bodyYOffset = useHover ? 0.22 : hasMovement ? 0 : -0.08;
 
   return (

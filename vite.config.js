@@ -13,8 +13,24 @@ export default defineConfig({
     },
   },
   plugins: [react()],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules/three')) return 'three';
+          if (id.includes('node_modules/@react-three')) return 'r3f';
+          if (id.includes('node_modules/framer-motion')) return 'framer';
+          if (id.includes('virtual-robot-designer')) return 'vrd';
+        },
+      },
+    },
+    chunkSizeWarningLimit: 1600,
+  },
   optimizeDeps: {
-    include: ['blockly', 'blockly/blocks', 'blockly/javascript'],
+    include: [
+      'blockly', 'blockly/blocks', 'blockly/javascript',
+      'three', '@react-three/fiber', '@react-three/drei', 'framer-motion',
+    ],
   },
   server: {
     host: '0.0.0.0',

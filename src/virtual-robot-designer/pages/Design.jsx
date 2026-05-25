@@ -19,7 +19,7 @@ import {
   clearBlocks,
   applyBlueprint,
 } from '../services/block-service.js';
-import { computeDesignStats, checkAchievements } from '../services/design-service.js';
+import { checkAchievements } from '../services/design-service.js';
 import { exportRobotSpec } from '../services/robot-schema.js';
 import VirtualRobotDB from '../database/virtual-robot-db.js';
 import vrdApi from '../apis/vrd-api.js';
@@ -40,6 +40,8 @@ import SaveDesignModal from '../components/SaveDesignModal.jsx';
 import LoadDesignModal from '../components/LoadDesignModal.jsx';
 import WelcomeScreen from '../components/WelcomeScreen.jsx';
 import { applyRobotStyle, ROBOT_STYLES } from '../services/robot-style.js';
+import { useRobotStats } from '../hooks/useRobotStats.js';
+import { useUiStore } from '../store/uiStore.js';
 
 const NEXT_SLOT = ['movement', 'head', 'front', 'left', 'right', 'back', 'top', 'addon_a', 'addon_b'];
 
@@ -67,7 +69,10 @@ export default function DesignPage({ onGoSimulator, onGoCode, onGoMissions, onGo
 
   const d = migrateDesign(design);
   const asm = migrateAssembly(d);
-  const stats = computeDesignStats(d);
+  const stats = useRobotStats(d);
+  const triggerSnapBurst = useUiStore((s) => s.triggerSnapBurst);
+  const setDragOverViewport = useUiStore((s) => s.setDragOverViewport);
+  const clearDragState = useUiStore((s) => s.clearDragState);
   const buildMode = asm.buildMode || 'advanced';
   const isArm = asm.base?.shape === 'arm';
   useEffect(() => {
@@ -125,6 +130,7 @@ export default function DesignPage({ onGoSimulator, onGoCode, onGoMissions, onGo
     const next = placePartOnSlot(d, slotId, category, partId);
     setDesign(next);
     setSnapPulse(true);
+    triggerSnapBurst();
     playVrdSoundSync('snap');
     log(`> module locked: ${label}`);
     setTimeout(() => setSnapPulse(false), 600);
@@ -327,6 +333,7 @@ export default function DesignPage({ onGoSimulator, onGoCode, onGoMissions, onGo
     e.preventDefault();
     e.dataTransfer.dropEffect = 'copy';
     setDragOver(true);
+    setDragOverViewport(true);
   };
 
   return (
@@ -415,10 +422,14 @@ export default function DesignPage({ onGoSimulator, onGoCode, onGoMissions, onGo
                 setSelectedSlot(slotId);
               }}
               onDragOver={handleViewportDragOver}
-              onDragLeave={() => setDragOver(false)}
+              onDragLeave={() => {
+                setDragOver(false);
+                setDragOverViewport(false);
+              }}
               onDrop={(e) => {
                 e.preventDefault();
                 setDragOver(false);
+                clearDragState();
                 const chassisId = e.dataTransfer.getData('application/vrd-chassis');
                 if (chassisId) {
                   handleDropPart({ type: 'chassis', id: chassisId });

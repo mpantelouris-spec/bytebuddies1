@@ -5,16 +5,11 @@ import { migrateAssembly } from '../../services/assembly-service.js';
 import { getWorkshopPart } from '../../data/assembly-parts.js';
 import { detectRobotArchetype } from '../../services/robot-archetypes.js';
 import AnimatedNumber from '../AnimatedNumber.jsx';
-
-function statColor(value, good = 60, warn = 35) {
-  if (value >= good) return '#00FF41';
-  if (value >= warn) return '#FF8C00';
-  return '#ef4444';
-}
+import { statBarColor } from '../../hooks/useRobotStats.js';
 
 function StatBar({ label, value, color, icon }) {
   const pct = Math.max(0, Math.min(100, value));
-  const barColor = color || statColor(pct);
+  const barColor = color || statBarColor(pct);
   return (
     <motion.div
       className="bb-stat-row"
@@ -102,10 +97,10 @@ export default function AcademyStatusPanel({
         </div>
       </div>
 
-      <StatBar label="Power" value={stats.battery} color={statColor(stats.battery)} icon="🔋" />
-      <StatBar label="Speed" value={stats.speed} color={statColor(stats.speed, 50, 25)} icon="⚡" />
+      <StatBar label="Power" value={stats.battery} color={statBarColor(stats.battery)} icon="🔋" />
+      <StatBar label="Speed" value={stats.speed} color={statBarColor(stats.speed, 50, 25)} icon="⚡" />
       <StatBar label="Sensors" value={sensorPct} color="#1E90FF" icon="📡" />
-      <StatBar label="Durability" value={stats.stability} color={statColor(stats.stability, 55, 30)} icon="🛡️" />
+      <StatBar label="Durability" value={stats.stability} color={statBarColor(stats.stability, 55, 30)} icon="🛡️" />
 
       {attached.length > 0 && (
         <div className="bb-status-modules">

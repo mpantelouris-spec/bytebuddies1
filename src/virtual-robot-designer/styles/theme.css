@@ -1,0 +1,95 @@
+/**
+ * VRD theme tokens — imported at app root (extends robot-designer.css)
+ */
+.vrd-app.vrd-app--product {
+  --color-bg-primary: #ffffff;
+  --color-bg-secondary: #f9f9f9;
+  --color-bg-tertiary: #f5f5f5;
+  --color-bg-dark: #1a1a2e;
+  --color-primary: #1e90ff;
+  --color-success: #00ff41;
+  --color-accent-cyan: #00d9ff;
+  --color-text-primary: #111111;
+  --color-text-secondary: #666666;
+  --color-border-light: #eeeeee;
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.12);
+  --radius-md: 8px;
+  --transition-base: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.vrd-designer .bb-academy-header,
+.vrd-designer .vrd-designer-header.bb-academy-header {
+  background: linear-gradient(135deg, #1a1a2e 0%, #0f3460 100%) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.vrd-designer ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.vrd-designer ::-webkit-scrollbar-thumb {
+  background: var(--color-primary);
+  border-radius: 4px;
+}
+.vrd-designer ::-webkit-scrollbar-thumb:hover {
+  background: #1e77ff;
+}
+
+.rd-snap-particles {
+  position: absolute;
+  left: 50%;
+  top: 45%;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  z-index: 6;
+}
+.rd-snap-particle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.vrd-webgl-fallback {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(165deg, #f5f5f5, #e8e8e8);
+  padding: 24px;
+}
+.vrd-webgl-fallback-card {
+  max-width: 420px;
+  text-align: center;
+  background: #fff;
+  border-radius: 16px;
+  padding: 32px 28px;
+  box-shadow: var(--shadow-md);
+}
+.vrd-webgl-fallback-icon { font-size: 48px; }
+.vrd-webgl-fallback-card h1 {
+  margin: 16px 0 8px;
+  font-size: 1.35rem;
+  color: #111;
+}
+.vrd-webgl-fallback-card p {
+  margin: 0 0 16px;
+  color: #666;
+  line-height: 1.5;
+  font-size: 0.95rem;
+}
+.vrd-webgl-fallback-btn {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 10px;
+  background: #1e90ff;
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+.vrd-webgl-fallback-link {
+  margin-top: 16px;
+  font-size: 0.85rem;
+}

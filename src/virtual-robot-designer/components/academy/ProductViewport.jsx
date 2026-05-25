@@ -13,6 +13,9 @@ import SnapSocketMarkers from '../SnapSocketMarkers.jsx';
 import { migrateDesign } from '../../config.js';
 import { migrateAssembly } from '../../services/assembly-service.js';
 import { getVisibleSockets } from '../../utils/build-slots.js';
+import { VIEWPORT } from '../../constants/sizes.js';
+import SnapParticles from '../common/SnapParticles.jsx';
+import { useUiStore } from '../../store/uiStore.js';
 
 /** Studio 3-point + rim lighting for hero robot */
 function HeroLighting() {
@@ -140,6 +143,9 @@ export default function ProductViewport({
 }) {
   const cameraApiRef = useRef();
   const apiRef = controlsRef || cameraApiRef;
+  const snapBurst = useUiStore((s) => s.snapBurst);
+  const dragOverStore = useUiStore((s) => s.dragOverViewport);
+  const showDrag = dragOver || dragOverStore;
 
   const rotateLeft = () => apiRef.current?.rotateLeft?.(Math.PI / 8);
   const rotateRight = () => apiRef.current?.rotateRight?.(Math.PI / 8);
@@ -148,7 +154,7 @@ export default function ProductViewport({
 
   return (
     <div
-      className={`rd-viewport ${dragOver ? 'rd-viewport--drag-over' : ''}`}
+      className={`rd-viewport ${showDrag ? 'rd-viewport--drag-over' : ''}`}
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
       onDrop={onDrop}
@@ -178,7 +184,7 @@ export default function ProductViewport({
         <Canvas
           shadows
           dpr={[1, 2]}
-          camera={{ position: [0, 0.72, 2.15], fov: 48, near: 0.1, far: 100 }}
+          camera={{ position: VIEWPORT.cameraPos, fov: VIEWPORT.cameraFov, near: 0.1, far: 100 }}
           gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.85 }}
         >
           <color attach="background" args={['#e4e8ee']} />
@@ -194,8 +200,8 @@ export default function ProductViewport({
             />
             <StudioOrbitControls
               apiRef={apiRef}
-              minDistance={1.65}
-              maxDistance={4.5}
+              minDistance={VIEWPORT.orbitMin}
+              maxDistance={VIEWPORT.orbitMax}
               target={[0, 0.42, 0]}
             />
             <EffectComposer multisampling={0}>
@@ -203,8 +209,9 @@ export default function ProductViewport({
             </EffectComposer>
           </Suspense>
         </Canvas>
-        {dragOver && <div className="rd-drop-hint" aria-hidden>Drop part on robot</div>}
-        {snapPulse && <div className="rd-snap-burst" aria-hidden />}
+        {showDrag && <div className="rd-drop-hint" aria-hidden>Drop part on robot</div>}
+        {(snapPulse || snapBurst) && <div className="rd-snap-burst" aria-hidden />}
+        <SnapParticles active={snapPulse || snapBurst} />
       </div>
 
       <footer className="rd-viewport-foot">
