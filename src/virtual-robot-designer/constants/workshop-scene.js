@@ -2,6 +2,7 @@
  * Workshop 3D scene — single source for platform, scale, camera, lighting.
  */
 import { migrateAssembly, countPlacedParts } from '../services/assembly-service.js';
+import { computeRobotCameraFrame } from '../utils/workshop-camera.js';
 
 export const PLATFORM = {
   topY: 0,
@@ -55,14 +56,14 @@ export function computeWorkshopAnchorY(design, displayScale) {
   return 0.18 + displayScale * 0.02;
 }
 
-export function computeCameraFrame(displayScale, placedCount) {
-  const targetY = 0.38 + displayScale * 0.14;
-  const dist = 2.05 + displayScale * 0.22 + Math.min(0.35, placedCount * 0.04);
+export function computeCameraFrame(displayScale, placedCount, blockCount = 0, buildMode = 'advanced') {
+  const frame = computeRobotCameraFrame({ displayScale, placedCount, blockCount, buildMode });
   return {
-    position: [0, targetY + 0.35, dist],
-    fov: 42,
-    target: [0, targetY, 0],
-    orbitMin: dist * 0.72,
-    orbitMax: dist * 1.35,
+    position: frame.position,
+    fov: frame.fov,
+    target: frame.target,
+    orbitMin: frame.minDistance,
+    orbitMax: frame.maxDistance,
+    idealDistance: frame.idealDistance,
   };
 }

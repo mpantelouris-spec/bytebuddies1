@@ -67,6 +67,14 @@ export function buildWhatNextCards(weakModules, user) {
       color: '#6366f1',
     },
     {
+      id: 'vrd',
+      icon: '🎨',
+      title: 'Design a Robot',
+      desc: 'Build real or LEGO robots, program them, and test in 3D',
+      action: 'vrd',
+      color: '#FF006E',
+    },
+    {
       id: 'workspace',
       icon: '💻',
       title: 'Build Something',

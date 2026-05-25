@@ -286,6 +286,72 @@
   height: 100% !important;
 }
 
+.iw-camera-toolbar {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  z-index: 8;
+  display: flex;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 6px 20px rgba(30, 60, 100, 0.12);
+}
+
+.iw-camera-toolbar--chamber {
+  right: 12px;
+  bottom: 12px;
+}
+
+.iw-cam-btn {
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 10px;
+  background: #f1f5f9;
+  color: #334155;
+  font-size: 1rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.12s;
+}
+
+.iw-cam-btn:hover {
+  background: #e2e8f0;
+  transform: scale(1.05);
+}
+
+.iw-cam-btn:active {
+  transform: scale(0.96);
+}
+
+.iw-cam-btn--focus {
+  background: linear-gradient(135deg, #1e90ff, #00b4d8);
+  color: #fff;
+}
+
+.iw-cam-btn--focus:hover {
+  background: linear-gradient(135deg, #1878d8, #0096c7);
+}
+
+.iw-camera-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  transform: translateX(-50%);
+  z-index: 7;
+  margin: 0;
+  padding: 4px 12px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #64748b;
+  background: rgba(255, 255, 255, 0.75);
+  border-radius: 999px;
+  pointer-events: none;
+}
+
 .iw-hero-float-name {
   position: absolute;
   top: 16px;

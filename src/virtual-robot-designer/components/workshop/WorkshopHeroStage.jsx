@@ -1,7 +1,7 @@
 /**
  * Cinematic hero stage — grounded robot on assembly platform, pro lighting & camera.
  */
-import React, { Suspense, useRef, useMemo } from 'react';
+import React, { Suspense, useRef, useMemo, useState, useCallback } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { ContactShadows } from '@react-three/drei';
 import * as THREE from 'three';
@@ -16,12 +16,14 @@ import { migrateAssembly, countPlacedParts } from '../../services/assembly-servi
 import { useUiStore } from '../../store/uiStore.js';
 import { computeWorkshopRobotScale } from '../../constants/workshop-scene.js';
 import { PLATFORM } from '../../constants/workshop-scene.js';
+import { countBlocks } from '../../services/block-service.js';
 
 function WorkshopScene(props) {
   const d = migrateDesign(props.design);
   const asm = migrateAssembly(d);
   const displayScale = useMemo(() => computeWorkshopRobotScale(d), [d]);
   const placedCount = countPlacedParts(asm);
+  const blockCount = countBlocks(asm);
 
   return (
     <>
@@ -42,7 +44,10 @@ function WorkshopScene(props) {
         controlsRef={props.controlsRef}
         displayScale={displayScale}
         placedCount={placedCount}
+        blockCount={blockCount}
+        buildMode={asm.buildMode || 'advanced'}
         userInteractingRef={props.userInteractingRef}
+        focusRequest={props.focusRequest}
       />
     </>
   );
@@ -67,6 +72,11 @@ export default function WorkshopHeroStage({
 }) {
   const controlsRef = useRef();
   const userInteractingRef = useRef(false);
+  const [focusRequest, setFocusRequest] = useState(0);
+  const handleFocus = useCallback(() => {
+    controlsRef.current?.focusRobot?.();
+    setFocusRequest((n) => n + 1);
+  }, []);
   const snapBurst = useUiStore((s) => s.snapBurst);
   const draggingPart = useUiStore((s) => s.draggingPart);
   const dragOverStore = useUiStore((s) => s.dragOverViewport);
@@ -104,7 +114,18 @@ export default function WorkshopHeroStage({
         </div>
       )}
 
+      <div className="iw-camera-toolbar" role="toolbar" aria-label="3D view controls">
+        <button type="button" className="iw-cam-btn" title="Rotate left" onClick={() => controlsRef.current?.rotateLeft?.()}>↶</button>
+        <button type="button" className="iw-cam-btn" title="Rotate right" onClick={() => controlsRef.current?.rotateRight?.()}>↷</button>
+        <button type="button" className="iw-cam-btn" title="Zoom in" onClick={() => controlsRef.current?.zoomIn?.()}>＋</button>
+        <button type="button" className="iw-cam-btn" title="Zoom out" onClick={() => controlsRef.current?.zoomOut?.()}>－</button>
+        <button type="button" className="iw-cam-btn iw-cam-btn--focus" title="Center on robot (double-click canvas too)" onClick={handleFocus}>◎</button>
+      </div>
+
+      <p className="iw-camera-hint">Drag to spin · scroll to zoom · double-click to center</p>
+
       <Canvas
+        onDoubleClick={handleFocus}
         className="iw-hero-canvas"
         shadows
         dpr={[1, 1.75]}
@@ -128,6 +149,7 @@ export default function WorkshopHeroStage({
             onSocketRemove={onSocketRemove}
             controlsRef={controlsRef}
             userInteractingRef={userInteractingRef}
+            focusRequest={focusRequest}
           />
         </Suspense>
       </Canvas>

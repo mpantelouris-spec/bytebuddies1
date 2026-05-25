@@ -1,4 +1,4 @@
-import React, { Suspense, useState, useRef, useMemo } from 'react';
+import React, { Suspense, useState, useRef, useMemo, useCallback } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Stars, Sparkles, ContactShadows, Grid, Float, Environment } from '@react-three/drei';
 import StudioOrbitControls from './academy/StudioOrbitControls.jsx';
@@ -13,7 +13,10 @@ import WorkshopStage3D from './workshop/WorkshopStage3D.jsx';
 import WorkshopBackdrop3D from './workshop/WorkshopBackdrop3D.jsx';
 import WorkshopSceneLighting from './workshop/WorkshopSceneLighting.jsx';
 import RobotAssemblyRoot from './workshop/RobotAssemblyRoot.jsx';
-import { PLATFORM } from '../constants/workshop-scene.js';
+import { PLATFORM, computeWorkshopRobotScale } from '../constants/workshop-scene.js';
+import WorkshopCameraRig from './workshop/WorkshopCameraRig.jsx';
+import { countBlocks } from '../services/block-service.js';
+import { countPlacedParts } from '../services/assembly-service.js';
 import BlockGrid3D from './BlockGrid3D.jsx';
 import BlockPlacement3D from './BlockPlacement3D.jsx';
 import { migrateDesign } from '../config.js';
@@ -228,7 +231,9 @@ export default function InteractiveBuildChamber({
 }) {
   const [autoSpin, setAutoSpin] = useState(true);
   const [dragOver, setDragOver] = useState(false);
+  const [focusRequest, setFocusRequest] = useState(0);
   const controlsRef = useRef();
+  const userInteractingRef = useRef(false);
   const d = migrateDesign(design);
   const asm = migrateAssembly(d);
   const glow = asm.base?.color || d.chassis?.color || '#1E90FF';
@@ -239,7 +244,13 @@ export default function InteractiveBuildChamber({
   const isWorkshop = visualStyle === 'workshop';
   const isBrightStudio = isProduct || isWorkshop;
   const modeLabel = buildMode === 'blocks' ? 'LEGO BUILD' : 'EXPLORER BOT';
-  const placedCount = Object.values(asm.slots || {}).filter(Boolean).length;
+  const placedCount = countPlacedParts(asm);
+  const displayScale = useMemo(() => (isWorkshop ? computeWorkshopRobotScale(d) : 1), [d, isWorkshop]);
+  const blockCount = countBlocks(asm);
+  const handleFocus = useCallback(() => {
+    controlsRef.current?.focusRobot?.();
+    setFocusRequest((n) => n + 1);
+  }, []);
   const buildPhase = isProduct ? getBuildPhase(asm, asm.base?.shape === 'arm') : null;
   const visibleSockets = isProduct ? getVisibleSockets(asm, asm.base?.shape === 'arm', { freeBuild: true }) : null;
   const showExtrasMeshes = isProduct;
@@ -291,10 +302,20 @@ export default function InteractiveBuildChamber({
         <div className="vrd-chamber-corner vrd-chamber-corner--bl" />
         <div className="vrd-chamber-corner vrd-chamber-corner--br" />
         <div className="vrd-chamber-vignette" aria-hidden />
+        {isWorkshop && (
+          <div className="iw-camera-toolbar iw-camera-toolbar--chamber" role="toolbar" aria-label="3D view controls">
+            <button type="button" className="iw-cam-btn" title="Rotate left" onClick={() => controlsRef.current?.rotateLeft?.()}>↶</button>
+            <button type="button" className="iw-cam-btn" title="Rotate right" onClick={() => controlsRef.current?.rotateRight?.()}>↷</button>
+            <button type="button" className="iw-cam-btn" title="Zoom in" onClick={() => controlsRef.current?.zoomIn?.()}>＋</button>
+            <button type="button" className="iw-cam-btn" title="Zoom out" onClick={() => controlsRef.current?.zoomOut?.()}>－</button>
+            <button type="button" className="iw-cam-btn iw-cam-btn--focus" title="Center on robot" onClick={handleFocus}>◎</button>
+          </div>
+        )}
         <Canvas
           shadows
           dpr={[1, 2]}
-          camera={{ position: isWorkshop ? [0, 0.9, 2.4] : isProduct ? [0, 1.35, 3.5] : [0, 1.5, 4], fov: isWorkshop ? 42 : isProduct ? 68 : 75, near: 0.1, far: isWorkshop ? 50 : 1000 }}
+          onDoubleClick={isWorkshop ? handleFocus : undefined}
+          camera={{ position: isWorkshop ? [0, 0.9, 2.4] : isProduct ? [0, 1.35, 3.5] : [0, 1.5, 4], fov: isWorkshop ? 40 : isProduct ? 68 : 75, near: 0.1, far: isWorkshop ? 50 : 1000 }}
           gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: isWorkshop ? 1.02 : isProduct ? 1.55 : 1.15 }}
         >
           <Suspense fallback={null}>
@@ -439,7 +460,19 @@ export default function InteractiveBuildChamber({
                 <AssemblyDrone position={[0, 2.2, -2.2]} color="#8b00ff" />
               </>
             )}
-            <ChamberCamera isArm={isArm} controlsRef={controlsRef} isProduct={isProduct} />
+            {isWorkshop ? (
+              <WorkshopCameraRig
+                controlsRef={controlsRef}
+                displayScale={displayScale}
+                placedCount={placedCount}
+                blockCount={blockCount}
+                buildMode={buildMode}
+                userInteractingRef={userInteractingRef}
+                focusRequest={focusRequest}
+              />
+            ) : (
+              <ChamberCamera isArm={isArm} controlsRef={controlsRef} isProduct={isProduct} />
+            )}
             {isWorkshop ? null : isProduct ? (
               <EffectComposer multisampling={0}>
                 <Bloom luminanceThreshold={0.75} luminanceSmoothing={0.9} intensity={0.35} mipmapBlur />
@@ -461,8 +494,9 @@ export default function InteractiveBuildChamber({
         <div className="vrd-viewport-btns">
           <button type="button" className="vrd-chamber-ctrl vrd-chamber-ctrl--light" onClick={() => controlsRef.current?.rotateLeft?.(Math.PI / 8)}>↶ Rotate</button>
           <button type="button" className="vrd-chamber-ctrl vrd-chamber-ctrl--light" onClick={() => controlsRef.current?.rotateRight?.(Math.PI / 8)}>Rotate ↷</button>
-          <button type="button" className="vrd-chamber-ctrl vrd-chamber-ctrl--light" onClick={() => controlsRef.current?.zoomIn?.(1.15)}>+ Zoom</button>
-          <button type="button" className="vrd-chamber-ctrl vrd-chamber-ctrl--light" onClick={() => controlsRef.current?.zoomOut?.(1.15)}>− Zoom</button>
+          <button type="button" className="vrd-chamber-ctrl vrd-chamber-ctrl--light" onClick={() => controlsRef.current?.zoomIn?.()}>+ Zoom</button>
+          <button type="button" className="vrd-chamber-ctrl vrd-chamber-ctrl--light" onClick={() => controlsRef.current?.zoomOut?.()}>− Zoom</button>
+          <button type="button" className="vrd-chamber-ctrl vrd-chamber-ctrl--light" onClick={() => controlsRef.current?.focusRobot?.()}>◎ Center</button>
           {isProduct && onPaint && (
             <button type="button" className="vrd-chamber-ctrl vrd-chamber-ctrl--paint" onClick={onPaint}>🎨 Paint</button>
           )}

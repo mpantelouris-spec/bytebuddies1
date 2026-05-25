@@ -1,47 +1,83 @@
 /**
- * Cinematic camera — frames robot, gentle orbit, dynamic zoom from robot size.
+ * Workshop camera — auto-frames robot, smooth zoom, double-click focus, safe limits.
  */
-import React, { useEffect, useRef } from 'react';
-import { useFrame, useThree } from '@react-three/fiber';
+import React, { useEffect, useMemo, useRef } from 'react';
+import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import StudioOrbitControls from '../academy/StudioOrbitControls.jsx';
-import { computeCameraFrame } from '../../constants/workshop-scene.js';
+import { computeRobotCameraFrame, getFocusPose } from '../../utils/workshop-camera.js';
 
-export default function WorkshopCameraRig({ controlsRef, displayScale, placedCount, userInteractingRef }) {
+export default function WorkshopCameraRig({
+  controlsRef,
+  displayScale,
+  placedCount,
+  buildMode = 'advanced',
+  blockCount = 0,
+  userInteractingRef,
+  focusRequest = 0,
+}) {
   const { camera } = useThree();
-  const frame = computeCameraFrame(displayScale, placedCount);
-  const targetVec = useRef(new THREE.Vector3(...frame.target));
-  const autoAngle = useRef(0.6);
+  const frame = useMemo(
+    () =>
+      computeRobotCameraFrame({
+        displayScale,
+        placedCount,
+        blockCount,
+        buildMode,
+      }),
+    [displayScale, placedCount, blockCount, buildMode],
+  );
+
+  const prevScale = useRef(displayScale);
+  const prevParts = useRef(placedCount);
 
   useEffect(() => {
-    camera.position.set(...frame.position);
     camera.fov = frame.fov;
-    camera.near = 0.15;
-    camera.far = 50;
+    camera.near = 0.12;
+    camera.far = 55;
     camera.updateProjectionMatrix();
-    targetVec.current.set(...frame.target);
-  }, [camera, displayScale, placedCount]);
+  }, [camera, frame.fov]);
 
-  useFrame((state, delta) => {
-    if (!userInteractingRef?.current) {
-      autoAngle.current += delta * 0.1;
-      const c = controlsRef.current?.controls;
-      if (c?.setAzimuthalAngle) {
-        c.setAzimuthalAngle(autoAngle.current);
-        c.update();
-      }
-    } else if (controlsRef.current?.controls) {
-      autoAngle.current = controlsRef.current.controls.getAzimuthalAngle?.() ?? autoAngle.current;
+  useEffect(() => {
+    const api = controlsRef.current;
+    if (!api) return;
+
+    const grew =
+      displayScale > prevScale.current + 0.02 ||
+      placedCount > prevParts.current;
+    prevScale.current = displayScale;
+    prevParts.current = placedCount;
+
+    const pose = getFocusPose(frame);
+    api.setDesiredTarget?.(new THREE.Vector3(...pose.target));
+    api.setDesiredDistance?.(pose.distance);
+
+    if (grew && !userInteractingRef?.current) {
+      const current = api.controls?.getDistance?.() ?? pose.distance;
+      api.setDesiredDistance?.(
+        THREE.MathUtils.lerp(current, pose.distance * 1.06, 0.35),
+      );
     }
-  });
+  }, [controlsRef, displayScale, placedCount, frame, userInteractingRef]);
+
+  useEffect(() => {
+    if (focusRequest <= 0) return;
+    const pose = getFocusPose(frame);
+    controlsRef.current?.setDesiredTarget?.(new THREE.Vector3(...pose.target));
+    controlsRef.current?.setDesiredDistance?.(pose.distance);
+    controlsRef.current?.focusRobot?.();
+  }, [focusRequest, controlsRef, frame]);
 
   return (
     <StudioOrbitControls
       apiRef={controlsRef}
-      minDistance={frame.orbitMin}
-      maxDistance={frame.orbitMax}
+      minDistance={frame.minDistance}
+      maxDistance={frame.maxDistance}
       target={frame.target}
       userInteractingRef={userInteractingRef}
+      zoomSpeed={0.36}
+      rotateSpeed={0.58}
+      enableIdleOrbit={false}
     />
   );
 }

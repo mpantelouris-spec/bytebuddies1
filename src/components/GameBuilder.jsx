@@ -13,6 +13,7 @@ import {
 import { saveSubmissionToFirestore } from '../firebase';
 import { useUser } from '../contexts/UserContext';
 import AppMode from '../utils/AppMode';
+import { assetUrl } from '../utils/assetUrl';
 import ScratchStyleBlock from './ScratchStyleBlock';
 import UnifiedBlocklyWorkspace from './UnifiedBlocklyWorkspace';
 import { BLOCK_STACK_GAP, columnizeBlocks } from '../utils/blockStack';
@@ -1148,44 +1149,44 @@ const SPRITE_LIBRARY = [
   {
     category: 'People',
     items: [
-      { name: 'Adventurer', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#2563eb"/></svg>`, color: '#2563eb', customImage: '/assets/characters/chibi/chibi_adventurer.png?v=21' },
-      { name: 'Explorer', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#16a34a"/></svg>`, color: '#16a34a', customImage: '/assets/characters/chibi/chibi_explorer.png?v=21' },
-      { name: 'Sporty', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#dc2626"/></svg>`, color: '#dc2626', customImage: '/assets/characters/chibi/chibi_sporty.png?v=21' },
-      { name: 'Witch', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#9333ea"/></svg>`, color: '#9333ea', customImage: '/assets/characters/chibi/chibi_witch.png?v=21' },
-      { name: 'Ranger', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#15803d"/></svg>`, color: '#15803d', customImage: '/assets/characters/chibi/chibi_ranger.png?v=21' },
-      { name: 'Mechanic', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#ca8a04"/></svg>`, color: '#ca8a04', customImage: '/assets/characters/chibi/chibi_mechanic.png?v=21' },
-      { name: 'Robot', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#64748b"/></svg>`, color: '#64748b', customImage: '/assets/characters/chibi/chibi_robot.png?v=21' },
-      { name: 'Knight', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#475569"/></svg>`, color: '#475569', customImage: '/assets/characters/chibi/chibi_knight.png?v=21' },
-      { name: 'Archer', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#b45309"/></svg>`, color: '#b45309', customImage: '/assets/characters/chibi/chibi_archer.png?v=21' },
-      { name: 'Ninja', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#1e293b"/></svg>`, color: '#1e293b', customImage: '/assets/characters/chibi/chibi_ninja.png?v=21' },
-      { name: 'Pirate Captain', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#1a3a52"/></svg>`, color: '#1a3a52', customImage: '/assets/characters/chibi/chibi_pirate_captain.png?v=21' },
-      { name: 'Astronaut', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#e2e8f0"/></svg>`, color: '#e2e8f0', customImage: '/assets/characters/chibi/chibi_astronaut.png?v=21' },
-      { name: 'Fire Mage', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#ea580c"/></svg>`, color: '#ea580c', customImage: '/assets/characters/chibi/chibi_fire_mage.png?v=21' },
-      { name: 'Dino', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#84cc16"/></svg>`, color: '#84cc16', customImage: '/assets/characters/chibi/chibi_dino.png?v=21' },
-      { name: 'Ice Mage', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#06b6d4"/></svg>`, color: '#06b6d4', customImage: '/assets/characters/chibi/chibi_ice_mage.png?v=21' },
+      { name: 'Adventurer', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#2563eb"/></svg>`, color: '#2563eb', customImage: '/assets/characters/chibi/chibi_adventurer.png?v=22' },
+      { name: 'Explorer', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#16a34a"/></svg>`, color: '#16a34a', customImage: '/assets/characters/chibi/chibi_explorer.png?v=22' },
+      { name: 'Sporty', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#dc2626"/></svg>`, color: '#dc2626', customImage: '/assets/characters/chibi/chibi_sporty.png?v=22' },
+      { name: 'Witch', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#9333ea"/></svg>`, color: '#9333ea', customImage: '/assets/characters/chibi/chibi_witch.png?v=22' },
+      { name: 'Ranger', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#15803d"/></svg>`, color: '#15803d', customImage: '/assets/characters/chibi/chibi_ranger.png?v=22' },
+      { name: 'Mechanic', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#ca8a04"/></svg>`, color: '#ca8a04', customImage: '/assets/characters/chibi/chibi_mechanic.png?v=22' },
+      { name: 'Robot', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#64748b"/></svg>`, color: '#64748b', customImage: '/assets/characters/chibi/chibi_robot.png?v=22' },
+      { name: 'Knight', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#475569"/></svg>`, color: '#475569', customImage: '/assets/characters/chibi/chibi_knight.png?v=22' },
+      { name: 'Archer', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#b45309"/></svg>`, color: '#b45309', customImage: '/assets/characters/chibi/chibi_archer.png?v=22' },
+      { name: 'Ninja', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#1e293b"/></svg>`, color: '#1e293b', customImage: '/assets/characters/chibi/chibi_ninja.png?v=22' },
+      { name: 'Pirate Captain', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#1a3a52"/></svg>`, color: '#1a3a52', customImage: '/assets/characters/chibi/chibi_pirate_captain.png?v=22' },
+      { name: 'Astronaut', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#e2e8f0"/></svg>`, color: '#e2e8f0', customImage: '/assets/characters/chibi/chibi_astronaut.png?v=22' },
+      { name: 'Fire Mage', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#ea580c"/></svg>`, color: '#ea580c', customImage: '/assets/characters/chibi/chibi_fire_mage.png?v=22' },
+      { name: 'Dino', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#84cc16"/></svg>`, color: '#84cc16', customImage: '/assets/characters/chibi/chibi_dino.png?v=22' },
+      { name: 'Ice Mage', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#06b6d4"/></svg>`, color: '#06b6d4', customImage: '/assets/characters/chibi/chibi_ice_mage.png?v=22' },
     ]
   },
   {
     category: 'Animals',
     items: [
-      { name: 'Fox', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#ea580c'}"/></svg>`, color: '#ea580c', customImage: '/assets/characters/animals/animal_fox.png?v=9' },
-      { name: 'Wolf', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#64748b'}"/></svg>`, color: '#64748b', customImage: '/assets/characters/animals/animal_wolf.png?v=9' },
-      { name: 'Bear', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#92400e'}"/></svg>`, color: '#92400e', customImage: '/assets/characters/animals/animal_bear.png?v=9' },
-      { name: 'Rabbit', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#f8fafc'}"/></svg>`, color: '#f8fafc', customImage: '/assets/characters/animals/animal_rabbit.png?v=9' },
-      { name: 'Deer', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#b45309'}"/></svg>`, color: '#b45309', customImage: '/assets/characters/animals/animal_deer.png?v=9' },
-      { name: 'Turtle', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#22c55e'}"/></svg>`, color: '#22c55e', customImage: '/assets/characters/animals/animal_turtle.png?v=9' },
-      { name: 'Owl', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#78716c'}"/></svg>`, color: '#78716c', customImage: '/assets/characters/animals/animal_owl.png?v=9' },
-      { name: 'Bird', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#3b82f6'}"/></svg>`, color: '#3b82f6', customImage: '/assets/characters/animals/animal_bird.png?v=9' },
-      { name: 'Penguin', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#1e293b'}"/></svg>`, color: '#1e293b', customImage: '/assets/characters/animals/animal_penguin.png?v=9' },
-      { name: 'Frog', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#22c55e'}"/></svg>`, color: '#22c55e', customImage: '/assets/characters/animals/animal_frog.png?v=9' },
-      { name: 'Cat', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#1e293b'}"/></svg>`, color: '#1e293b', customImage: '/assets/characters/animals/animal_cat.png?v=9' },
-      { name: 'Panda', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#f8fafc'}"/></svg>`, color: '#f8fafc', customImage: '/assets/characters/animals/animal_panda.png?v=9' },
-      { name: 'Cow', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#f5f5f5'}"/></svg>`, color: '#f5f5f5', customImage: '/assets/characters/animals/animal_cow.png?v=9' },
-      { name: 'Pig', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#f472b6'}"/></svg>`, color: '#f472b6', customImage: '/assets/characters/animals/animal_pig.png?v=9' },
-      { name: 'Sheep', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#e2e8f0'}"/></svg>`, color: '#e2e8f0', customImage: '/assets/characters/animals/animal_sheep.png?v=9' },
-      { name: 'Squirrel', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#92400e'}"/></svg>`, color: '#92400e', customImage: '/assets/characters/animals/animal_squirrel.png?v=9' },
-      { name: 'Raccoon', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#6b7280'}"/></svg>`, color: '#6b7280', customImage: '/assets/characters/animals/animal_raccoon.png?v=9' },
-      { name: 'Lion', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#eab308'}"/></svg>`, color: '#eab308', customImage: '/assets/characters/animals/animal_lion.png?v=9' },
+      { name: 'Fox', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#ea580c'}"/></svg>`, color: '#ea580c', customImage: '/assets/characters/animals/animal_fox.png?v=10' },
+      { name: 'Wolf', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#64748b'}"/></svg>`, color: '#64748b', customImage: '/assets/characters/animals/animal_wolf.png?v=10' },
+      { name: 'Bear', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#92400e'}"/></svg>`, color: '#92400e', customImage: '/assets/characters/animals/animal_bear.png?v=10' },
+      { name: 'Rabbit', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#f8fafc'}"/></svg>`, color: '#f8fafc', customImage: '/assets/characters/animals/animal_rabbit.png?v=10' },
+      { name: 'Deer', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#b45309'}"/></svg>`, color: '#b45309', customImage: '/assets/characters/animals/animal_deer.png?v=10' },
+      { name: 'Turtle', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#22c55e'}"/></svg>`, color: '#22c55e', customImage: '/assets/characters/animals/animal_turtle.png?v=10' },
+      { name: 'Owl', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#78716c'}"/></svg>`, color: '#78716c', customImage: '/assets/characters/animals/animal_owl.png?v=10' },
+      { name: 'Bird', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#3b82f6'}"/></svg>`, color: '#3b82f6', customImage: '/assets/characters/animals/animal_bird.png?v=10' },
+      { name: 'Penguin', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#1e293b'}"/></svg>`, color: '#1e293b', customImage: '/assets/characters/animals/animal_penguin.png?v=10' },
+      { name: 'Frog', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#22c55e'}"/></svg>`, color: '#22c55e', customImage: '/assets/characters/animals/animal_frog.png?v=10' },
+      { name: 'Cat', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#1e293b'}"/></svg>`, color: '#1e293b', customImage: '/assets/characters/animals/animal_cat.png?v=10' },
+      { name: 'Panda', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#f8fafc'}"/></svg>`, color: '#f8fafc', customImage: '/assets/characters/animals/animal_panda.png?v=10' },
+      { name: 'Cow', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#f5f5f5'}"/></svg>`, color: '#f5f5f5', customImage: '/assets/characters/animals/animal_cow.png?v=10' },
+      { name: 'Pig', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#f472b6'}"/></svg>`, color: '#f472b6', customImage: '/assets/characters/animals/animal_pig.png?v=10' },
+      { name: 'Sheep', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#e2e8f0'}"/></svg>`, color: '#e2e8f0', customImage: '/assets/characters/animals/animal_sheep.png?v=10' },
+      { name: 'Squirrel', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#92400e'}"/></svg>`, color: '#92400e', customImage: '/assets/characters/animals/animal_squirrel.png?v=10' },
+      { name: 'Raccoon', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#6b7280'}"/></svg>`, color: '#6b7280', customImage: '/assets/characters/animals/animal_raccoon.png?v=10' },
+      { name: 'Lion', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#eab308'}"/></svg>`, color: '#eab308', customImage: '/assets/characters/animals/animal_lion.png?v=10' },
     ]
   },
   ...RASTER_SPRITE_LIBRARY,
@@ -1217,7 +1218,7 @@ async function resolveSpriteStageImage(sprite, cache) {
     const cacheKey = `__custom__${sprite.id}_${sprite.currentCostumeIndex ?? 0}_${sprite.color || ''}_${sprite.w}_${sprite.h}`;
     if (!cache[cacheKey]) {
       const cImg = new Image();
-      await new Promise((r) => { cImg.onload = r; cImg.onerror = r; cImg.src = sprite.customImage; });
+      await new Promise((r) => { cImg.onload = r; cImg.onerror = r; cImg.src = assetUrl(sprite.customImage); });
       cache[cacheKey] = cImg;
     }
     const img = cache[cacheKey];
@@ -1250,7 +1251,7 @@ function loadImageDimensions(src, options = {}) {
     const img = new Image();
     img.onload = () => resolve(fitSpriteDimensions(img.naturalWidth, img.naturalHeight, maxDim));
     img.onerror = () => resolve({ w: 48, h: 48 });
-    img.src = src;
+    img.src = assetUrl(src);
   });
 }
 
@@ -1270,7 +1271,7 @@ function SpriteThumb({ svgKey, color, customImage, size = 32 }) {
         }}
       >
         <img
-          src={customImage}
+          src={assetUrl(customImage)}
           alt=""
           style={{
             width: '100%',
@@ -1299,7 +1300,7 @@ const defaultSprites = [
     name: 'Adventurer',
     svgKey: 'Adventurer',
     category: 'People',
-    customImage: '/assets/characters/chibi/chibi_adventurer.png?v=21',
+    customImage: '/assets/characters/chibi/chibi_adventurer.png?v=22',
     x: STAGE_W / 2 - 43,
     y: STAGE_H / 2 - 81,
     w: 86,
