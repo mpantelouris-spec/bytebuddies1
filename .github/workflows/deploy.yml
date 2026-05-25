@@ -21,10 +21,16 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H 129.151.144.92 >> ~/.ssh/known_hosts
 
-      - name: Ensure nginx is running (fix Cloudflare 523)
+      - name: Ensure nginx and firewall (fix Cloudflare 523)
         run: |
           ssh ubuntu@129.151.144.92 "
             set -e
+            RULES=/etc/iptables/rules.v4
+            if ! grep -q 'dport 80 -j ACCEPT' \"\$RULES\" || ! grep -q 'dport 443' \"\$RULES\"; then
+              sudo cp -a \"\$RULES\" \"\${RULES}.bak\"
+              sudo sed -i '/dport 22 -j ACCEPT/a -A INPUT -p tcp -m state --state NEW -m tcp --dport 80 -j ACCEPT\\n-A INPUT -p tcp -m state --state NEW -m tcp --dport 443 -j ACCEPT' \"\$RULES\"
+              sudo iptables-restore < \"\$RULES\"
+            fi
             sudo systemctl enable nginx
             sudo systemctl start nginx
             sudo nginx -t
