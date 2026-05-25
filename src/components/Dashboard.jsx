@@ -133,9 +133,10 @@ export default function Dashboard({ onNavigate }) {
           <p style={{ color:'rgba(255,255,255,0.75)', fontSize:14, marginBottom:18 }}>
             You've earned <strong style={{color:'#fbbf24'}}>{user.xp.toLocaleString()} XP</strong> — only {(user.xpToNext - user.xp).toLocaleString()} more to Level {user.level + 1}!
           </p>
-          <div style={{ display:'flex', gap:10 }}>
+          <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
             <button className="btn" style={{ background:'white', color:'#6366f1', fontWeight:700 }} onClick={() => onNavigate('workspace')}>💻 Open Workspace</button>
             <button className="btn" style={{ background:'rgba(255,255,255,0.18)', color:'white', border:'1px solid rgba(255,255,255,0.3)' }} onClick={() => onNavigate('learn')}>📚 Continue Learning</button>
+            <button className="btn" style={{ background:'rgba(255,0,110,0.25)', color:'#ff9ed2', border:'1px solid rgba(255,0,110,0.5)' }} onClick={() => onNavigate('vrd')}>🎨 Robot Design</button>
           </div>
         </div>
 
@@ -156,6 +157,51 @@ export default function Dashboard({ onNavigate }) {
             </div>
           </div>
           <div style={{ color:'rgba(255,255,255,0.65)', fontSize:11, marginTop:6 }}>{user.xp.toLocaleString()} / {user.xpToNext.toLocaleString()} XP</div>
+        </div>
+      </div>
+
+      {/* ─── Robot Design & Lab ─── */}
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(280px, 1fr))', gap:16, marginBottom:24 }}>
+        <div style={{
+          background:'linear-gradient(135deg, rgba(255,0,110,0.12), rgba(139,0,255,0.08))',
+          border:'1px solid rgba(255,0,110,0.35)',
+          borderRadius:16, padding:'22px 24px',
+          display:'flex', flexDirection:'column', gap:12,
+        }}>
+          <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+            <span style={{ fontSize:36 }}>🎨</span>
+            <div>
+              <div style={{ fontWeight:800, fontSize:17, color:'var(--text-primary)' }}>Virtual Robot Designer</div>
+              <div style={{ fontSize:12, color:'var(--text-muted)' }}>Create · Program · Test — no hardware needed</div>
+            </div>
+          </div>
+          <p style={{ margin:0, fontSize:13, color:'var(--text-secondary)', lineHeight:1.5 }}>
+            Build a real-looking robot or snap LEGO blocks, program it with Blockly, and test in a 3D simulator.
+          </p>
+          <button className="btn btn-primary" style={{ alignSelf:'flex-start', fontWeight:700 }} onClick={() => onNavigate('vrd')}>
+            Open Robot Design →
+          </button>
+        </div>
+
+        <div style={{
+          background:'linear-gradient(135deg, rgba(30,144,255,0.12), rgba(99,102,241,0.08))',
+          border:'1px solid rgba(30,144,255,0.35)',
+          borderRadius:16, padding:'22px 24px',
+          display:'flex', flexDirection:'column', gap:12,
+        }}>
+          <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+            <span style={{ fontSize:36 }}>🤖</span>
+            <div>
+              <div style={{ fontWeight:800, fontSize:17, color:'var(--text-primary)' }}>Physical Robot Lab</div>
+              <div style={{ fontSize:12, color:'var(--text-muted)' }}>Connect & program real hardware</div>
+            </div>
+          </div>
+          <p style={{ margin:0, fontSize:13, color:'var(--text-secondary)', lineHeight:1.5 }}>
+            Program micro:bit, Cutebot, and other robots — flash code and run on real devices.
+          </p>
+          <button className="btn btn-secondary" style={{ alignSelf:'flex-start', fontWeight:700 }} onClick={() => onNavigate('robot')}>
+            Open Robot Lab →
+          </button>
         </div>
       </div>
 

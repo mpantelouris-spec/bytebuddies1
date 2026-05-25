@@ -11,6 +11,7 @@ export const MODES = {
   COMMUNITY: 'COMMUNITY',
   CLASSROOM: 'CLASSROOM',
   CHALLENGES: 'CHALLENGES',
+  VRD: 'VRD',
   ROBOT: 'ROBOT',
   ADMIN: 'ADMIN',
   MISSIONS: 'MISSIONS',
@@ -44,6 +45,8 @@ export class AppMode {
         return MODES.CLASSROOM;
       case 'challenges':
         return MODES.CHALLENGES;
+      case 'vrd':
+        return MODES.VRD;
       case 'robot':
         return MODES.ROBOT;
       case 'admin':
@@ -144,7 +147,8 @@ export class AppMode {
       [MODES.COMMUNITY]: 'Community',
       [MODES.CLASSROOM]: 'Classroom',
       [MODES.CHALLENGES]: 'Challenges',
-      [MODES.ROBOT]: 'Robot Lab',
+      [MODES.VRD]: 'Virtual Robot Designer',
+      [MODES.ROBOT]: 'Physical Robot Lab',
       [MODES.ADMIN]: 'Admin Panel',
       [MODES.MISSIONS]: 'Missions',
       [MODES.PARENT]: 'Parent Dashboard',

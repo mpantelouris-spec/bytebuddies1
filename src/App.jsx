@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Component } from 'react';
+import React, { useState, useEffect, Component, Suspense, lazy } from 'react';
 import AppMode from './utils/AppMode';
 
 class ErrorBoundary extends Component {
@@ -39,6 +39,7 @@ import Challenges from './components/Challenges';
 import LevelUpCelebration from './components/LevelUpCelebration';
 import ParentDashboard from './components/ParentDashboard';
 import RobotPanel from './components/RobotPanel';
+const VirtualRobotDesigner = lazy(() => import('./virtual-robot-designer/VirtualRobotDesignerApp.jsx'));
 import LandingPage from './components/LandingPage';
 import TeacherDashboard from './components/TeacherDashboard';
 import TeacherHome from './components/TeacherHome';
@@ -83,6 +84,15 @@ function AppInner() {
     return () => window.removeEventListener('hashchange', onHashChange);
   }, [currentPage]);
 
+  useEffect(() => {
+    if (!isLoggedIn) {
+      document.documentElement.classList.add('landing-open');
+      return () => document.documentElement.classList.remove('landing-open');
+    }
+    document.documentElement.classList.remove('landing-open');
+    return undefined;
+  }, [isLoggedIn]);
+
   const renderPage = () => {
     // Game Builder access guard - blocks only available to authorized users
     if (currentPage === 'gamebuilder' && !isLoggedIn) {
@@ -104,7 +114,12 @@ function AppInner() {
       case 'settings':   return <Settings />;
       case 'challenges': return <Challenges onNavigate={navigate} />;
       case 'parent':     return <ParentDashboard onNavigate={navigate} />;
-      case 'robot':      return <RobotPanel />;
+      case 'vrd':       return (
+        <Suspense fallback={<div className="page" style={{ padding: 40, textAlign: 'center' }}><p style={{ fontWeight: 700 }}>Loading Virtual Robot Designer…</p></div>}>
+          <VirtualRobotDesigner />
+        </Suspense>
+      );
+      case 'robot':      return <RobotPanel onNavigate={navigate} />;
       case 'admin':      return <AdminPanel />;
       case 'missions':   return <MissionMode onNavigate={navigate} />;
       case 'portfolio':  return <Portfolio onNavigate={navigate} />;
@@ -114,6 +129,19 @@ function AppInner() {
   };
 
   if (currentPage === 'whitepaper') return <WhitePaper />;
+
+  const isStandaloneApp = currentPage === 'vrd' || currentPage === 'robot';
+
+  if (isStandaloneApp) {
+    return (
+      <div className="app-layout" style={{ height: '100vh' }}>
+        <ErrorBoundary key={currentPage}>
+          {renderPage()}
+        </ErrorBoundary>
+        {user.leveledUp && <LevelUpCelebration />}
+      </div>
+    );
+  }
 
   if (!isLoggedIn) return (
     <>

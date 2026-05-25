@@ -80,7 +80,8 @@ export default function TopBar({ currentPage, onNavigate, onExport, onAuth }) {
     { id: 'community', label: 'Community', icon: '🌍' },
     { id: 'classroom', label: 'Classroom', icon: '🏫' },
     { id: 'challenges', label: 'Challenges', icon: '⚡' },
-    { id: 'robot', label: 'Robot Lab', icon: '🤖' },
+    { id: 'vrd', label: 'Robot Design', icon: '🎨', highlight: true },
+    { id: 'robot', label: 'Physical Robot Lab', icon: '🤖' },
   ];
 
   return (
