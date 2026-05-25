@@ -24,15 +24,7 @@ export const VRD_TABS = [
   { id: 'settings', label: 'Settings', icon: '⚙️' },
 ];
 
-export const VRD_ARENAS = [
-  { id: 'open', label: 'Open Field', icon: '⬜', desc: 'Plain grid' },
-  { id: 'obstacles', label: 'Obstacles', icon: '🔴', desc: 'Dodge obstacles' },
-  { id: 'maze', label: 'Maze', icon: '🧩', desc: 'Navigate walls' },
-  { id: 'linefollow', label: 'Line Follow', icon: '〰️', desc: 'Follow the line' },
-  { id: 'square', label: 'Race Track', icon: '🏁', desc: 'Rectangular loop' },
-  { id: 'figure8', label: 'Figure 8', icon: '∞', desc: 'Crossing loops' },
-  { id: 'ramp', label: 'Ramp Course', icon: '🏔️', desc: 'Speed zones' },
-];
+export { TEST_ARENA_COURSES as VRD_ARENAS } from './data/test-arena-courses.js';
 
 export const VRD_ACHIEVEMENTS = [
   { id: 'first_design', title: 'First Design', desc: 'Create 1 design', icon: '🎨', stat: 'designs_created', target: 1 },

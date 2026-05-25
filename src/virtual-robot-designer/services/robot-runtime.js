@@ -67,6 +67,14 @@ export const ARENA_OBSTACLES = {
     { x: 0, z: 2, w: 3, h: 0.2, type: 'ramp' },
     { x: -2, z: -2, r: 0.5 }, { x: 2, z: -2, r: 0.5 },
   ],
+  collect: [
+    { x: 2.5, z: -2, r: 0.4 }, { x: -2, z: 2.5, r: 0.4 },
+    { x: 3, z: 2, r: 0.35 }, { x: -3, z: -1.5, r: 0.4 },
+  ],
+  delivery: [
+    { x: -2, z: 0, r: 0.55 }, { x: 2, z: 0, r: 0.55 },
+    { x: 0, z: 3, r: 0.45 },
+  ],
 };
 
 function pointInWall(px, pz, wall) {

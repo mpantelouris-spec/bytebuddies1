@@ -1,36 +1,24 @@
+/**
+ * Test Arena — full redesign: immersive robotics testing facility.
+ */
 import React, { useRef, useState, useEffect } from 'react';
-import SimulatorArena3D from '../components/SimulatorArena3D.jsx';
-import { VRD_ARENAS, migrateDesign } from '../config.js';
+import { migrateDesign } from '../config.js';
 import { getRobotPhysics } from '../services/robot-runtime.js';
 import { runVrdProgram } from '../services/vrd-program-runner.js';
 import { exportRobotSpec } from '../services/robot-schema.js';
 import vrdApi from '../apis/vrd-api.js';
 import VirtualRobotDB from '../database/virtual-robot-db.js';
 import { useRobotStore } from '../store/robotStore.js';
-import { statBarColor } from '../services/design-service.js';
-import SensorVizOverlay from '../components/SensorVizOverlay.jsx';
-import RobotJourneyBar from '../components/RobotJourneyBar.jsx';
 import { migrateAssembly } from '../services/assembly-service.js';
-import '../styles/academy-lab.css';
-
-const SPEED_OPTS = [
-  { id: 0.5, label: '0.5×' },
-  { id: 1, label: '1×' },
-  { id: 2, label: '2×' },
-  { id: 3, label: 'Turbo' },
-];
-
-function StatBar({ label, value, color }) {
-  return (
-    <div className="al-stat-card">
-      <label>{label}</label>
-      <div className="al-stat-value">{Math.round(value)}%</div>
-      <div className="al-stat-bar">
-        <span style={{ width: `${Math.min(100, value)}%`, background: color }} />
-      </div>
-    </div>
-  );
-}
+import RobotJourneyBar from '../components/RobotJourneyBar.jsx';
+import SensorVizOverlay from '../components/SensorVizOverlay.jsx';
+import TestArenaViewport from '../components/test-arena/TestArenaViewport.jsx';
+import TestArenaCourses from '../components/test-arena/TestArenaCourses.jsx';
+import TestArenaSystems from '../components/test-arena/TestArenaSystems.jsx';
+import TestArenaMissionLog from '../components/test-arena/TestArenaMissionLog.jsx';
+import TestArenaToolbar from '../components/test-arena/TestArenaToolbar.jsx';
+import { getCourseMeta } from '../data/test-arena-courses.js';
+import '../styles/test-arena.css';
 
 export default function SimulatorPage({ onGoDesign, onGoCode }) {
   const design = useRobotStore((s) => s.design);
@@ -38,7 +26,7 @@ export default function SimulatorPage({ onGoDesign, onGoCode }) {
   const clearSimAutoRun = () => useRobotStore.setState({ simAutoRun: false });
 
   const robotRef = useRef(null);
-  const simFsRef = useRef(null);
+  const arenaFsRef = useRef(null);
   const timerRef = useRef(null);
   const posRef = useRef({ x: 0, z: 0, angle: -90 });
   const abortRef = useRef(false);
@@ -61,15 +49,16 @@ export default function SimulatorPage({ onGoDesign, onGoCode }) {
   const [consoleLines, setConsoleLines] = useState(() => {
     const spec = exportRobotSpec(d);
     return [
-      '> test arena ready',
+      '> test arena online',
       `> your robot: ${spec.robot.name}`,
-      '> same 3D model from the invention lab',
+      '> same invention from the lab — watch it go!',
     ];
   });
 
   pausedRef.current = paused;
-  const log = (line) => setConsoleLines((prev) => [...prev.slice(-16), line]);
-  const arenaList = VRD_ARENAS;
+  const log = (line) => setConsoleLines((prev) => [...prev.slice(-20), line]);
+  const course = getCourseMeta(simTrack);
+  const batteryNow = Math.max(5, physics.stats.battery - Math.floor(elapsed / 2));
 
   useEffect(() => {
     const handler = () => setSimFs(!!document.fullscreenElement);
@@ -88,6 +77,16 @@ export default function SimulatorPage({ onGoDesign, onGoCode }) {
     return () => clearInterval(timerRef.current);
   }, [running, paused, speedMult]);
 
+  const stopSim = () => {
+    abortRef.current = true;
+    setRunning(false);
+    setPaused(false);
+    setActiveStep('');
+    setStatus('Stopped');
+    log('> mission stopped');
+    robotRef.current?.execute({ id: 'stop', params: {} });
+  };
+
   const runSimulation = async () => {
     if (running) return;
     abortRef.current = false;
@@ -97,7 +96,7 @@ export default function SimulatorPage({ onGoDesign, onGoCode }) {
     setDistance(0);
     setSensorHits(0);
     setStatus('Running');
-    log('> go! running YOUR robot…');
+    log('> go! your robot is LIVE');
     robotRef.current?.resetState();
 
     const result = await runVrdProgram({
@@ -118,8 +117,8 @@ export default function SimulatorPage({ onGoDesign, onGoCode }) {
     VirtualRobotDB.recordMaxSpeed(physics.stats.speed);
     setRunning(false);
     setActiveStep('');
-    setStatus(result.aborted ? 'Stopped' : 'Done!');
-    log(result.aborted ? '> stopped' : '> mission complete!');
+    setStatus(result.aborted ? 'Stopped' : 'Complete!');
+    log(result.aborted ? '> stopped' : '> mission complete — great job!');
   };
 
   useEffect(() => {
@@ -131,22 +130,24 @@ export default function SimulatorPage({ onGoDesign, onGoCode }) {
     return undefined;
   }, [simAutoRun]);
 
-  const stopSim = () => {
-    abortRef.current = true;
-    setRunning(false);
-    setPaused(false);
-    setActiveStep('');
-    setStatus('Stopped');
-    log('> stopped');
-    robotRef.current?.execute({ id: 'stop', params: {} });
+  const handleReset = () => {
+    stopSim();
+    robotRef.current?.reset();
+    setElapsed(0);
+    setDistance(0);
+    setSensorHits(0);
+    setStatus('Ready');
+    log('> arena reset');
   };
 
-  const stats = physics.stats;
-  const batteryNow = Math.max(5, stats.battery - Math.floor(elapsed / 2));
-  const arenaLabel = arenaList.find((a) => a.id === simTrack)?.label;
+  const handleCourseSelect = (id) => {
+    setSimTrack(id);
+    robotRef.current?.reset();
+    log(`> course: ${getCourseMeta(id).label}`);
+  };
 
   return (
-    <div className="al-app al-simulator">
+    <div className="ta-app" ref={arenaFsRef}>
       <RobotJourneyBar
         activeStep="test"
         buildMode={buildMode}
@@ -154,161 +155,74 @@ export default function SimulatorPage({ onGoDesign, onGoCode }) {
         onProgram={() => onGoCode?.()}
       />
 
-      <header className="al-header">
-        <div>
-          <h1>🚀 Test Your Robot</h1>
-          <p>Watch the same robot you built run your code</p>
+      <TestArenaToolbar
+        arenaId={simTrack}
+        robotName={d.name}
+        running={running}
+        paused={paused}
+        speedMult={speedMult}
+        onPause={() => setPaused((p) => !p)}
+        onSpeedChange={setSpeedMult}
+        onReset={handleReset}
+        onCameraReset={() => robotRef.current?.reset()}
+        onFullscreen={() => (simFs ? document.exitFullscreen() : arenaFsRef.current?.requestFullscreen?.())}
+        isFullscreen={simFs}
+        onGoDesign={onGoDesign}
+        onGoCode={onGoCode}
+      />
+
+      <TestArenaCourses
+        activeId={simTrack}
+        onSelect={handleCourseSelect}
+        onRun={runSimulation}
+        onStop={stopSim}
+        running={running}
+      />
+
+      <main className="ta-arena">
+        <div className="ta-arena-hud">
+          <span className="ta-arena-pill" style={{ borderColor: course.color }}>
+            {course.icon} {course.label}
+          </span>
+          <span className={`ta-arena-pill ${running && !paused ? 'ta-arena-pill--live' : ''}`}>
+            {running ? (paused ? '⏸ Paused' : '● LIVE') : '○ Ready'}
+          </span>
         </div>
-        <div className="al-header-actions">
-          {onGoCode && (
-            <button type="button" className="al-btn" onClick={onGoCode}>
-              ⌨ Code
-            </button>
-          )}
-          {onGoDesign && (
-            <button type="button" className="al-btn al-btn--primary" onClick={onGoDesign}>
-              ← Invention Lab
-            </button>
-          )}
-        </div>
-      </header>
+        <SensorVizOverlay design={d} running={running} activeStep={activeStep} sensorHits={sensorHits} />
+        <TestArenaViewport
+          ref={robotRef}
+          design={d}
+          arenaId={simTrack}
+          running={running}
+          activeStep={activeStep}
+          onMove={(p) => {
+            posRef.current = p;
+          }}
+          onSensorRead={(reading) => {
+            if (reading.type === 'ultrasonic') {
+              log(reading.hit ? '> obstacle detected ahead!' : '> path looks clear');
+            } else if (reading.type === 'lidar') {
+              log('> lidar sweep — scanning arena');
+            } else if (reading.type === 'camera') {
+              log('> camera spotted something!');
+            }
+          }}
+        />
+      </main>
 
-      <div className="al-sim-body">
-        <aside className="al-panel">
-          <h2 className="al-panel-title">🗺️ Pick a course</h2>
-          <div className="al-tile-grid">
-            {arenaList.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                className={`al-tile ${simTrack === t.id ? 'active' : ''}`}
-                onClick={() => {
-                  setSimTrack(t.id);
-                  robotRef.current?.reset();
-                  log(`> course: ${t.label}`);
-                }}
-              >
-                <span className="al-tile-icon">{t.icon}</span>
-                {t.label}
-              </button>
-            ))}
-          </div>
+      <TestArenaSystems
+        design={d}
+        running={running}
+        paused={paused}
+        battery={batteryNow}
+        sensorHits={sensorHits}
+        status={status}
+        elapsed={elapsed}
+        distance={distance}
+        activeStep={activeStep}
+      />
 
-          <button
-            type="button"
-            className={`al-btn ${running ? 'al-btn--danger' : 'al-btn--run'}`}
-            onClick={running ? stopSim : runSimulation}
-          >
-            {running ? '⏹ Stop' : '▶ Run My Robot'}
-          </button>
-
-          <div className="al-chip-row">
-            <button
-              type="button"
-              className="al-btn"
-              disabled={!running}
-              onClick={() => setPaused((p) => !p)}
-            >
-              {paused ? '▶ Resume' : '⏸ Pause'}
-            </button>
-            <button
-              type="button"
-              className="al-btn"
-              onClick={() => {
-                stopSim();
-                robotRef.current?.reset();
-                setElapsed(0);
-                setDistance(0);
-              }}
-            >
-              ↺ Reset
-            </button>
-          </div>
-
-          <p className="al-panel-title" style={{ marginTop: 8 }}>Speed</p>
-          <div className="al-chip-row">
-            {SPEED_OPTS.map((s) => (
-              <button
-                key={s.id}
-                type="button"
-                className={`al-chip ${speedMult === s.id ? 'active' : ''}`}
-                onClick={() => setSpeedMult(s.id)}
-              >
-                {s.label}
-              </button>
-            ))}
-          </div>
-        </aside>
-
-        <main className="al-arena-wrap" ref={simFsRef}>
-          <div className="al-arena-hud">
-            <span className="al-arena-tag">Live · {arenaLabel}</span>
-            <span className="al-arena-tag">
-              {running ? (paused ? '⏸ Paused' : '● Running') : '○ Ready'} · {d.name}
-            </span>
-          </div>
-          <div className="al-arena-viewport">
-            <SensorVizOverlay design={d} running={running} activeStep={activeStep} sensorHits={sensorHits} />
-              <SimulatorArena3D
-                ref={robotRef}
-                design={d}
-                arenaId={simTrack}
-                running={running}
-                activeStep={activeStep}
-                onMove={(p) => {
-                  posRef.current = p;
-                }}
-                onSensorRead={(reading) => {
-                  if (reading.type === 'ultrasonic') {
-                    log(reading.hit ? `> sensor: obstacle ${reading.distance?.toFixed?.(1) || '?'}m` : '> sensor: clear ahead');
-                  } else if (reading.type === 'lidar') {
-                    log('> lidar: sweep data received');
-                  }
-                }}
-              />
-          </div>
-          <button
-            type="button"
-            className="al-fs-btn"
-            onClick={() => (simFs ? document.exitFullscreen() : simFsRef.current?.requestFullscreen?.())}
-          >
-            {simFs ? '✕ Exit fullscreen' : '⛶ Fullscreen'}
-          </button>
-        </main>
-
-        <aside className="al-panel al-panel--right">
-          <h2 className="al-panel-title">📊 Robot stats</h2>
-          <StatBar label="Speed" value={stats.speed} color={statBarColor('speed', stats.speed)} />
-          <StatBar label="Battery" value={batteryNow} color={statBarColor('battery', batteryNow)} />
-          <StatBar label="Agility" value={stats.agility} color={statBarColor('agility', stats.agility)} />
-          <div className="al-hud-grid">
-            <div>
-              <span>Time</span>
-              <strong>{elapsed.toFixed(1)}s</strong>
-            </div>
-            <div>
-              <span>Distance</span>
-              <strong>{distance.toFixed(1)} m</strong>
-            </div>
-            <div>
-              <span>Sensors</span>
-              <strong>{sensorHits}</strong>
-            </div>
-            <div>
-              <span>Status</span>
-              <strong>{status}</strong>
-            </div>
-          </div>
-        </aside>
-      </div>
-
-      <footer className="al-console" aria-live="polite">
-        {consoleLines.map((line, i) => (
-          <div key={`${line}-${i}`} className={`al-console-line ${activeStep && i === consoleLines.length - 1 ? 'active' : ''}`}>
-            {line}
-          </div>
-        ))}
-      </footer>
+      <TestArenaMissionLog lines={consoleLines} activeStep={activeStep} />
     </div>
   );
 }
