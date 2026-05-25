@@ -7,6 +7,11 @@ export default {
   retries: 0,
   use: {
     baseURL: 'http://127.0.0.1:4173',
+    channel: process.env.PW_CHROME ? 'chrome' : undefined,
+    headless: true,
+    launchOptions: {
+      args: ['--disable-gpu', '--no-sandbox'],
+    },
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },

@@ -1,13 +1,11 @@
 import React, { useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import { migrateDesign } from '../config.js';
-import { HoloPanel } from '../components/HoloUI.jsx';
 import VrdBlocklyWorkspace from '../components/VrdBlocklyWorkspace.jsx';
+import BlocklyUnlockPanel from '../components/workshop/BlocklyUnlockPanel.jsx';
 import {
   generatePythonFromDesign,
   generateJavaScriptFromDesign,
   ensureProgramInitialized,
-  getAvailableBlocks,
-  blockLabel,
   getComponentAPI,
   resolveProgram,
 } from '../services/program-service.js';
@@ -20,6 +18,8 @@ import { playVrdSoundSync } from '../utils/vrdSound.js';
 import InteractiveBuildChamber from '../components/InteractiveBuildChamber.jsx';
 import RobotJourneyBar from '../components/RobotJourneyBar.jsx';
 import { migrateAssembly } from '../services/assembly-service.js';
+import { getBlocklyUnlockReport } from '../services/block-unlocks.js';
+import '../styles/academy-lab.css';
 
 const CodeEditor = React.lazy(() => import('../../components/CodeEditor.jsx'));
 
@@ -37,17 +37,24 @@ export default function CodeStudioPage({ onGoSimulator, onGoDesign }) {
   const [blocks, setBlocks] = useState(() => ensureProgramInitialized(d).blocks || []);
   const [python, setPython] = useState(() => d.program?.python || generatePythonFromDesign(d));
   const [javascript, setJavascript] = useState(() => d.program?.javascript || generateJavaScriptFromDesign(d));
-  const [consoleLines, setConsoleLines] = useState(['> code studio online', '> drag Blockly blocks or edit Python/JS']);
+  const [consoleLines, setConsoleLines] = useState(['> code studio ready', '> blocks unlock when you add parts']);
   const [executingLine, setExecutingLine] = useState(-1);
   const [previewing, setPreviewing] = useState(false);
   const [usePyodide, setUsePyodide] = useState(false);
 
-  const persistProgram = useCallback((patch) => {
-    setDesign((prev) => migrateDesign({
-      ...prev,
-      program: { mode, blocks, python, javascript, ...patch },
-    }));
-  }, [mode, blocks, python, javascript, setDesign]);
+  const unlockReport = getBlocklyUnlockReport(d);
+
+  const persistProgram = useCallback(
+    (patch) => {
+      setDesign((prev) =>
+        migrateDesign({
+          ...prev,
+          program: { mode, blocks, python, javascript, ...patch },
+        }),
+      );
+    },
+    [mode, blocks, python, javascript, setDesign],
+  );
 
   useEffect(() => {
     const t = setTimeout(() => persistProgram({}), 600);
@@ -68,13 +75,13 @@ export default function CodeStudioPage({ onGoSimulator, onGoDesign }) {
     setJavascript(generateJavaScriptFromDesign(d));
     setBlocks(bl);
     blocklyRef.current?.loadSteps(bl);
-    log('> synced from robot design');
+    log('> synced from your robot');
     playVrdSoundSync('click');
   };
 
   const runInSimulator = () => {
     persistProgram({ mode, blocks, python, javascript });
-    log('> program saved — launching simulator…');
+    log('> saved — opening test arena…');
     playVrdSoundSync('success');
     requestSimRun();
     onGoSimulator?.();
@@ -84,7 +91,7 @@ export default function CodeStudioPage({ onGoSimulator, onGoDesign }) {
     if (previewing) return;
     abortRef.current = false;
     setPreviewing(true);
-    log('> preview run started');
+    log('> preview started');
 
     try {
       if (mode === 'blocks') {
@@ -99,29 +106,29 @@ export default function CodeStudioPage({ onGoSimulator, onGoDesign }) {
       } else if (mode === 'python') {
         const ctx = {
           emit: async (step) => {
-            log(`> ${blockLabel(step)}`);
+            log(`> ${step.id || step}`);
             await new Promise((r) => setTimeout(r, 400));
           },
           posRef: { current: { x: 0, z: 0, angle: -90 } },
           design: d,
         };
         if (usePyodide) {
-          log('> loading Pyodide runtime…');
+          log('> loading Python…');
           await runPythonWithPyodide(python, ctx);
         } else {
           await runPythonProgram(python, ctx, { shouldAbort: () => abortRef.current });
         }
-        log('> python preview complete ✓');
+        log('> preview done ✓');
       } else if (mode === 'javascript') {
         await runJavaScriptProgram(javascript, {
           emit: async (step) => {
-            log(`> ${blockLabel(step)}`);
+            log(`> ${step.id || step}`);
             await new Promise((r) => setTimeout(r, 400));
           },
           posRef: { current: { x: 0, z: 0, angle: -90 } },
           design: d,
         });
-        log('> javascript preview complete ✓');
+        log('> preview done ✓');
       }
       playVrdSoundSync('success');
     } catch (err) {
@@ -134,105 +141,162 @@ export default function CodeStudioPage({ onGoSimulator, onGoDesign }) {
   };
 
   const stats = computeDesignStats(d);
-  const available = getAvailableBlocks(d);
   const componentAPI = getComponentAPI(d);
   const stepCount = resolveProgram({ ...d, program: { mode, blocks, python, javascript } }).length;
 
   return (
-    <div className="vrd-academy vrd-code-studio">
+    <div className="al-app al-code-studio">
       <RobotJourneyBar
         activeStep="program"
         buildMode={buildMode}
         onCreate={() => onGoDesign?.()}
         onTest={() => onGoSimulator?.()}
       />
-      <div className="vrd-code-header">
-        <h2 className="vrd-code-title">⌨ PROGRAM YOUR ROBOT</h2>
-        <p className="vrd-code-sub">Drag Blockly blocks or write code — then test in the simulator</p>
-        <div className="vrd-code-mode-tabs">
-          {[
-            { id: 'blocks', label: '🧩 Blockly' },
-            { id: 'python', label: '🐍 Python' },
-            { id: 'javascript', label: '⚡ JavaScript' },
-          ].map((m) => (
-            <button key={m.id} type="button" className={`vrd-code-mode-btn ${mode === m.id ? 'active' : ''}`} onClick={() => setMode(m.id)}>
-              {m.label}
-            </button>
-          ))}
+
+      <header className="al-header">
+        <div>
+          <h1>⌨ Code Your Robot</h1>
+          <p>
+            {unlockReport.unlockedCount} blocks ready · add parts to unlock more
+          </p>
         </div>
+        <div className="al-header-actions">
+          <button type="button" className="al-btn al-btn--run" onClick={runInSimulator}>
+            ▶ Test in Arena
+          </button>
+          {onGoDesign && (
+            <button type="button" className="al-btn" onClick={onGoDesign}>
+              ← Invention Lab
+            </button>
+          )}
+        </div>
+      </header>
+
+      <div className="al-chip-row" style={{ padding: '8px 20px', flexShrink: 0, background: 'var(--al-glass)', borderBottom: '1px solid var(--al-border)' }}>
+        {[
+          { id: 'blocks', label: '🧩 Blockly' },
+          { id: 'python', label: '🐍 Python' },
+          { id: 'javascript', label: '⚡ JavaScript' },
+        ].map((m) => (
+          <button
+            key={m.id}
+            type="button"
+            className={`al-chip ${mode === m.id ? 'active' : ''}`}
+            onClick={() => setMode(m.id)}
+          >
+            {m.label}
+          </button>
+        ))}
       </div>
 
-      <div className="vrd-code-grid vrd-code-grid--rocksi">
-        <aside className="vrd-code-left">
-          <HoloPanel title="Component API" icon="📡" defaultOpen={false}>
-            <div className="vrd-api-ref">
-              {componentAPI.length === 0 ? (
-                <span className="vrd-hint">Add sensors/tools to unlock API</span>
-              ) : (
-                componentAPI.map((item) => (
-                  <div key={item.fn} className="vrd-api-item">
-                    <span className="vrd-api-group">{item.group}</span>
-                    <code>{item.fn}</code>
-                    <span className="vrd-api-desc">{item.desc}</span>
-                  </div>
-                ))
-              )}
-            </div>
-          </HoloPanel>
+      <div className="al-code-body">
+        <aside className="al-panel">
+          <h2 className="al-panel-title">🔓 Block unlocks</h2>
+          <BlocklyUnlockPanel design={d} onGoDesign={onGoDesign} />
 
           {mode === 'python' && (
-            <label className="vrd-toggle">
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.8rem', marginTop: 12 }}>
               <input type="checkbox" checked={usePyodide} onChange={(e) => setUsePyodide(e.target.checked)} />
-              Full Python (Pyodide CDN)
+              Full Python (Pyodide)
             </label>
           )}
 
-          <button type="button" className="vrd-quick-btn" onClick={syncFromRobot}>🔄 Sync from robot design</button>
-          <p className="vrd-hint">{stepCount} instructions · speed {stats.speed}% · {available.sensor.length} sensor blocks</p>
+          <button type="button" className="al-btn" style={{ marginTop: 12, width: '100%' }} onClick={syncFromRobot}>
+            🔄 Sync from robot
+          </button>
+
+          {componentAPI.length > 0 && (
+            <div className="al-unlock-group" style={{ marginTop: 12 }}>
+              <h3>📡 Your robot can…</h3>
+              {componentAPI.slice(0, 4).map((item) => (
+                <div key={item.fn} className="al-unlock-item unlocked">
+                  <span className="al-unlock-icon">✓</span>
+                  <div>
+                    <code style={{ fontSize: '0.72rem' }}>{item.fn}</code>
+                    <div className="al-unlock-hint">{item.desc}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <p className="al-unlock-hint" style={{ marginTop: 12 }}>
+            {stepCount} steps · speed {stats.speed}%
+          </p>
         </aside>
 
-        <section className="vrd-code-center">
+        <section style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           {mode === 'blocks' && (
-            <VrdBlocklyWorkspace
-              ref={blocklyRef}
-              design={d}
-              initialSteps={blocks}
-              onStepsChange={handleBlocksChange}
-              height={480}
-            />
+            <div className="al-blockly-wrap">
+              <VrdBlocklyWorkspace
+                ref={blocklyRef}
+                design={d}
+                initialSteps={blocks}
+                onStepsChange={handleBlocksChange}
+                height={520}
+              />
+            </div>
           )}
           {mode === 'python' && (
-            <div className="vrd-code-editor-wrap">
-              <Suspense fallback={<textarea className="vrd-code-fallback" value={python} onChange={(e) => setPython(e.target.value)} />}>
+            <div className="al-code-editor">
+              <Suspense
+                fallback={
+                  <textarea
+                    className="vrd-code-fallback"
+                    style={{ width: '100%', height: '100%', border: 'none', padding: 12 }}
+                    value={python}
+                    onChange={(e) => setPython(e.target.value)}
+                  />
+                }
+              >
                 <CodeEditor code={python} language="python" onChange={setPython} />
               </Suspense>
             </div>
           )}
           {mode === 'javascript' && (
-            <div className="vrd-code-editor-wrap">
-              <Suspense fallback={<textarea className="vrd-code-fallback" value={javascript} onChange={(e) => setJavascript(e.target.value)} />}>
+            <div className="al-code-editor">
+              <Suspense
+                fallback={
+                  <textarea
+                    className="vrd-code-fallback"
+                    style={{ width: '100%', height: '100%', border: 'none', padding: 12 }}
+                    value={javascript}
+                    onChange={(e) => setJavascript(e.target.value)}
+                  />
+                }
+              >
                 <CodeEditor code={javascript} language="javascript" onChange={setJavascript} />
               </Suspense>
             </div>
           )}
         </section>
 
-        <aside className="vrd-code-right vrd-code-right--viewport">
-          <InteractiveBuildChamber design={d} compact buildMode={d.assembly?.buildMode || 'advanced'} />
-          <div className="vrd-console vrd-code-console">
-            <div className="vrd-console-header"><span>◈ EXECUTION LOG</span></div>
-            <div className="vrd-console-body">
-              {consoleLines.map((line, i) => (
-                <div key={`${line}-${i}`} className={executingLine >= 0 ? 'active' : ''}>{line}</div>
-              ))}
-            </div>
+        <aside className="al-panel al-panel--right">
+          <h2 className="al-panel-title">🤖 Your robot</h2>
+          <div className="al-preview-mini">
+            <InteractiveBuildChamber design={d} compact buildMode={d.assembly?.buildMode || 'advanced'} />
           </div>
-          <div className="vrd-code-actions">
-            <button type="button" className="vrd-console-btn vrd-console-btn--sim" onClick={runInSimulator}>⚡ RUN IN SIMULATOR</button>
-            <button type="button" className="vrd-console-btn vrd-console-btn--gen" disabled={previewing} onClick={simulateRunPreview}>
-              {previewing ? '… Running' : '▶ Preview run'}
-            </button>
+
+          <h2 className="al-panel-title" style={{ marginTop: 12 }}>
+            📋 Log
+          </h2>
+          <div className="al-log">
+            {consoleLines.map((line, i) => (
+              <div key={`${line}-${i}`} className={executingLine >= 0 && i === consoleLines.length - 1 ? 'active' : ''}>
+                {line}
+              </div>
+            ))}
           </div>
+
+          <button
+            type="button"
+            className="al-btn al-btn--run"
+            style={{ marginTop: 12, width: '100%' }}
+            disabled={previewing}
+            onClick={simulateRunPreview}
+          >
+            {previewing ? '… Running' : '▶ Quick preview'}
+          </button>
         </aside>
       </div>
     </div>

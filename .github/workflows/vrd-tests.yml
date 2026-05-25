@@ -6,7 +6,8 @@ on:
     paths:
       - 'src/virtual-robot-designer/**'
       - 'tests/vrd-*.test.js'
-      - 'tests/e2e/vrd.spec.js'
+      - 'tests/e2e/**'
+      - 'playwright.config.js'
       - 'scripts/vrd-*.mjs'
       - 'scripts/run-vrd-test-plan.mjs'
   pull_request:

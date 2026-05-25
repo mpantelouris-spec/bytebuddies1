@@ -1,5 +1,6 @@
 import Blockly from 'blockly';
 import 'blockly/blocks';
+import { getAvailableBlocks } from '../services/program-executor.js';
 
 let defined = false;
 
@@ -212,38 +213,47 @@ export function workspaceToSteps(workspace) {
   return tops.flatMap((b) => stepsFromBlockChain(b));
 }
 
-/** Build toolbox JSON filtered by unlocked blocks */
+const BLOCKLY_TYPE_MAP = {
+  forward: 'vrd_forward',
+  back: 'vrd_back',
+  left: 'vrd_turn_left',
+  right: 'vrd_turn_right',
+  wait: 'vrd_wait',
+  stop: 'vrd_stop',
+  scan: 'vrd_scan',
+  lidar_sweep: 'vrd_lidar',
+  if_obstacle: 'vrd_if_obstacle',
+  grab: 'vrd_grab',
+  release: 'vrd_release',
+  lights_on: 'vrd_lights_on',
+  lights_off: 'vrd_lights_off',
+};
+
+/** Build toolbox JSON filtered by parts mounted on the robot */
 export function buildVrdToolbox(design) {
-  const d = design || {};
-  const motion = [
-    { kind: 'block', type: 'vrd_forward' },
-    { kind: 'block', type: 'vrd_back' },
-    { kind: 'block', type: 'vrd_turn_left' },
-    { kind: 'block', type: 'vrd_turn_right' },
-    { kind: 'block', type: 'vrd_wait' },
-    { kind: 'block', type: 'vrd_stop' },
-  ];
-  const sensors = [];
-  if (d.sensors?.ultrasonic) {
-    sensors.push({ kind: 'block', type: 'vrd_scan' });
-    sensors.push({ kind: 'block', type: 'vrd_if_obstacle' });
-  }
-  if (d.sensors?.lidar) sensors.push({ kind: 'block', type: 'vrd_lidar' });
+  const avail = getAvailableBlocks(design || {});
+  const motion = avail.motion
+    .map((b) => BLOCKLY_TYPE_MAP[b.id])
+    .filter(Boolean)
+    .map((type) => ({ kind: 'block', type }));
 
-  const tools = [];
-  if (d.tools?.pincer || d.tools?.gripper || d.tools?.grabber !== 'none') {
-    tools.push({ kind: 'block', type: 'vrd_grab' });
-    tools.push({ kind: 'block', type: 'vrd_release' });
-  }
+  const sensors = avail.sensor
+    .map((b) => BLOCKLY_TYPE_MAP[b.id])
+    .filter(Boolean)
+    .map((type) => ({ kind: 'block', type }));
 
-  const lights = [];
-  if (d.cosmetics?.accentLights !== false) {
-    lights.push({ kind: 'block', type: 'vrd_lights_on' });
-    lights.push({ kind: 'block', type: 'vrd_lights_off' });
-  }
+  const tools = avail.tools
+    .map((b) => BLOCKLY_TYPE_MAP[b.id])
+    .filter(Boolean)
+    .map((type) => ({ kind: 'block', type }));
+
+  const lights = avail.lights
+    .map((b) => BLOCKLY_TYPE_MAP[b.id])
+    .filter(Boolean)
+    .map((type) => ({ kind: 'block', type }));
 
   const contents = [
-    { kind: 'category', name: 'Motion', colour: BLOCK_COLORS.motion, contents: motion },
+    { kind: 'category', name: 'Move', colour: BLOCK_COLORS.motion, contents: motion.length ? motion : [{ kind: 'block', type: 'vrd_forward' }] },
     { kind: 'category', name: 'Numbers', colour: '#5A2E8F', contents: [{ kind: 'block', type: 'vrd_number' }] },
   ];
   if (sensors.length) contents.push({ kind: 'category', name: 'Sensors', colour: BLOCK_COLORS.sensor, contents: sensors });

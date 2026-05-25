@@ -7,19 +7,30 @@ import { exportRobotSpec } from '../services/robot-schema.js';
 import vrdApi from '../apis/vrd-api.js';
 import VirtualRobotDB from '../database/virtual-robot-db.js';
 import { useRobotStore } from '../store/robotStore.js';
-import { HoloTile, HoloStat } from '../components/HoloUI.jsx';
 import { statBarColor } from '../services/design-service.js';
 import SensorVizOverlay from '../components/SensorVizOverlay.jsx';
-import LiveRobotTerminal from '../components/LiveRobotTerminal.jsx';
 import RobotJourneyBar from '../components/RobotJourneyBar.jsx';
 import { migrateAssembly } from '../services/assembly-service.js';
+import '../styles/academy-lab.css';
 
 const SPEED_OPTS = [
   { id: 0.5, label: '0.5×' },
-  { id: 1, label: '1.0×' },
-  { id: 2, label: '2.0×' },
+  { id: 1, label: '1×' },
+  { id: 2, label: '2×' },
   { id: 3, label: 'Turbo' },
 ];
+
+function StatBar({ label, value, color }) {
+  return (
+    <div className="al-stat-card">
+      <label>{label}</label>
+      <div className="al-stat-value">{Math.round(value)}%</div>
+      <div className="al-stat-bar">
+        <span style={{ width: `${Math.min(100, value)}%`, background: color }} />
+      </div>
+    </div>
+  );
+}
 
 export default function SimulatorPage({ onGoDesign, onGoCode }) {
   const design = useRobotStore((s) => s.design);
@@ -45,16 +56,14 @@ export default function SimulatorPage({ onGoDesign, onGoCode }) {
   const [elapsed, setElapsed] = useState(0);
   const [distance, setDistance] = useState(0);
   const [sensorHits, setSensorHits] = useState(0);
-  const [status, setStatus] = useState('STANDBY');
+  const [status, setStatus] = useState('Ready');
   const [activeStep, setActiveStep] = useState('');
   const [consoleLines, setConsoleLines] = useState(() => {
     const spec = exportRobotSpec(d);
     return [
-      '> simulation facility online',
-      '> loading robot.json from engineering chamber',
-      `> unit: ${spec.robot.name} | mode: ${spec.robot.mode}`,
-      `> program mode: ${d.program?.mode || 'blocks'}`,
-      '> identical 3D model synchronized',
+      '> test arena ready',
+      `> your robot: ${spec.robot.name}`,
+      '> same 3D model from the invention lab',
     ];
   });
 
@@ -87,8 +96,8 @@ export default function SimulatorPage({ onGoDesign, onGoCode }) {
     setElapsed(0);
     setDistance(0);
     setSensorHits(0);
-    setStatus('SIMULATING');
-    log('> mission start — deploying YOUR robot');
+    setStatus('Running');
+    log('> go! running YOUR robot…');
     robotRef.current?.resetState();
 
     const result = await runVrdProgram({
@@ -109,8 +118,8 @@ export default function SimulatorPage({ onGoDesign, onGoCode }) {
     VirtualRobotDB.recordMaxSpeed(physics.stats.speed);
     setRunning(false);
     setActiveStep('');
-    setStatus(result.aborted ? 'ABORTED' : 'MISSION COMPLETE');
-    log(result.aborted ? '> run aborted' : '> run complete — engineering validated');
+    setStatus(result.aborted ? 'Stopped' : 'Done!');
+    log(result.aborted ? '> stopped' : '> mission complete!');
   };
 
   useEffect(() => {
@@ -127,118 +136,172 @@ export default function SimulatorPage({ onGoDesign, onGoCode }) {
     setRunning(false);
     setPaused(false);
     setActiveStep('');
-    setStatus('ABORTED');
-    log('> simulation aborted');
+    setStatus('Stopped');
+    log('> stopped');
     robotRef.current?.execute({ id: 'stop', params: {} });
   };
 
   const stats = physics.stats;
   const batteryNow = Math.max(5, stats.battery - Math.floor(elapsed / 2));
+  const arenaLabel = arenaList.find((a) => a.id === simTrack)?.label;
 
   return (
-    <div className="vrd-academy vrd-sim-academy vrd-sim-academy--3d">
+    <div className="al-app al-simulator">
       <RobotJourneyBar
         activeStep="test"
         buildMode={buildMode}
         onCreate={() => onGoDesign?.()}
         onProgram={() => onGoCode?.()}
       />
-      <div className="vrd-sim-header">
-        <h2 className="vrd-code-title">🚀 TEST YOUR ROBOT</h2>
-        <p className="vrd-code-sub">Run your program in a live 3D arena — same robot you built</p>
-        <div className="vrd-sim-header-actions">
-          {onGoCode && <button type="button" className="vrd-quick-btn" onClick={onGoCode}>⌨ Code Studio</button>}
-          {onGoDesign && <button type="button" className="vrd-quick-btn" onClick={onGoDesign}>◈ Engineering Chamber</button>}
+
+      <header className="al-header">
+        <div>
+          <h1>🚀 Test Your Robot</h1>
+          <p>Watch the same robot you built run your code</p>
         </div>
-      </div>
-
-      <div className="vrd-sim-grid">
-        <aside className="vrd-sim-left">
-          <div className="vrd-holo-panel open">
-            <div className="vrd-holo-panel-head">
-              <span className="vrd-holo-panel-icon">🗺️</span>
-              <span className="vrd-holo-panel-title">Test Environment</span>
-            </div>
-            <div className="vrd-holo-panel-body">
-              <div className="vrd-holo-tile-grid" style={{ gridTemplateColumns: 'repeat(2, 1fr)' }}>
-                {arenaList.map((t) => (
-                  <HoloTile
-                    key={t.id}
-                    icon={t.icon}
-                    label={t.label}
-                    active={simTrack === t.id}
-                    onClick={() => { setSimTrack(t.id); robotRef.current?.reset(); log(`> arena loaded: ${t.label}`); }}
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div className="vrd-sim-controls">
-            <button type="button" className="vrd-console-btn vrd-console-btn--sim vrd-sim-run" onClick={running ? stopSim : runSimulation}>
-              {running ? '⏹ ABORT MISSION' : '▶ RUN MISSION'}
+        <div className="al-header-actions">
+          {onGoCode && (
+            <button type="button" className="al-btn" onClick={onGoCode}>
+              ⌨ Code
             </button>
-            <button type="button" className="vrd-chamber-ctrl" onClick={() => setPaused((p) => !p)} disabled={!running}>⏸ {paused ? 'Resume' : 'Pause'}</button>
-            <button type="button" className="vrd-chamber-ctrl" onClick={() => { stopSim(); robotRef.current?.reset(); setElapsed(0); setDistance(0); }}>↺ Reset</button>
+          )}
+          {onGoDesign && (
+            <button type="button" className="al-btn al-btn--primary" onClick={onGoDesign}>
+              ← Invention Lab
+            </button>
+          )}
+        </div>
+      </header>
+
+      <div className="al-sim-body">
+        <aside className="al-panel">
+          <h2 className="al-panel-title">🗺️ Pick a course</h2>
+          <div className="al-tile-grid">
+            {arenaList.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                className={`al-tile ${simTrack === t.id ? 'active' : ''}`}
+                onClick={() => {
+                  setSimTrack(t.id);
+                  robotRef.current?.reset();
+                  log(`> course: ${t.label}`);
+                }}
+              >
+                <span className="al-tile-icon">{t.icon}</span>
+                {t.label}
+              </button>
+            ))}
           </div>
 
-          <div className="vrd-sim-speed">
+          <button
+            type="button"
+            className={`al-btn ${running ? 'al-btn--danger' : 'al-btn--run'}`}
+            onClick={running ? stopSim : runSimulation}
+          >
+            {running ? '⏹ Stop' : '▶ Run My Robot'}
+          </button>
+
+          <div className="al-chip-row">
+            <button
+              type="button"
+              className="al-btn"
+              disabled={!running}
+              onClick={() => setPaused((p) => !p)}
+            >
+              {paused ? '▶ Resume' : '⏸ Pause'}
+            </button>
+            <button
+              type="button"
+              className="al-btn"
+              onClick={() => {
+                stopSim();
+                robotRef.current?.reset();
+                setElapsed(0);
+                setDistance(0);
+              }}
+            >
+              ↺ Reset
+            </button>
+          </div>
+
+          <p className="al-panel-title" style={{ marginTop: 8 }}>Speed</p>
+          <div className="al-chip-row">
             {SPEED_OPTS.map((s) => (
-              <button key={s.id} type="button" className={`vrd-holo-chip ${speedMult === s.id ? 'active' : ''}`} onClick={() => setSpeedMult(s.id)}>
+              <button
+                key={s.id}
+                type="button"
+                className={`al-chip ${speedMult === s.id ? 'active' : ''}`}
+                onClick={() => setSpeedMult(s.id)}
+              >
                 {s.label}
               </button>
             ))}
           </div>
         </aside>
 
-        <section className="vrd-sim-center">
-          <div className="vrd-sim-arena vrd-sim-arena--3d" ref={simFsRef}>
-            <div className="vrd-chamber-hud">
-              <span className="vrd-chamber-tag">LIVE ARENA · {arenaList.find((a) => a.id === simTrack)?.label}</span>
-              <span className="vrd-chamber-status">{running ? (paused ? '⏸ PAUSED' : '● SIMULATING') : '○ IDLE'} · {d.name}</span>
-            </div>
-            <div className="vrd-sim-viewport vrd-sim-viewport--3d">
-              <SensorVizOverlay design={d} running={running} activeStep={activeStep} sensorHits={sensorHits} />
-              <SimulatorArena3D
-                ref={robotRef}
-                design={d}
-                arenaId={simTrack}
-                running={running}
-                activeStep={activeStep}
-                onMove={(p) => { posRef.current = p; }}
-              />
-            </div>
-            <button
-              type="button"
-              className="vrd-sim-fs"
-              onClick={() => (simFs ? document.exitFullscreen() : simFsRef.current?.requestFullscreen?.())}
-            >
-              {simFs ? '✕ Exit fullscreen' : '⛶ Fullscreen'}
-            </button>
+        <main className="al-arena-wrap" ref={simFsRef}>
+          <div className="al-arena-hud">
+            <span className="al-arena-tag">Live · {arenaLabel}</span>
+            <span className="al-arena-tag">
+              {running ? (paused ? '⏸ Paused' : '● Running') : '○ Ready'} · {d.name}
+            </span>
           </div>
-        </section>
+          <div className="al-arena-viewport">
+            <SensorVizOverlay design={d} running={running} activeStep={activeStep} sensorHits={sensorHits} />
+            <SimulatorArena3D
+              ref={robotRef}
+              design={d}
+              arenaId={simTrack}
+              running={running}
+              activeStep={activeStep}
+              onMove={(p) => {
+                posRef.current = p;
+              }}
+            />
+          </div>
+          <button
+            type="button"
+            className="al-fs-btn"
+            onClick={() => (simFs ? document.exitFullscreen() : simFsRef.current?.requestFullscreen?.())}
+          >
+            {simFs ? '✕ Exit fullscreen' : '⛶ Fullscreen'}
+          </button>
+        </main>
 
-        <aside className="vrd-sim-right">
-          <div className="vrd-telemetry">
-            <div className="vrd-telemetry-header">
-              <span className="vrd-telemetry-title">◈ MISSION HUD</span>
-              <span className="vrd-telemetry-pulse">{running ? 'LIVE' : '—'}</span>
+        <aside className="al-panel al-panel--right">
+          <h2 className="al-panel-title">📊 Robot stats</h2>
+          <StatBar label="Speed" value={stats.speed} color={statBarColor('speed', stats.speed)} />
+          <StatBar label="Battery" value={batteryNow} color={statBarColor('battery', batteryNow)} />
+          <StatBar label="Agility" value={stats.agility} color={statBarColor('agility', stats.agility)} />
+          <div className="al-hud-grid">
+            <div>
+              <span>Time</span>
+              <strong>{elapsed.toFixed(1)}s</strong>
             </div>
-            <HoloStat label="VELOCITY" value={Math.min(100, stats.speed)} color={statBarColor('speed', stats.speed)} />
-            <HoloStat label="BATTERY" value={batteryNow} color={statBarColor('battery', batteryNow)} />
-            <HoloStat label="AGILITY" value={stats.agility} color={statBarColor('agility', stats.agility)} />
-            <div className="vrd-sim-hud-stats">
-              <div><span>Time</span><strong>{elapsed.toFixed(1)}s</strong></div>
-              <div><span>Distance</span><strong>{distance.toFixed(1)} m</strong></div>
-              <div><span>Sensor hits</span><strong>{sensorHits}</strong></div>
-              <div><span>Status</span><strong>{status}</strong></div>
-              <div><span>Program</span><strong>{d.program?.mode || 'auto'}</strong></div>
+            <div>
+              <span>Distance</span>
+              <strong>{distance.toFixed(1)} m</strong>
+            </div>
+            <div>
+              <span>Sensors</span>
+              <strong>{sensorHits}</strong>
+            </div>
+            <div>
+              <span>Status</span>
+              <strong>{status}</strong>
             </div>
           </div>
         </aside>
       </div>
 
-      <LiveRobotTerminal lines={consoleLines} activeStep={activeStep} running={running} designName={d.name} />
+      <footer className="al-console" aria-live="polite">
+        {consoleLines.map((line, i) => (
+          <div key={`${line}-${i}`} className={`al-console-line ${activeStep && i === consoleLines.length - 1 ? 'active' : ''}`}>
+            {line}
+          </div>
+        ))}
+      </footer>
     </div>
   );
 }

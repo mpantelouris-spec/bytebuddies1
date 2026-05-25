@@ -242,6 +242,22 @@ describe('FT-009–FT-012 stats', () => {
   });
 });
 
+describe('Blockly unlock report', () => {
+  test('ultrasonic part unlocks scan blocks in report', async () => {
+    const { getBlocklyUnlockReport } = await import('../src/virtual-robot-designer/services/block-unlocks.js');
+    const { buildVrdToolbox } = await import('../src/virtual-robot-designer/utils/vrdBlocklySetup.js');
+    let d = fresh();
+    d = placePartOnSlot(d, 'front', 'sensors', 'ultrasonic');
+    d = syncDesignFromAssembly(d);
+    const report = getBlocklyUnlockReport(d);
+    const scan = report.groups.find((g) => g.id === 'sensor')?.items.find((i) => i.id === 'scan');
+    expect(scan?.unlocked).toBe(true);
+    const toolbox = buildVrdToolbox(d);
+    const sensorCat = toolbox.contents.find((c) => c.name === 'Sensors');
+    expect(sensorCat?.contents?.some((b) => b.type === 'vrd_scan')).toBe(true);
+  });
+});
+
 // ─── Section 5 & 9: Edge + Data (also in vrd-designer.test.js) ─────
 
 describe('ET-004 maximum parts', () => {

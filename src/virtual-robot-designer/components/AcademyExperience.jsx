@@ -32,7 +32,7 @@ export default function AcademyExperience() {
   if (view === 'test') {
     return (
       <Suspense fallback={<ViewFallback label="Simulator" />}>
-        <Simulator onBack={() => setView('design')} />
+        <Simulator onGoDesign={() => setView('design')} onGoCode={() => setView('code')} />
       </Suspense>
     );
   }

@@ -7,19 +7,19 @@ import {
   stepsToWorkspace,
 } from '../utils/vrdBlocklySetup.js';
 
-const VRD_BLOCKLY_THEME = Blockly.Theme.defineTheme('vrd_dark', {
+const VRD_BLOCKLY_THEME = Blockly.Theme.defineTheme('vrd_bright', {
   base: Blockly.Themes.Classic,
   componentStyles: {
-    workspaceBackgroundColour: '#0A0A1A',
-    toolboxBackgroundColour: '#0F0F1F',
-    toolboxForegroundColour: '#F0F0F0',
-    flyoutBackgroundColour: '#1A1A2E',
-    flyoutForegroundColour: '#FFFFFF',
-    scrollbarColour: '#5A2E8F',
-    insertionMarkerColour: '#00D9FF',
-    insertionMarkerOpacity: 0.4,
+    workspaceBackgroundColour: '#f8fafc',
+    toolboxBackgroundColour: '#ffffff',
+    toolboxForegroundColour: '#1e293b',
+    flyoutBackgroundColour: '#f0f4fa',
+    flyoutForegroundColour: '#1e293b',
+    scrollbarColour: '#1e90ff',
+    insertionMarkerColour: '#00d9ff',
+    insertionMarkerOpacity: 0.45,
   },
-  fontStyle: { family: 'system-ui, sans-serif', size: 12 },
+  fontStyle: { family: 'Nunito, system-ui, sans-serif', size: 12 },
 });
 
 const VrdBlocklyWorkspace = forwardRef(function VrdBlocklyWorkspace(
@@ -48,7 +48,7 @@ const VrdBlocklyWorkspace = forwardRef(function VrdBlocklyWorkspace(
       toolbox: buildVrdToolbox(design),
       theme: VRD_BLOCKLY_THEME,
       media: '/blockly-media/',
-      grid: { spacing: 20, length: 3, colour: '#5A2E8F', snap: true },
+      grid: { spacing: 20, length: 3, colour: '#cbd5e1', snap: true },
       zoom: { controls: true, wheel: true, startScale: 0.95, maxScale: 1.4, minScale: 0.5 },
       trashcan: true,
       sounds: true,

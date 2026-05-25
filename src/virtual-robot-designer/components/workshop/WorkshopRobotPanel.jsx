@@ -84,10 +84,10 @@ export default function WorkshopRobotPanel({
         >
           ⌨ Code My Robot
         </motion.button>
-        <button type="button" className="iw-btn iw-btn--ghost" onClick={onSave}>
+        <button type="button" className="iw-btn iw-btn--ghost" onClick={onSave} aria-label="Save design">
           💾 Save
         </button>
-        <button type="button" className="iw-btn iw-btn--ghost" onClick={onLoad}>
+        <button type="button" className="iw-btn iw-btn--ghost" onClick={onLoad} aria-label="Load design">
           📂 Load
         </button>
         <button type="button" className="iw-btn iw-btn--ghost" onClick={onUndo} disabled={!canUndo}>
