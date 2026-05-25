@@ -17,7 +17,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --legacy-peer-deps
 
       - name: Build
         env:
@@ -49,6 +49,6 @@ jobs:
           "
           # Sync app files (fast — excludes characters)
           rsync -az --delete --exclude='assets/characters/' dist/ ubuntu@129.151.144.92:/home/ubuntu/bytebuddies/
-          # Sync characters — skip files that already exist on VPS (only upload new ones)
-          rsync -az --ignore-existing dist/assets/characters/ ubuntu@129.151.144.92:/home/ubuntu/bytebuddies/assets/characters/
+          # Sync characters — upload when file changed (size/mtime); replaces broken/stale sprites
+          rsync -az --checksum dist/assets/characters/ ubuntu@129.151.144.92:/home/ubuntu/bytebuddies/assets/characters/
           ssh ubuntu@129.151.144.92 "find /home/ubuntu/bytebuddies -type d -exec chmod 755 {} \; && find /home/ubuntu/bytebuddies -type f -exec chmod 644 {} \; && sudo nginx -t && sudo systemctl reload nginx"
