@@ -24,7 +24,7 @@ assert(stats.speed >= 5 && stats.speed <= 100, 'stats clamped');
 
 let d2 = placePartOnSlot(d, 'front', 'sensors', 'ultrasonic');
 d2 = placePartOnSlot(d2, 'front', 'sensors', 'lidar');
-assert(migrateAssembly(d2).slots.front.partId === 'ultrasonic', 'occupied socket protected');
+assert(migrateAssembly(d2).slots.front.partId === 'lidar', 'slot part can be swapped');
 
 if (failures.length) {
   console.error('VRD smoke FAILED:\n', failures.map((f) => `  - ${f}`).join('\n'));

@@ -62,7 +62,7 @@ export async function runVrdProgram({
   return { aborted: false, completed: true };
 }
 
-/** Code Studio preview — dry run with timing, no 3D execute */
+/** Code Studio preview — simulates sensor reads; use Test Arena for full 3D motion */
 export async function previewProgramSteps({
   design,
   steps,
@@ -71,16 +71,34 @@ export async function previewProgramSteps({
   speedMult = 1,
   shouldAbort,
 }) {
+  const d = migrateDesign(design);
+  const posRef = { current: { x: 0, z: 0, angle: -90 } };
+
   for (let i = 0; i < steps.length; i += 1) {
     if (shouldAbort?.()) break;
     const step = steps[i];
     onHighlight?.(i, step);
     log?.(`> executing: ${blockLabel(step)}`);
+
+    if (step.id === 'scan' || step.id === 'read_proximity') {
+      const { checkObstacleAhead } = await import('./robot-runtime.js');
+      const hit = checkObstacleAhead(posRef.current, posRef.current.angle, d, 'obstacles');
+      log?.(hit.hit ? `> ultrasonic: obstacle at ${(hit.distance || 0.5).toFixed(1)}m` : '> ultrasonic: path clear');
+    }
+    if (step.id === 'lidar_sweep' || step.id === 'lidar') {
+      log?.('> lidar: environment sweep complete');
+    }
+    if (step.id === 'follow_line') {
+      log?.('> line sensor: following track (use Line Follow arena to test)');
+    }
+    if (step.id === 'grab') log?.('> gripper: closed');
+    if (step.id === 'release') log?.('> gripper: opened');
+
     const ms = step.id === 'wait' ? (step.params?.secs || 1) * 1000 : step.id === 'scan' ? 600 : 350;
     await delay(ms, speedMult);
   }
   onHighlight?.(-1, null);
-  log?.('> preview complete ✓');
+  log?.('> preview complete — tap Test in Arena for full 3D run ✓');
 }
 
 /** Execute Python via step parser */

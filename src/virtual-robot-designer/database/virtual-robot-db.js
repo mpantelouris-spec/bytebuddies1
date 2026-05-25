@@ -80,6 +80,23 @@ export const VirtualRobotDB = {
     write(KEYS.designs, all);
   },
 
+  duplicateDesign(id) {
+    const all = read(KEYS.designs, []);
+    const source = all.find((d) => d.id === id);
+    if (!source) return null;
+    const copy = {
+      ...JSON.parse(JSON.stringify(source)),
+      id: `vrd-${Date.now()}`,
+      name: `${source.name || 'Robot'} (copy)`,
+      created_date: new Date().toISOString(),
+      updated_date: new Date().toISOString(),
+    };
+    all.unshift(copy);
+    write(KEYS.designs, all.slice(0, 100));
+    this.setCurrentDesign(copy);
+    return copy;
+  },
+
   listVariants(designId) {
     const all = read(KEYS.variants, []);
     return all.filter((v) => v.original_design_id === designId);

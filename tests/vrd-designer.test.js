@@ -46,12 +46,12 @@ describe('VRD — socket validation (FT-007, IT-005, IT-006)', () => {
     expect(slot).toEqual({ category: 'movement', partId: 'standard' });
   });
 
-  test('double-attach to occupied socket is rejected (IT-006)', () => {
+  test('occupied socket can swap to another valid part (IT-006)', () => {
     let d = placePartOnSlot(design, 'front', 'sensors', 'ultrasonic');
-    const first = { ...migrateAssembly(d).slots.front };
-    expect(first.partId).toBe('ultrasonic');
+    expect(migrateAssembly(d).slots.front.partId).toBe('ultrasonic');
     d = placePartOnSlot(d, 'front', 'sensors', 'lidar');
-    expect(migrateAssembly(d).slots.front).toEqual(first);
+    expect(migrateAssembly(d).slots.front.partId).toBe('lidar');
+    expect(migrateDesign(d).sensors?.lidar).toBe(true);
   });
 
   test('remove frees socket for new part', () => {

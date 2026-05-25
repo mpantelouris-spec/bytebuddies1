@@ -17,7 +17,8 @@
     "smoke:game-builder": "node scripts/game-builder-smoke.mjs",
     "smoke:vrd": "node scripts/vrd-smoke.mjs",
     "test:vrd": "node scripts/run-vrd-test-plan.mjs",
-    "test:e2e:vrd": "playwright test tests/e2e/vrd.spec.js",
+    "test:e2e:vrd": "SKIP_VRD_WEBSERVER=1 playwright test tests/e2e/vrd.spec.js",
+    "test:e2e:vrd:http": "node scripts/vrd-e2e-http.mjs",
     "test": "jest",
     "test:watch": "jest --watch"
   },

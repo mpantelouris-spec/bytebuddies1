@@ -7,7 +7,7 @@ import { SimRobotScene } from './SimulatorRobot3D.jsx';
 import { migrateDesign } from '../config.js';
 
 /** Cinematic full-screen simulation facility — same robot as builder */
-const SimulatorArena3D = forwardRef(function SimulatorArena3D({ design, arenaId = 'open', running, activeStep, onMove }, ref) {
+const SimulatorArena3D = forwardRef(function SimulatorArena3D({ design, arenaId = 'open', running, activeStep, onMove, onSensorRead }, ref) {
   const d = migrateDesign(design);
 
   return (
@@ -42,7 +42,7 @@ const SimulatorArena3D = forwardRef(function SimulatorArena3D({ design, arenaId 
         <ContactShadows position={[0, 0.01, 0]} opacity={0.5} scale={16} blur={2.5} far={6} color="#8b00ff" />
 
         <Suspense fallback={null}>
-          <SimRobotScene ref={ref} design={d} arenaId={arenaId} onMove={onMove} running={running} activeStep={activeStep} />
+          <SimRobotScene ref={ref} design={d} arenaId={arenaId} onMove={onMove} running={running} activeStep={activeStep} onSensorRead={onSensorRead} />
         </Suspense>
 
         <OrbitControls enablePan={false} minDistance={4} maxDistance={18} maxPolarAngle={Math.PI / 2.2} minPolarAngle={0.3} enabled={!running} />

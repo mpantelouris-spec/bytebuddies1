@@ -242,6 +242,23 @@ describe('FT-009–FT-012 stats', () => {
   });
 });
 
+describe('Block mode functional sync', () => {
+  test('removing sensor block clears ultrasonic flag', async () => {
+    const { placeBlock, removeBlock, setBuildMode } = await import('../src/virtual-robot-designer/services/block-service.js');
+    let d = setBuildMode(fresh(), 'blocks');
+    const blk = placeBlock(d, 'sensor', 0, 0, 0);
+    expect(migrateDesign(blk).sensors?.ultrasonic).toBe(true);
+    const removed = removeBlock(blk, migrateAssembly(blk).blocks[0].id);
+    expect(migrateDesign(removed).sensors?.ultrasonic).toBe(false);
+  });
+
+  test('replacing slot part updates configuration', () => {
+    let d = placePartOnSlot(fresh(), 'front', 'sensors', 'ultrasonic');
+    d = placePartOnSlot(d, 'front', 'sensors', 'lidar');
+    expect(migrateDesign(d).sensors?.lidar).toBe(true);
+  });
+});
+
 describe('Workshop scene scale', () => {
   test('computeWorkshopRobotScale grows with parts', async () => {
     const { computeWorkshopRobotScale } = await import('../src/virtual-robot-designer/constants/workshop-scene.js');

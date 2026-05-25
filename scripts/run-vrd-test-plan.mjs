@@ -52,5 +52,14 @@ if (jest.code !== 0) {
   process.exit(1);
 }
 
+console.log('\n── HTTP preview check (optional) ──\n');
+try {
+  const http = run('node', ['scripts/vrd-e2e-http.mjs']);
+  console.log(http.out.trim());
+} catch {
+  console.log('  (skip — start preview: npm run preview -- --port 4173 --host 127.0.0.1)');
+}
+
 console.log(`\n✓ All automated VRD tests passed${total ? ` (${total} cases)` : ''}`);
-console.log('  Run browser E2E: npm run test:e2e:vrd\n');
+console.log('  Full browser E2E: npm run build && npm run preview -- --port 4173 --host 127.0.0.1');
+console.log('                  then: npm run test:e2e:vrd\n');

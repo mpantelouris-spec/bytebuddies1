@@ -105,7 +105,7 @@ export function useWorkshopActions() {
     }
     const next = placePartOnSlot(d, slotId, category, partId);
     if (!isPartOnSlot(next, slotId, category, partId)) {
-      showError(asm.slots[slotId] ? 'Remove the old part first!' : 'Try another spot on your robot.');
+      showError('Could not attach — try a green socket!');
       return;
     }
     setDesign(next);

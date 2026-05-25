@@ -3,7 +3,8 @@
  * Used by Designer, Simulator, Code Studio, and persistence.
  */
 import { migrateDesign } from '../config.js';
-import { migrateAssembly, listPlacedParts } from './assembly-service.js';
+import { migrateAssembly, listPlacedParts, syncDesignFromAssembly } from './assembly-service.js';
+import { syncBlocksToDesign } from './block-service.js';
 import { getBlockType } from '../data/block-parts.js';
 
 export function exportRobotSpec(design) {
@@ -80,7 +81,7 @@ export function importRobotSpec(spec) {
   const sensors = {};
   (r.sensors || []).forEach((s) => { sensors[s] = true; });
 
-  return migrateDesign({
+  let design = migrateDesign({
     name: r.name,
     template: r.template || r.ai_module?.personality || 'rover',
     chassis: {
@@ -111,4 +112,7 @@ export function importRobotSpec(spec) {
       })),
     },
   });
+
+  design = syncBlocksToDesign(design);
+  return syncDesignFromAssembly(design);
 }

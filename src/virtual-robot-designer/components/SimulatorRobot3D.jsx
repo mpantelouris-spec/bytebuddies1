@@ -1,9 +1,8 @@
-import React, { useRef, forwardRef, useImperativeHandle } from 'react';
+import React, { useRef, forwardRef, useImperativeHandle, useMemo } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
-import * as THREE from 'three';
-import HeroRobotModel from './HeroRobotModel.jsx';
-import AssemblyAttachmentMeshes from './AssemblyAttachmentMeshes.jsx';
-import { easeInOut, getRobotPhysics, checkObstacleAhead, checkPointCollision, ARENA_OBSTACLES } from '../services/robot-runtime.js';
+import RobotAssemblyRoot from './workshop/RobotAssemblyRoot.jsx';
+import { getRobotPhysics, ARENA_OBSTACLES } from '../services/robot-runtime.js';
+import { createSimExecutor } from '../services/sim-robot-executor.js';
 import SensorRays3D from './SensorRays3D.jsx';
 
 function ArenaEnvironment({ arenaId }) {
@@ -76,10 +75,7 @@ function SimRobotMesh({ design, posRef, movingRef, physics, grabRef, running, ac
 
   return (
     <group ref={groupRef}>
-      <group scale={[0.82, 0.82, 0.82]}>
-        <HeroRobotModel design={design} productVisual />
-        <AssemblyAttachmentMeshes design={design} />
-      </group>
+      <RobotAssemblyRoot design={design} />
       {physics.isFlying && (
         <mesh position={[0, -physics.hoverLift - 0.1, 0]} rotation={[-Math.PI / 2, 0, 0]}>
           <ringGeometry args={[0.5, 0.9, 32]} />
@@ -101,25 +97,8 @@ function FollowCamera({ targetRef }) {
   return null;
 }
 
-function sampleObstacleAlongPath(sx, sz, ex, ez, design, arenaId) {
-  const steps = 10;
-  for (let i = 1; i <= steps; i += 1) {
-    const t = i / steps;
-    const x = sx + (ex - sx) * t;
-    const z = sz + (ez - sz) * t;
-    if (checkPointCollision(x, z, arenaId).hit) {
-      return { blocked: true, stopT: Math.max(0, t - 0.12) };
-    }
-    const angle = (Math.atan2(ez - sz, ex - sx) * 180) / Math.PI;
-    if (checkObstacleAhead({ x, z, angle }, angle, design, arenaId).hit) {
-      return { blocked: true, stopT: Math.max(0, t - 0.15) };
-    }
-  }
-  return { blocked: false, stopT: 1 };
-}
-
 export const SimRobotScene = forwardRef(function SimRobotScene(
-  { design, arenaId = 'open', onMove, running = false, activeStep = '' },
+  { design, arenaId = 'open', onMove, running = false, activeStep = '', onSensorRead },
   ref,
 ) {
   const physics = getRobotPhysics(design);
@@ -128,75 +107,21 @@ export const SimRobotScene = forwardRef(function SimRobotScene(
   const grabRef = useRef(0);
   const camTargetRef = useRef({ x: 0, z: 0, hover: physics.hoverLift });
 
-  const execute = (step) => new Promise((resolve) => {
-    const id = step?.id;
-    const params = step?.params || {};
-    const p = posRef.current;
-    const { pxPerMs, degPerMs, cmToUnit } = physics;
-
-    if (id === 'stop') { movingRef.current = false; resolve(); return; }
-    if (id === 'wait') { setTimeout(resolve, (params.secs || 1) * 1000); return; }
-    if (id === 'scan') { setTimeout(resolve, 900); return; }
-    if (id === 'lidar_sweep') { setTimeout(resolve, 1400); return; }
-    if (id === 'grab' || id === 'release') { grabRef.current = 0.6; setTimeout(resolve, 700); return; }
-    if (id === 'lights_on' || id === 'lights_off') { setTimeout(resolve, 300); return; }
-
-    const FORWARD = ['forward', 'follow_line', 'avoid_wall'];
-    const BACK = ['back'];
-    const TURNL = ['left', 'spin_left'];
-    const TURNR = ['right', 'spin_right'];
-
-    if (FORWARD.includes(id) || BACK.includes(id)) {
-      const cm = parseFloat(params.amount || 80);
-      let dist = cm * cmToUnit;
-      const rad = (p.angle * Math.PI) / 180;
-      const dir = BACK.includes(id) ? -1 : 1;
-      const sx = p.x; const sz = p.z;
-      let ex = sx + Math.cos(rad) * dist * dir;
-      let ez = sz + Math.sin(rad) * dist * dir;
-
-      const pathCheck = sampleObstacleAlongPath(sx, sz, ex, ez, design, arenaId);
-      if (pathCheck.blocked) {
-        ex = sx + (ex - sx) * pathCheck.stopT;
-        ez = sz + (ez - sz) * pathCheck.stopT;
-        dist *= pathCheck.stopT;
-      }
-
-      const dur = Math.max(200, (dist / pxPerMs) * 1000);
-      movingRef.current = true;
-      const t0 = performance.now();
-      const go = () => {
-        const prog = Math.min(1, (performance.now() - t0) / dur);
-        const e = easeInOut(prog);
-        p.x = sx + (ex - sx) * e;
-        p.z = sz + (ez - sz) * e;
-        camTargetRef.current.x = p.x;
-        camTargetRef.current.z = p.z;
-        onMove?.({ ...p });
-        if (prog < 1) requestAnimationFrame(go);
-        else { movingRef.current = false; resolve(); }
-      };
-      requestAnimationFrame(go);
-    } else if (TURNL.includes(id) || TURNR.includes(id)) {
-      const deg = parseFloat(params.degrees || 90);
-      const dir = TURNL.includes(id) ? -1 : 1;
-      const total = deg * dir;
-      const dur = (Math.abs(deg) / degPerMs) * 1000;
-      const sa = p.angle;
-      movingRef.current = true;
-      const t0 = performance.now();
-      const go = () => {
-        const prog = Math.min(1, (performance.now() - t0) / dur);
-        p.angle = sa + total * easeInOut(prog);
-        onMove?.({ ...p });
-        if (prog < 1) requestAnimationFrame(go);
-        else { movingRef.current = false; resolve(); }
-      };
-      requestAnimationFrame(go);
-    } else {
-      resolve();
-    }
-  });
+  const execute = useMemo(
+    () =>
+      createSimExecutor({
+        design,
+        arenaId,
+        posRef,
+        movingRef,
+        grabRef,
+        camTargetRef,
+        onMove,
+        physics,
+        onSensorRead,
+      }),
+    [design, arenaId, physics, onMove, onSensorRead],
+  );
 
   const reset = () => {
     posRef.current = { x: 0, z: 0, angle: -90 };

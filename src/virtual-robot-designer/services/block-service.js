@@ -49,7 +49,7 @@ export function rotateBlock(design, blockId) {
   const blocks = (asm.blocks || []).map((b) =>
     b.id === blockId ? { ...b, rotY: ((b.rotY || 0) + 90) % 360 } : b,
   );
-  return migrateDesign({ ...d, assembly: { ...asm, blocks } });
+  return migrateDesign(syncBlocksToDesign({ ...d, assembly: { ...asm, blocks } }));
 }
 
 export function clearBlocks(design) {
@@ -60,36 +60,79 @@ export function clearBlocks(design) {
   return migrateDesign(next);
 }
 
-function syncBlocksToDesign(design) {
-  let d = migrateDesign(design);
-  const asm = migrateAssembly(d);
-  const blocks = asm.blocks || [];
+function resetBlockDerivedFields(d) {
+  const sensors = Object.fromEntries(Object.keys(d.sensors || {}).map((k) => [k, false]));
+  const tools = {
+    ...d.tools,
+    pincer: false,
+    gripper: false,
+    bulldozer: false,
+    magnet: false,
+    drill: false,
+    vacuum: false,
+    laser: false,
+    flamethrower: false,
+    longArm: false,
+    ballLauncher: false,
+    dart: false,
+    water: false,
+    grabber: 'none',
+  };
+  const abilities = Object.fromEntries(Object.keys(d.abilities || {}).map((k) => [k, false]));
+  return {
+    ...d,
+    sensors,
+    tools,
+    abilities,
+    modules: {},
+    wheels: { type: 'standard', count: 4, size: 'medium', motor: d.wheels?.motor },
+  };
+}
 
+function applyBlockAffects(d, blocks = []) {
+  let next = { ...d };
   blocks.forEach((block) => {
     const type = getBlockType(block.type);
     if (!type?.affects) return;
     if (type.affects.sensors) {
-      d.sensors = { ...d.sensors, ...type.affects.sensors };
+      next.sensors = { ...next.sensors, ...type.affects.sensors };
     }
     if (type.affects.tools) {
-      d.tools = { ...d.tools, ...type.affects.tools };
+      next.tools = { ...next.tools, ...type.affects.tools };
     }
     if (type.affects.wheels) {
-      d.wheels = { ...d.wheels, ...type.affects.wheels };
+      next.wheels = { ...next.wheels, ...type.affects.wheels };
     }
     if (type.affects.modules) {
-      d.modules = { ...d.modules, ...type.affects.modules };
+      next.modules = { ...next.modules, ...type.affects.modules };
     }
     if (type.affects.abilities) {
-      d.abilities = { ...d.abilities, ...type.affects.abilities };
+      next.abilities = { ...next.abilities, ...type.affects.abilities };
     }
   });
+  return next;
+}
 
-  if (asm.buildMode !== 'blocks') {
-    d = syncDesignFromAssembly(d);
+export function syncBlocksToDesign(design) {
+  const d = migrateDesign(design);
+  const asm = migrateAssembly(d);
+  const mode = asm.buildMode || 'advanced';
+
+  if (mode === 'blocks') {
+    let next = resetBlockDerivedFields(d);
+    next = applyBlockAffects(next, asm.blocks);
+    next.assembly = { ...asm, mode: 'custom' };
+    return migrateDesign(next);
   }
 
-  return d;
+  if (mode === 'hybrid') {
+    let next = syncDesignFromAssembly({ ...d, assembly: { ...asm, mode: 'custom' } });
+    next = applyBlockAffects(next, asm.blocks);
+    next.assembly = { ...asm, mode: 'custom' };
+    return migrateDesign(next);
+  }
+
+  return syncDesignFromAssembly(d);
 }
 
 export function applyBlueprint(design, blueprint) {
@@ -102,6 +145,7 @@ export function applyBlueprint(design, blueprint) {
     ...d,
     name: blueprint.name,
     template: 'blank',
+    program: blueprint.program ? { ...blueprint.program } : d.program,
     assembly: {
       ...asm,
       mode: 'custom',
@@ -112,7 +156,8 @@ export function applyBlueprint(design, blueprint) {
     },
   };
 
-  return syncDesignFromAssembly(migrateDesign(next));
+  const synced = syncBlocksToDesign(migrateDesign(next));
+  return syncDesignFromAssembly(synced);
 }
 
 export function countBlocks(assembly) {

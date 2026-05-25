@@ -249,16 +249,23 @@ export default function SimulatorPage({ onGoDesign, onGoCode }) {
           </div>
           <div className="al-arena-viewport">
             <SensorVizOverlay design={d} running={running} activeStep={activeStep} sensorHits={sensorHits} />
-            <SimulatorArena3D
-              ref={robotRef}
-              design={d}
-              arenaId={simTrack}
-              running={running}
-              activeStep={activeStep}
-              onMove={(p) => {
-                posRef.current = p;
-              }}
-            />
+              <SimulatorArena3D
+                ref={robotRef}
+                design={d}
+                arenaId={simTrack}
+                running={running}
+                activeStep={activeStep}
+                onMove={(p) => {
+                  posRef.current = p;
+                }}
+                onSensorRead={(reading) => {
+                  if (reading.type === 'ultrasonic') {
+                    log(reading.hit ? `> sensor: obstacle ${reading.distance?.toFixed?.(1) || '?'}m` : '> sensor: clear ahead');
+                  } else if (reading.type === 'lidar') {
+                    log('> lidar: sweep data received');
+                  }
+                }}
+              />
           </div>
           <button
             type="button"

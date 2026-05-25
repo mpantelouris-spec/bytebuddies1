@@ -52,11 +52,6 @@ export function placePartOnSlot(design, slotId, category, partId) {
   if (!slotAcceptsPart(slotId, category)) return d;
   if (!getWorkshopPart(category, partId)) return d;
 
-  const existing = asm.slots[slotId];
-  if (existing && (existing.category !== category || existing.partId !== partId)) {
-    return d;
-  }
-
   const nextSlots = { ...asm.slots, [slotId]: { category, partId } };
   const next = syncSlotsToDesign(
     { ...d, assembly: { ...asm, mode: 'custom', slots: nextSlots } },
