@@ -510,7 +510,7 @@ function LegoRobot({ blocks = [], primaryColor = '#4a90e2', accentColor = '#00d4
    MAIN HERO ROBOT COMPONENT
    ═══════════════════════════════════════════════════════════ */
 
-export default function HeroRobotModel({ design, onPartAdd, productVisual = false }) {
+export default function HeroRobotModel({ design, onPartAdd, productVisual = false, heroScale: heroScaleProp }) {
   const groupRef   = useRef();
   const headRef    = useRef();
   const antennaRef = useRef();
@@ -609,7 +609,8 @@ export default function HeroRobotModel({ design, onPartAdd, productVisual = fals
   const useTracks = wheelType === 'tracks' || trackIds.includes(movementType);
   const useLegs = wheelType === 'legs' || legIds.includes(movementType);
   const useHover = wheelType === 'hover' || hoverIds.includes(movementType);
-  const heroScale = (productVisual ? VIEWPORT.heroScale : 1.4) * chassisMul;
+  const baseHero = heroScaleProp ?? (productVisual ? VIEWPORT.heroScale : 1.4);
+  const heroScale = baseHero * chassisMul;
   const bodyYOffset = useHover ? 0.22 : hasMovement ? 0 : -0.08;
 
   return (

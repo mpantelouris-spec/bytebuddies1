@@ -1,12 +1,10 @@
 /**
- * ByteBuddies Robotics Academy — product-style designer (reference layout).
- * Replaces the dark holographic hangar with a bright 3D robot on a dark UI shell.
+ * ByteBuddies Robotics Academy — Invention Workshop (robot-first, kid-friendly).
  */
 
 import React, { useState, Suspense, lazy } from 'react';
-import DesignPage from '../pages/Design.jsx';
-import '../styles/robot-designer.css';
-import '../styles/vrd-academy.css';
+import InventionWorkshop from '../pages/InventionWorkshop.jsx';
+import '../styles/invention-workshop.css';
 
 const CodeStudio = lazy(() => import('../pages/CodeStudio.jsx'));
 const Simulator = lazy(() => import('../pages/Simulator.jsx'));
@@ -54,10 +52,9 @@ export default function AcademyExperience() {
   }
 
   return (
-    <DesignPage
+    <InventionWorkshop
       onGoCode={() => setView('code')}
       onGoSimulator={() => setView('test')}
-      onGoMissions={() => { window.location.hash = 'missions'; }}
       onGoCreations={() => setView('creations')}
       onGoGallery={() => setView('gallery')}
       onBack={() => { window.location.hash = 'dashboard'; }}
