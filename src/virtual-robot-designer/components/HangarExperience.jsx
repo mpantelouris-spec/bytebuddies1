@@ -290,7 +290,13 @@ export default function HangarExperience() {
 
   const handleSaveDesign = () => {
     try {
-      VirtualRobotDB.saveDesign(design);
+      const result = VirtualRobotDB.saveDesign(design);
+      if (!result.ok) {
+        log({ text: '> save failed — storage full', type: 'err' });
+        showToast('Could not save — storage may be full');
+        playVrdSoundSync('error');
+        return;
+      }
       log({ text: '> design saved to local storage', type: null });
       showToast('Design saved!');
       playVrdSoundSync('snap');

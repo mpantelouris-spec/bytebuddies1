@@ -55,6 +55,7 @@ export default function DesignPage({ onGoSimulator, onGoCode, onGoMissions, onGo
   const [showSave, setShowSave] = useState(false);
   const [showLoad, setShowLoad] = useState(false);
   const [savedToast, setSavedToast] = useState(false);
+  const [errorToast, setErrorToast] = useState(null);
   const [selectedSlot, setSelectedSlot] = useState('movement');
   const [snapPulse, setSnapPulse] = useState(false);
   const [dragOver, setDragOver] = useState(false);
@@ -126,8 +127,31 @@ export default function DesignPage({ onGoSimulator, onGoCode, onGoMissions, onGo
     }
   };
 
+  const showError = (message) => {
+    setErrorToast(message);
+    playVrdSoundSync('error');
+    setTimeout(() => setErrorToast(null), 3200);
+  };
+
+  const isPartOnSlot = (design, slotId, category, partId) => {
+    const slot = migrateAssembly(migrateDesign(design)).slots?.[slotId];
+    return slot?.category === category && slot?.partId === partId;
+  };
+
   const handleMountPart = (slotId, category, partId, label) => {
+    if (!slotAcceptsPart(slotId, category)) {
+      showError('That part does not fit this socket. Try a highlighted green socket.');
+      return;
+    }
     const next = placePartOnSlot(d, slotId, category, partId);
+    if (!isPartOnSlot(next, slotId, category, partId)) {
+      if (asm.slots[slotId]) {
+        showError('This socket already has a part. Remove it first or pick another socket.');
+      } else {
+        showError('Could not attach part. Pick another socket and try again.');
+      }
+      return;
+    }
     setDesign(next);
     setSnapPulse(true);
     triggerSnapBurst();
@@ -143,6 +167,18 @@ export default function DesignPage({ onGoSimulator, onGoCode, onGoMissions, onGo
       slot = selectedSlot;
     }
     if (slot) handleMountPart(slot, category, partId, label);
+    else showError('No open socket for this part. Select a green socket on the robot first.');
+  };
+
+  const handleSetWheelCount = (count) => {
+    setDesign((prev) => {
+      const m = migrateDesign(prev);
+      return {
+        ...m,
+        wheels: { ...(m.wheels || { type: 'standard', size: 'medium' }), count },
+      };
+    });
+    playVrdSoundSync('click');
   };
 
   const handleUpdateBase = (patch) => {
@@ -256,8 +292,15 @@ export default function DesignPage({ onGoSimulator, onGoCode, onGoMissions, onGo
   };
 
   const handleSave = (fields) => {
-    const saved = VirtualRobotDB.saveDesign({ ...d, ...fields });
-    replaceDesign(saved);
+    const result = VirtualRobotDB.saveDesign({ ...d, ...fields });
+    if (!result.ok) {
+      const msg = result.error === 'storage_full'
+        ? 'Storage is full. Delete old designs or free browser space, then try again.'
+        : 'Could not save your design. Check your connection and try again.';
+      showError(msg);
+      return;
+    }
+    replaceDesign(result.design);
     setShowSave(false);
     setSavedToast(true);
     setSavedLabel('All changes saved');
@@ -316,6 +359,8 @@ export default function DesignPage({ onGoSimulator, onGoCode, onGoMissions, onGo
       }
       if (slot && slotAcceptsPart(slot, category)) {
         handleMountPart(slot, category, id, label);
+      } else {
+        showError('No valid socket for this part. Drag onto a green socket or pick one in the parts panel.');
       }
     }
   };
@@ -339,8 +384,13 @@ export default function DesignPage({ onGoSimulator, onGoCode, onGoMissions, onGo
   return (
     <div className="vrd-designer">
       {savedToast && (
-        <motion.div className="vrd-toast" initial={{ y: 16, opacity: 0 }} animate={{ y: 0, opacity: 1 }}>
+        <motion.div className="vrd-toast" role="status" initial={{ y: 16, opacity: 0 }} animate={{ y: 0, opacity: 1 }}>
           ✓ Design saved!
+        </motion.div>
+      )}
+      {errorToast && (
+        <motion.div className="vrd-toast vrd-toast--error" role="alert" initial={{ y: 16, opacity: 0 }} animate={{ y: 0, opacity: 1 }}>
+          {errorToast}
         </motion.div>
       )}
 
@@ -383,6 +433,7 @@ export default function DesignPage({ onGoSimulator, onGoCode, onGoMissions, onGo
               onSetBuildMode={handleSetBuildMode}
               onSlotTransform={handleSlotTransform}
               onSetVisualMode={handleSetVisualMode}
+              onSetWheelCount={handleSetWheelCount}
             />
           )}
         </aside>
@@ -460,6 +511,7 @@ export default function DesignPage({ onGoSimulator, onGoCode, onGoMissions, onGo
             onCalibrate={handleCalibrate}
             onReset={handleClearAll}
             onSave={() => setShowSave(true)}
+            onLoad={() => setShowLoad(true)}
           />
         </aside>
       </div>

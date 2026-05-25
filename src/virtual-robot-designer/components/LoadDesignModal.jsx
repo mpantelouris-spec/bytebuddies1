@@ -11,6 +11,14 @@ export default function LoadDesignModal({ onLoad, onClose }) {
     setDesigns(VirtualRobotDB.listDesigns().sort((a, b) => new Date(b.updated_date) - new Date(a.updated_date)));
   }, []);
 
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
   const handleLoad = (d) => {
     playVrdSoundSync('success');
     onLoad(migrateDesign(d));
@@ -26,9 +34,17 @@ export default function LoadDesignModal({ onLoad, onClose }) {
   };
 
   return (
-    <motion.div className="vrd-modal-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} onClick={onClose}>
+    <motion.div
+      className="vrd-modal-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="vrd-load-title"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      onClick={onClose}
+    >
       <motion.div className="vrd-modal vrd-modal--wide" initial={{ scale: 0.95, y: 12 }} animate={{ scale: 1, y: 0 }} onClick={(e) => e.stopPropagation()}>
-        <h2 style={{ margin: '0 0 16px' }}>📂 Load Saved Design</h2>
+        <h2 id="vrd-load-title" style={{ margin: '0 0 16px' }}>📂 Load Saved Design</h2>
         {designs.length === 0 ? (
           <p className="vrd-hint">No saved designs yet. Build a robot and hit Save!</p>
         ) : (
@@ -43,7 +59,7 @@ export default function LoadDesignModal({ onLoad, onClose }) {
                   </span>
                   {d.is_public && <span className="vrd-load-badge">Public</span>}
                 </button>
-                <button type="button" className="vrd-load-delete" onClick={(e) => handleDelete(d.id, e)} aria-label="Delete">✕</button>
+                <button type="button" className="vrd-load-delete" onClick={(e) => handleDelete(d.id, e)} aria-label={`Delete ${d.name || 'design'}`}>✕</button>
               </li>
             ))}
           </ul>

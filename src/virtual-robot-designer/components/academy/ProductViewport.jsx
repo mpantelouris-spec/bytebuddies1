@@ -78,6 +78,7 @@ function SceneContent({
   design,
   highlightSlot,
   snapPulse,
+  dragCategory,
   onSocketSelect,
   onSocketRemove,
 }) {
@@ -104,6 +105,7 @@ function SceneContent({
         slots={asm.slots}
         highlightSlot={highlightSlot}
         snapPulse={snapPulse}
+        dragCategory={dragCategory}
         productMode
         visibleSlots={visibleSockets}
         onSocketSelect={onSocketSelect}
@@ -145,6 +147,7 @@ export default function ProductViewport({
   const apiRef = controlsRef || cameraApiRef;
   const snapBurst = useUiStore((s) => s.snapBurst);
   const dragOverStore = useUiStore((s) => s.dragOverViewport);
+  const draggingPart = useUiStore((s) => s.draggingPart);
   const showDrag = dragOver || dragOverStore;
 
   const rotateLeft = () => apiRef.current?.rotateLeft?.(Math.PI / 8);
@@ -195,6 +198,7 @@ export default function ProductViewport({
               design={design}
               highlightSlot={highlightSlot}
               snapPulse={snapPulse}
+              dragCategory={draggingPart?.category}
               onSocketSelect={onSocketSelect}
               onSocketRemove={onSocketRemove}
             />

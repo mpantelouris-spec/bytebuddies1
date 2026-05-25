@@ -2,7 +2,7 @@ import React, { useRef, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Text } from '@react-three/drei';
 import * as THREE from 'three';
-import { getSlotPosition, SNAP_SLOTS } from '../data/assembly-parts.js';
+import { getSlotPosition, SNAP_SLOTS, slotAcceptsPart } from '../data/assembly-parts.js';
 
 function SocketPillar({
   position,
@@ -10,6 +10,7 @@ function SocketPillar({
   active,
   filled,
   pulse,
+  invalid,
   productMode,
   onSelect,
   onRemove,
@@ -23,9 +24,9 @@ function SocketPillar({
     const t = state.clock.elapsedTime;
     if (ringRef.current) {
       ringRef.current.rotation.z = t * (active ? 1.2 : 0.4);
-      const base = filled ? 0.65 : active ? 0.55 : hovered ? 0.45 : 0.25;
-      ringRef.current.material.opacity = base + Math.sin(t * (active ? 4 : 2)) * (active && !filled ? 0.2 : 0.08);
-      const col = filled ? '#1E90FF' : active || hovered ? '#00FF41' : '#00D9FF';
+      const base = invalid ? 0.7 : filled ? 0.65 : active ? 0.55 : hovered ? 0.45 : 0.25;
+      ringRef.current.material.opacity = base + Math.sin(t * (invalid ? 5 : active ? 4 : 2)) * (invalid ? 0.25 : active && !filled ? 0.2 : 0.08);
+      const col = invalid ? '#ef4444' : filled ? '#1E90FF' : active || hovered ? '#00FF41' : '#00D9FF';
       ringRef.current.material.color.set(col);
     }
     if (beamRef.current && active && !filled) {
@@ -37,7 +38,7 @@ function SocketPillar({
     }
   });
 
-  const color = filled ? '#1E90FF' : active || hovered ? '#00FF41' : '#00D9FF';
+  const color = invalid ? '#ef4444' : filled ? '#1E90FF' : active || hovered ? '#00FF41' : '#00D9FF';
   const hitR = productMode ? 0.28 : 0.18;
 
   return (
@@ -111,6 +112,7 @@ export default function SnapSocketMarkers({
   slots,
   highlightSlot,
   snapPulse,
+  dragCategory = null,
   productMode = false,
   visibleSlots = null,
   onSocketSelect,
@@ -123,6 +125,7 @@ export default function SnapSocketMarkers({
         const pos = getSlotPosition(slotId, base);
         const filled = !!slots[slotId];
         const active = highlightSlot === slotId;
+        const invalid = dragCategory && !filled && !slotAcceptsPart(slotId, dragCategory);
         if (base?.shape === 'arm' && !['front', 'right', 'left', 'top'].includes(slotId)) return null;
         return (
           <SocketPillar
@@ -131,6 +134,7 @@ export default function SnapSocketMarkers({
             label={meta.label}
             active={active}
             filled={filled}
+            invalid={invalid}
             pulse={active && snapPulse}
             productMode={productMode}
             onSelect={() => onSocketSelect?.(slotId)}

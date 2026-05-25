@@ -15,6 +15,7 @@
     "build:makecode-ble": "cd ble_compile && npx makecode build && cp built/binary.hex ../public/microbit-v2-cutebot-ble.hex",
     "dev:hex": "node build-hex-server.mjs",
     "smoke:game-builder": "node scripts/game-builder-smoke.mjs",
+    "smoke:vrd": "node scripts/vrd-smoke.mjs",
     "test": "jest",
     "test:watch": "jest --watch"
   },

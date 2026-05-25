@@ -44,13 +44,18 @@ export function setVisualMode(design, mode) {
   });
 }
 
-/** Place a part on a snap slot — returns updated design */
+/** Place a part on a snap slot — returns updated design (unchanged if invalid) */
 export function placePartOnSlot(design, slotId, category, partId) {
   const d = migrateDesign(design);
   const asm = migrateAssembly(d);
   if (!SNAP_SLOTS[slotId]) return d;
   if (!slotAcceptsPart(slotId, category)) return d;
   if (!getWorkshopPart(category, partId)) return d;
+
+  const existing = asm.slots[slotId];
+  if (existing && (existing.category !== category || existing.partId !== partId)) {
+    return d;
+  }
 
   const nextSlots = { ...asm.slots, [slotId]: { category, partId } };
   const next = syncSlotsToDesign(

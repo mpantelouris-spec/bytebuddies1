@@ -11,10 +11,17 @@ import { ALL_SLOT_IDS, MODULAR_PARTS, MODULAR_CHASSIS } from '../../data/modular
 const MODULAR_PARTS_COUNT = MODULAR_PARTS.length + MODULAR_CHASSIS.length;
 import { getSlotLabel } from '../../utils/build-slots.js';
 import PartDragGhost from './PartDragGhost.jsx';
+import { useUiStore } from '../../store/uiStore.js';
+import { migrateDesign } from '../../config.js';
 
 function dragPart(e, payload) {
   e.dataTransfer.setData('application/vrd-part', JSON.stringify({ type: 'part', ...payload }));
   e.dataTransfer.effectAllowed = 'copy';
+  useUiStore.getState().setDraggingPart(payload);
+}
+
+function endDrag() {
+  useUiStore.getState().clearDragState();
 }
 
 function PartTile({ part, mounted, canUse, selectedSlot, onPick }) {
@@ -26,6 +33,7 @@ function PartTile({ part, mounted, canUse, selectedSlot, onPick }) {
       title={mounted ? 'Already on robot' : canUse ? `Attach to ${getSlotLabel(selectedSlot)}` : 'Select a compatible socket'}
       draggable={!mounted && canUse}
       onDragStart={(e) => dragPart(e, { category, id, label })}
+      onDragEnd={endDrag}
       onClick={() => {
         if (mounted || !canUse) return;
         onPick(part);
@@ -51,8 +59,13 @@ export default function ModularPartsPanel({
   onSetBuildMode,
   onSlotTransform,
   onSetVisualMode,
+  onSetWheelCount,
 }) {
+  const d = migrateDesign(design);
   const asm = migrateAssembly(design);
+  const wheelCount = d.wheels?.count ?? 4;
+  const wheelType = d.wheels?.type ?? 'standard';
+  const showWheelSlider = ['standard', 'mecanum'].includes(wheelType) && !!asm.slots?.movement;
   const [activeSection, setActiveSection] = useState('chassis');
   const [search, setSearch] = useState('');
   const slotTransform = asm.slotTransforms?.[selectedSlot] || { rotY: 0, scale: 1 };
@@ -154,6 +167,23 @@ export default function ModularPartsPanel({
         })}
       </div>
 
+      {showWheelSlider && (
+        <div className="bb-wheel-bar">
+          <label className="bb-wheel-label">
+            <span>Wheel count · {wheelCount}</span>
+            <input
+              type="range"
+              min={2}
+              max={8}
+              step={2}
+              value={wheelCount}
+              aria-label="Wheel count"
+              onChange={(e) => onSetWheelCount?.(Number(e.target.value))}
+            />
+          </label>
+        </div>
+      )}
+
       {asm.slots?.[selectedSlot] && (
         <div className="bb-transform-bar">
           <span className="bb-transform-label">Socket: {getSlotLabel(selectedSlot)}</span>
@@ -201,7 +231,9 @@ export default function ModularPartsPanel({
                 onDragStart={(e) => {
                   e.dataTransfer.setData('application/vrd-chassis', c.id);
                   e.dataTransfer.effectAllowed = 'copy';
+                  useUiStore.getState().setDraggingPart({ category: 'chassis', id: c.id });
                 }}
+                onDragEnd={endDrag}
                 onClick={() => onUpdateBase?.({
                   chassisType: c.chassis.id,
                   shape: c.chassis.meshShape,

@@ -26,9 +26,10 @@ function read(key, fallback) {
 function write(key, value) {
   try {
     localStorage.setItem(key, JSON.stringify(value));
-    return true;
-  } catch {
-    return false;
+    return { ok: true };
+  } catch (err) {
+    const code = err?.name === 'QuotaExceededError' ? 'storage_full' : 'storage_error';
+    return { ok: false, error: code };
   }
 }
 
@@ -67,10 +68,11 @@ export const VirtualRobotDB = {
     const idx = all.findIndex((d) => d.id === entry.id);
     if (idx >= 0) all[idx] = entry;
     else all.unshift(entry);
-    write(KEYS.designs, all.slice(0, 100));
+    const wrote = write(KEYS.designs, all.slice(0, 100));
+    if (!wrote.ok) return { ok: false, error: wrote.error, design: entry };
     this.setCurrentDesign(entry);
     if (isNew) this.incrementStat('designs_created');
-    return entry;
+    return { ok: true, design: entry };
   },
 
   deleteDesign(id) {

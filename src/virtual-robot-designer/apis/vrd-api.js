@@ -20,13 +20,17 @@ export const vrdApi = {
   },
 
   async createDesign(design, userId) {
-    return VirtualRobotDB.saveDesign({ ...DEFAULT_ROBOT_DESIGN, ...design }, userId);
+    const result = VirtualRobotDB.saveDesign({ ...DEFAULT_ROBOT_DESIGN, ...design }, userId);
+    if (!result.ok) throw new Error(result.error || 'save_failed');
+    return result.design;
   },
 
   async updateDesign(id, patch) {
     const existing = await this.getDesign(id);
     if (!existing) throw new Error('Design not found');
-    return VirtualRobotDB.saveDesign({ ...existing, ...patch, id });
+    const result = VirtualRobotDB.saveDesign({ ...existing, ...patch, id });
+    if (!result.ok) throw new Error(result.error || 'save_failed');
+    return result.design;
   },
 
   async deleteDesign(id) {
@@ -75,14 +79,15 @@ export const vrdApi = {
   async remixDesign(id) {
     const original = await this.getDesign(id);
     if (!original) throw new Error('Design not found');
-    const remix = VirtualRobotDB.saveDesign({
+    const result = VirtualRobotDB.saveDesign({
       ...original,
       id: undefined,
       name: `${original.name} (Remix)`,
       is_public: false,
     });
+    if (!result.ok) throw new Error(result.error || 'save_failed');
     VirtualRobotDB.incrementStat('remixes_count');
-    return remix;
+    return result.design;
   },
 };
 

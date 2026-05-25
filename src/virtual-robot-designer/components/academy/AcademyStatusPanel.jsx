@@ -44,6 +44,7 @@ export default function AcademyStatusPanel({
   onCalibrate,
   onReset,
   onSave,
+  onLoad,
 }) {
   const d = migrateDesign(design);
   const asm = migrateAssembly(d);
@@ -136,8 +137,11 @@ export default function AcademyStatusPanel({
         <button type="button" className="bb-action-btn bb-action-btn--danger" onClick={onReset}>
           ↻ Reset Robot
         </button>
-        <button type="button" className="bb-action-btn bb-action-btn--ghost" onClick={onSave}>
+        <button type="button" className="bb-action-btn bb-action-btn--ghost" onClick={onSave} aria-label="Save design">
           💾 Save Design
+        </button>
+        <button type="button" className="bb-action-btn bb-action-btn--ghost" onClick={onLoad} aria-label="Load saved design">
+          📂 Load Design
         </button>
       </div>
     </aside>
