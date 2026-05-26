@@ -1,0 +1,248 @@
+/* Stats Panel */
+
+.stats-panel {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.stats-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #00ff41;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Robot Name Section */
+.robot-name-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.robot-name-input {
+  padding: 10px;
+  border: 2px solid rgba(0, 217, 255, 0.3);
+  border-radius: 6px;
+  background: rgba(0, 217, 255, 0.05);
+  color: #00d9ff;
+  font-size: 12px;
+  font-weight: 600;
+  outline: none;
+  transition: all 0.2s;
+}
+
+.robot-name-input:focus {
+  border-color: #00d9ff;
+  background: rgba(0, 217, 255, 0.15);
+  box-shadow: 0 0 12px rgba(0, 217, 255, 0.2);
+}
+
+.robot-name-input::placeholder {
+  color: #555;
+}
+
+/* Stats Section */
+.stats-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.stats-section h4 {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Stat Bar */
+.stat-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.stat-bar-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 10px;
+}
+
+.stat-label {
+  color: #aaa;
+  font-weight: 600;
+}
+
+.stat-value {
+  color: #00d9ff;
+  font-weight: 700;
+}
+
+.stat-bar-background {
+  height: 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.stat-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease, background-color 0.3s ease;
+}
+
+/* Specs Section */
+.specs-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  background: rgba(0, 217, 255, 0.05);
+  border-radius: 6px;
+  border: 1px solid rgba(0, 217, 255, 0.1);
+}
+
+.specs-section h4 {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.spec-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 10px;
+}
+
+.spec-label {
+  color: #aaa;
+  font-weight: 600;
+}
+
+.spec-value {
+  color: #00d9ff;
+  font-weight: 700;
+}
+
+/* Components Section */
+.components-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  background: rgba(0, 255, 65, 0.05);
+  border-radius: 6px;
+  border: 1px solid rgba(0, 255, 65, 0.1);
+}
+
+.components-section h4 {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.components-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.component-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+  color: #aaa;
+}
+
+.component-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(0, 255, 65, 0.15);
+  color: #00ff41;
+  font-size: 10px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+/* Action Buttons */
+.action-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.action-btn {
+  padding: 10px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #00d9ff 0%, #00ff41 100%);
+  color: #000;
+  border-color: transparent;
+}
+
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(0, 217, 255, 0.4);
+}
+
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.05);
+  color: #aaa;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ddd;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Info Box */
+.info-box {
+  padding: 10px;
+  border-radius: 6px;
+  background: rgba(255, 165, 0, 0.05);
+  border: 1px solid rgba(255, 165, 0, 0.2);
+  font-size: 9px;
+  color: #999;
+  line-height: 1.4;
+}
+
+.info-box p {
+  margin: 0;
+}
+
+.info-box strong {
+  color: #ffa500;
+}

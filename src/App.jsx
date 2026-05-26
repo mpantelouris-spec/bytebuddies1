@@ -39,7 +39,7 @@ import Challenges from './components/Challenges';
 import LevelUpCelebration from './components/LevelUpCelebration';
 import ParentDashboard from './components/ParentDashboard';
 import RobotPanel from './components/RobotPanel';
-const VirtualRobotDesigner = lazy(() => import('./virtual-robot-designer/VirtualRobotDesignerApp.jsx'));
+import RobotDesignerPage from './virtual-robot-designer/RobotDesignerPage.jsx';
 import LandingPage from './components/LandingPage';
 import TeacherDashboard from './components/TeacherDashboard';
 import TeacherHome from './components/TeacherHome';
@@ -52,7 +52,8 @@ import WhitePaper from './components/WhitePaper';
 function AppInner() {
   const [currentPage, setCurrentPage] = useState(() => {
     const hash = window.location.hash.replace('#', '');
-    return hash || 'dashboard';
+    const base = (hash || 'dashboard').split('/')[0].split('?')[0];
+    return base || 'dashboard';
   });
   const [showExport, setShowExport] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
@@ -67,7 +68,8 @@ function AppInner() {
   // Sync React state whenever the hash changes (back/forward/direct navigate)
   useEffect(() => {
     const onHashChange = () => {
-      const page = window.location.hash.replace('#', '') || 'dashboard';
+      const raw = window.location.hash.replace('#', '') || 'dashboard';
+      const page = raw.split('/')[0].split('?')[0] || 'dashboard';
       const oldMode = AppMode.getCurrentMode(currentPage);
       const newMode = AppMode.getCurrentMode(page);
       setCurrentPage(page);
@@ -114,11 +116,7 @@ function AppInner() {
       case 'settings':   return <Settings />;
       case 'challenges': return <Challenges onNavigate={navigate} />;
       case 'parent':     return <ParentDashboard onNavigate={navigate} />;
-      case 'vrd':       return (
-        <Suspense fallback={<div className="page" style={{ padding: 40, textAlign: 'center' }}><p style={{ fontWeight: 700 }}>Loading Virtual Robot Designer…</p></div>}>
-          <VirtualRobotDesigner />
-        </Suspense>
-      );
+      case 'vrd':        return <RobotDesignerPage />;
       case 'robot':      return <RobotPanel onNavigate={navigate} />;
       case 'admin':      return <AdminPanel />;
       case 'missions':   return <MissionMode onNavigate={navigate} />;
