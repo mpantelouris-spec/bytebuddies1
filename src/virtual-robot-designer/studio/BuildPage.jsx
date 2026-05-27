@@ -607,8 +607,13 @@ function LeftPanel({ robotConfig, setRobotConfig, activeRobotId, setActiveRobotI
 }
 
 // ─── Right Panel ────────────────────────────────────────────────────────────
-function RightPanel({ robotConfig, setRobotConfig, onSimulate }) {
+function RightPanel({ robotConfig, setRobotConfig, onSimulate, robotValidation }) {
   const chassis = CHASSIS_DATA.find(c => c.id === robotConfig.chassisId) || CHASSIS_DATA[0];
+
+  // Validation notices (errors + warnings only)
+  const notices = (robotValidation?.results || []).filter(
+    r => r.severity === 'error' || r.severity === 'warning'
+  );
 
   const removeSensor = (id) => setRobotConfig(prev => ({ ...prev, sensors: prev.sensors.filter(s => s !== id) }));
   const removeTool   = (id) => setRobotConfig(prev => ({ ...prev, tools:   prev.tools.filter(t => t !== id)   }));
@@ -653,6 +658,25 @@ function RightPanel({ robotConfig, setRobotConfig, onSimulate }) {
       </div>
 
       <div className="bb-studio-right-scroll">
+        {/* Validation notices */}
+        {notices.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
+            {notices.slice(0, 4).map((n, i) => (
+              <div key={i} style={{
+                display: 'flex', gap: 8, alignItems: 'flex-start',
+                padding: '7px 10px', borderRadius: 8,
+                background: n.severity === 'error' ? 'rgba(239,68,68,0.12)' : 'rgba(249,115,22,0.12)',
+                border: `1px solid ${n.severity === 'error' ? '#ef444444' : '#f9731644'}`,
+                fontSize: 11, lineHeight: 1.4,
+              }}>
+                <span style={{ color: n.severity === 'error' ? '#ef4444' : '#f97316', fontSize: 13, flexShrink: 0 }}>
+                  {n.severity === 'error' ? '✕' : '⚠'}
+                </span>
+                <span style={{ color: n.severity === 'error' ? '#fca5a5' : '#fdba74' }}>{n.message}</span>
+              </div>
+            ))}
+          </div>
+        )}
         {/* Specs card */}
         <div className="bb-studio-specs-card">
           <div className="bb-studio-specs-name">{robotConfig.name || 'My Robot'}</div>
@@ -769,7 +793,7 @@ function RightPanel({ robotConfig, setRobotConfig, onSimulate }) {
 }
 
 // ─── Build Page ─────────────────────────────────────────────────────────────
-export default function BuildPage({ robotConfig, setRobotConfig, onSimulate, customParts = [], onGoCreate }) {
+export default function BuildPage({ robotConfig, setRobotConfig, onSimulate, customParts = [], onGoCreate, robotValidation }) {
   const [activeRobotId, setActiveRobotId] = useState(1);
   const [partsOverlay, setPartsOverlay]   = useState(false);
   const chassis = CHASSIS_DATA.find(c => c.id === robotConfig.chassisId) || CHASSIS_DATA[0];
@@ -860,6 +884,7 @@ export default function BuildPage({ robotConfig, setRobotConfig, onSimulate, cus
         robotConfig={robotConfig}
         setRobotConfig={setRobotConfig}
         onSimulate={onSimulate}
+        robotValidation={robotValidation}
       />
     </div>
   );

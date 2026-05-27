@@ -110,13 +110,15 @@ function applyCodeBlock(block, rs, dt) {
 }
 
 // ─── 3D Sim Canvas ───────────────────────────────────────────────────────────
-function SimCanvas({ robotConfig, running, paused, onProgress, challenge, robotCode = [] }) {
+function SimCanvas({ robotConfig, running, paused, onProgress, onFpsUpdate, challenge, robotCode = [] }) {
   const wrapRef   = useRef(null);
   const sceneRef  = useRef(null);
   const rendRef   = useRef(null);
   const camRef    = useRef(null);
   const robotRef  = useRef(null);
   const rafRef    = useRef(null);
+  // FPS tracking
+  const fpsRef    = useRef({ frames: 0, last: 0, fps: 60 });
   // Auto-mode state
   const stateRef  = useRef({ t: 0, dist: 0, avoided: 0, battery: 100 });
   // Code-driven state
@@ -298,6 +300,16 @@ function SimCanvas({ robotConfig, running, paused, onProgress, challenge, robotC
       const dt = Math.min((now - prev) / 1000, 0.05);
       prev = now;
 
+      // FPS tracking
+      fpsRef.current.frames++;
+      if (now - fpsRef.current.last > 1000) {
+        const newFps = Math.round(fpsRef.current.frames * 1000 / (now - fpsRef.current.last));
+        fpsRef.current.fps = newFps;
+        fpsRef.current.frames = 0;
+        fpsRef.current.last = now;
+        onFpsUpdate?.(newFps);
+      }
+
       if (runRef.current && !pauseRef.current) {
         if (hasCode) {
           // ── CODE-DRIVEN MODE ────────────────────────────────────────────
@@ -351,12 +363,13 @@ function SimCanvas({ robotConfig, running, paused, onProgress, challenge, robotC
             const progress   = Math.min((doneSteps / totalSteps) * 100, 100);
 
             onProgress?.({
-              time:     rs.t,
-              dist:     rs.totalDist,
-              battery:  rs.battery,
-              avoided:  Math.min(Math.floor(rs.totalDist / 2), challenge?.obstacles || 12),
+              time:      rs.t,
+              dist:      rs.totalDist,
+              battery:   rs.battery,
+              avoided:   Math.min(Math.floor(rs.totalDist / 2), challenge?.obstacles || 12),
               progress,
-              done:     rs.done,
+              done:      rs.done,
+              execBlock: codeBlocks[rs.step]?.label || null,
             });
 
             if (rs.done) runRef.current = false;
@@ -558,13 +571,22 @@ function StatsPanel({ running, paused, stats, challenge, onStart, onPause, onSto
 // ─── Main Simulator Page ─────────────────────────────────────────────────────
 const INIT_STATS = { time: 0, dist: 0, battery: 100, avoided: 0, progress: 0 };
 
-export default function SimulatorPage({ robotConfig, robotCode = [] }) {
+export default function SimulatorPage({ robotConfig, robotCode = [], preflight, onFpsUpdate }) {
   const [running, setRunning] = useState(false);
   const [paused,  setPaused]  = useState(false);
   const [stats,   setStats]   = useState(INIT_STATS);
   const [activeChallenge, setActiveChallenge] = useState(CHALLENGES[0]);
+  const [showPreflight, setShowPreflight]     = useState(false);
+  const [fps, setFps]                         = useState(null);
+  const [execBlock, setExecBlock]             = useState(null);
   const simKeyRef = useRef(0);
   const [simKey, setSimKey] = useState(0);
+
+  // Forward FPS up to parent
+  const handleFps = useCallback((f) => {
+    setFps(f);
+    onFpsUpdate?.(f);
+  }, [onFpsUpdate]);
 
   const handleProgress = useCallback((data) => {
     setStats({
@@ -574,22 +596,33 @@ export default function SimulatorPage({ robotConfig, robotCode = [] }) {
       avoided:  data.avoided,
       progress: data.progress,
     });
+    if (data.execBlock !== undefined) setExecBlock(data.execBlock);
     if (data.done) {
       setRunning(false);
       setPaused(false);
+      setExecBlock(null);
     }
   }, []);
 
-  const handleStart = useCallback((challenge) => {
-    if (challenge && challenge.id) {
-      setActiveChallenge(challenge);
-    }
+  const doStart = useCallback((challenge) => {
+    if (challenge && challenge.id) setActiveChallenge(challenge);
     setStats(INIT_STATS);
     simKeyRef.current += 1;
     setSimKey(simKeyRef.current);
     setRunning(true);
     setPaused(false);
+    setExecBlock(null);
+    setShowPreflight(false);
   }, []);
+
+  // Clicking Launch opens preflight, or starts directly if already ok
+  const handleLaunchClick = useCallback((challenge) => {
+    if (preflight) {
+      setShowPreflight(true);
+    } else {
+      doStart(challenge);
+    }
+  }, [preflight, doStart]);
 
   const handlePause = useCallback(() => setPaused(p => !p), []);
 
@@ -599,7 +632,12 @@ export default function SimulatorPage({ robotConfig, robotCode = [] }) {
     setStats(INIT_STATS);
     simKeyRef.current += 1;
     setSimKey(simKeyRef.current);
+    setExecBlock(null);
   }, []);
+
+  const preflightChecks = preflight?.checks || [];
+  const canRun = preflight ? preflight.canRun : true;
+  const hasWarnings = (preflight?.warnings?.length || 0) > 0;
 
   return (
     <div className="bb-studio-sim">
@@ -611,7 +649,7 @@ export default function SimulatorPage({ robotConfig, robotCode = [] }) {
             🏁 {activeChallenge.name}
           </span>
           {!running ? (
-            <button className="bb-studio-vp-btn bb-studio-vp-btn--test" onClick={() => handleStart()}>
+            <button className="bb-studio-vp-btn bb-studio-vp-btn--test" onClick={() => doStart()}>
               ▶ Start Simulation
             </button>
           ) : paused ? (
@@ -635,18 +673,108 @@ export default function SimulatorPage({ robotConfig, robotCode = [] }) {
             running={running}
             paused={paused}
             onProgress={handleProgress}
+            onFpsUpdate={handleFps}
             challenge={activeChallenge}
           />
 
+          {/* FPS monitor — top-left corner when running */}
+          {running && fps !== null && (
+            <div style={{
+              position: 'absolute', top: 8, left: 8,
+              background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)',
+              color: fps >= 50 ? '#22c55e' : fps >= 30 ? '#f97316' : '#ef4444',
+              fontSize: 10, fontWeight: 800, fontFamily: 'monospace',
+              padding: '3px 8px', borderRadius: 6,
+              pointerEvents: 'none',
+            }}>
+              {fps} FPS
+            </div>
+          )}
+
+          {/* Now executing block indicator */}
+          {running && execBlock && (
+            <div style={{
+              position: 'absolute', bottom: 12, left: '50%', transform: 'translateX(-50%)',
+              background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)',
+              color: '#fff', fontSize: 11, fontWeight: 700,
+              padding: '5px 14px', borderRadius: 20,
+              border: '1px solid rgba(124,58,237,0.6)',
+              pointerEvents: 'none',
+              display: 'flex', alignItems: 'center', gap: 6,
+            }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#7c3aed', display: 'inline-block', animation: 'bb-pulse 1s infinite' }} />
+              Running: {execBlock}
+            </div>
+          )}
+
+          {/* Preflight checklist overlay */}
+          {showPreflight && (
+            <div className="bb-studio-sim-overlay" style={{ backdropFilter: 'blur(6px)' }}>
+              <div style={{
+                background: '#0f172a', borderRadius: 16,
+                border: '1px solid rgba(124,58,237,0.5)',
+                padding: '24px 28px', maxWidth: 360, width: '90%',
+              }}>
+                <div style={{ fontSize: 22, marginBottom: 6 }}>🛠 Pre-Flight Check</div>
+                <div style={{ fontSize: 13, color: '#94a3b8', marginBottom: 16 }}>
+                  Making sure your robot is ready to go!
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
+                  {preflightChecks.map((c, i) => (
+                    <div key={i} style={{
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      padding: '8px 12px', borderRadius: 10,
+                      background: c.pass ? 'rgba(34,197,94,0.1)' : c.warn ? 'rgba(249,115,22,0.1)' : 'rgba(239,68,68,0.1)',
+                      border: `1px solid ${c.pass ? '#22c55e' : c.warn ? '#f97316' : '#ef4444'}33`,
+                    }}>
+                      <span style={{ fontSize: 16 }}>{c.pass ? '✅' : c.warn ? '⚠️' : '❌'}</span>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ color: '#fff', fontWeight: 700, fontSize: 12 }}>{c.label}</div>
+                        <div style={{ color: '#94a3b8', fontSize: 10 }}>{c.detail}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button
+                    onClick={() => setShowPreflight(false)}
+                    style={{ flex: 1, padding: '9px 16px', borderRadius: 10, border: '1px solid #334155', background: 'transparent', color: '#94a3b8', fontWeight: 700, cursor: 'pointer', fontSize: 13 }}
+                  >
+                    ← Go Back
+                  </button>
+                  {(canRun || hasWarnings) && (
+                    <button
+                      onClick={() => doStart(activeChallenge)}
+                      style={{
+                        flex: 1, padding: '9px 16px', borderRadius: 10, border: 'none',
+                        background: canRun
+                          ? 'linear-gradient(135deg,#22c55e,#15803d)'
+                          : 'linear-gradient(135deg,#f97316,#c2410c)',
+                        color: '#fff', fontWeight: 900, cursor: 'pointer', fontSize: 13,
+                      }}
+                    >
+                      {canRun ? '▶ Launch!' : '⚠ Launch Anyway'}
+                    </button>
+                  )}
+                  {!canRun && !hasWarnings && (
+                    <div style={{ flex: 1, padding: '9px 16px', borderRadius: 10, background: 'rgba(239,68,68,0.2)', color: '#fca5a5', fontWeight: 700, fontSize: 12, textAlign: 'center' }}>
+                      Fix issues first!
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Start prompt overlay */}
-          {!running && stats.progress === 0 && (
+          {!running && !showPreflight && stats.progress === 0 && (
             <div className="bb-studio-sim-overlay">
               <div className="bb-studio-sim-start-cue">
                 <div className="bb-studio-sim-start-icon">{activeChallenge.icon}</div>
                 <div className="bb-studio-sim-start-title">{activeChallenge.name}</div>
                 <div className="bb-studio-sim-start-sub">{activeChallenge.desc}</div>
                 <button
-                  onClick={() => handleStart()}
+                  onClick={() => handleLaunchClick(activeChallenge)}
                   style={{
                     marginTop: 20, padding: '12px 32px', borderRadius: 12, border: 'none',
                     background: 'linear-gradient(135deg,#00c851,#00a843)', color: '#fff',
@@ -671,7 +799,7 @@ export default function SimulatorPage({ robotConfig, robotCode = [] }) {
                 </div>
                 <div style={{ display: 'flex', gap: 10 }}>
                   <button
-                    onClick={() => handleStart()}
+                    onClick={() => doStart()}
                     style={{ flex: 1, padding: '10px 20px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg,#7c3aed,#4f46e5)', color: '#fff', fontWeight: 800, cursor: 'pointer' }}
                   >
                     🔁 Play Again
@@ -695,7 +823,7 @@ export default function SimulatorPage({ robotConfig, robotCode = [] }) {
         paused={paused}
         stats={stats}
         challenge={activeChallenge}
-        onStart={handleStart}
+        onStart={doStart}
         onPause={handlePause}
         onStop={handleStop}
       />

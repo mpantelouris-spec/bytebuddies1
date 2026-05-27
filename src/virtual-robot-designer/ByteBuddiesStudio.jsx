@@ -3,13 +3,15 @@
  * Root component for the Robot Invention Studio.
  * Handles tab routing and shared robot config state.
  */
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import BuildPage       from './studio/BuildPage.jsx';
 import CodePage        from './studio/CodePage.jsx';
 import SimulatorPage   from './studio/SimulatorPage.jsx';
 import MyRobotsPage    from './studio/MyRobotsPage.jsx';
 import ChallengesPage  from './studio/ChallengesPage.jsx';
 import CustomPartsPage from './studio/CustomPartsPage.jsx';
+import DevDebugPanel   from './studio/DevDebugPanel.jsx';
+import { validateRobot, validateCode, runPreflight } from './services/robotValidator.js';
 import './styles/studio.css';
 
 const CP_LS_KEY = 'bb-studio-custom-parts';
@@ -40,6 +42,36 @@ const DEFAULT_CONFIG = {
   sensors:      ['camera'],
   tools:        [],
 };
+
+// Validation summary badge colors
+const BADGE_STYLE = {
+  ok:      { bg: '#14532d', border: '#22c55e', color: '#86efac', icon: '✓' },
+  warning: { bg: '#431407', border: '#f97316', color: '#fdba74', icon: '⚠' },
+  error:   { bg: '#450a0a', border: '#ef4444', color: '#fca5a5', icon: '✕' },
+};
+
+// ─── Validation Health Badge ────────────────────────────────────────────────
+function HealthBadge({ summary, onClick }) {
+  if (!summary) return null;
+  const style = BADGE_STYLE[summary.level] || BADGE_STYLE.ok;
+  return (
+    <button
+      onClick={onClick}
+      title="Click to see robot health details"
+      style={{
+        display: 'flex', alignItems: 'center', gap: 5,
+        padding: '4px 10px', borderRadius: 12,
+        border: `1px solid ${style.border}`,
+        background: style.bg, color: style.color,
+        fontSize: 11, fontWeight: 700, cursor: 'pointer',
+        transition: 'opacity 0.2s',
+      }}
+    >
+      <span>{style.icon}</span>
+      {summary.label}
+    </button>
+  );
+}
 
 // Pipeline steps shown prominently in header
 const PIPELINE_STEPS = [
@@ -91,7 +123,7 @@ function PipelineBar({ activeTab, onSelect }) {
 }
 
 // ─── Header ────────────────────────────────────────────────────────────────
-function StudioHeader({ activeTab, setActiveTab, robotConfig, userXP }) {
+function StudioHeader({ activeTab, setActiveTab, robotConfig, userXP, robotValidation, onLogoClick }) {
   const tabs = [
     { id: 'challenges', icon: '🏆', label: 'Challenges' },
     { id: 'myrobots',   icon: '🤖', label: 'My Robots' },
@@ -100,14 +132,24 @@ function StudioHeader({ activeTab, setActiveTab, robotConfig, userXP }) {
 
   return (
     <header className="bb-studio-header">
-      {/* Logo */}
-      <div className="bb-studio-logo">
+      {/* Logo — click 5× to open DevTools */}
+      <div
+        className="bb-studio-logo"
+        onClick={onLogoClick}
+        style={{ cursor: 'pointer', userSelect: 'none' }}
+        title="ByteBuddies Studio"
+      >
         <div className="bb-studio-logo-icon">🤖</div>
         <span className="bb-studio-logo-text">ByteBuddies</span>
       </div>
 
       {/* Pipeline (Build → Code → Simulate) */}
       <PipelineBar activeTab={activeTab} onSelect={setActiveTab} />
+
+      {/* Robot health badge */}
+      {robotValidation?.summary && (
+        <HealthBadge summary={robotValidation.summary} />
+      )}
 
       {/* Secondary nav */}
       <nav className="bb-studio-nav">
@@ -146,6 +188,27 @@ export default function ByteBuddiesStudio() {
   const [robotCode, setRobotCode]       = useState(loadRobotCode);
   const [userXP, setUserXP]             = useState(450);
   const [customParts, setCustomParts]   = useState(loadCustomParts);
+  const [devMode, setDevMode]           = useState(false);
+  const [fps, setFps]                   = useState(null);
+  const logoClickCount                  = useRef(0);
+  const logoClickTimer                  = useRef(null);
+
+  // ── Computed validation (live, memoized) ──────────────────────────────────
+  const robotValidation = useMemo(
+    () => validateRobot(robotConfig),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [JSON.stringify(robotConfig)]
+  );
+  const codeValidation = useMemo(
+    () => validateCode(robotCode, robotConfig),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [JSON.stringify(robotCode), JSON.stringify(robotConfig)]
+  );
+  const preflight = useMemo(
+    () => runPreflight(robotConfig, robotCode),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [JSON.stringify(robotConfig), JSON.stringify(robotCode)]
+  );
 
   // Persist robot config to localStorage on every change
   useEffect(() => {
@@ -168,34 +231,35 @@ export default function ByteBuddiesStudio() {
     return () => window.removeEventListener('storage', onStorage);
   }, []);
 
-  // Navigate to Code page (called from Build page)
-  const goToCode = useCallback(() => {
-    setActiveTab('code');
+  // Dev mode: Shift+D keyboard shortcut
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.shiftKey && e.key === 'D') setDevMode(d => !d);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  // Navigate to simulator
-  const goToSimulator = useCallback(() => {
-    setActiveTab('simulator');
+  // Dev mode: 5× logo click
+  const handleLogoClick = useCallback(() => {
+    logoClickCount.current++;
+    clearTimeout(logoClickTimer.current);
+    logoClickTimer.current = setTimeout(() => { logoClickCount.current = 0; }, 2000);
+    if (logoClickCount.current >= 5) {
+      logoClickCount.current = 0;
+      setDevMode(d => !d);
+    }
   }, []);
 
-  // Navigate back to Build with a robot loaded
+  const goToCode      = useCallback(() => setActiveTab('code'), []);
+  const goToSimulator = useCallback(() => setActiveTab('simulator'), []);
+
   const editRobot = useCallback((robot) => {
-    setRobotConfig({
-      ...DEFAULT_CONFIG,
-      name:         robot.name,
-      chassisId:    robot.chassisId,
-      primaryColor: robot.primaryColor,
-      accentColor:  robot.accentColor,
-      sensors:      robot.sensors,
-      tools:        robot.tools,
-    });
+    setRobotConfig({ ...DEFAULT_CONFIG, ...robot });
     setActiveTab('build');
   }, []);
 
-  // Start challenge → switch to simulator
-  const startChallenge = useCallback(() => {
-    setActiveTab('simulator');
-  }, []);
+  const startChallenge = useCallback(() => setActiveTab('simulator'), []);
 
   const renderBody = () => {
     switch (activeTab) {
@@ -207,6 +271,7 @@ export default function ByteBuddiesStudio() {
             onSimulate={goToCode}
             customParts={customParts}
             onGoCreate={() => setActiveTab('create')}
+            robotValidation={robotValidation}
           />
         );
       case 'code':
@@ -216,11 +281,17 @@ export default function ByteBuddiesStudio() {
             robotCode={robotCode}
             setRobotCode={setRobotCode}
             onSimulate={goToSimulator}
+            codeValidation={codeValidation}
           />
         );
       case 'simulator':
         return (
-          <SimulatorPage robotConfig={robotConfig} robotCode={robotCode} />
+          <SimulatorPage
+            robotConfig={robotConfig}
+            robotCode={robotCode}
+            preflight={preflight}
+            onFpsUpdate={setFps}
+          />
         );
       case 'myrobots':
         return (
@@ -231,16 +302,9 @@ export default function ByteBuddiesStudio() {
           />
         );
       case 'challenges':
-        return (
-          <ChallengesPage onStartChallenge={startChallenge} />
-        );
+        return <ChallengesPage onStartChallenge={startChallenge} />;
       case 'create':
-        return (
-          <CustomPartsPage
-            customParts={customParts}
-            setCustomParts={setCustomParts}
-          />
-        );
+        return <CustomPartsPage customParts={customParts} setCustomParts={setCustomParts} />;
       default:
         return null;
     }
@@ -253,8 +317,23 @@ export default function ByteBuddiesStudio() {
         setActiveTab={setActiveTab}
         robotConfig={robotConfig}
         userXP={userXP}
+        robotValidation={robotValidation}
+        onLogoClick={handleLogoClick}
       />
       {renderBody()}
+
+      {/* Developer debug panel — hidden by default, Shift+D or logo×5 */}
+      {devMode && (
+        <DevDebugPanel
+          robotConfig={robotConfig}
+          robotCode={robotCode}
+          robotValidation={robotValidation}
+          codeValidation={codeValidation}
+          preflight={preflight}
+          fps={fps}
+          onClose={() => setDevMode(false)}
+        />
+      )}
     </div>
   );
 }

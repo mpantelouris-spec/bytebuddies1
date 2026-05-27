@@ -142,7 +142,8 @@ function RobotPreview({ robotConfig }) {
 }
 
 // ─── Block Instance (in workspace) ───────────────────────────────────────────
-function WorkspaceBlock({ block, index, onDelete, onMoveUp, onMoveDown, onParamChange, isFirst, isLast }) {
+function WorkspaceBlock({ block, index, onDelete, onMoveUp, onMoveDown, onParamChange, isFirst, isLast, errorMsg }) {
+  const hasError = !!errorMsg;
   return (
     <div style={{
       display: 'flex',
@@ -155,7 +156,7 @@ function WorkspaceBlock({ block, index, onDelete, onMoveUp, onMoveDown, onParamC
         width: 24,
         height: 24,
         borderRadius: '50%',
-        background: block.color,
+        background: hasError ? '#ef4444' : block.color,
         color: '#fff',
         fontSize: 11,
         fontWeight: 800,
@@ -165,15 +166,17 @@ function WorkspaceBlock({ block, index, onDelete, onMoveUp, onMoveDown, onParamC
         flexShrink: 0,
         marginTop: 6,
       }}>
-        {index + 1}
+        {hasError ? '!' : index + 1}
       </div>
 
       {/* Block card */}
       <div style={{
         flex: 1,
-        background: `linear-gradient(135deg, ${block.color}22 0%, ${block.darkColor}15 100%)`,
-        border: `2px solid ${block.color}55`,
-        borderLeft: `4px solid ${block.color}`,
+        background: hasError
+          ? 'linear-gradient(135deg, rgba(239,68,68,0.15) 0%, rgba(239,68,68,0.08) 100%)'
+          : `linear-gradient(135deg, ${block.color}22 0%, ${block.darkColor}15 100%)`,
+        border: hasError ? '2px solid #ef4444' : `2px solid ${block.color}55`,
+        borderLeft: hasError ? '4px solid #ef4444' : `4px solid ${block.color}`,
         borderRadius: 10,
         padding: '8px 12px',
         display: 'flex',
@@ -183,7 +186,26 @@ function WorkspaceBlock({ block, index, onDelete, onMoveUp, onMoveDown, onParamC
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 18 }}>{block.icon}</span>
           <span style={{ fontWeight: 700, fontSize: 13, color: '#fff' }}>{block.label}</span>
+          {hasError && (
+            <span style={{
+              background: '#ef4444', color: '#fff',
+              fontSize: 9, fontWeight: 800, padding: '2px 6px', borderRadius: 8,
+              marginLeft: 'auto',
+            }}>⚠ NEEDS FIX</span>
+          )}
         </div>
+
+        {/* Error message */}
+        {hasError && (
+          <div style={{
+            background: 'rgba(239,68,68,0.15)',
+            border: '1px solid rgba(239,68,68,0.4)',
+            borderRadius: 6, padding: '5px 8px',
+            fontSize: 11, color: '#fca5a5', lineHeight: 1.4,
+          }}>
+            {errorMsg}
+          </div>
+        )}
 
         {/* Parameters */}
         {block.params?.map(param => (
@@ -251,8 +273,24 @@ function btnStyle(bg) {
 let _instanceId = 0;
 function nextId() { return ++_instanceId; }
 
-export default function CodePage({ robotConfig, robotCode, setRobotCode, onSimulate }) {
+export default function CodePage({ robotConfig, robotCode, setRobotCode, onSimulate, codeValidation }) {
   const [activeCategory, setActiveCategory] = useState('move');
+
+  // Build a map from instanceId → error message for fast lookup
+  const blockErrorMap = useMemo(() => {
+    const map = {};
+    if (codeValidation?.results) {
+      for (const r of codeValidation.results) {
+        if (r.blockId !== undefined && r.severity === 'error') {
+          map[r.blockId] = r.message;
+        }
+      }
+    }
+    return map;
+  }, [codeValidation]);
+
+  const codeErrors   = (codeValidation?.results || []).filter(r => r.severity === 'error');
+  const codeWarnings = (codeValidation?.results || []).filter(r => r.severity === 'warning');
 
   // Blocks unlocked by this robot's parts
   const unlockedBlocks = useMemo(
@@ -444,6 +482,24 @@ export default function CodePage({ robotConfig, robotCode, setRobotCode, onSimul
               Add blocks below. Click ▶️ to run!
             </div>
           </div>
+
+          {/* Validation summary */}
+          {robotCode.length > 0 && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '4px 10px', borderRadius: 8,
+              background: codeErrors.length > 0 ? 'rgba(239,68,68,0.15)' : codeWarnings.length > 0 ? 'rgba(249,115,22,0.15)' : 'rgba(34,197,94,0.15)',
+              border: `1px solid ${codeErrors.length > 0 ? '#ef4444' : codeWarnings.length > 0 ? '#f97316' : '#22c55e'}44`,
+              fontSize: 11, fontWeight: 700,
+              color: codeErrors.length > 0 ? '#fca5a5' : codeWarnings.length > 0 ? '#fdba74' : '#86efac',
+            }}>
+              {codeErrors.length > 0
+                ? `⚠ ${codeErrors.length} block issue${codeErrors.length > 1 ? 's' : ''} to fix`
+                : codeWarnings.length > 0
+                ? `💡 ${codeWarnings.length} tip${codeWarnings.length > 1 ? 's' : ''}`
+                : '✓ Code looks good!'}
+            </div>
+          )}
           <div style={{ display: 'flex', gap: 8 }}>
             {robotCode.length > 0 && (
               <button
@@ -529,6 +585,7 @@ export default function CodePage({ robotConfig, robotCode, setRobotCode, onSimul
                   onParamChange={onParamChange}
                   isFirst={i === 0}
                   isLast={i === robotCode.length - 1}
+                  errorMsg={blockErrorMap[block.instanceId]}
                 />
               ))}
 
