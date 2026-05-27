@@ -7,6 +7,7 @@ import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import BuildPage       from './studio/BuildPage.jsx';
 import CodePage        from './studio/CodePage.jsx';
 import SimulatorPage   from './studio/SimulatorPage.jsx';
+import LiveLabPage     from './studio/LiveLabPage.jsx';
 import MyRobotsPage    from './studio/MyRobotsPage.jsx';
 import ChallengesPage  from './studio/ChallengesPage.jsx';
 import CustomPartsPage from './studio/CustomPartsPage.jsx';
@@ -75,9 +76,8 @@ function HealthBadge({ summary, onClick }) {
 
 // Pipeline steps shown prominently in header
 const PIPELINE_STEPS = [
-  { id: 'build',     icon: '🔧', label: 'Build',    step: 1 },
-  { id: 'code',      icon: '📝', label: 'Code',     step: 2 },
-  { id: 'simulator', icon: '▶️', label: 'Simulate', step: 3 },
+  { id: 'build', icon: '🔧', label: 'Build', step: 1 },
+  { id: 'lab',   icon: '🚀', label: 'Code + Simulate', step: 2 },
 ];
 
 // ─── Pipeline Bar ──────────────────────────────────────────────────────────
@@ -169,7 +169,7 @@ function StudioHeader({ activeTab, setActiveTab, robotConfig, userXP, robotValid
       <div className="bb-studio-user">
         <div className="bb-studio-status">
           <span className="bb-studio-status-dot" />
-          {activeTab === 'simulator' ? 'Simulating' : activeTab === 'code' ? 'Coding' : 'Building'}
+          {activeTab === 'simulator' || activeTab === 'lab' || activeTab === 'code' ? 'Live Lab' : activeTab === 'build' ? 'Building' : 'Exploring'}
         </div>
         <div className="bb-studio-xp">
           <span>⭐</span>
@@ -251,15 +251,15 @@ export default function ByteBuddiesStudio() {
     }
   }, []);
 
-  const goToCode      = useCallback(() => setActiveTab('code'), []);
-  const goToSimulator = useCallback(() => setActiveTab('simulator'), []);
+  const goToCode      = useCallback(() => setActiveTab('lab'), []);
+  const goToSimulator = useCallback(() => setActiveTab('lab'), []);
 
   const editRobot = useCallback((robot) => {
     setRobotConfig({ ...DEFAULT_CONFIG, ...robot });
     setActiveTab('build');
   }, []);
 
-  const startChallenge = useCallback(() => setActiveTab('simulator'), []);
+  const startChallenge = useCallback(() => setActiveTab('lab'), []);
 
   const renderBody = () => {
     switch (activeTab) {
@@ -274,21 +274,14 @@ export default function ByteBuddiesStudio() {
             robotValidation={robotValidation}
           />
         );
+      case 'lab':
       case 'code':
+      case 'simulator':
         return (
-          <CodePage
+          <LiveLabPage
             robotConfig={robotConfig}
             robotCode={robotCode}
             setRobotCode={setRobotCode}
-            onSimulate={goToSimulator}
-            codeValidation={codeValidation}
-          />
-        );
-      case 'simulator':
-        return (
-          <SimulatorPage
-            robotConfig={robotConfig}
-            robotCode={robotCode}
             preflight={preflight}
             onFpsUpdate={setFps}
           />
