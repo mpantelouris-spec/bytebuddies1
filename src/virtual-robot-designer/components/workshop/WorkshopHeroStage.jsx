@@ -3,12 +3,11 @@
  */
 import React, { Suspense, useRef, useMemo, useState, useCallback } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { ContactShadows } from '@react-three/drei';
+import PremiumVisualRig from '../common/PremiumVisualRig.jsx';
 import * as THREE from 'three';
 import RobotAssemblyRoot from './RobotAssemblyRoot.jsx';
 import WorkshopStage3D from './WorkshopStage3D.jsx';
 import WorkshopBackdrop3D from './WorkshopBackdrop3D.jsx';
-import WorkshopSceneLighting from './WorkshopSceneLighting.jsx';
 import WorkshopCameraRig from './WorkshopCameraRig.jsx';
 import SnapParticles from '../common/SnapParticles.jsx';
 import { migrateDesign } from '../../config.js';
@@ -29,17 +28,8 @@ function WorkshopScene(props) {
     <>
       <WorkshopBackdrop3D />
       <WorkshopStage3D />
-      <WorkshopSceneLighting />
+      <PremiumVisualRig variant="workshop" bloomIntensity={0.28} />
       <RobotAssemblyRoot {...props} />
-      <ContactShadows
-        position={[0, PLATFORM.topY + 0.002, 0]}
-        opacity={0.45}
-        scale={8}
-        blur={2.2}
-        far={4.5}
-        color="#64748b"
-        frames={1}
-      />
       <WorkshopCameraRig
         controlsRef={props.controlsRef}
         displayScale={displayScale}
@@ -110,7 +100,7 @@ export default function WorkshopHeroStage({
 
       {showDrag && (
         <div className="iw-drop-hint" role="status">
-          Drop on a <span className="iw-drop-valid">green</span> socket
+          Drag over a <span className="iw-drop-valid">green</span> socket on the robot · release to snap
         </div>
       )}
 
@@ -129,16 +119,16 @@ export default function WorkshopHeroStage({
         className="iw-hero-canvas"
         shadows
         dpr={[1, 1.75]}
-        camera={{ position: [0, 0.9, 2.4], fov: 42, near: 0.15, far: 50 }}
+        camera={{ position: [0, 1.2, 3.5], fov: 42, near: 0.15, far: 80 }}
         gl={{
           antialias: true,
           toneMapping: THREE.ACESFilmicToneMapping,
-          toneMappingExposure: 1.02,
+          toneMappingExposure: 1.42,
           outputColorSpace: THREE.SRGBColorSpace,
         }}
       >
-        <color attach="background" args={['#eef2f7']} />
-        <fog attach="fog" args={['#eef2f7', 16, 36]} />
+        <color attach="background" args={['#06090f']} />
+        <fog attach="fog" args={['#06090f', 22, 55]} />
         <Suspense fallback={null}>
           <WorkshopScene
             design={design}

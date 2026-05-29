@@ -9,6 +9,7 @@ import { slotAcceptsPart } from '../../data/assembly-parts.js';
 import { migrateAssembly } from '../../services/assembly-service.js';
 import { findFirstOpenSlot } from '../../utils/build-slots.js';
 import { useUiStore } from '../../store/uiStore.js';
+import WorkshopCustomizePanel from './WorkshopCustomizePanel.jsx';
 
 function dragPayload(e, payload) {
   e.dataTransfer.setData('application/vrd-part', JSON.stringify({ type: 'part', ...payload }));
@@ -38,7 +39,9 @@ function PartChip({ part, mounted, canUse, onPick }) {
         }
       }}
       onDragEnd={endDrag}
-      onClick={() => !mounted && canUse && onPick?.(part)}
+      onClick={() => {
+        if (isChassis || (!mounted && canUse)) onPick?.(part);
+      }}
       whileHover={canUse && !mounted ? { scale: 1.06, y: -2 } : undefined}
       whileTap={canUse && !mounted ? { scale: 0.94 } : undefined}
       title={mounted ? 'Already on your robot' : `Drag onto robot — ${label}`}
@@ -57,6 +60,7 @@ export default function WorkshopPartsPalette({
   onMountPart,
   onUpdateBase,
   onSetBuildMode,
+  onSetWheelCount,
   buildMode,
 }) {
   const [zone, setZone] = useState('body');
@@ -118,6 +122,15 @@ export default function WorkshopPartsPalette({
       </div>
 
       <p className="iw-zone-hint">{activeZone?.hint}</p>
+
+      {zone === 'body' && (
+        <WorkshopCustomizePanel
+          design={design}
+          onUpdateBase={onUpdateBase}
+          onMountPart={onMountPart}
+          onSetWheelCount={onSetWheelCount}
+        />
+      )}
 
       <div className="iw-parts-scroll">
         <div className="iw-parts-grid">

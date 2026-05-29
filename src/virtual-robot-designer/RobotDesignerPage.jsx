@@ -64,38 +64,43 @@ export default function RobotDesignerPage() {
   }, []);
 
   return (
-    <div className="robot-designer-page">
-      {/* Header */}
-      <div className="vrd-header">
-        <div className="vrd-header-title">
-          <span className="vrd-header-icon">🤖</span>
-          <div>
-            <h1>Virtual Robot Designer</h1>
-            <p>Design incredible robots, test them in simulation, generate code</p>
-          </div>
+    // vrd-designer sets the 3-column CSS grid defined in robot-designer.css
+    // --vrd-bottom-h:0 removes the empty bottom row
+    <div className="vrd-designer" style={{ '--vrd-bottom-h': '0px' }}>
+
+      {/* Header — grid-area: header */}
+      <div className="vrd-designer-header" style={{
+        display: 'flex', alignItems: 'center', gap: 12,
+        padding: '0 24px', background: '#1a1a2e',
+        borderBottom: '1px solid rgba(0,217,255,0.15)',
+      }}>
+        <span style={{ fontSize: 28 }}>🤖</span>
+        <div>
+          <h1 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#fff' }}>Virtual Robot Designer</h1>
+          <p style={{ margin: 0, fontSize: 12, color: '#64748b' }}>Design robots · test in simulation · generate code</p>
         </div>
       </div>
 
-      {/* Main Layout */}
-      <div className="vrd-main-layout">
-        
-        {/* LEFT: Parts Library */}
-        <div className="vrd-left-panel">
-          <PartsLibrary 
+      {/* vrd-designer-body uses display:contents so children go straight into the grid */}
+      <div className="vrd-designer-body">
+
+        {/* LEFT — grid-area: left */}
+        <div className="vrd-designer-left">
+          <PartsLibrary
             robotConfig={robotConfig}
             updateConfig={updateConfig}
             onReset={resetRobot}
           />
         </div>
 
-        {/* CENTER: 3D Viewer */}
-        <div className="vrd-center-viewport">
+        {/* CENTER — grid-area: center */}
+        <div className="vrd-designer-center">
           <RobotViewer3D robotConfig={robotConfig} />
         </div>
 
-        {/* RIGHT: Stats Panel */}
-        <div className="vrd-right-panel">
-          <StatsPanel 
+        {/* RIGHT — grid-area: right */}
+        <div className="vrd-designer-right">
+          <StatsPanel
             robotConfig={robotConfig}
             onNameChange={(name) => updateConfig({ name })}
           />

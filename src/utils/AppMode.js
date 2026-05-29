@@ -30,7 +30,8 @@ export class AppMode {
    * Maps page identifier to mode constant
    */
   static getCurrentMode(page) {
-    const p = String(page || window.location.hash.replace('#', '') || 'dashboard').toLowerCase();
+    const raw = String(page || window.location.hash.replace('#', '') || 'dashboard').toLowerCase();
+    const p = raw.split('/')[0].split('?')[0];
 
     switch (p) {
       case 'gamebuilder':

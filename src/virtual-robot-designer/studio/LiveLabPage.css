@@ -1,0 +1,228 @@
+/* ByteBuddies — Live Lab Blockly Block Shapes */
+
+/* ─── Base Stack Block ─── */
+.bblock {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 14px 9px 12px;
+  margin-bottom: 10px;
+  border-radius: 5px;
+  user-select: none;
+  overflow: visible;
+  min-height: 44px;
+  cursor: grab;
+  transition: filter .12s, transform .1s;
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  box-shadow: 0 3px 0 var(--bb-shadow, rgba(0,0,0,.45)), inset 0 1px 0 rgba(255,255,255,.1);
+  border: none;
+  outline: none;
+  text-align: left;
+  width: 100%;
+  box-sizing: border-box;
+}
+.bblock:hover { filter: brightness(1.14); transform: translateY(-1px); }
+.bblock.prog-block { cursor: default; margin-bottom: 0; }
+.bblock.prog-block:hover { filter: none; transform: none; }
+
+/* Bottom connector tab */
+.bblock::after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 18px;
+  width: 26px;
+  height: 9px;
+  background: var(--bb-tab, rgba(0,0,0,.35));
+  border-radius: 0 0 6px 6px;
+  z-index: 3;
+}
+/* Top socket notch */
+.bblock::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 18px;
+  width: 26px;
+  height: 4px;
+  background: rgba(0,0,0,.3);
+  border-radius: 0 0 3px 3px;
+  z-index: 3;
+}
+
+/* ─── Hat Block (events — rounded top, no socket) ─── */
+.bblock.bblock-hat {
+  border-radius: 18px 18px 5px 5px;
+  padding-top: 14px;
+}
+.bblock.bblock-hat::before { display: none; }
+
+/* ─── Boolean Hexagon ─── */
+.bblock.bblock-bool {
+  clip-path: polygon(10px 0%, calc(100% - 10px) 0%, 100% 50%, calc(100% - 10px) 100%, 10px 100%, 0% 50%);
+  padding: 6px 20px 6px 16px;
+  min-height: 36px;
+  border-radius: 0;
+}
+.bblock.bblock-bool::before, .bblock.bblock-bool::after { display: none; }
+
+/* ─── C-Block wrapper (loops / if) ─── */
+.bblock-c-wrap {
+  position: relative;
+  margin-bottom: 10px;
+  overflow: visible;
+}
+.bblock-c-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 14px;
+  min-height: 44px;
+  border-radius: 5px 5px 0 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.1);
+  position: relative;
+  overflow: visible;
+}
+.bblock-c-top::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 18px;
+  width: 26px; height: 4px;
+  background: rgba(0,0,0,.3);
+  border-radius: 0 0 3px 3px;
+}
+.bblock-c-slot {
+  margin-left: 26px;
+  min-height: 38px;
+  border-left: 6px solid var(--bb-tab, rgba(0,0,0,.35));
+  background: rgba(0,0,0,.16);
+  padding: 4px 4px 4px 2px;
+}
+.bblock-c-bottom {
+  height: 20px;
+  border-radius: 0 0 5px 5px;
+  position: relative;
+  overflow: visible;
+}
+.bblock-c-bottom::after {
+  content: '';
+  position: absolute;
+  bottom: -8px; left: 18px;
+  width: 26px; height: 9px;
+  background: var(--bb-tab, rgba(0,0,0,.35));
+  border-radius: 0 0 6px 6px;
+  z-index: 3;
+}
+
+/* ─── Active executing block ─── */
+.bblock-active {
+  animation: bbPulse .55s ease-in-out infinite alternate !important;
+  filter: brightness(1.25) !important;
+  z-index: 10 !important;
+}
+@keyframes bbPulse {
+  from { box-shadow: 0 0 0 2px rgba(255,255,255,.55), 0 0 10px rgba(255,255,255,.25), 0 3px 0 rgba(0,0,0,.45); }
+  to   { box-shadow: 0 0 0 4px rgba(255,255,255,1.0), 0 0 24px rgba(255,255,255,.7),  0 3px 0 rgba(0,0,0,.45); }
+}
+.bblock-c-top.bblock-active {
+  animation: bbPulse .55s ease-in-out infinite alternate !important;
+  filter: brightness(1.25) !important;
+}
+
+/* ─── Slide-in animation ─── */
+@keyframes bbSlideIn {
+  from { opacity: 0; transform: translateX(-10px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.bblock-new { animation: bbSlideIn .2s ease-out; }
+
+/* ─── Category colours ─── */
+.bb-move    { background: #1565c0; --bb-tab: #0d47a1; --bb-shadow: #07205e; }
+.bb-sense   { background: #2e7d32; --bb-tab: #1b5e20; --bb-shadow: #0d3a11; }
+.bb-control { background: #e65100; --bb-tab: #bf360c; --bb-shadow: #7c1f00; }
+.bb-ai      { background: #6a1b9a; --bb-tab: #4a148c; --bb-shadow: #2d0a5a; }
+.bb-tools   { background: #880e4f; --bb-tab: #560027; --bb-shadow: #380016; }
+.bb-lights  { background: #00695c; --bb-tab: #004d40; --bb-shadow: #002820; }
+
+/* ─── Locked block ─── */
+.bblock-locked { opacity: .28 !important; cursor: not-allowed !important; }
+.bblock-locked:hover { filter: none !important; transform: none !important; }
+
+/* ─── Scrollbar ─── */
+.ll-scroll::-webkit-scrollbar { width: 4px; }
+.ll-scroll::-webkit-scrollbar-track { background: transparent; }
+.ll-scroll::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
+.ll-scroll::-webkit-scrollbar-thumb:hover { background: #3d4652; }
+
+/* ─── Sys bar ─── */
+.sys-bar-track { height: 7px; background: #21262d; border-radius: 4px; overflow: hidden; }
+.sys-bar-fill  { height: 100%; border-radius: 4px; transition: width .4s ease; }
+
+/* ─── Sensor ping ─── */
+@keyframes sPing {
+  0%   { opacity: .8; transform: scale(1); }
+  100% { opacity: 0;  transform: scale(2.3); }
+}
+.sensor-live { position: relative; }
+.sensor-live::after {
+  content: '';
+  position: absolute; inset: 0; border-radius: inherit;
+  background: currentColor; opacity: .35;
+  animation: sPing .8s ease-out infinite;
+}
+
+/* ─── Category tab button ─── */
+.ll-cat-tab {
+  flex: 1;
+  padding: 6px 1px;
+  border: none;
+  border-bottom: 3px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  transition: all .14s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  font-size: 9px;
+  font-weight: 700;
+  color: #6b7280;
+  line-height: 1.2;
+}
+.ll-cat-tab:hover { color: #9ca3af; background: rgba(255,255,255,.03); }
+.ll-cat-tab.ll-active { color: var(--cat-color, #fff); border-bottom-color: var(--cat-color, #fff); background: rgba(255,255,255,.04); }
+.ll-cat-tab .cat-ico { font-size: 14px; }
+
+/* ─── Drag-over workspace highlight ─── */
+.ll-drop-zone.drag-over {
+  background: rgba(124,58,237,.12) !important;
+  border: 2px dashed rgba(124,58,237,.6) !important;
+}
+
+/* ─── Executing block highlight (Blockly SVG <g> root — filter works on SVG) ─── */
+.bb-exec-block {
+  animation: bbExecPulse 0.48s ease-in-out infinite alternate !important;
+}
+@keyframes bbExecPulse {
+  from { filter: brightness(1.3) drop-shadow(0 0 5px rgba(255,220,50,0.85)); }
+  to   { filter: brightness(1.6) drop-shadow(0 0 16px rgba(255,220,50,1.0)) drop-shadow(0 0 6px rgba(255,255,255,0.55)); }
+}
+
+/* ─── Blockly workspace dark scrollbar ─── */
+.blocklyScrollbarKnob { fill: #30363d !important; }
+.blocklyScrollbarBackground { fill: #161b22 !important; }
+
+/* ─── Blockly toolbox polish ─── */
+.blocklyToolboxCategory { border-radius: 6px; }
+.blocklyToolboxDiv { background: #0d1117 !important; border-right: 1px solid #21262d !important; }
+.blocklyFlyout { fill: #161b22 !important; }
+.blocklyFlyoutBackground { fill: #161b22 !important; opacity: 1 !important; }
+
+/* ─── Blockly workspace background ─── */
+.blocklyMainBackground { fill: #0d1117 !important; }

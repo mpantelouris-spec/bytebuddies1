@@ -7,13 +7,36 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import * as THREE from 'three';
 import {
   CHASSIS_DATA, SENSORS_DATA, TOOLS_DATA, POWER_DATA, HEADS_DATA, ARMS_DATA, LIGHTS_DATA,
+  AI_DATA, COMM_DATA, STRUCTURAL_DATA, DECO_DATA, LEGO_DATA,
   BLOCKS_DATA, SAMPLE_ROBOTS, buildRobotModel,
 } from '../services/studio-robot-builder.js';
 
-// ─── Colour palette ────────────────────────────────────────────────────────
-const PALETTE = [
+// ─── Colour palettes ────────────────────────────────────────────────────────
+const PALETTE_CLASSIC = [
   '#FF3333', '#FF8C00', '#FFD700', '#00C851', '#1E90FF', '#9B59B6',
-  '#FFFFFF', '#CCCCCC', '#888888', '#333333', '#00D9FF', '#FF69B4',
+  '#FF69B4', '#00D9FF', '#FFFFFF', '#CCCCCC', '#888888', '#333333',
+];
+const PALETTE_METALLIC = [
+  '#C0C0C0', '#FFD700', '#CD7F32', '#B87333', '#E8E8E8', '#A8A9AD',
+  '#B9A44C', '#8B8B8B', '#4A4A4A', '#2C2C2C', '#708090', '#36454F',
+];
+const PALETTE_NEON = [
+  '#39FF14', '#FF1493', '#00FFFF', '#FF6600', '#BF00FF', '#FFFF00',
+  '#FF0090', '#00FF9F', '#FF4500', '#4D4DFF', '#FF3366', '#00E5FF',
+];
+const PALETTE_DARK = [
+  '#0d0d1a', '#1a1a2e', '#16213e', '#0f3460', '#1B1B2F', '#2C2C54',
+  '#162032', '#1a2744', '#2d1b69', '#3d0000', '#002200', '#1a0a00',
+];
+const PALETTE = [...PALETTE_CLASSIC];
+
+const WHEEL_COLORS = [
+  '#1a1a1a', '#2a2a2a', '#3d3d3d', '#555555', '#777777', '#AAAAAA',
+  '#CD7F32', '#FFD700', '#FF3333', '#1E90FF', '#00C851', '#9B59B6',
+];
+const LED_COLORS = [
+  '#00D9FF', '#FFFFFF', '#FF3333', '#00C851', '#FF8C00', '#9B59B6',
+  '#39FF14', '#FF1493', '#4D4DFF', '#FF6600', '#FFFF00', '#BF00FF',
 ];
 
 // ─── Part descriptions & accent colors ────────────────────────────────────
@@ -70,14 +93,19 @@ const MOVEMENT_OPTS = [
 ];
 
 const CATEGORIES = [
-  { id: 'body',     label: 'Body',     icon: '📦' },
-  { id: 'movement', label: 'Movement', icon: '⚙️' },
-  { id: 'heads',    label: 'Heads',    icon: '🤖' },
-  { id: 'sensors',  label: 'Sensors',  icon: '📡' },
-  { id: 'arms',     label: 'Arms',     icon: '🦾' },
-  { id: 'tools',    label: 'Tools',    icon: '🔧' },
-  { id: 'power',    label: 'Power',    icon: '🔋' },
-  { id: 'lights',   label: 'Lights',   icon: '💡' },
+  { id: 'body',       label: 'Body',       icon: '📦' },
+  { id: 'movement',   label: 'Movement',   icon: '⚙️' },
+  { id: 'heads',      label: 'Heads',      icon: '🤖' },
+  { id: 'sensors',    label: 'Sensors',    icon: '📡' },
+  { id: 'arms',       label: 'Arms',       icon: '🦾' },
+  { id: 'tools',      label: 'Tools',      icon: '🔧' },
+  { id: 'power',      label: 'Power',      icon: '🔋' },
+  { id: 'lights',     label: 'Lights',     icon: '💡' },
+  { id: 'ai',         label: 'AI Brain',   icon: '🧠' },
+  { id: 'comm',       label: 'Comms',      icon: '📶' },
+  { id: 'structural', label: 'Armor',      icon: '🛡️' },
+  { id: 'deco',       label: 'Decor',      icon: '🎨' },
+  { id: 'lego',       label: 'LEGO',       icon: '🧱' },
 ];
 
 // ─── Rich part tile ────────────────────────────────────────────────────────
@@ -130,7 +158,8 @@ function RobotCanvas({ robotConfig, onRobotClick }) {
   const sceneRef = useRef(null);
   const camRef   = useRef(null);
   const rendRef  = useRef(null);
-  const robotRef = useRef(null);
+  const robotRef = useRef(null);   // the raw robot model
+  const pivotRef = useRef(null);   // wrapper group for orbit rotation
   const rafRef   = useRef(null);
   const roRef    = useRef(null);
 
@@ -148,29 +177,54 @@ function RobotCanvas({ robotConfig, onRobotClick }) {
     scene.fog = new THREE.Fog(0xf0f2f8, 22, 50);
     sceneRef.current = scene;
 
+    // ── Environment map for metallic reflections ─────────────────────────
+    const envCanvas = document.createElement('canvas');
+    envCanvas.width = 512; envCanvas.height = 256;
+    const envCtx = envCanvas.getContext('2d');
+    const envGrad = envCtx.createLinearGradient(0, 0, 0, 256);
+    envGrad.addColorStop(0.0, '#a0b8e0');
+    envGrad.addColorStop(0.35, '#d8e8ff');
+    envGrad.addColorStop(0.5, '#f4f6ff');
+    envGrad.addColorStop(0.65, '#d0d8ec');
+    envGrad.addColorStop(1.0, '#889aae');
+    envCtx.fillStyle = envGrad; envCtx.fillRect(0, 0, 512, 256);
+    // Studio ceiling panels
+    envCtx.strokeStyle = 'rgba(255,255,255,0.08)'; envCtx.lineWidth = 1;
+    for (let x = 0; x < 512; x += 64) {
+      envCtx.beginPath(); envCtx.moveTo(x, 0); envCtx.lineTo(x, 110); envCtx.stroke();
+    }
+    // Bright horizon band
+    envCtx.fillStyle = 'rgba(255,255,255,0.28)';
+    envCtx.fillRect(0, 108, 512, 40);
+    const envTex = new THREE.CanvasTexture(envCanvas);
+    envTex.mapping = THREE.EquirectangularReflectionMapping;
+    scene.environment = envTex;
+
     // Camera
     const camera = new THREE.PerspectiveCamera(46, W / H, 0.1, 80);
     camera.position.set(2.4, 2.0, 3.6);
     camera.lookAt(0, 0.4, 0);
     camRef.current = camera;
 
-    // Renderer
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    // Renderer — high quality settings
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
     renderer.setSize(W, H);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.0;
+    renderer.toneMappingExposure = 1.15;
+    renderer.outputColorSpace = THREE.SRGBColorSpace || 'srgb';
     el.appendChild(renderer.domElement);
     rendRef.current = renderer;
 
-    // ── Lights: bright studio setup ─────────────────────────────────────────
-    scene.add(new THREE.AmbientLight(0xffffff, 0.9));
-    const hemi = new THREE.HemisphereLight(0xffffff, 0xd8e0f0, 0.6);
+    // ── Lights: professional studio 3-point lighting ──────────────────────
+    scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+    const hemi = new THREE.HemisphereLight(0xd0e8ff, 0xd8e0f0, 0.5);
     scene.add(hemi);
 
-    const sun = new THREE.DirectionalLight(0xfff8f0, 1.4);
+    // Key light (main dramatic light from upper front-right)
+    const sun = new THREE.DirectionalLight(0xfff4e0, 1.8);
     sun.position.set(6, 10, 8);
     sun.castShadow = true;
     sun.shadow.mapSize.set(2048, 2048);
@@ -179,14 +233,20 @@ function RobotCanvas({ robotConfig, onRobotClick }) {
     sun.shadow.bias = -0.0002;
     scene.add(sun);
 
-    const fill = new THREE.DirectionalLight(0xd0e8ff, 0.5);
-    fill.position.set(-5, 4, -3);
+    // Fill light (softer, from left)
+    const fill = new THREE.DirectionalLight(0xc8e0ff, 0.6);
+    fill.position.set(-6, 5, -3);
     scene.add(fill);
 
-    // Rim / accent lights (soft, from below/sides)
-    const rim = new THREE.DirectionalLight(0xe8d8ff, 0.35);
-    rim.position.set(0, -2, -5);
+    // Rim light (back light for depth separation, blue-purple tint)
+    const rim = new THREE.DirectionalLight(0xc0a0ff, 0.5);
+    rim.position.set(0, 3, -8);
     scene.add(rim);
+
+    // Bottom bounce light
+    const bounce = new THREE.DirectionalLight(0xfff0d8, 0.2);
+    bounce.position.set(0, -4, 2);
+    scene.add(bounce);
 
     // ── Floor + grid ─────────────────────────────────────────────────────────
     const floorGeo  = new THREE.CircleGeometry(4.5, 64);
@@ -219,21 +279,83 @@ function RobotCanvas({ robotConfig, onRobotClick }) {
     shadow.position.y  = -0.11;
     scene.add(shadow);
 
+    // ── Particle system ───────────────────────────────────────────────────
+    const MAX_P = 120;
+    const pPositions = new Float32Array(MAX_P * 3);
+    const pGeo = new THREE.BufferGeometry();
+    pGeo.setAttribute('position', new THREE.BufferAttribute(pPositions, 3));
+    // Draw a soft circle sprite for particles
+    const sprCanvas = document.createElement('canvas');
+    sprCanvas.width = 32; sprCanvas.height = 32;
+    const sCtx = sprCanvas.getContext('2d');
+    const radGrad = sCtx.createRadialGradient(16, 16, 0, 16, 16, 16);
+    radGrad.addColorStop(0, 'rgba(200,180,140,1)');
+    radGrad.addColorStop(1, 'rgba(200,180,140,0)');
+    sCtx.fillStyle = radGrad; sCtx.fillRect(0, 0, 32, 32);
+    const sprTex = new THREE.CanvasTexture(sprCanvas);
+    const pMat = new THREE.PointsMaterial({
+      size: 0.07, map: sprTex, transparent: true,
+      opacity: 0.8, depthWrite: false, sizeAttenuation: true,
+    });
+    const pPoints = new THREE.Points(pGeo, pMat);
+    scene.add(pPoints);
+    // Particle pool
+    const pPool = [];
+    for (let i = 0; i < MAX_P; i++) pPool.push({ x: 0, y: -100, z: 0, vx: 0, vy: 0, vz: 0, life: 0 });
+    let pActive = 0;
+    const emitDust = (x, y, z, count = 3, vy0 = 0.08) => {
+      let emitted = 0;
+      for (let i = 0; i < MAX_P && emitted < count; i++) {
+        if (pPool[i].life <= 0) {
+          pPool[i].x = x + (Math.random() - 0.5) * 0.3;
+          pPool[i].y = y + Math.random() * 0.05;
+          pPool[i].z = z + (Math.random() - 0.5) * 0.3;
+          pPool[i].vx = (Math.random() - 0.5) * 0.025;
+          pPool[i].vy = vy0 + Math.random() * 0.04;
+          pPool[i].vz = (Math.random() - 0.5) * 0.025;
+          pPool[i].life = 0.8 + Math.random() * 0.8;
+          emitted++;
+        }
+      }
+    };
+    const updateParticles = (dt) => {
+      pActive = 0;
+      for (let i = 0; i < MAX_P; i++) {
+        const p = pPool[i];
+        if (p.life > 0) {
+          p.life -= dt * 0.9;
+          p.x += p.vx; p.y += p.vy; p.z += p.vz;
+          p.vy -= 0.004; // gravity
+          pPositions[i * 3]     = p.life > 0 ? p.x : 0;
+          pPositions[i * 3 + 1] = p.life > 0 ? p.y : -100;
+          pPositions[i * 3 + 2] = p.life > 0 ? p.z : 0;
+          if (p.life > 0) pActive++;
+        } else {
+          pPositions[i * 3 + 1] = -100;
+        }
+      }
+      pGeo.attributes.position.needsUpdate = true;
+      pMat.opacity = Math.min(0.8, 0.3 + pActive * 0.01);
+    };
+
+    // ── Orbit pivot group (separates orbit from robot-local animations) ───
+    const pivot = new THREE.Group();
+    scene.add(pivot);
+    pivotRef.current = pivot;
+
     // ── Raycaster for robot-click ─────────────────────────────────────────────
     const raycaster = new THREE.Raycaster();
     const mouse     = new THREE.Vector2();
 
     const handleClick = (e) => {
-      if (!robotRef.current || !onRobotClick) return;
+      if (!pivotRef.current || !onRobotClick) return;
       const rect = el.getBoundingClientRect();
       mouse.x =  ((e.clientX - rect.left)  / rect.width)  * 2 - 1;
       mouse.y = -((e.clientY - rect.top)   / rect.height) * 2 + 1;
       raycaster.setFromCamera(mouse, camRef.current);
-      const hits = raycaster.intersectObjects(robotRef.current.children, true);
+      const hits = raycaster.intersectObjects(pivotRef.current.children, true);
       if (hits.length > 0) {
         onRobotClick();
-        // Brief pulse highlight
-        const origColor = hits[0].object.material?.color?.clone?.();
         if (hits[0].object.material?.emissive) {
           hits[0].object.material.emissive.set(0xffffff);
           hits[0].object.material.emissiveIntensity = 0.4;
@@ -262,21 +384,76 @@ function RobotCanvas({ robotConfig, onRobotClick }) {
     roRef.current = ro;
     window.addEventListener('resize', onResize);
 
+    // ── Orbit drag controls ───────────────────────────────────────────────
+    let isDragging = false, lastX = 0, lastY = 0;
+    let orbitY = 0, orbitX = 0;
+    const onMouseDown = (e) => { isDragging = true; lastX = e.clientX; lastY = e.clientY; };
+    const onMouseMove = (e) => {
+      if (!isDragging) return;
+      orbitY += (e.clientX - lastX) * 0.012;
+      orbitX = Math.max(-0.5, Math.min(0.5, orbitX + (e.clientY - lastY) * 0.008));
+      lastX = e.clientX; lastY = e.clientY;
+    };
+    const onMouseUp = () => { isDragging = false; };
+    el.addEventListener('mousedown', onMouseDown);
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+
     // ── Animation ──────────────────────────────────────────────────────────
     let t = 0;
+    let pEmitTimer = 0;
     const tick = () => {
       rafRef.current = requestAnimationFrame(tick);
-      t += 0.004;
-      if (robotRef.current) {
-        robotRef.current.rotation.y = t;
-        robotRef.current.position.y = Math.sin(t * 1.4) * 0.06;
+      const dt = 0.016;
+      t += dt;
+      const robot = robotRef.current;
+      if (pivot) {
+        if (!isDragging) orbitY += 0.004;
+        pivot.rotation.y = orbitY;
+        pivot.rotation.x = orbitX;
+        pivot.position.y = Math.sin(t * 1.4) * 0.055;
+        if (robot && robot.userData.animate) {
+          robot.userData.animate(t);
+        }
+        // Emit particles based on chassis type
+        pEmitTimer += dt;
+        if (pEmitTimer > 0.12 && robot) {
+          pEmitTimer = 0;
+          const cid = robot.userData.chassisId || '';
+          if (/spider|walker|droid|mech|legobot/.test(cid)) {
+            // Foot-level dust for walking robots
+            const leg = Math.floor(Math.random() * 4);
+            const lx = (leg < 2 ? -0.5 : 0.5) * 0.8 + (Math.random() - 0.5) * 0.2;
+            const lz = (leg % 2 === 0 ? 0.3 : -0.3) + (Math.random() - 0.5) * 0.2;
+            emitDust(lx, 0.02, lz, 2, 0.04);
+          } else if (/drone|helicopter|hoverbot/.test(cid)) {
+            // Propeller wash — downward particle rings
+            for (let i = 0; i < 4; i++) {
+              const a = (i / 4) * Math.PI * 2;
+              emitDust(
+                Math.cos(a) * 0.55, 0.1 + pivot.position.y, Math.sin(a) * 0.55,
+                1, -0.05
+              );
+            }
+          } else if (/rover|scout|crawler|tank/.test(cid)) {
+            // Wheel dust
+            emitDust(-0.7 + (Math.random() - 0.5) * 0.2, 0.08, 0.5 + (Math.random() - 0.5) * 0.3, 1, 0.03);
+            emitDust(0.7 + (Math.random() - 0.5) * 0.2, 0.08, 0.5 + (Math.random() - 0.5) * 0.3, 1, 0.03);
+          }
+        }
       }
+      updateParticles(dt);
+      // Pulse the platform ring
+      ring.material.emissiveIntensity = 0.5 + Math.sin(t * 2.0) * 0.2;
       renderer.render(scene, camera);
     };
     tick();
 
     return () => {
       el.removeEventListener('click', handleClick);
+      el.removeEventListener('mousedown', onMouseDown);
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
       cancelAnimationFrame(rafRef.current);
       roRef.current?.disconnect();
       window.removeEventListener('resize', onResize);
@@ -285,17 +462,22 @@ function RobotCanvas({ robotConfig, onRobotClick }) {
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Rebuild robot model when config changes
+  // Rebuild robot model when config changes — attach to pivot, not scene
   useEffect(() => {
+    const pivot = pivotRef.current;
     const scene = sceneRef.current;
-    if (!scene) return;
+    if (!pivot) return;
     if (robotRef.current) {
-      scene.remove(robotRef.current);
+      pivot.remove(robotRef.current);
       robotRef.current = null;
     }
     const model = buildRobotModel(robotConfig);
-    scene.add(model);
+    pivot.add(model);
     robotRef.current = model;
+    // Apply environment map for metallic reflections
+    if (scene && model.userData.envTex) {
+      scene.environment = model.userData.envTex;
+    }
   }, [robotConfig]);
 
   return <div ref={wrapRef} className="bb-studio-canvas-wrap" style={{ cursor: 'pointer' }} />;
@@ -322,6 +504,24 @@ function LeftPanel({ robotConfig, setRobotConfig, activeRobotId, setActiveRobotI
         ? prev.tools.filter(t => t !== id)
         : [...prev.tools, id],
     }));
+
+  const toggleStructural = (id) =>
+    setRobotConfig(prev => {
+      const cur = prev.structParts || [];
+      return { ...prev, structParts: cur.includes(id) ? cur.filter(s => s !== id) : [...cur, id] };
+    });
+
+  const toggleDeco = (id) =>
+    setRobotConfig(prev => {
+      const cur = prev.decoParts || [];
+      return { ...prev, decoParts: cur.includes(id) ? cur.filter(d => d !== id) : [...cur, id] };
+    });
+
+  const toggleLego = (id) =>
+    setRobotConfig(prev => {
+      const cur = prev.legoParts || [];
+      return { ...prev, legoParts: cur.includes(id) ? cur.filter(l => l !== id) : [...cur, id] };
+    });
 
   const customTile = (catLabel) => (
     <PartTile
@@ -529,6 +729,108 @@ function LeftPanel({ robotConfig, setRobotConfig, activeRobotId, setActiveRobotI
           </>
         );
       }
+      case 'ai': {
+        const filtered = AI_DATA.filter(a => !q || a.name.toLowerCase().includes(q));
+        return (
+          <>
+            <p className="bb-studio-section-label">AI Brain &amp; CPU</p>
+            <div className="bb-pt-grid">
+              {filtered.map(a => (
+                <PartTile key={a.id} id={a.id} icon={a.icon} name={a.name}
+                  desc={a.unlock}
+                  bg={`${a.color}18`} accent={a.color}
+                  active={robotConfig.aiId === a.id}
+                  onClick={() => setRobotConfig(prev => ({ ...prev, aiId: prev.aiId === a.id ? null : a.id }))}
+                />
+              ))}
+            </div>
+          </>
+        );
+      }
+
+      case 'comm': {
+        const filtered = COMM_DATA.filter(c => !q || c.name.toLowerCase().includes(q));
+        return (
+          <>
+            <p className="bb-studio-section-label">Communication Systems</p>
+            <div className="bb-pt-grid">
+              {filtered.map(c => (
+                <PartTile key={c.id} id={c.id} icon={c.icon} name={c.name}
+                  desc={c.unlock}
+                  bg={`${c.color}18`} accent={c.color}
+                  active={robotConfig.commId === c.id}
+                  onClick={() => setRobotConfig(prev => ({ ...prev, commId: prev.commId === c.id ? null : c.id }))}
+                />
+              ))}
+              {customTile('communication module')}
+            </div>
+          </>
+        );
+      }
+
+      case 'structural': {
+        const filtered = STRUCTURAL_DATA.filter(s => !q || s.name.toLowerCase().includes(q));
+        return (
+          <>
+            <p className="bb-studio-section-label">Armor &amp; Structure</p>
+            <div className="bb-pt-grid">
+              {filtered.map(s => (
+                <PartTile key={s.id} id={s.id} icon={s.icon} name={s.name}
+                  desc={s.unlock}
+                  bg={`${s.color}18`} accent={s.color}
+                  active={(robotConfig.structParts || []).includes(s.id)}
+                  onClick={() => toggleStructural(s.id)}
+                />
+              ))}
+            </div>
+          </>
+        );
+      }
+
+      case 'deco': {
+        const filtered = DECO_DATA.filter(d => !q || d.name.toLowerCase().includes(q));
+        return (
+          <>
+            <p className="bb-studio-section-label">Decoration &amp; Styling</p>
+            <div className="bb-pt-grid">
+              {filtered.map(d => (
+                <PartTile key={d.id} id={d.id} icon={d.icon} name={d.name}
+                  desc={d.unlock}
+                  bg={`${d.color}18`} accent={d.color}
+                  active={(robotConfig.decoParts || []).includes(d.id)}
+                  onClick={() => toggleDeco(d.id)}
+                />
+              ))}
+            </div>
+          </>
+        );
+      }
+
+      case 'lego': {
+        const filtered = LEGO_DATA.filter(l => !q || l.name.toLowerCase().includes(q));
+        return (
+          <>
+            <p className="bb-studio-section-label">LEGO Mode Parts</p>
+            <div className="bb-pt-grid">
+              {filtered.map(l => (
+                <PartTile key={l.id} id={l.id} icon={l.icon} name={l.name}
+                  desc={l.unlock}
+                  bg={`${l.color}18`} accent={l.color}
+                  active={(robotConfig.legoParts || []).includes(l.id)}
+                  onClick={() => toggleLego(l.id)}
+                />
+              ))}
+            </div>
+            <p className="bb-studio-section-label" style={{ marginTop: 12 }}>Snap Blocks</p>
+            <div className="bb-studio-blocks-grid" style={{ padding: '0 4px 8px' }}>
+              {BLOCKS_DATA.map(b => (
+                <div key={b.id} className="bb-studio-block-item" style={{ background: b.color }} title={b.label} />
+              ))}
+            </div>
+          </>
+        );
+      }
+
       default: return null;
     }
   };
@@ -606,6 +908,45 @@ function LeftPanel({ robotConfig, setRobotConfig, activeRobotId, setActiveRobotI
   );
 }
 
+// ─── Color Section with tabs ────────────────────────────────────────────────
+function ColorSection({ label, value, onChange, presets, swatches }) {
+  const [paletteTab, setPaletteTab] = React.useState('classic');
+  const palettes = { classic: PALETTE_CLASSIC, metallic: PALETTE_METALLIC, neon: PALETTE_NEON, dark: PALETTE_DARK };
+  const currentPalette = presets || palettes[paletteTab];
+
+  return (
+    <div className="bb-studio-color-section">
+      <div className="bb-studio-color-label">{label}</div>
+      {!presets && (
+        <div style={{ display: 'flex', gap: 4, marginBottom: 6 }}>
+          {[['classic','Classic'],['metallic','Metal'],['neon','Neon'],['dark','Dark']].map(([k,l]) => (
+            <button key={k} onClick={() => setPaletteTab(k)}
+              style={{
+                fontSize: 9, padding: '2px 6px', borderRadius: 6, border: 'none',
+                background: paletteTab === k ? '#7c3aed' : 'rgba(255,255,255,0.08)',
+                color: paletteTab === k ? '#fff' : '#aaa',
+                cursor: 'pointer', fontWeight: paletteTab === k ? 700 : 400,
+              }}>{l}</button>
+          ))}
+        </div>
+      )}
+      <div className="bb-studio-colors" style={{ gap: 5 }}>
+        {currentPalette.map(c => (
+          <button key={c}
+            className={`bb-studio-color-swatch ${value === c ? 'active' : ''}`}
+            style={{ background: c, border: value === c ? `2px solid #fff` : c === '#FFFFFF' ? '1.5px solid #ddd' : 'none' }}
+            onClick={() => onChange(c)}
+            title={c}
+          />
+        ))}
+        <input type="color" value={value} onChange={e => onChange(e.target.value)}
+          style={{ width: 22, height: 22, padding: 0, border: 'none', borderRadius: 4, cursor: 'pointer', background: 'none' }}
+          title="Custom color" />
+      </div>
+    </div>
+  );
+}
+
 // ─── Right Panel ────────────────────────────────────────────────────────────
 function RightPanel({ robotConfig, setRobotConfig, onSimulate, robotValidation }) {
   const chassis = CHASSIS_DATA.find(c => c.id === robotConfig.chassisId) || CHASSIS_DATA[0];
@@ -615,16 +956,30 @@ function RightPanel({ robotConfig, setRobotConfig, onSimulate, robotValidation }
     r => r.severity === 'error' || r.severity === 'warning'
   );
 
-  const removeSensor = (id) => setRobotConfig(prev => ({ ...prev, sensors: prev.sensors.filter(s => s !== id) }));
-  const removeTool   = (id) => setRobotConfig(prev => ({ ...prev, tools:   prev.tools.filter(t => t !== id)   }));
-  const removeHead   = ()   => setRobotConfig(prev => ({ ...prev, headId:  null }));
-  const removeArm    = ()   => setRobotConfig(prev => ({ ...prev, armId:   null }));
-  const removeLight  = ()   => setRobotConfig(prev => ({ ...prev, lightId: null }));
+  const removeSensor     = (id) => setRobotConfig(prev => ({ ...prev, sensors:       prev.sensors.filter(s => s !== id) }));
+  const removeTool       = (id) => setRobotConfig(prev => ({ ...prev, tools:         prev.tools.filter(t => t !== id)   }));
+  const removeHead       = ()   => setRobotConfig(prev => ({ ...prev, headId:        null }));
+  const removeArm        = ()   => setRobotConfig(prev => ({ ...prev, armId:         null }));
+  const removeLight      = ()   => setRobotConfig(prev => ({ ...prev, lightId:       null }));
+  const removeAI         = ()   => setRobotConfig(prev => ({ ...prev, aiId:          null }));
+  const removeComm       = ()   => setRobotConfig(prev => ({ ...prev, commId:        null }));
+  const removeStructural = (id) => setRobotConfig(prev => ({ ...prev, structParts: (prev.structParts || []).filter(s => s !== id) }));
+  const removeDeco       = (id) => setRobotConfig(prev => ({ ...prev, decoParts:       (prev.decoParts       || []).filter(d => d !== id) }));
+  const removeLego       = (id) => setRobotConfig(prev => ({ ...prev, legoParts:       (prev.legoParts       || []).filter(l => l !== id) }));
 
+  const powerEntry  = POWER_DATA.find(p => p.id === robotConfig.powerId);
+  const aiEntry     = AI_DATA.find(a => a.id === robotConfig.aiId);
+  const powerBoost  = powerEntry?.stat?.speed  ?? 0;
+  const aiBoost     = aiEntry?.stat?.ai        ?? 0;
+  const armorBoost  = (robotConfig.structParts || []).reduce((acc, id) => {
+    const s = STRUCTURAL_DATA.find(x => x.id === id);
+    return acc + (s?.stat?.armor ?? 0);
+  }, 0);
   const stats = {
-    speed:     Math.min(chassis.speed + (robotConfig.movementId === 'flying' ? 30 : robotConfig.movementId === 'jets' ? 50 : 0), 100),
-    power:     Math.min(chassis.power + (robotConfig.tools.length * 5), 100),
-    durability:Math.min(chassis.durability, 100),
+    speed:      Math.min(chassis.speed + (robotConfig.movementId === 'flying' ? 30 : robotConfig.movementId === 'jets' ? 50 : 0) + powerBoost, 100),
+    power:      Math.min(chassis.power + (robotConfig.tools.length * 5) + (aiBoost > 0 ? Math.floor(aiBoost / 4) : 0), 100),
+    durability: Math.min(chassis.durability + Math.floor(armorBoost / 2), 100),
+    ai:         Math.min(aiBoost, 100),
   };
 
   // Build full installed-parts list with remove callbacks
@@ -649,6 +1004,26 @@ function RightPanel({ robotConfig, setRobotConfig, onSimulate, robotValidation }
       const l = LIGHTS_DATA.find(x => x.id === robotConfig.lightId);
       return l ? [{ ...l, onRemove: removeLight }] : [];
     })() : []),
+    ...(robotConfig.aiId ? (() => {
+      const a = AI_DATA.find(x => x.id === robotConfig.aiId);
+      return a ? [{ ...a, onRemove: removeAI }] : [];
+    })() : []),
+    ...(robotConfig.commId ? (() => {
+      const c = COMM_DATA.find(x => x.id === robotConfig.commId);
+      return c ? [{ ...c, onRemove: removeComm }] : [];
+    })() : []),
+    ...(robotConfig.structParts || []).map(id => {
+      const s = STRUCTURAL_DATA.find(x => x.id === id);
+      return s ? { ...s, onRemove: () => removeStructural(id) } : null;
+    }),
+    ...(robotConfig.decoParts || []).map(id => {
+      const d = DECO_DATA.find(x => x.id === id);
+      return d ? { ...d, onRemove: () => removeDeco(id) } : null;
+    }),
+    ...(robotConfig.legoParts || []).map(id => {
+      const l = LEGO_DATA.find(x => x.id === id);
+      return l ? { ...l, onRemove: () => removeLego(id) } : null;
+    }),
   ].filter(Boolean);
 
   return (
@@ -698,6 +1073,14 @@ function RightPanel({ robotConfig, setRobotConfig, onSimulate, robotValidation }
               <div className="bb-studio-spec-label">Sensors</div>
               <div className="bb-studio-spec-val">{robotConfig.sensors.length}</div>
             </div>
+            <div className="bb-studio-spec-item">
+              <div className="bb-studio-spec-label">AI</div>
+              <div className="bb-studio-spec-val">{robotConfig.aiId ? '✓' : '—'}</div>
+            </div>
+            <div className="bb-studio-spec-item">
+              <div className="bb-studio-spec-label">Armor</div>
+              <div className="bb-studio-spec-val">{(robotConfig.structParts || []).length}</div>
+            </div>
           </div>
         </div>
 
@@ -706,6 +1089,7 @@ function RightPanel({ robotConfig, setRobotConfig, onSimulate, robotValidation }
           { label: 'Speed',      value: stats.speed,      color: '#1E90FF', icon: '🚀' },
           { label: 'Power',      value: stats.power,      color: '#9B59B6', icon: '⚡' },
           { label: 'Durability', value: stats.durability, color: '#00C851', icon: '🛡️' },
+          ...(stats.ai > 0 ? [{ label: 'AI Level', value: stats.ai, color: '#7C3AED', icon: '🧠' }] : []),
         ].map(s => (
           <div key={s.label} className="bb-studio-stat-row">
             <div className="bb-studio-stat-head">
@@ -718,35 +1102,55 @@ function RightPanel({ robotConfig, setRobotConfig, onSimulate, robotValidation }
           </div>
         ))}
 
-        {/* Primary colour */}
-        <div className="bb-studio-color-section">
-          <div className="bb-studio-color-label">Primary Color</div>
-          <div className="bb-studio-colors">
-            {PALETTE.map(c => (
-              <button key={c}
-                className={`bb-studio-color-swatch ${robotConfig.primaryColor === c ? 'active' : ''}`}
-                style={{ background: c, border: c === '#FFFFFF' ? '1.5px solid #ddd' : 'none' }}
-                onClick={() => setRobotConfig(prev => ({ ...prev, primaryColor: c }))}
-                title={c}
-              />
-            ))}
-          </div>
-        </div>
+        {/* Color Customization */}
+        <div style={{ fontSize: 12, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>🎨 Color Customization</div>
 
-        {/* Accent colour */}
-        <div className="bb-studio-color-section">
-          <div className="bb-studio-color-label">Accent Color</div>
-          <div className="bb-studio-colors">
-            {PALETTE.map(c => (
-              <button key={c}
-                className={`bb-studio-color-swatch ${robotConfig.accentColor === c ? 'active' : ''}`}
-                style={{ background: c, border: c === '#FFFFFF' ? '1.5px solid #ddd' : 'none' }}
-                onClick={() => setRobotConfig(prev => ({ ...prev, accentColor: c }))}
-                title={c}
+        <ColorSection
+          label="Primary Color (Body)"
+          value={robotConfig.primaryColor}
+          onChange={c => setRobotConfig(prev => ({ ...prev, primaryColor: c }))}
+        />
+        <ColorSection
+          label="Accent Color (Panels)"
+          value={robotConfig.accentColor}
+          onChange={c => setRobotConfig(prev => ({ ...prev, accentColor: c }))}
+        />
+        <ColorSection
+          label="Trim Color (Details)"
+          value={robotConfig.trimColor || '#FFD700'}
+          onChange={c => setRobotConfig(prev => ({ ...prev, trimColor: c }))}
+        />
+        <ColorSection
+          label="Wheel / Track Color"
+          value={robotConfig.wheelColor || '#1a1a1a'}
+          onChange={c => setRobotConfig(prev => ({ ...prev, wheelColor: c }))}
+          presets={WHEEL_COLORS}
+        />
+        <ColorSection
+          label="LED / Glow Color"
+          value={robotConfig.ledColor || '#00D9FF'}
+          onChange={c => setRobotConfig(prev => ({ ...prev, ledColor: c }))}
+          presets={LED_COLORS}
+        />
+
+        {/* Material Sliders */}
+        <div style={{ fontSize: 12, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8, marginTop: 8 }}>✨ Material Properties</div>
+        {[
+          { key: 'materialMetalness', label: '🔩 Metallic', min: 0, max: 1, step: 0.05, def: 0.4, tip: '0 = Matte plastic → 1 = Polished metal' },
+          { key: 'materialRoughness', label: '🪨 Roughness', min: 0, max: 1, step: 0.05, def: 0.5, tip: '0 = Glossy mirror → 1 = Rough matte' },
+          { key: 'materialGlow',      label: '💡 Glow Intensity', min: 0, max: 3, step: 0.1,  def: 1.0, tip: 'Brightness of LED/emissive lights' },
+        ].map(({ key, label, min, max, step, def, tip }) => {
+          const val = robotConfig[key] ?? def;
+          return (
+            <div key={key} className="bb-studio-color-section">
+              <div className="bb-studio-color-label" title={tip}>{label} — {Math.round(val * 100 / max)}%</div>
+              <input type="range" min={min} max={max} step={step} value={val}
+                onChange={e => setRobotConfig(prev => ({ ...prev, [key]: parseFloat(e.target.value) }))}
+                style={{ width: '100%', accentColor: '#7c3aed' }}
               />
-            ))}
-          </div>
-        </div>
+            </div>
+          );
+        })}
 
         {/* ── Installed parts with delete buttons ─────────────────────────── */}
         <div className="bb-installed-parts">
@@ -784,7 +1188,13 @@ function RightPanel({ robotConfig, setRobotConfig, onSimulate, robotValidation }
           &lt;/&gt; Generate Code
         </button>
         <button className="bb-studio-act-btn bb-studio-act-btn--ghost"
-          onClick={() => setRobotConfig(prev => ({ ...prev, sensors: [], tools: [], headId: null, armId: null, lightId: null }))}>
+          onClick={() => setRobotConfig(prev => ({
+            ...prev,
+            sensors: [], tools: [],
+            headId: null, armId: null, lightId: null,
+            aiId: null, commId: null,
+            structParts: [], decoParts: [], legoParts: [],
+          }))}>
           🔄 Clear Parts
         </button>
       </div>
@@ -798,8 +1208,13 @@ export default function BuildPage({ robotConfig, setRobotConfig, onSimulate, cus
   const [partsOverlay, setPartsOverlay]   = useState(false);
   const chassis = CHASSIS_DATA.find(c => c.id === robotConfig.chassisId) || CHASSIS_DATA[0];
 
-  const removeSensor = (id) => setRobotConfig(prev => ({ ...prev, sensors: prev.sensors.filter(s => s !== id) }));
-  const removeTool   = (id) => setRobotConfig(prev => ({ ...prev, tools:   prev.tools.filter(t => t !== id)   }));
+  const removeSensor     = (id) => setRobotConfig(prev => ({ ...prev, sensors:       prev.sensors.filter(s => s !== id) }));
+  const removeTool       = (id) => setRobotConfig(prev => ({ ...prev, tools:         prev.tools.filter(t => t !== id) }));
+  const removeAI         = ()   => setRobotConfig(prev => ({ ...prev, aiId:          null }));
+  const removeComm       = ()   => setRobotConfig(prev => ({ ...prev, commId:        null }));
+  const removeStructural = (id) => setRobotConfig(prev => ({ ...prev, structParts: (prev.structParts || []).filter(s => s !== id) }));
+  const removeDeco       = (id) => setRobotConfig(prev => ({ ...prev, decoParts:       (prev.decoParts || []).filter(d => d !== id) }));
+  const removeLego       = (id) => setRobotConfig(prev => ({ ...prev, legoParts:       (prev.legoParts || []).filter(l => l !== id) }));
 
   return (
     <div className="bb-studio-build">
@@ -819,7 +1234,13 @@ export default function BuildPage({ robotConfig, setRobotConfig, onSimulate, cus
           <span style={{ fontSize: 11, color: '#aaa', fontStyle: 'italic' }}>Click robot to manage parts</span>
           <button className="bb-studio-vp-btn bb-studio-vp-btn--test" onClick={onSimulate}>📝 Code My Robot</button>
           <button className="bb-studio-vp-btn bb-studio-vp-btn--reset"
-            onClick={() => setRobotConfig(prev => ({ ...prev, sensors: [], tools: [], headId: null, armId: null, lightId: null }))}>
+            onClick={() => setRobotConfig(prev => ({
+              ...prev,
+              sensors: [], tools: [],
+              headId: null, armId: null, lightId: null,
+              aiId: null, commId: null,
+              structParts: [], decoParts: [], legoParts: [],
+            }))}>
             ↺ Clear
           </button>
         </div>
@@ -840,44 +1261,33 @@ export default function BuildPage({ robotConfig, setRobotConfig, onSimulate, cus
                 <button className="bb-parts-overlay-close" onClick={() => setPartsOverlay(false)}>✕</button>
               </div>
 
-              {robotConfig.sensors.length === 0 && robotConfig.tools.length === 0 ? (
-                <div className="bb-parts-overlay-empty">No removable parts installed.<br/>Add sensors or tools in the left panel.</div>
-              ) : (
-                <>
-                  {robotConfig.sensors.map(id => {
-                    const s = SENSORS_DATA.find(x => x.id === id);
-                    if (!s) return null;
-                    return (
-                      <div key={id} className="bb-parts-overlay-row">
-                        <span className="bb-parts-overlay-icon">{s.icon}</span>
-                        <span className="bb-parts-overlay-name">{s.name}</span>
-                        <button className="bb-parts-overlay-del" onClick={() => { removeSensor(id); }}>
-                          🗑️ Remove
-                        </button>
-                      </div>
-                    );
-                  })}
-                  {robotConfig.tools.map(id => {
-                    const t = TOOLS_DATA.find(x => x.id === id);
-                    if (!t) return null;
-                    return (
-                      <div key={id} className="bb-parts-overlay-row">
-                        <span className="bb-parts-overlay-icon">{t.icon}</span>
-                        <span className="bb-parts-overlay-name">{t.name}</span>
-                        <button className="bb-parts-overlay-del" onClick={() => { removeTool(id); }}>
-                          🗑️ Remove
-                        </button>
-                      </div>
-                    );
-                  })}
-                </>
-              )}
+              {(() => {
+                const allInstalled = [
+                  ...robotConfig.sensors.map(id => { const s = SENSORS_DATA.find(x => x.id === id); return s ? { ...s, onRemove: () => removeSensor(id) } : null; }),
+                  ...robotConfig.tools.map(id => { const t = TOOLS_DATA.find(x => x.id === id); return t ? { ...t, onRemove: () => removeTool(id) } : null; }),
+                  ...(robotConfig.aiId ? [(() => { const a = AI_DATA.find(x => x.id === robotConfig.aiId); return a ? { ...a, onRemove: () => removeAI() } : null; })()] : []),
+                  ...(robotConfig.commId ? [(() => { const c = COMM_DATA.find(x => x.id === robotConfig.commId); return c ? { ...c, onRemove: () => removeComm() } : null; })()] : []),
+                  ...(robotConfig.structParts || []).map(id => { const s = STRUCTURAL_DATA.find(x => x.id === id); return s ? { ...s, onRemove: () => removeStructural(id) } : null; }),
+                  ...(robotConfig.decoParts || []).map(id => { const d = DECO_DATA.find(x => x.id === id); return d ? { ...d, onRemove: () => removeDeco(id) } : null; }),
+                  ...(robotConfig.legoParts || []).map(id => { const l = LEGO_DATA.find(x => x.id === id); return l ? { ...l, onRemove: () => removeLego(id) } : null; }),
+                ].filter(Boolean);
+                if (allInstalled.length === 0) return (
+                  <div className="bb-parts-overlay-empty">No removable parts installed.<br/>Select parts from the left panel.</div>
+                );
+                return allInstalled.map(p => (
+                  <div key={p.id} className="bb-parts-overlay-row">
+                    <span className="bb-parts-overlay-icon">{p.icon}</span>
+                    <span className="bb-parts-overlay-name">{p.name}</span>
+                    <button className="bb-parts-overlay-del" onClick={p.onRemove}>🗑️ Remove</button>
+                  </div>
+                ));
+              })()}
             </div>
           </div>
         )}
 
         <span className="bb-studio-canvas-label">{chassis.name} · {chassis.badge}</span>
-        <span className="bb-studio-canvas-hint">Drag to rotate · Click to manage parts</span>
+        <span className="bb-studio-canvas-hint">🖱 Drag to rotate · Click robot to manage parts</span>
       </div>
 
       <RightPanel

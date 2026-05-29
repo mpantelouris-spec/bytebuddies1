@@ -1,0 +1,428 @@
+/**
+ * Adaptive Worlds Panel — styles
+ * Dark neon theme matching ByteBuddies design language.
+ */
+
+/* ── Root panel ──────────────────────────────────────────────────────── */
+.aw-panel {
+  --aw-bg: #10172a;
+  --aw-surface: #161f38;
+  --aw-surface2: #1c2845;
+  --aw-border: rgba(0, 217, 255, 0.12);
+  --aw-text: #e2e8f0;
+  --aw-muted: #94a3b8;
+  --aw-blue: #00d9ff;
+  --aw-accent: #1e90ff;
+
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  background: var(--aw-bg);
+  color: var(--aw-text);
+  font-family: 'Nunito', 'Segoe UI', system-ui, sans-serif;
+  overflow-y: auto;
+  height: 100%;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0,217,255,0.25) transparent;
+}
+
+.aw-panel * {
+  box-sizing: border-box;
+}
+
+/* ── Run dock ────────────────────────────────────────────────────────── */
+.aw-run-dock {
+  padding: 10px 12px 8px;
+  background: rgba(0,0,0,0.3);
+  border-bottom: 1px solid var(--aw-border);
+}
+
+.aw-run-btn {
+  width: 100%;
+  padding: 11px 0;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #00c853 0%, #00e676 100%);
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 800;
+  font-family: inherit;
+  cursor: pointer;
+  letter-spacing: 0.03em;
+  box-shadow: 0 4px 18px rgba(0, 200, 83, 0.4);
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.aw-run-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 24px rgba(0,200,83,0.5); }
+.aw-run-btn:active { transform: translateY(0); }
+
+.aw-run-btn--stop {
+  background: linear-gradient(135deg, #ef4444 0%, #f97316 100%);
+  box-shadow: 0 4px 18px rgba(239, 68, 68, 0.4);
+}
+
+/* ── Recommendation banner ───────────────────────────────────────────── */
+.aw-rec-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px;
+  background: linear-gradient(135deg, rgba(var(--aw-accent-rgb, 30,144,255),0.12) 0%, rgba(0,0,0,0.2) 100%);
+  border-left: 3px solid var(--aw-accent, #1e90ff);
+  border-bottom: 1px solid var(--aw-border);
+}
+
+.aw-rec-icon {
+  font-size: 2rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.aw-rec-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.aw-rec-headline {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1.3;
+  margin-bottom: 2px;
+}
+
+.aw-rec-detail {
+  margin: 0;
+  font-size: 0.73rem;
+  color: var(--aw-muted);
+  line-height: 1.4;
+}
+
+.aw-rec-badge {
+  flex-shrink: 0;
+  align-self: flex-start;
+  padding: 3px 8px;
+  border-radius: 20px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: #fff;
+  white-space: nowrap;
+}
+
+/* ── Section collapsible ─────────────────────────────────────────────── */
+.aw-section {
+  border-bottom: 1px solid var(--aw-border);
+}
+
+.aw-section-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 12px;
+  background: none;
+  border: none;
+  color: var(--aw-text);
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s;
+}
+
+.aw-section-head:hover { background: rgba(255,255,255,0.04); }
+
+.aw-section-icon { font-size: 1rem; }
+.aw-section-label { flex: 1; }
+
+.aw-section-count {
+  padding: 2px 7px;
+  border-radius: 10px;
+  background: rgba(0,217,255,0.15);
+  color: var(--aw-blue);
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.aw-section-chevron {
+  font-size: 0.75rem;
+  color: var(--aw-muted);
+}
+
+.aw-section-body {
+  padding: 4px 10px 10px;
+}
+
+/* ── Environment cards ───────────────────────────────────────────────── */
+.aw-env-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.aw-env-card {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 8px 10px;
+  background: var(--aw-surface);
+  border: 1.5px solid var(--aw-border);
+  border-radius: 9px;
+  color: var(--aw-text);
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s, background 0.15s, transform 0.1s;
+  position: relative;
+}
+
+.aw-env-card:hover:not(.aw-env-card--locked) {
+  border-color: var(--aw-accent);
+  background: rgba(255,255,255,0.05);
+  transform: translateX(2px);
+}
+
+.aw-env-card--active {
+  border-color: var(--aw-accent) !important;
+  background: rgba(30,144,255,0.12) !important;
+}
+
+.aw-env-card--locked {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.aw-env-icon { font-size: 1.3rem; flex-shrink: 0; }
+
+.aw-env-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.aw-env-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.aw-env-desc {
+  font-size: 0.68rem;
+  color: var(--aw-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.aw-env-active-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--aw-accent);
+  flex-shrink: 0;
+  box-shadow: 0 0 6px var(--aw-accent);
+  animation: aw-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes aw-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.5; transform: scale(0.8); }
+}
+
+/* ── Mission cards ───────────────────────────────────────────────────── */
+.aw-mission-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.aw-mission-card {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 7px 10px;
+  background: var(--aw-surface);
+  border: 1.5px solid var(--aw-border);
+  border-radius: 9px;
+  color: var(--aw-text);
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s, background 0.15s, transform 0.1s;
+}
+
+.aw-mission-card:hover {
+  border-color: rgba(0,217,255,0.4);
+  background: rgba(255,255,255,0.04);
+  transform: translateX(2px);
+}
+
+.aw-mission-card--active {
+  border-color: #00d9ff !important;
+  background: rgba(0,217,255,0.1) !important;
+}
+
+.aw-mission-icon { font-size: 1.2rem; flex-shrink: 0; }
+
+.aw-mission-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.aw-mission-label {
+  font-size: 0.79rem;
+  font-weight: 700;
+}
+
+.aw-mission-desc {
+  font-size: 0.67rem;
+  color: var(--aw-muted);
+}
+
+.aw-mission-diff {
+  font-size: 0.7rem;
+  color: #f59e0b;
+  flex-shrink: 0;
+  letter-spacing: -0.5px;
+}
+
+/* ── Coding blocks ───────────────────────────────────────────────────── */
+.aw-block-subtitle {
+  font-size: 0.7rem;
+  color: var(--aw-muted);
+  margin: 0 0 8px;
+  line-height: 1.4;
+}
+
+.aw-block-category {
+  margin-bottom: 10px;
+}
+
+.aw-block-cat-head {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  margin-bottom: 5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.aw-block-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.aw-block-chip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px 4px 7px;
+  border-radius: 20px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: default;
+  transition: background 0.15s;
+  border-left: 3px solid var(--block-color, #1e90ff);
+}
+
+.aw-block-chip:hover {
+  background: rgba(255,255,255,0.1);
+}
+
+.aw-block-chip-icon { font-size: 0.9rem; }
+.aw-block-chip-label { color: var(--aw-text); }
+
+/* ── Special features ────────────────────────────────────────────────── */
+.aw-features-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.aw-feature-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 7px 9px;
+  background: var(--aw-surface);
+  border-radius: 8px;
+  border: 1px solid var(--aw-border);
+}
+
+.aw-feature-icon {
+  font-size: 1.3rem;
+  flex-shrink: 0;
+}
+
+.aw-feature-row div {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.aw-feature-row strong {
+  font-size: 0.78rem;
+  color: #fff;
+}
+
+.aw-feature-row span {
+  font-size: 0.69rem;
+  color: var(--aw-muted);
+}
+
+/* ── Expansion tips ──────────────────────────────────────────────────── */
+.aw-tips {
+  padding: 10px 12px 14px;
+  border-top: 1px solid var(--aw-border);
+}
+
+.aw-tips-head {
+  margin: 0 0 8px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--aw-blue);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.aw-tip {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 9px;
+  background: rgba(0,217,255,0.06);
+  border: 1px solid rgba(0,217,255,0.15);
+  border-radius: 8px;
+  margin-bottom: 5px;
+}
+
+.aw-tip span {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.aw-tip p {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--aw-muted);
+  line-height: 1.3;
+}
+
+/* ── Scrollbar ───────────────────────────────────────────────────────── */
+.aw-panel::-webkit-scrollbar { width: 4px; }
+.aw-panel::-webkit-scrollbar-track { background: transparent; }
+.aw-panel::-webkit-scrollbar-thumb { background: rgba(0,217,255,0.2); border-radius: 4px; }

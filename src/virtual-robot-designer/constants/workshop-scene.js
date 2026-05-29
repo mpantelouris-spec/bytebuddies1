@@ -52,7 +52,7 @@ export function computeWorkshopAnchorY(design, displayScale) {
   if (asm.buildMode === 'blocks') return 0.12 + displayScale * 0.02;
   if (isHover) return 0.42 + displayScale * 0.04;
   if (isLegs) return 0.28 + displayScale * 0.03;
-  if (hasMovement) return 0.22 + displayScale * 0.025;
+  if (hasMovement) return displayScale * 0.44; // wheels sit on platform: (tireRadius 0.32 - podY -0.12) × scale
   return 0.18 + displayScale * 0.02;
 }
 

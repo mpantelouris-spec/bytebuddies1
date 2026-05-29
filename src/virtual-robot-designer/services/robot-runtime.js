@@ -18,9 +18,12 @@ export function getRobotPhysics(design) {
   const archetype = detectRobotArchetype(d);
   const archPhys = getArchetypePhysicsOverrides(archetype.id, d);
 
+  const archMult = archPhys.pxMult ?? 1;
+  const degArchMult = archPhys.degMult ?? 1;
+
   return {
-    pxPerMs: BASE_PX_PER_MS * speedFactor * (d.abilities?.speedBoost ? 1.25 : 1),
-    degPerMs: BASE_DEG_PER_MS * agilityFactor,
+    pxPerMs: BASE_PX_PER_MS * speedFactor * archMult * (d.abilities?.speedBoost ? 1.25 : 1),
+    degPerMs: BASE_DEG_PER_MS * agilityFactor * degArchMult,
     cmToUnit: CM_TO_UNIT,
     hoverLift: archPhys.hoverLift ?? (d.wheels?.type === 'hover' ? 0.35 + (d.wheels?.motor === 'turbo' ? 0.15 : 0) : 0),
     isFlying: archPhys.isFlying ?? (d.template === 'drone' || d.wheels?.type === 'hover'),
@@ -74,6 +77,60 @@ export const ARENA_OBSTACLES = {
   delivery: [
     { x: -2, z: 0, r: 0.55 }, { x: 2, z: 0, r: 0.55 },
     { x: 0, z: 3, r: 0.45 },
+  ],
+  rough_terrain: [
+    { x: 1.5, z: -2, r: 0.65 }, { x: -2, z: 1, r: 0.7 }, { x: 3, z: 2.5, r: 0.55 },
+    { x: -3.5, z: -2.5, r: 0.6 }, { x: 0, z: 3, w: 2.5, h: 0.25, type: 'ramp' },
+  ],
+  sky_rings: [
+    { x: 0, z: -4, r: 0.35, type: 'ring' }, { x: 2, z: -1, r: 0.35, type: 'ring' },
+    { x: -2, z: 1, r: 0.35, type: 'ring' }, { x: 0, z: 4, r: 0.35, type: 'ring' },
+    { x: 3, z: 3, r: 0.4 },
+  ],
+  sky_maze: [
+    { x: -2, z: -2, r: 0.45 }, { x: 2, z: -2, r: 0.45 }, { x: 0, z: 0, r: 0.5 },
+    { x: -2, z: 2, r: 0.45 }, { x: 2, z: 2, r: 0.45 }, { x: 0, z: -3, w: 4, h: 0.3, type: 'wall' },
+  ],
+  terrain_climb: [
+    { x: 0, z: 2.5, w: 2.5, h: 0.35, type: 'ramp' },
+    { x: -2.5, z: -1, w: 0.3, h: 3, type: 'wall' },
+    { x: 2.5, z: 0, w: 0.3, h: 3.5, type: 'wall' },
+    { x: 1, z: -2.5, r: 0.45 },
+  ],
+  balance_beam: [
+    { x: 0, z: -2, w: 0.25, h: 4, type: 'wall' },
+    { x: 0, z: 2, w: 0.25, h: 4, type: 'wall' },
+    { x: -2, z: 0, r: 0.35 }, { x: 2, z: 0, r: 0.35 },
+  ],
+  factory_sort: [
+    { x: -2.5, z: 0, r: 0.4 }, { x: 0, z: 0, r: 0.4 }, { x: 2.5, z: 0, r: 0.4 },
+    { x: 0, z: 2.5, r: 0.35 },
+  ],
+  underwater_reef: [
+    { x: 2, z: -2, r: 0.45 }, { x: -2.5, z: 1.5, r: 0.5 }, { x: 1, z: 3, r: 0.4 },
+    { x: -1, z: -3, r: 0.42 },
+  ],
+  underwater_cave: [
+    { x: 0, z: 0, w: 6, h: 0.3, type: 'wall' },
+    { x: -2.5, z: -1, w: 0.3, h: 4, type: 'wall' },
+    { x: 2.5, z: 1, w: 0.3, h: 4, type: 'wall' },
+    { x: 0, z: 3, r: 0.5 },
+  ],
+  hover_course: [
+    { x: -3, z: 0, r: 0.5, type: 'platform' }, { x: 0, z: -2, r: 0.5, type: 'platform' },
+    { x: 3, z: 0, r: 0.5, type: 'platform' }, { x: 0, z: 2.5, r: 0.5, type: 'platform' },
+  ],
+  mining_tunnel: [
+    { x: 1.5, z: 1, r: 0.55 }, { x: -1.5, z: -1, r: 0.5 },
+    { x: 0, z: 2.5, w: 3, h: 0.3, type: 'wall' },
+  ],
+  lego_park: [
+    { x: 2, z: 0, r: 0.5 }, { x: -2, z: -2, r: 0.45 }, { x: 0, z: 2.5, r: 0.5 },
+    { x: -1, z: 1.5, r: 0.4 },
+  ],
+  ai_patrol: [
+    { x: 2, z: -2, r: 0.4 }, { x: -2, z: 2, r: 0.4 }, { x: 3, z: 1, r: 0.35 },
+    { x: -3, z: -1, r: 0.35 }, { x: 0, z: 0, r: 0.3 },
   ],
 };
 

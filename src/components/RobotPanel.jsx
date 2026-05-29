@@ -2866,7 +2866,7 @@ function generateQuarkyProgram(blocks) {
 }
 
 /* ─── Main RobotPanel component ─── */
-export default function RobotPanel() {
+export default function RobotPanel({ onNavigate }) {
   const [connected, setConnected] = useState(false);
   const [connectionKind, setConnectionKind] = useState(null); // 'usb' | 'bluetooth'
   const [connecting, setConnecting] = useState(false);
@@ -5374,6 +5374,39 @@ export default function RobotPanel() {
 
           {rightTab === 'virtual' && (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px 16px', gap: 10, overflowY: 'auto' }}>
+              <div style={{
+                width: '100%',
+                padding: '12px 14px',
+                borderRadius: 12,
+                background: 'linear-gradient(135deg, rgba(30,144,255,0.15), rgba(0,200,83,0.12))',
+                border: '1px solid rgba(30,144,255,0.35)',
+                fontSize: 13,
+                lineHeight: 1.45,
+                color: 'var(--text-primary)',
+              }}>
+                <strong style={{ display: 'block', marginBottom: 6 }}>🚀 New 3D Test Arena</strong>
+                Build your own robot in <strong>Robot Design</strong>, then open step <strong>Test It</strong> (or{' '}
+                <button
+                  type="button"
+                  style={{
+                    border: 'none',
+                    background: 'none',
+                    color: '#1e90ff',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    textDecoration: 'underline',
+                    padding: 0,
+                    fontSize: 'inherit',
+                  }}
+                  onClick={() => {
+                    if (onNavigate) onNavigate('vrd/test');
+                    else window.location.hash = 'vrd/test';
+                  }}
+                >
+                  open Test Arena directly
+                </button>
+                ). This panel is for physical micro:bit / Quarky robots.
+              </div>
               {/* Robot type picker */}
               <div style={{ width: '100%' }}>
                 <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: 'var(--text-muted)', marginBottom: 6 }}>Choose Robot</div>

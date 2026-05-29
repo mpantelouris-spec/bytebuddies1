@@ -6,6 +6,7 @@
   "main": "electron/main.mjs",
   "scripts": {
     "dev": "node scripts/build-universal-hex.mjs && node scripts/build-boot-hex.mjs && vite",
+    "dev:clean": "rm -rf node_modules/.vite && node scripts/build-universal-hex.mjs && node scripts/build-boot-hex.mjs && vite --force",
     "build": "node scripts/build-universal-hex.mjs && node scripts/build-boot-hex.mjs && node scripts/build-bluetooth-hex.mjs && vite build",
     "build:boot-hex": "node scripts/build-boot-hex.mjs",
     "preview": "vite preview",

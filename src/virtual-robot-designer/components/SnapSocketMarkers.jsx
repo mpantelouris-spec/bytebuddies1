@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import { Text } from '@react-three/drei';
 import * as THREE from 'three';
 import { getSlotPosition, SNAP_SLOTS, slotAcceptsPart } from '../data/assembly-parts.js';
+import { useUiStore } from '../store/uiStore.js';
 
 function SocketPillar({
   position,
@@ -12,6 +13,7 @@ function SocketPillar({
   pulse,
   invalid,
   validDrop,
+  hoveredTarget,
   productMode,
   onSelect,
   onRemove,
@@ -86,7 +88,14 @@ function SocketPillar({
       {filled && (
         <mesh ref={flowRef} rotation={[-Math.PI / 2, 0, 0]}>
           <ringGeometry args={[0.06, 0.12, 24]} />
-          <meshBasicMaterial color="#1E90FF" transparent opacity={0.4} blending={THREE.AdditiveBlending} />
+          <meshBasicMaterial color="#FF006E" transparent opacity={0.45} blending={THREE.AdditiveBlending} />
+        </mesh>
+      )}
+
+      {hoveredTarget && !filled && (
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.04, 0]}>
+          <ringGeometry args={[0.16, 0.3, 32]} />
+          <meshBasicMaterial color="#00FF41" transparent opacity={0.5} blending={THREE.AdditiveBlending} />
         </mesh>
       )}
 
@@ -133,6 +142,9 @@ export default function SnapSocketMarkers({
   onSocketSelect,
   onSocketRemove,
 }) {
+  const hoveredSocket = useUiStore((s) => s.hoveredSocket);
+  const snapPulseSlot = useUiStore((s) => s.snapPulseSlot);
+
   return (
     <>
       {Object.entries(SNAP_SLOTS).map(([slotId, meta]) => {
@@ -142,6 +154,7 @@ export default function SnapSocketMarkers({
         const active = highlightSlot === slotId;
         const invalid = dragCategory && !filled && !slotAcceptsPart(slotId, dragCategory);
         const validDrop = dragCategory && !filled && slotAcceptsPart(slotId, dragCategory);
+        const hoveredTarget = hoveredSocket === slotId && validDrop;
         if (base?.shape === 'arm' && !['front', 'right', 'left', 'top'].includes(slotId)) return null;
         return (
           <SocketPillar
@@ -152,7 +165,8 @@ export default function SnapSocketMarkers({
             filled={filled}
             invalid={invalid}
             validDrop={validDrop}
-            pulse={active && snapPulse}
+            hoveredTarget={hoveredTarget}
+            pulse={(active && snapPulse) || snapPulseSlot === slotId}
             productMode={productMode}
             onSelect={() => onSocketSelect?.(slotId)}
             onRemove={() => onSocketRemove?.(slotId)}

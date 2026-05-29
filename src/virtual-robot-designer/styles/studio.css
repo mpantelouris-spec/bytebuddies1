@@ -1375,7 +1375,88 @@
 }
 .bb-cp-root--building {
   overflow: hidden;
+  background: #0a0e18;
+  color: #e0e6f0;
 }
+
+/* ── Dark theme scoped to the builder editor only ────────────── */
+.bb-cp-root--building .bb-cp-builder-wrap { background: #0a0e18; }
+
+.bb-cp-root--building .bb-cp-builder-bar {
+  background: #0d1220;
+  border-bottom-color: rgba(255,255,255,0.07);
+  box-shadow: 0 2px 16px rgba(0,0,0,0.5);
+}
+.bb-cp-root--building .bb-cp-builder-title { color: #e0e6f0; }
+
+.bb-cp-root--building .bb-cp-back-btn {
+  background: #1a2030;
+  color: #a0aec0;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.35);
+}
+.bb-cp-root--building .bb-cp-back-btn:hover { background: #7c3aed; color: #fff; }
+
+/* Left column */
+.bb-cp-root--building .bb-cp-left {
+  background: #111827;
+  border-right-color: rgba(255,255,255,0.07);
+}
+.bb-cp-root--building .bb-cp-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.12);
+}
+
+/* Right column */
+.bb-cp-root--building .bb-cp-right {
+  background: #0d1220;
+  border-left-color: rgba(255,255,255,0.07);
+}
+.bb-cp-root--building .bb-cp-right::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.12);
+}
+
+/* Parameter controls */
+.bb-cp-root--building .bb-cp-param-group-title { color: rgba(255,255,255,0.35); }
+.bb-cp-root--building .bb-cp-param-label { color: rgba(255,255,255,0.65); }
+
+.bb-cp-root--building .bb-cp-btn-choice {
+  background: #1a2030;
+  border-color: rgba(255,255,255,0.1);
+  color: #9aa5b8;
+}
+.bb-cp-root--building .bb-cp-btn-choice:hover {
+  border-color: #7c3aed;
+  color: #c4b5fd;
+  background: #1e1a40;
+}
+.bb-cp-root--building .bb-cp-btn-choice.active {
+  background: linear-gradient(135deg, #2a1f4a, #1e1a40);
+  border-color: #7c3aed;
+  color: #c4b5fd;
+  box-shadow: 0 2px 8px rgba(124,58,237,0.25);
+}
+
+.bb-cp-root--building .bb-cp-name-input {
+  background: #1a2030;
+  border-color: rgba(255,255,255,0.1);
+  color: #e0e6f0;
+}
+.bb-cp-root--building .bb-cp-name-input::placeholder { color: rgba(255,255,255,0.25); }
+.bb-cp-root--building .bb-cp-name-input:focus {
+  border-color: #7c3aed;
+  box-shadow: 0 0 0 3px rgba(124,58,237,0.2);
+  background: #1e1a40;
+}
+
+/* Stats panel */
+.bb-cp-root--building .bb-cp-stats-panel {
+  background: #141c2e;
+  border-color: rgba(255,255,255,0.07);
+}
+.bb-cp-root--building .bb-cp-stats-title { color: rgba(255,255,255,0.7); }
+.bb-cp-root--building .bb-cp-stat-label { color: rgba(255,255,255,0.5); }
+.bb-cp-root--building .bb-cp-stat-bar-wrap { background: rgba(255,255,255,0.08); }
+.bb-cp-root--building .bb-cp-stat-val { color: rgba(255,255,255,0.55); }
+.bb-cp-root--building .bb-cp-save-hint { color: rgba(255,255,255,0.38); }
 
 /* ── Shared page wrapper ──────────────────────────────────────── */
 .bb-cp-page {

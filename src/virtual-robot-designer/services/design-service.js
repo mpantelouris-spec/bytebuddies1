@@ -1,17 +1,35 @@
 import { migrateDesign } from '../config.js';
-import { migrateAssembly } from '../services/assembly-service.js';
+import { migrateAssembly } from './assembly-service.js';
+import { analyzeRobot } from './robot-profile.js';
+import { aggregatePartStatMods } from '../data/modular-parts-registry.js';
 
 const CHASSIS_SPEED = {
   rover: 0, tank: -8, drone: 12, spider: -4, humanoid: -6, industrial: -12, racing: 15, exploration: 5, arm: -10,
   rescue: 2, utility: -5, cube: 0, circular: 3, scout: 10, combat: -10, forklift: -6, hauler: -14, mini: 8,
   mech: -18, amphibious: 4, hover_platform: 14,
   underwater: 3, animal_quad: 6, battle_bot: -5, companion: 2, transformer: 5, toy_frame: 8, sci_fi: 10, aero: 16,
+  exploration_rover: 5, racing_rover: 18, armored_rover: -6, cargo_rover: -10,
+  climbing_spider: -2, tactical_spider: 0, stealth_spider: 6,
+  android_body: -4, athletic_humanoid: 8,
+  quadcopter: 14, racing_drone: 20, cargo_drone: 4, stealth_drone: 12,
+  jet_fighter: 22, glider: 10, transport_plane: -4, stunt_plane: 16,
+  submarine_hull: 2, aquatic_drone: 6,
+  anti_gravity_platform: 16, hover_racing: 18,
+  factory_base: -8, crane_platform: -6, space_rover: 8,
 };
 const CHASSIS_WEIGHT = {
   rover: 0, tank: 12, drone: -8, spider: 2, humanoid: 5, industrial: 18, racing: -5, exploration: 3, arm: -6,
   rescue: 6, utility: 10, cube: 4, circular: 2, scout: -4, combat: 20, forklift: 14, hauler: 22, mini: -10,
   mech: 25, amphibious: 8, hover_platform: -6,
   underwater: 6, animal_quad: 0, battle_bot: 16, companion: -4, transformer: 4, toy_frame: -6, sci_fi: 2, aero: -8,
+  exploration_rover: 4, racing_rover: -6, armored_rover: 18, cargo_rover: 20,
+  climbing_spider: 0, tactical_spider: 8, stealth_spider: -4,
+  android_body: 2, athletic_humanoid: -2,
+  quadcopter: -10, racing_drone: -12, cargo_drone: 6, stealth_drone: -6,
+  jet_fighter: -6, glider: -10, transport_plane: 14, stunt_plane: -4,
+  submarine_hull: 8, aquatic_drone: 0,
+  anti_gravity_platform: -8, hover_racing: -6,
+  factory_base: 22, crane_platform: 18, space_rover: 4,
 };
 
 export function computeDesignStats(design) {
@@ -30,32 +48,41 @@ export function computeDesignStats(design) {
   const toolCount = countActiveTools(d);
   const abilityCount = countActiveAbilities(d);
   const slotCount = Object.values(asm.slots || {}).filter(Boolean).length;
+  const partMods = aggregatePartStatMods(asm.slots);
 
   let speed = 55 + motorPow + wheelPen - sizeM * 0.5 - sensorCount * 2;
+  speed += partMods.speed || 0;
   speed += (CHASSIS_SPEED[chassisType] ?? 0);
   speed += Math.min(6, Math.max(-4, (wheelCount - 4) * -1.5));
   if (d.abilities?.speedBoost) speed += 15;
   if (d.abilities?.chaosMode) speed += 8;
 
   let power = 50 + motorPow * 0.8 + toolCount * 5 + slotCount * 2;
+  power += partMods.power || 0;
   if (d.abilities?.superStrength) power += 12;
 
   let agility = 60 - sizeM - Math.abs(wheelPen) * 0.5 - scaleMod * 0.4;
+  agility += partMods.agility || 0;
   agility += wheelCount >= 6 ? 8 : wheelCount <= 2 ? -6 : 0;
   if (d.abilities?.timeSlow) agility += 10;
 
   let weightVal = 30 + sizeM * 2 + sensorCount * 3 + toolCount * 8 + scaleMod;
   weightVal += (CHASSIS_WEIGHT[chassisType] ?? 0);
+  weightVal += partMods.weight || 0;
   weightVal += Math.max(0, (wheelCount - 4) * 2);
   if (d.chassis?.material === 'metal' || asm.base?.material === 'metal') weightVal += 8;
 
   let battery = 80 - sensorCount * 5 - abilityCount * 5 - slotCount * 2;
+  battery += partMods.battery || 0;
   battery -= (d.wheels?.motor === 'turbo' ? 20 : d.wheels?.motor === 'strong' ? 8 : 0);
   if (d.cosmetics?.accentLights) battery -= 3;
 
   const topSpeedMs = +(speed / 40).toFixed(1);
   const runtimeHours = +((battery / 100) * 3.2).toFixed(1);
   const loadCapacity = Math.max(1, Math.round(12 - weightVal * 0.08));
+
+  const stability = clamp(agility + (wheelCount >= 6 ? 10 : 0) - (weightVal > 70 ? 15 : 0) + (partMods.stability || 0));
+  const efficiency = clamp(Math.round((power / Math.max(weightVal, 18)) * 14));
 
   return {
     speed: clamp(speed),
@@ -69,7 +96,8 @@ export function computeDesignStats(design) {
     topSpeedMs,
     runtimeHours,
     loadCapacity,
-    stability: clamp(agility + (wheelCount >= 6 ? 10 : 0) - (weightVal > 70 ? 15 : 0)),
+    stability,
+    efficiency,
   };
 }
 
@@ -238,19 +266,61 @@ export function buildRichVariants(baseDesign) {
 export function buildDemoProgram(design) {
   const d = migrateDesign(design);
   const stats = computeDesignStats(d);
-  const steps = [];
   const forwardAmount = Math.round(40 + stats.speed * 0.4);
   const turnDeg = Math.round(30 + stats.agility * 0.3);
-  steps.push({ id: 'forward', params: { amount: forwardAmount } });
-  if (d.abilities?.chaosMode) {
-    steps.push({ id: 'left', params: { degrees: 180 } });
+
+  const profile = analyzeRobot(d);
+
+  const steps = [];
+  const pid = profile.profileId;
+
+  if (profile.isAerial || ['drone', 'jet', 'helicopter', 'hover'].includes(pid)) {
+    steps.push({ id: 'takeoff', params: {} });
+    steps.push({ id: 'fly_up', params: { amount: 25 } });
+    steps.push({ id: 'forward', params: { amount: forwardAmount * 0.6 } });
+    if (d.sensors?.ultrasonic || d.sensors?.camera) steps.push({ id: 'aerial_scan', params: {} });
+    steps.push({ id: 'hover', params: { secs: 1 } });
+    steps.push({ id: 'land', params: {} });
+  } else if (profile.isUnderwater || pid === 'submarine') {
+    steps.push({ id: 'dive', params: {} });
+    steps.push({ id: 'forward', params: { amount: forwardAmount * 0.5 } });
+    steps.push({ id: 'sonar_scan', params: {} });
+    steps.push({ id: 'sample_collect', params: {} });
+    steps.push({ id: 'ascend', params: {} });
+  } else if (pid === 'tank' || pid === 'mech') {
+    steps.push({ id: 'power_mode', params: {} });
+    steps.push({ id: 'forward', params: { amount: forwardAmount } });
+    steps.push({ id: 'tank_steer', params: { direction: 'left', degrees: turnDeg } });
+    steps.push({ id: 'push_object', params: { amount: 35 } });
+    steps.push({ id: 'climb_mode', params: {} });
+  } else if (pid === 'spider' || pid === 'humanoid') {
+    steps.push({ id: pid === 'humanoid' ? 'walk' : 'step_forward', params: { steps: 3, amount: forwardAmount } });
+    steps.push({ id: 'terrain_detect', params: {} });
+    if (pid === 'spider') steps.push({ id: 'leap', params: {} });
+    else steps.push({ id: 'balance_mode', params: {} });
+  } else if (pid === 'arm') {
+    steps.push({ id: 'rotate_arm', params: { degrees: 90 } });
+    if (d.tools?.grabber || d.tools?.pincer) steps.push({ id: 'grab', params: {} });
+    steps.push({ id: 'stack_object', params: {} });
+    steps.push({ id: 'release', params: {} });
+  } else if (pid === 'drill') {
+    steps.push({ id: 'activate_drill', params: { secs: 1 } });
+    steps.push({ id: 'tunnel_forward', params: { amount: forwardAmount } });
+    steps.push({ id: 'scan_minerals', params: {} });
+  } else if (pid === 'lego') {
+    steps.push({ id: 'attach_block', params: {} });
+    steps.push({ id: 'forward', params: { amount: forwardAmount * 0.6 } });
+    steps.push({ id: 'stack_pieces', params: {} });
+  } else {
+    steps.push({ id: 'forward', params: { amount: forwardAmount } });
+    if (d.abilities?.chaosMode) steps.push({ id: 'left', params: { degrees: 180 } });
+    steps.push({ id: 'left', params: { degrees: turnDeg } });
+    steps.push({ id: 'forward', params: { amount: forwardAmount * 0.7 } });
+    if (d.sensors?.ultrasonic) steps.push({ id: 'wait', params: { secs: 0.5 } });
+    steps.push({ id: 'right', params: { degrees: turnDeg } });
+    if (d.abilities?.speedBoost) steps.push({ id: 'accelerate', params: { amount: forwardAmount } });
   }
-  steps.push({ id: 'left', params: { degrees: turnDeg } });
-  steps.push({ id: 'forward', params: { amount: forwardAmount * 0.7 } });
-  if (d.sensors?.ultrasonic) steps.push({ id: 'wait', params: { secs: 0.5 } });
-  steps.push({ id: 'right', params: { degrees: turnDeg } });
-  steps.push({ id: 'forward', params: { amount: forwardAmount * 0.5 } });
-  if (d.abilities?.speedBoost) steps.push({ id: 'forward', params: { amount: forwardAmount } });
+
   steps.push({ id: 'stop', params: {} });
   return steps;
 }

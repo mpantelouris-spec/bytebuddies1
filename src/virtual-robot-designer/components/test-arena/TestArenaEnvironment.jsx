@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { ARENA_OBSTACLES } from '../../services/robot-runtime.js';
 import { getCourseMeta } from '../../data/test-arena-courses.js';
+import TestArenaFacility from './TestArenaFacility.jsx';
 
 function PulseRing({ position, color, scale = 1 }) {
   const ref = useRef();
@@ -20,7 +21,32 @@ function PulseRing({ position, color, scale = 1 }) {
   );
 }
 
+function SkyRing({ o, index }) {
+  return (
+    <group key={index} position={[o.x, 1.2, o.z]}>
+      <mesh rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[o.r || 0.35, 0.06, 12, 32]} />
+        <meshStandardMaterial color="#38bdf8" emissive="#0ea5e9" emissiveIntensity={0.55} transparent opacity={0.85} />
+      </mesh>
+    </group>
+  );
+}
+
+function HoverPlatform({ o, index }) {
+  return (
+    <group key={index} position={[o.x, 0.35, o.z]}>
+      <mesh castShadow receiveShadow>
+        <cylinderGeometry args={[o.r || 0.5, o.r || 0.5, 0.2, 24]} />
+        <meshStandardMaterial color="#c026d3" emissive="#d946ef" emissiveIntensity={0.35} metalness={0.4} roughness={0.35} />
+      </mesh>
+      <PulseRing position={[0, 0.12, 0]} color="#e879f9" scale={1.1} />
+    </group>
+  );
+}
+
 function ArenaObstacle({ o, index }) {
+  if (o.type === 'ring') return <SkyRing o={o} index={index} />;
+  if (o.type === 'platform') return <HoverPlatform o={o} index={index} />;
   if (o.r) {
     return (
       <group key={index} position={[o.x, 0.55, o.z]}>
@@ -115,17 +141,39 @@ function AnimatedBeacons() {
   ));
 }
 
-export default function TestArenaEnvironment({ arenaId }) {
+const FLOOR_BY_THEME = {
+  sky: '#b8d9ff',
+  underwater: '#0e7490',
+  rough: '#b8a898',
+  mining: '#78716c',
+  factory: '#e2e8f0',
+  terrain: '#c8e6c9',
+  hover: '#312e81',
+  lego: '#ffcc80',
+  ai: '#ede9fe',
+  ground: '#dce8f5',
+};
+
+export default function TestArenaEnvironment({ arenaId, arenaTheme = 'ground' }) {
   const course = getCourseMeta(arenaId);
   const obstacles = ARENA_OBSTACLES[arenaId] || ARENA_OBSTACLES.obstacles;
   const accent = course.color || '#1e90ff';
+  const floorColor = FLOOR_BY_THEME[arenaTheme] || FLOOR_BY_THEME.ground;
+  const isUnderwater = arenaTheme === 'underwater';
 
   return (
     <group>
+      <TestArenaFacility accent={accent} />
+      {isUnderwater && (
+        <mesh position={[0, 4, 0]}>
+          <boxGeometry args={[30, 8, 30]} />
+          <meshStandardMaterial color="#0284c7" transparent opacity={0.12} depthWrite={false} />
+        </mesh>
+      )}
       {/* Main floor */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
         <circleGeometry args={[14, 64]} />
-        <meshStandardMaterial color="#dce8f5" metalness={0.15} roughness={0.65} />
+        <meshStandardMaterial color={floorColor} metalness={isUnderwater ? 0.5 : 0.28} roughness={0.42} envMapIntensity={1.15} />
       </mesh>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.008, 0]} receiveShadow>
         <ringGeometry args={[11.5, 13.8, 64]} />
@@ -135,7 +183,7 @@ export default function TestArenaEnvironment({ arenaId }) {
       {/* Inner test pad */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.012, 0]} receiveShadow>
         <circleGeometry args={[9, 48]} />
-        <meshStandardMaterial color="#f0f6fc" metalness={0.08} roughness={0.75} />
+        <meshStandardMaterial color="#f0f6fc" metalness={0.22} roughness={0.38} envMapIntensity={1.1} />
       </mesh>
 
       {/* Boundary walls — soft futuristic panels */}

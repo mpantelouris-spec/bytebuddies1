@@ -40,6 +40,8 @@ import LevelUpCelebration from './components/LevelUpCelebration';
 import ParentDashboard from './components/ParentDashboard';
 import RobotPanel from './components/RobotPanel';
 import RobotDesignerPage from './virtual-robot-designer/RobotDesignerPage.jsx';
+import ByteBuddiesStudio from './virtual-robot-designer/ByteBuddiesStudio.jsx';
+import VirtualRobotDesignerApp from './virtual-robot-designer/VirtualRobotDesignerApp.jsx';
 import LandingPage from './components/LandingPage';
 import TeacherDashboard from './components/TeacherDashboard';
 import TeacherHome from './components/TeacherHome';
@@ -117,6 +119,8 @@ function AppInner() {
       case 'challenges': return <Challenges onNavigate={navigate} />;
       case 'parent':     return <ParentDashboard onNavigate={navigate} />;
       case 'vrd':        return <RobotDesignerPage />;
+      case 'academy':    return <VirtualRobotDesignerApp />;
+      case 'studio':     return <ByteBuddiesStudio />;
       case 'robot':      return <RobotPanel onNavigate={navigate} />;
       case 'admin':      return <AdminPanel />;
       case 'missions':   return <MissionMode onNavigate={navigate} />;
@@ -128,7 +132,7 @@ function AppInner() {
 
   if (currentPage === 'whitepaper') return <WhitePaper />;
 
-  const isStandaloneApp = currentPage === 'vrd' || currentPage === 'robot';
+  const isStandaloneApp = currentPage === 'vrd' || currentPage === 'robot' || currentPage === 'studio' || currentPage === 'academy';
 
   if (isStandaloneApp) {
     return (

@@ -159,12 +159,107 @@ export function createSimExecutor({
       setTimeout(resolve, 500);
       return;
     }
-    if (id === 'jump') {
+    if (id === 'jump' || id === 'leap') {
       camTargetRef.current.hover = (physics.hoverLift || 0) + 0.35;
       setTimeout(() => {
         camTargetRef.current.hover = physics.hoverLift || 0;
         resolve();
       }, 450);
+      return;
+    }
+    if (id === 'takeoff' || id === 'fly_up' || id === 'float_up' || id === 'ascend') {
+      camTargetRef.current.hover = (physics.hoverLift || 0) + 0.5;
+      setTimeout(resolve, 600);
+      return;
+    }
+    if (id === 'land' || id === 'fly_down') {
+      camTargetRef.current.hover = Math.max(0, (physics.hoverLift || 0) * 0.3);
+      setTimeout(resolve, 600);
+      return;
+    }
+    if (id === 'hover' || id === 'altitude_hold' || id === 'water_stabilize' || id === 'balance_mode') {
+      setTimeout(resolve, (params.secs || 1) * 1000);
+      return;
+    }
+    if (id === 'dive') {
+      camTargetRef.current.hover = -0.2;
+      setTimeout(resolve, 700);
+      return;
+    }
+    if (id === 'rotate_air' || id === 'roll_left' || id === 'roll_right') {
+      const sign = id === 'roll_right' ? 1 : -1;
+      animateTurn(p, { degrees: params.degrees || 45 }, ctx, sign).then(resolve);
+      return;
+    }
+    if (id === 'pitch_up' || id === 'pitch_down') {
+      camTargetRef.current.hover = (camTargetRef.current.hover || 0) + (id === 'pitch_up' ? 0.15 : -0.15);
+      animateForward(p, { amount: params.amount || 35 }, ctx, 1).then(resolve);
+      return;
+    }
+    if (id === 'thrust' || id === 'jet_boost' || id === 'anti_gravity_boost') {
+      animateForward(p, { amount: params.amount || 55 }, ctx, 1.4).then(resolve);
+      return;
+    }
+    if (id === 'glide' || id === 'loop_maneuver') {
+      setTimeout(() => animateForward(p, { amount: 40 }, ctx, 1.1).then(resolve), id === 'loop_maneuver' ? 200 : 0);
+      return;
+    }
+    if (id === 'tank_steer') {
+      const sign = params.direction === 'right' ? 1 : -1;
+      animateTurn(p, { degrees: params.degrees || 45 }, ctx, sign)
+        .then(() => animateForward(p, { amount: 30 }, ctx, 1))
+        .then(resolve);
+      return;
+    }
+    if (id === 'rotate_place') {
+      animateTurn(p, { degrees: params.degrees || 90 }, ctx, 1).then(resolve);
+      return;
+    }
+    if (id === 'push_object' || id === 'tunnel_forward') {
+      animateForward(p, { amount: params.amount || 45 }, { ...ctx, stepId: id }, 0.85).then(resolve);
+      return;
+    }
+    if (id === 'climb_mode' || id === 'climb_wall' || id === 'power_mode') {
+      camTargetRef.current.hover = (camTargetRef.current.hover || 0) + 0.12;
+      animateForward(p, { amount: 35 }, ctx, 0.75).then(() => {
+        camTargetRef.current.hover = physics.hoverLift || 0;
+        resolve();
+      });
+      return;
+    }
+    if (id === 'step_forward') {
+      const steps = Math.max(1, params.steps || 3);
+      const segment = { amount: (params.amount || 35) / steps };
+      (async () => {
+        for (let i = 0; i < steps; i += 1) {
+          await animateForward(p, segment, { ...ctx, stepId: 'step_forward' }, 1);
+          await new Promise((r) => setTimeout(r, 150));
+        }
+        resolve();
+      })();
+      return;
+    }
+    if (id === 'crouch' || id === 'stabilize_legs' || id === 'precision_mode' || id === 'activate_drill') {
+      setTimeout(resolve, (params.secs || 1) * 1000);
+      return;
+    }
+    if (id === 'rotate_arm') {
+      animateTurn(p, { degrees: params.degrees || 90 }, ctx, 1).then(resolve);
+      return;
+    }
+    if (id === 'aerial_scan' || id === 'sonar_scan' || id === 'terrain_detect' || id === 'scan_minerals') {
+      onSensorRead?.({ type: 'scan', hit: checkObstacleAhead(p, p.angle, design, arenaId).hit });
+      setTimeout(resolve, 900);
+      return;
+    }
+    if (id === 'side_drift') {
+      animateTurn(p, { degrees: 90 }, ctx, 1)
+        .then(() => animateForward(p, { amount: params.amount || 30 }, ctx, 1))
+        .then(resolve);
+      return;
+    }
+    if (id === 'stack_object' || id === 'sort_color' || id === 'sample_collect' || id === 'attach_block' || id === 'stack_pieces' || id === 'wave') {
+      setTimeout(resolve, 700);
       return;
     }
     if (id === 'walk') {

@@ -4,20 +4,22 @@
  * Handles tab routing and shared robot config state.
  */
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import BuildPage       from './studio/BuildPage.jsx';
-import CodePage        from './studio/CodePage.jsx';
-import SimulatorPage   from './studio/SimulatorPage.jsx';
-import LiveLabPage     from './studio/LiveLabPage.jsx';
-import MyRobotsPage    from './studio/MyRobotsPage.jsx';
-import ChallengesPage  from './studio/ChallengesPage.jsx';
-import CustomPartsPage from './studio/CustomPartsPage.jsx';
-import DevDebugPanel   from './studio/DevDebugPanel.jsx';
+import BuildPage          from './studio/BuildPage.jsx';
+import ModularBuilderPage from './studio/ModularBuilderPage.jsx';
+import CodePage           from './studio/CodePage.jsx';
+import SimulatorPage      from './studio/SimulatorPage.jsx';
+import LiveLabPage        from './studio/LiveLabPage.jsx';
+import MyRobotsPage       from './studio/MyRobotsPage.jsx';
+import ChallengesPage     from './studio/ChallengesPage.jsx';
+import CustomPartsPage    from './studio/CustomPartsPage.jsx';
+import DevDebugPanel      from './studio/DevDebugPanel.jsx';
 import { validateRobot, validateCode, runPreflight } from './services/robotValidator.js';
 import './styles/studio.css';
 
 const CP_LS_KEY = 'bb-studio-custom-parts';
 const ROBOT_LS_KEY = 'bb-studio-robot';
 const CODE_LS_KEY  = 'bb-studio-code';
+
 
 function loadCustomParts() {
   try { return JSON.parse(localStorage.getItem(CP_LS_KEY)) || []; } catch { return []; }
@@ -35,6 +37,12 @@ const DEFAULT_CONFIG = {
   chassisId:    'rover',
   primaryColor: '#FF8C00',
   accentColor:  '#FFD700',
+  trimColor:         '#FFD700',
+  wheelColor:        '#1a1a1a',
+  ledColor:          '#00D9FF',
+  materialMetalness: 0.4,
+  materialRoughness: 0.5,
+  materialGlow:      1.0,
   movementId:   'wheels',
   headId:       null,
   armId:        null,
@@ -42,6 +50,13 @@ const DEFAULT_CONFIG = {
   lightId:      null,
   sensors:      ['camera'],
   tools:        [],
+  aiId:         null,
+  commId:       null,
+  aiModules:    [],
+  commParts:    [],
+  structParts:  [],
+  decoParts:    [],
+  legoParts:    [],
 };
 
 // Validation summary badge colors
@@ -297,7 +312,7 @@ export default function ByteBuddiesStudio() {
       case 'challenges':
         return <ChallengesPage onStartChallenge={startChallenge} />;
       case 'create':
-        return <CustomPartsPage customParts={customParts} setCustomParts={setCustomParts} />;
+        return <ModularBuilderPage onSimulate={goToCode} />;
       default:
         return null;
     }

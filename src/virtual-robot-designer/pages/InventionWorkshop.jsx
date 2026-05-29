@@ -1,10 +1,13 @@
 /**
  * Invention Workshop — complete redesign. Robot-first, kid-friendly, modular invention.
  */
-import React from 'react';
+import React, { useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { playVrdSoundSync } from '../utils/vrdSound.js';
 import { useWorkshopActions } from '../hooks/useWorkshopActions.js';
+import { useRobotStore, useDesignActions } from '../store/robotStore.js';
+import { migrateDesign } from '../config.js';
+import { generateRobotClassPython } from '../services/robot-code-generator.js';
 import { countPlacedParts } from '../services/assembly-service.js';
 import WorkshopWelcome from '../components/workshop/WorkshopWelcome.jsx';
 import WorkshopPartsPalette from '../components/workshop/WorkshopPartsPalette.jsx';
@@ -23,7 +26,17 @@ export default function InventionWorkshop({
   onBack,
 }) {
   const w = useWorkshopActions();
+  const { setDesign } = useDesignActions();
   const evolutionLevel = Math.min(10, Math.max(1, countPlacedParts(w.asm) + 1));
+
+  const handleCodeMyRobot = useCallback(() => {
+    const design = migrateDesign(useRobotStore.getState().design);
+    const python = generateRobotClassPython(design);
+    const prog = design.program || { mode: 'blocks', blocks: [], python: '', javascript: '' };
+    setDesign({ ...design, program: { ...prog, mode: 'python', python } });
+    playVrdSoundSync('success');
+    onGoCode?.();
+  }, [setDesign, onGoCode]);
 
   if (w.showWelcome) {
     return <WorkshopWelcome onStart={w.handleWelcomeStart} />;
@@ -86,6 +99,7 @@ export default function InventionWorkshop({
             onMountPart={w.handleMountPart}
             onUpdateBase={w.handleUpdateBase}
             onSetBuildMode={w.handleSetBuildMode}
+            onSetWheelCount={w.handleSetWheelCount}
             buildMode={w.buildMode}
           />
 
@@ -116,12 +130,14 @@ export default function InventionWorkshop({
           <WorkshopRobotPanel
             design={w.d}
             stats={w.stats}
-            onCode={onGoCode}
+            onCode={handleCodeMyRobot}
             onTest={() => w.handleTestInSimulator(onGoSimulator)}
             onSave={() => w.setShowSave(true)}
             onLoad={() => w.setShowLoad(true)}
             onUndo={w.handleUndo}
+            onRedo={w.handleRedo}
             canUndo={w.canUndo}
+            canRedo={w.canRedo}
           />
 
           <WorkshopInventoryTray

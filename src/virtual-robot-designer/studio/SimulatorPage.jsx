@@ -1,113 +1,499 @@
 /**
- * SimulatorPage.jsx  - ByteBuddies Robot Simulator (Complete Rebuild)
- * No blocking overlay. Real robot from builder. Bright STEM lab arena.
- * Code blocks execute the child's actual program.
+ * SimulatorPage.jsx — ByteBuddies Robot Simulator
+ * Left:   Real Google Blockly visual-code workspace
+ * Center: Live Three.js robot arena
+ * Right:  Stats + challenge selector + controls
  */
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import * as THREE from 'three';
+import * as THREE    from 'three';
+import * as Blockly  from 'blockly';
 import { buildRobotModel } from '../services/studio-robot-builder.js';
 
+// ─── Challenges ──────────────────────────────────────────────────────────────
 const CHALLENGES = [
-  { id:'obstacle', name:'Obstacle Course', icon:'🏁', desc:'Navigate obstacles to the finish!', color:'#22c55e', obstacles:10, totalDist:22, difficulty:'Easy' },
-  { id:'speedrun',  name:'Speed Run',       icon:'⚡',    desc:'Beat the clock, full speed!',     color:'#f59e0b', obstacles:5,  totalDist:16, difficulty:'Medium' },
-  { id:'maze',      name:'Maze Navigator',  icon:'🌀', desc:'Find the exit through the maze.',  color:'#8b5cf6', obstacles:18, totalDist:30, difficulty:'Hard' },
-  { id:'collect',   name:'Cargo Run',       icon:'📦', desc:'Pick up all the cargo boxes!',     color:'#0ea5e9', obstacles:6,  totalDist:20, difficulty:'Medium' },
+  { id:'obstacle', name:'Obstacle Course', icon:'🏁', desc:'Navigate to the finish!',  color:'#22c55e', obstacles:10, totalDist:22, difficulty:'Easy'   },
+  { id:'speedrun',  name:'Speed Run',       icon:'⚡',  desc:'Beat the clock!',          color:'#f59e0b', obstacles:5,  totalDist:16, difficulty:'Medium' },
+  { id:'maze',      name:'Maze Navigator',  icon:'🌀', desc:'Find the exit!',            color:'#8b5cf6', obstacles:18, totalDist:30, difficulty:'Hard'   },
+  { id:'collect',   name:'Cargo Run',       icon:'📦', desc:'Collect every cargo box!',  color:'#0ea5e9', obstacles:6,  totalDist:20, difficulty:'Medium' },
 ];
-
 const INIT_STATS = { time:0, dist:0, battery:100, avoided:0, progress:0 };
 
+// ─── Blockly block registration (runs once) ───────────────────────────────────
+let _registered = false;
+function registerBlocks() {
+  if (_registered) return;
+  _registered = true;
+
+  /* EVENTS – yellow hat blocks */
+  Blockly.Blocks['when_start'] = { init() {
+    this.appendDummyInput().appendField('🟢  when  ▶  Start');
+    this.setNextStatement(true, null);
+    this.setColour('#E6A817');
+    this.setTooltip('Your program begins here');
+  }};
+
+  Blockly.Blocks['when_obstacle'] = { init() {
+    this.appendDummyInput().appendField('🚨  when obstacle detected');
+    this.setNextStatement(true, null);
+    this.setColour('#E6A817');
+    this.setTooltip('Runs when the sensor sees an obstacle');
+  }};
+
+  /* CONTROL – orange C-blocks */
+  Blockly.Blocks['repeat_n'] = { init() {
+    this.appendDummyInput()
+      .appendField('🔁  repeat')
+      .appendField(new Blockly.FieldNumber(3, 1, 20, 1), 'TIMES')
+      .appendField('times');
+    this.appendStatementInput('DO').setCheck(null).appendField('do');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#CF8B17');
+    this.setTooltip('Repeat the blocks inside');
+  }};
+
+  Blockly.Blocks['if_obstacle_c'] = { init() {
+    this.appendDummyInput().appendField('🚧  if obstacle ahead');
+    this.appendStatementInput('DO').setCheck(null).appendField('then');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#CF8B17');
+  }};
+
+  Blockly.Blocks['if_else_c'] = { init() {
+    this.appendDummyInput().appendField('❓  if obstacle ahead');
+    this.appendStatementInput('DO').setCheck(null).appendField('then');
+    this.appendStatementInput('ELSE').setCheck(null).appendField('else');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#CF8B17');
+  }};
+
+  Blockly.Blocks['wait_sec'] = { init() {
+    this.appendDummyInput()
+      .appendField('⏱  wait')
+      .appendField(new Blockly.FieldNumber(1, 0.1, 10, 0.1), 'SECS')
+      .appendField('seconds');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#CF8B17');
+  }};
+
+  /* MOTION – blue stack blocks */
+  Blockly.Blocks['move_forward'] = { init() {
+    this.appendDummyInput()
+      .appendField('⬆️  move forward')
+      .appendField(new Blockly.FieldNumber(2, 1, 10, 1), 'STEPS')
+      .appendField('steps');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#4C97FF');
+  }};
+
+  Blockly.Blocks['move_backward'] = { init() {
+    this.appendDummyInput()
+      .appendField('⬇️  move backward')
+      .appendField(new Blockly.FieldNumber(2, 1, 10, 1), 'STEPS')
+      .appendField('steps');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#4C97FF');
+  }};
+
+  Blockly.Blocks['turn_left'] = { init() {
+    this.appendDummyInput()
+      .appendField('↺  turn left')
+      .appendField(new Blockly.FieldNumber(90, 15, 360, 15), 'DEGREES')
+      .appendField('°');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#4C97FF');
+  }};
+
+  Blockly.Blocks['turn_right'] = { init() {
+    this.appendDummyInput()
+      .appendField('↻  turn right')
+      .appendField(new Blockly.FieldNumber(90, 15, 360, 15), 'DEGREES')
+      .appendField('°');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#4C97FF');
+  }};
+
+  Blockly.Blocks['spin_around'] = { init() {
+    this.appendDummyInput().appendField('🌀  spin around');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#4C97FF');
+  }};
+
+  Blockly.Blocks['stop_robot'] = { init() {
+    this.appendDummyInput().appendField('⏹  stop');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#4C97FF');
+  }};
+
+  /* FLIGHT – sky blue (flying robots only) */
+  Blockly.Blocks['fly_up'] = { init() {
+    this.appendDummyInput()
+      .appendField('🚀  fly up')
+      .appendField(new Blockly.FieldNumber(2, 1, 5, 1), 'HEIGHT')
+      .appendField('m');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#5CB1D6');
+  }};
+
+  Blockly.Blocks['fly_down'] = { init() {
+    this.appendDummyInput().appendField('🪂  fly down');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#5CB1D6');
+  }};
+
+  Blockly.Blocks['hover_place'] = { init() {
+    this.appendDummyInput()
+      .appendField('🚁  hover for')
+      .appendField(new Blockly.FieldNumber(2, 0.5, 10, 0.5), 'SECS')
+      .appendField('sec');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#5CB1D6');
+  }};
+
+  /* ARM – green (arm robots only) */
+  Blockly.Blocks['grab_object'] = { init() {
+    this.appendDummyInput().appendField('🤏  grab object');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#59C059');
+  }};
+
+  Blockly.Blocks['release_object'] = { init() {
+    this.appendDummyInput().appendField('👐  release object');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#59C059');
+  }};
+
+  Blockly.Blocks['extend_arm'] = { init() {
+    this.appendDummyInput().appendField('💪  extend arm');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#59C059');
+  }};
+
+  /* SENSORS – teal (sensor robots only) */
+  Blockly.Blocks['scan_area'] = { init() {
+    this.appendDummyInput().appendField('📡  scan area');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#5CB1D6');
+  }};
+
+  Blockly.Blocks['look_around'] = { init() {
+    this.appendDummyInput().appendField('👁  look around');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#5CB1D6');
+  }};
+
+  /* LIGHTS – purple (light robots only) */
+  Blockly.Blocks['lights_on'] = { init() {
+    this.appendDummyInput().appendField('💡  lights on');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#9966FF');
+  }};
+
+  Blockly.Blocks['lights_off'] = { init() {
+    this.appendDummyInput().appendField('🔦  lights off');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#9966FF');
+  }};
+
+  Blockly.Blocks['lights_flash'] = { init() {
+    this.appendDummyInput()
+      .appendField('✨  flash lights')
+      .appendField(new Blockly.FieldNumber(3, 1, 10, 1), 'TIMES')
+      .appendField('times');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#9966FF');
+  }};
+}
+
+// ─── Dynamic toolbox (depends on robot config) ───────────────────────────────
+function buildToolbox(robotConfig) {
+  const movId   = robotConfig?.movementId || 'wheels';
+  const sensors = robotConfig?.sensors    || [];
+  const armId   = robotConfig?.armId;
+  const lightId  = robotConfig?.lightId;
+  const isFlying = ['flying', 'jets', 'hover'].includes(movId);
+
+  const cats = [
+    {
+      kind:'category', name:'⚡ Events', colour:'#E6A817',
+      contents:[
+        { kind:'block', type:'when_start' },
+        ...(sensors.length ? [{ kind:'block', type:'when_obstacle' }] : []),
+      ],
+    },
+    {
+      kind:'category', name:'🔁 Control', colour:'#CF8B17',
+      contents:[
+        { kind:'block', type:'repeat_n' },
+        { kind:'block', type:'wait_sec' },
+        ...(sensors.length ? [
+          { kind:'block', type:'if_obstacle_c' },
+          { kind:'block', type:'if_else_c' },
+        ] : []),
+      ],
+    },
+    {
+      kind:'category', name:'🚗 Motion', colour:'4C97FF',
+      contents:[
+        { kind:'block', type:'move_forward' },
+        { kind:'block', type:'move_backward' },
+        { kind:'block', type:'turn_left' },
+        { kind:'block', type:'turn_right' },
+        { kind:'block', type:'spin_around' },
+        { kind:'block', type:'stop_robot' },
+      ],
+    },
+  ];
+
+  if (isFlying) cats.push({
+    kind:'category', name:'✈️ Flight', colour:'#5CB1D6',
+    contents:[
+      { kind:'block', type:'fly_up' },
+      { kind:'block', type:'fly_down' },
+      { kind:'block', type:'hover_place' },
+    ],
+  });
+
+  if (armId) cats.push({
+    kind:'category', name:'🦾 Arm', colour:'#59C059',
+    contents:[
+      { kind:'block', type:'grab_object' },
+      { kind:'block', type:'release_object' },
+      { kind:'block', type:'extend_arm' },
+    ],
+  });
+
+  if (sensors.length) cats.push({
+    kind:'category', name:'📡 Sensors', colour:'#5CB1D6',
+    contents:[
+      { kind:'block', type:'scan_area' },
+      { kind:'block', type:'look_around' },
+    ],
+  });
+
+  if (lightId) cats.push({
+    kind:'category', name:'💡 Lights', colour:'#9966FF',
+    contents:[
+      { kind:'block', type:'lights_on' },
+      { kind:'block', type:'lights_off' },
+      { kind:'block', type:'lights_flash' },
+    ],
+  });
+
+  return { kind:'categoryToolbox', contents:cats };
+}
+
+// ─── Starter program loaded into fresh workspace ──────────────────────────────
+const STARTER_PROGRAM = {
+  blocks:{
+    languageVersion:0,
+    blocks:[{
+      type:'when_start', id:'bb_start', x:40, y:40,
+      next:{ block:{
+        type:'repeat_n', id:'bb_repeat',
+        fields:{ TIMES:3 },
+        inputs:{ DO:{ block:{
+          type:'move_forward', id:'bb_fwd',
+          fields:{ STEPS:2 },
+          next:{ block:{
+            type:'turn_right', id:'bb_turn',
+            fields:{ DEGREES:90 },
+          }},
+        }}},
+      }},
+    }],
+  },
+};
+
+// ─── Workspace → robotCode compiler ──────────────────────────────────────────
+function traverseStack(block) {
+  if (!block) return [];
+  const out = [];
+  const nf  = (name, def) => parseFloat(block.getFieldValue(name)) || def;
+
+  switch (block.type) {
+    case 'repeat_n': {
+      const times = Math.max(1, Math.min(20, nf('TIMES', 3) | 0));
+      const body  = traverseStack(block.getInputTargetBlock('DO'));
+      for (let i = 0; i < times; i++) out.push(...body);
+      break;
+    }
+    case 'if_obstacle_c':
+      out.push({ id:'if_obstacle', blockId:block.id, label:'If Obstacle', paramValues:{} });
+      out.push(...traverseStack(block.getInputTargetBlock('DO')));
+      break;
+    case 'if_else_c':
+      out.push({ id:'if_obstacle', blockId:block.id, label:'If/Else Obstacle', paramValues:{} });
+      out.push(...traverseStack(block.getInputTargetBlock('DO')));
+      out.push(...traverseStack(block.getInputTargetBlock('ELSE')));
+      break;
+    case 'wait_sec': {
+      const s = nf('SECS', 1);
+      out.push({ id:'wait', blockId:block.id, label:`Wait ${s}s`, paramValues:{ seconds:s } });
+      break;
+    }
+    case 'move_forward': {
+      const n = nf('STEPS', 2);
+      out.push({ id:'move_forward', blockId:block.id, label:`Forward ${n}`, paramValues:{ steps:n } });
+      break;
+    }
+    case 'move_backward': {
+      const n = nf('STEPS', 2);
+      out.push({ id:'move_backward', blockId:block.id, label:`Backward ${n}`, paramValues:{ steps:n } });
+      break;
+    }
+    case 'turn_left': {
+      const d = nf('DEGREES', 90);
+      out.push({ id:'turn_left', blockId:block.id, label:`Left ${d}°`, paramValues:{ degrees:d } });
+      break;
+    }
+    case 'turn_right': {
+      const d = nf('DEGREES', 90);
+      out.push({ id:'turn_right', blockId:block.id, label:`Right ${d}°`, paramValues:{ degrees:d } });
+      break;
+    }
+    case 'spin_around':
+      out.push({ id:'spin',  blockId:block.id, label:'Spin', paramValues:{} }); break;
+    case 'stop_robot':
+      out.push({ id:'stop',  blockId:block.id, label:'Stop', paramValues:{} }); break;
+    case 'fly_up':
+      out.push({ id:'fly_up', blockId:block.id, label:'Fly Up', paramValues:{} }); break;
+    case 'fly_down':
+      out.push({ id:'fly_down', blockId:block.id, label:'Fly Down', paramValues:{} }); break;
+    case 'hover_place': {
+      const s = nf('SECS', 2);
+      out.push({ id:'wait', blockId:block.id, label:`Hover ${s}s`, paramValues:{ seconds:s } }); break;
+    }
+    case 'grab_object':
+      out.push({ id:'grab',    blockId:block.id, label:'Grab',    paramValues:{} }); break;
+    case 'release_object':
+      out.push({ id:'release', blockId:block.id, label:'Release', paramValues:{} }); break;
+    case 'extend_arm':
+      out.push({ id:'grab',    blockId:block.id, label:'Extend Arm', paramValues:{} }); break;
+    case 'scan_area':
+      out.push({ id:'scan',  blockId:block.id, label:'Scan', paramValues:{} }); break;
+    case 'look_around':
+      out.push({ id:'look',  blockId:block.id, label:'Look', paramValues:{} }); break;
+    case 'lights_on':
+      out.push({ id:'lights_on',  blockId:block.id, label:'Lights On',  paramValues:{} }); break;
+    case 'lights_off':
+      out.push({ id:'lights_off', blockId:block.id, label:'Lights Off', paramValues:{} }); break;
+    case 'lights_flash': {
+      const t = nf('TIMES', 3);
+      out.push({ id:'flash', blockId:block.id, label:`Flash ×${t}`, paramValues:{ times:t } }); break;
+    }
+    default: break;
+  }
+  out.push(...traverseStack(block.getNextBlock()));
+  return out;
+}
+
+function compileWorkspace(ws) {
+  const start = ws.getTopBlocks(true).find(b => b.type === 'when_start');
+  if (!start) return [];
+  return traverseStack(start.getNextBlock());
+}
+
+// ─── Execution helpers (kept from original) ──────────────────────────────────
 function getBlockDuration(block) {
   const p = block.paramValues || {};
   switch (block.id) {
-    case 'move_forward':  return Math.max(0.4, (p.steps  || 2) * 0.75);
-    case 'move_backward': return Math.max(0.4, (p.steps  || 1) * 0.75);
+    case 'move_forward':  return Math.max(0.4, (p.steps  ||2)*0.75);
+    case 'move_backward': return Math.max(0.4, (p.steps  ||1)*0.75);
     case 'turn_left':
-    case 'turn_right':    return Math.max(0.25, (p.degrees || 90) / 90 * 0.6);
+    case 'turn_right':    return Math.max(0.25,(p.degrees||90)/90*0.6);
     case 'spin':          return 1.0;
     case 'stop':          return 0.5;
-    case 'wait':          return Math.max(0.2, p.seconds || 1);
+    case 'wait':          return Math.max(0.2, p.seconds||1);
     case 'fly_up':
     case 'fly_down':      return 0.9;
     case 'scan':          return 1.6;
     case 'if_obstacle':   return 0.7;
     case 'look':          return 1.3;
-    case 'if_see_object': return 0.7;
     case 'grab':
     case 'release':       return 0.9;
-    case 'drill':         return Math.max(0.5, p.seconds || 2);
-    case 'fire_laser':    return 0.7;
     case 'lights_on':
     case 'lights_off':    return 0.3;
-    case 'flash':         return Math.max(0.5, (p.times || 3) * 0.3);
+    case 'flash':         return Math.max(0.5,(p.times||3)*0.3);
     default:              return 0.4;
   }
 }
 
 function applyCodeBlock(block, rs, dt, movId) {
-  const p = block.paramValues || {};
+  const p   = block.paramValues || {};
   const dur = rs.currentDur || 1;
   const spd = movId==='wheels'?1.0:movId==='tracks'?0.8:movId==='legs'?0.65:movId==='hover'?1.1:movId==='flying'?1.4:movId==='jets'?1.8:1.0;
   switch (block.id) {
     case 'move_forward': {
-      const d = (p.steps||2)*1.9*spd;
-      rs.x += Math.sin(rs.angle)*(d/dur)*dt;
-      rs.z += Math.cos(rs.angle)*(d/dur)*dt;
-      rs.totalDist += (d/dur)*dt;
-      rs.bobPhase = (rs.bobPhase||0)+dt*8;
-      break;
+      const d=(p.steps||2)*1.9*spd;
+      rs.x+=Math.sin(rs.angle)*(d/dur)*dt; rs.z+=Math.cos(rs.angle)*(d/dur)*dt;
+      rs.totalDist+=(d/dur)*dt; rs.bobPhase=(rs.bobPhase||0)+dt*8; break;
     }
     case 'move_backward': {
-      const d = (p.steps||1)*1.9*spd;
-      rs.x -= Math.sin(rs.angle)*(d/dur)*dt;
-      rs.z -= Math.cos(rs.angle)*(d/dur)*dt;
-      rs.totalDist += (d/dur)*dt*0.5;
-      rs.bobPhase = (rs.bobPhase||0)+dt*6;
-      break;
+      const d=(p.steps||1)*1.9*spd;
+      rs.x-=Math.sin(rs.angle)*(d/dur)*dt; rs.z-=Math.cos(rs.angle)*(d/dur)*dt;
+      rs.totalDist+=(d/dur)*dt*0.5; rs.bobPhase=(rs.bobPhase||0)+dt*6; break;
     }
-    case 'turn_left':  { rs.angle += ((p.degrees||90)*Math.PI/180)/dur*dt; break; }
-    case 'turn_right': { rs.angle -= ((p.degrees||90)*Math.PI/180)/dur*dt; break; }
-    case 'spin':       { rs.angle += (Math.PI*2)/dur*dt; break; }
-    case 'fly_up':   { rs.y = Math.min(4.5,(rs.y||0)+2.0/dur*dt); break; }
-    case 'fly_down': { rs.y = Math.max(0,(rs.y||0)-2.0/dur*dt); break; }
+    case 'turn_left':  rs.angle+=((p.degrees||90)*Math.PI/180)/dur*dt; break;
+    case 'turn_right': rs.angle-=((p.degrees||90)*Math.PI/180)/dur*dt; break;
+    case 'spin':       rs.angle+=(Math.PI*2)/dur*dt; break;
+    case 'fly_up':     rs.y=Math.min(4.5,(rs.y||0)+2.0/dur*dt); break;
+    case 'fly_down':   rs.y=Math.max(0,(rs.y||0)-2.0/dur*dt); break;
     default: break;
   }
 }
 
 function getRobotGroundEffect(movId, bobPhase, t) {
-  switch(movId) {
-    case 'legs':   return { yOffset:Math.abs(Math.sin(bobPhase*2.5))*0.12, rollZ:0 };
-    case 'hover':  return { yOffset:Math.sin(t*1.8)*0.15+0.25, rollZ:Math.sin(t*0.9)*0.04 };
+  switch (movId) {
+    case 'legs':    return { yOffset:Math.abs(Math.sin(bobPhase*2.5))*0.12, rollZ:0 };
+    case 'hover':   return { yOffset:Math.sin(t*1.8)*0.15+0.25, rollZ:Math.sin(t*0.9)*0.04 };
     case 'flying':
-    case 'jets':   return { yOffset:Math.sin(t*1.2)*0.1+0.3, rollZ:0 };
-    case 'tracks': return { yOffset:0, rollZ:Math.sin(bobPhase*1.5)*0.012 };
-    default:       return { yOffset:0, rollZ:Math.sin(bobPhase*1.5)*0.018 };
+    case 'jets':    return { yOffset:Math.sin(t*1.2)*0.1+0.3, rollZ:0 };
+    case 'tracks':  return { yOffset:0, rollZ:Math.sin(bobPhase*1.5)*0.012 };
+    default:        return { yOffset:0, rollZ:Math.sin(bobPhase*1.5)*0.018 };
   }
 }
 
+// ─── Arena builder ────────────────────────────────────────────────────────────
 function buildArena(scene, challenge) {
-  const g = new THREE.Group();
-  g.name = 'arena';
+  const g = new THREE.Group(); g.name='arena';
 
-  const floor = new THREE.Mesh(
-    new THREE.PlaneGeometry(40,65),
-    new THREE.MeshStandardMaterial({ color:0xf0f4ff, roughness:0.3, metalness:0.15 })
-  );
-  floor.rotation.x = -Math.PI/2; floor.receiveShadow=true; g.add(floor);
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(40,65),
+    new THREE.MeshStandardMaterial({color:0xf0f4ff,roughness:0.3,metalness:0.15}));
+  floor.rotation.x=-Math.PI/2; floor.receiveShadow=true; g.add(floor);
 
-  const lineMat = new THREE.LineBasicMaterial({ color:0xdde4ff });
-  for (let i=-20;i<=20;i+=2) {
+  const lineMat = new THREE.LineBasicMaterial({color:0xdde4ff});
+  for(let i=-20;i<=20;i+=2){
     const h=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-20,0.01,i*1.6),new THREE.Vector3(20,0.01,i*1.6)]);
     const v=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(i,0.01,-32),new THREE.Vector3(i,0.01,22)]);
     g.add(new THREE.Line(h,lineMat)); g.add(new THREE.Line(v,lineMat));
   }
 
-  const wallDefs=[
-    {w:40,h:5,d:0.3,x:0,    z:-32,ry:0,          c:0x3b82f6},
-    {w:40,h:5,d:0.3,x:0,    z: 22,ry:0,          c:0x10b981},
-    {w:65,h:5,d:0.3,x:-20.2,z: -5,ry:Math.PI/2,  c:0x8b5cf6},
-    {w:65,h:5,d:0.3,x: 20.2,z: -5,ry:Math.PI/2,  c:0xf59e0b},
-  ];
-  wallDefs.forEach(w=>{
+  [{w:40,h:5,d:0.3,x:0,    z:-32,ry:0,         c:0x3b82f6},
+   {w:40,h:5,d:0.3,x:0,    z: 22,ry:0,         c:0x10b981},
+   {w:65,h:5,d:0.3,x:-20.2,z: -5,ry:Math.PI/2, c:0x8b5cf6},
+   {w:65,h:5,d:0.3,x: 20.2,z: -5,ry:Math.PI/2, c:0xf59e0b},
+  ].forEach(w=>{
     const m=new THREE.Mesh(new THREE.BoxGeometry(w.w,w.h,w.d),
       new THREE.MeshStandardMaterial({color:w.c,roughness:0.45,metalness:0.3,emissive:new THREE.Color(w.c).multiplyScalar(0.07)}));
     m.position.set(w.x,w.h/2,w.z); m.rotation.y=w.ry; m.castShadow=true; m.receiveShadow=true; g.add(m);
@@ -121,7 +507,7 @@ function buildArena(scene, challenge) {
   });
 
   const startM=new THREE.Mesh(new THREE.PlaneGeometry(6,2.5),
-    new THREE.MeshStandardMaterial({color:0x22c55e,emissive:0x22c55e,emissiveIntensity:0.3,roughness:0.4}));
+    new THREE.MeshStandardMaterial({color:0x22c55e,emissive:0x22c55e,emissiveIntensity:0.3}));
   startM.rotation.x=-Math.PI/2; startM.position.set(0,0.015,6); g.add(startM);
 
   const finM=new THREE.Mesh(new THREE.PlaneGeometry(7,2.5),
@@ -130,13 +516,14 @@ function buildArena(scene, challenge) {
   const archMat=new THREE.MeshStandardMaterial({color:0xfbbf24,emissive:0xfbbf24,emissiveIntensity:1.4});
   [-2.8,2.8].forEach(x=>{
     const post=new THREE.Mesh(new THREE.CylinderGeometry(0.13,0.13,5.5,8),archMat);
-    post.position.set(x,2.75,-24); post.castShadow=true; g.add(post);
+    post.position.set(x,2.75,-24); g.add(post);
   });
   const bar=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.1,6,8),archMat);
   bar.rotation.z=Math.PI/2; bar.position.set(0,5.5,-24); g.add(bar);
 
   const oc=[0x3b82f6,0xef4444,0x8b5cf6,0x10b981,0xf59e0b,0xec4899];
-  const oPos=[[-1.1,-3],[1.0,-5.5],[-0.6,-8],[1.4,-10.5],[-1.0,-13],[0.5,-15.5],[-1.3,-5],[1.1,-7.5],[-0.4,-11],[0.9,-14],[-0.7,-9],[1.2,-12]];
+  const oPos=[[-1.1,-3],[1.0,-5.5],[-0.6,-8],[1.4,-10.5],[-1.0,-13],[0.5,-15.5],
+              [-1.3,-5],[1.1,-7.5],[-0.4,-11],[0.9,-14],[-0.7,-9],[1.2,-12]];
   oPos.slice(0,challenge?.obstacles||10).forEach(([x,z],i)=>{
     const h=0.55+(i%3)*0.38; const col=oc[i%oc.length];
     const geos=[new THREE.BoxGeometry(0.8,h,0.8),new THREE.CylinderGeometry(0.38,0.38,h,8),new THREE.ConeGeometry(0.42,h+0.5,8)];
@@ -150,38 +537,15 @@ function buildArena(scene, challenge) {
     ring.rotation.x=Math.PI/2; ring.position.set(0,0.5,z); ring.name='cp'+z; g.add(ring);
   });
 
-  const labC=[0x1e40af,0x7e22ce,0x065f46,0x9a3412];
-  [-14,-7,0,7].forEach((z,i)=>{
-    [-18.5,18.5].forEach(x=>{
-      const panel=new THREE.Mesh(new THREE.BoxGeometry(2.6,1.9,0.2),
-        new THREE.MeshStandardMaterial({color:labC[i%4],roughness:0.3,metalness:0.6,emissive:new THREE.Color(labC[i%4]).multiplyScalar(0.13)}));
-      panel.position.set(x,2,z); panel.castShadow=true; g.add(panel);
-      const screen=new THREE.Mesh(new THREE.PlaneGeometry(1.9,1.15),
-        new THREE.MeshStandardMaterial({color:0x00ff88,emissive:0x00cc66,emissiveIntensity:0.85}));
-      screen.position.set(x<0?x+0.15:x-0.15,2,z);
-      screen.rotation.y=x<0?Math.PI/2:-Math.PI/2; g.add(screen);
-    });
-    if(i%2===0) [-16,16].forEach(x=>{
-      const barrel=new THREE.Mesh(new THREE.CylinderGeometry(0.4,0.45,1.1,10),
-        new THREE.MeshStandardMaterial({color:0xff8800,roughness:0.6,metalness:0.4}));
-      barrel.position.set(x,0.55,z); barrel.castShadow=true; g.add(barrel);
-    });
-  });
-
-  const ramp=new THREE.Mesh(new THREE.BoxGeometry(4.5,0.18,3.5),
-    new THREE.MeshStandardMaterial({color:0xbfdbfe,roughness:0.45,metalness:0.2}));
-  ramp.position.set(3.8,0.35,-10); ramp.rotation.z=-0.19; ramp.castShadow=true; ramp.receiveShadow=true; g.add(ramp);
-
   scene.add(g);
 }
 
+// ─── Three.js canvas ──────────────────────────────────────────────────────────
 function SimCanvas({ robotConfig, robotCode=[], running, onProgress, onFpsUpdate, challenge }) {
   const wrapRef = useRef(null);
-  const rendRef = useRef(null);
-  const rafRef  = useRef(null);
+  const rsRef   = useRef({ x:0,z:5,y:0,angle:Math.PI,step:0,stepTime:0,currentDur:0,totalDist:0,pass:0,maxPasses:1,done:false,t:0,bobPhase:0,battery:100 });
   const runRef  = useRef(false);
   const fpsRef  = useRef({ frames:0, last:0 });
-  const rsRef   = useRef({ x:0,z:5,y:0,angle:Math.PI,step:0,stepTime:0,currentDur:0,totalDist:0,pass:0,maxPasses:1,done:false,t:0,bobPhase:0,battery:100 });
 
   useEffect(()=>{ runRef.current=running; },[running]);
 
@@ -195,28 +559,24 @@ function SimCanvas({ robotConfig, robotCode=[], running, onProgress, onFpsUpdate
     const camera=new THREE.PerspectiveCamera(48,W/H,0.1,80);
     camera.position.set(0,4,10); camera.lookAt(0,0.5,0);
     const renderer=new THREE.WebGLRenderer({antialias:true});
-    renderer.setSize(W,H);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+    renderer.setSize(W,H); renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
     renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
     renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.1;
-    el.appendChild(renderer.domElement); rendRef.current=renderer;
+    el.appendChild(renderer.domElement);
 
     scene.add(new THREE.AmbientLight(0xddeeff,0.72));
     const sun=new THREE.DirectionalLight(0xfff8f0,1.6);
     sun.position.set(8,18,10); sun.castShadow=true;
-    sun.shadow.mapSize.set(2048,2048);
-    sun.shadow.camera.left=-26; sun.shadow.camera.right=26;
-    sun.shadow.camera.top=32;   sun.shadow.camera.bottom=-32;
-    sun.shadow.bias=-0.001; scene.add(sun);
-    const f1=new THREE.PointLight(0x6699ff,0.8,36); f1.position.set(-10,6,0); scene.add(f1);
-    const f2=new THREE.PointLight(0x99ffdd,0.65,30); f2.position.set(10,5,-10); scene.add(f2);
+    sun.shadow.mapSize.set(2048,2048); sun.shadow.camera.left=-26; sun.shadow.camera.right=26;
+    sun.shadow.camera.top=32; sun.shadow.camera.bottom=-32; sun.shadow.bias=-0.001; scene.add(sun);
+    scene.add(Object.assign(new THREE.PointLight(0x6699ff,0.8,36),{position:{x:-10,y:6,z:0}}));
+    scene.add(Object.assign(new THREE.PointLight(0x99ffdd,0.65,30),{position:{x:10,y:5,z:-10}}));
 
     buildArena(scene,challenge);
 
     const rs=rsRef.current;
     const robot=buildRobotModel(robotConfig);
-    robot.position.set(rs.x,rs.y,rs.z); robot.rotation.y=rs.angle;
-    robot.scale.setScalar(1.4);
+    robot.position.set(rs.x,rs.y,rs.z); robot.rotation.y=rs.angle; robot.scale.setScalar(1.4);
     robot.traverse(c=>{if(c.isMesh){c.castShadow=true;c.receiveShadow=true;}});
     scene.add(robot);
 
@@ -225,16 +585,13 @@ function SimCanvas({ robotConfig, robotCode=[], running, onProgress, onFpsUpdate
     const bLen={ultrasonic:4.5,lidar:7,camera:3.5,gyro:2,'line-sensor':2};
     const beams=sensors.slice(0,4).map((s,i)=>{
       const pts=[new THREE.Vector3(0,0,0),new THREE.Vector3(0,0,-(bLen[s]||3.5))];
-      const geo=new THREE.BufferGeometry().setFromPoints(pts);
-      const mat=new THREE.LineBasicMaterial({color:bColor[s]||0xffffff,transparent:true,opacity:0.75});
-      const line=new THREE.Line(geo,mat);
+      const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),
+        new THREE.LineBasicMaterial({color:bColor[s]||0xffffff,transparent:true,opacity:0.75}));
       line.position.set((i-1.5)*0.35,0.65,0); line.visible=false; robot.add(line); return line;
     });
 
-    const code=robotCode;
-    const repeatBlock=code.find(b=>b.id==='repeat');
-    if(repeatBlock) rs.maxPasses=repeatBlock.paramValues?.times||3;
-    const codeBlocks=code.filter(b=>b.id!=='repeat');
+    const codeBlocks=robotCode.filter(b=>b.id!=='repeat');
+    rs.maxPasses=1;
     const hasCode=codeBlocks.length>0;
     const movId=robotConfig.movementId||'wheels';
 
@@ -243,16 +600,15 @@ function SimCanvas({ robotConfig, robotCode=[], running, onProgress, onFpsUpdate
       camera.aspect=w/h; camera.updateProjectionMatrix(); renderer.setSize(w,h);
     };
     const ro=new ResizeObserver(onResize); ro.observe(el);
-    window.addEventListener('resize',onResize);
 
     const camPos=new THREE.Vector3(0,4,10);
     const camLook=new THREE.Vector3(0,0.5,5);
-
     let prev=performance.now();
-    const tick=(now)=>{
-      rafRef.current=requestAnimationFrame(tick);
-      const dt=Math.min((now-prev)/1000,0.05); prev=now;
+    let rafId;
 
+    const tick=(now)=>{
+      rafId=requestAnimationFrame(tick);
+      const dt=Math.min((now-prev)/1000,0.05); prev=now;
       fpsRef.current.frames++;
       if(now-fpsRef.current.last>1000){
         onFpsUpdate?.(Math.round(fpsRef.current.frames*1000/(now-fpsRef.current.last)));
@@ -268,11 +624,8 @@ function SimCanvas({ robotConfig, robotCode=[], running, onProgress, onFpsUpdate
               if(rs.stepTime===0) rs.currentDur=getBlockDuration(block);
               rs.stepTime+=dt;
               applyCodeBlock(block,rs,dt,movId);
-              const sensing=['scan','if_obstacle','look','if_see_object'].includes(block.id);
-              beams.forEach((b,i)=>{
-                b.visible=sensing;
-                if(sensing) b.material.opacity=0.45+Math.sin(rs.t*6+i)*0.3;
-              });
+              const sensing=['scan','if_obstacle','look'].includes(block.id);
+              beams.forEach((b,i)=>{ b.visible=sensing; if(sensing) b.material.opacity=0.45+Math.sin(rs.t*6+i)*0.3; });
               if(rs.stepTime>=rs.currentDur){ rs.step++; rs.stepTime=0; rs.currentDur=0; beams.forEach(b=>b.visible=false); }
             }
             if(rs.step>=codeBlocks.length){
@@ -292,19 +645,21 @@ function SimCanvas({ robotConfig, robotCode=[], running, onProgress, onFpsUpdate
         robot.rotation.y=rs.angle; robot.rotation.z=rollZ;
 
         const progress=rs.done?100:Math.min(
-          hasCode?(rs.pass*codeBlocks.length+rs.step)/(codeBlocks.length*rs.maxPasses)*100
+          hasCode?(rs.pass*codeBlocks.length+rs.step)/(codeBlocks.length*Math.max(1,rs.maxPasses))*100
                  :rs.totalDist/(challenge?.totalDist||22)*100, 99);
 
-        onProgress?.({time:rs.t,dist:rs.totalDist,battery:rs.battery,
+        onProgress?.({
+          time:rs.t, dist:rs.totalDist, battery:rs.battery,
           avoided:Math.min(Math.floor(rs.totalDist/2.2),challenge?.obstacles||10),
-          progress:rs.done?100:progress,done:rs.done,
-          execBlock:codeBlocks[rs.step]?.label||null});
+          progress:rs.done?100:progress, done:rs.done,
+          execBlock:codeBlocks[rs.step]?.label||null,
+          execBlockId:codeBlocks[rs.step]?.blockId||null,
+        });
         if(rs.done) runRef.current=false;
       } else {
         rs.t+=dt*0.4;
         robot.rotation.y=Math.PI+Math.sin(rs.t*0.7)*0.08;
-        const {yOffset}=getRobotGroundEffect(movId,rs.t*4,rs.t);
-        robot.position.y=yOffset;
+        robot.position.y=getRobotGroundEffect(movId,rs.t*4,rs.t).yOffset;
       }
 
       const rx=robot.position.x,rz=robot.position.z;
@@ -315,18 +670,14 @@ function SimCanvas({ robotConfig, robotCode=[], running, onProgress, onFpsUpdate
       camera.position.copy(camPos); camera.lookAt(camLook);
 
       scene.traverse(c=>{
-        if(c.name&&c.name.startsWith('cp')){
-          c.rotation.z+=dt*0.9;
-          if(c.material) c.material.emissiveIntensity=0.7+Math.sin(rs.t*3)*0.3;
-        }
+        if(c.name&&c.name.startsWith('cp')){ c.rotation.z+=dt*0.9; if(c.material) c.material.emissiveIntensity=0.7+Math.sin(rs.t*3)*0.3; }
       });
       renderer.render(scene,camera);
     };
-    rafRef.current=requestAnimationFrame(tick);
+    rafId=requestAnimationFrame(tick);
 
     return ()=>{
-      cancelAnimationFrame(rafRef.current);
-      ro.disconnect(); window.removeEventListener('resize',onResize);
+      cancelAnimationFrame(rafId); ro.disconnect();
       if(el&&renderer.domElement.parentNode===el) el.removeChild(renderer.domElement);
       renderer.dispose();
     };
@@ -336,272 +687,344 @@ function SimCanvas({ robotConfig, robotCode=[], running, onProgress, onFpsUpdate
   return <div ref={wrapRef} style={{width:'100%',height:'100%'}} />;
 }
 
-function ChallengePanel({ activeChallenge, onSelect, running, stats }) {
+// ─── Blockly workspace panel ──────────────────────────────────────────────────
+function BlocklyPanel({ robotConfig, onCodeChange, execBlockId, blockCount }) {
+  const containerRef = useRef(null);
+  const workspaceRef = useRef(null);
+  const prevHlRef    = useRef(null);
+
+  /* Register blocks once globally */
+  useEffect(() => { registerBlocks(); }, []);
+
+  /* Init Blockly workspace (once) */
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const bbTheme = Blockly.Theme.defineTheme('bytebuddies', {
+      base: Blockly.Themes.Zelos,
+      componentStyles: {
+        workspaceBackgroundColour: '#f0f4ff',
+        toolboxBackgroundColour:   '#1a2233',
+        toolboxForegroundColour:   '#e2e8f0',
+        flyoutBackgroundColour:    '#243044',
+        flyoutForegroundColour:    '#f0f4ff',
+        flyoutOpacity:             0.98,
+        scrollbarColour:           '#7c3aed',
+        scrollbarOpacity:          0.5,
+      },
+      fontStyle: { family:'"Inter", system-ui, sans-serif', weight:'700', size:11 },
+    });
+
+    const ws = Blockly.inject(el, {
+      toolbox:  buildToolbox(robotConfig),
+      theme:    bbTheme,
+      renderer: 'zelos',
+      grid:     { spacing:24, length:3, colour:'#dde6ff', snap:true },
+      zoom:     { controls:true, wheel:true, startScale:0.9, maxScale:2.0, minScale:0.3, scaleSpeed:1.2 },
+      trashcan: true,
+      sounds:   false,
+      move:     { scrollbars:{ horizontal:true, vertical:true }, drag:true, wheel:false },
+    });
+
+    workspaceRef.current = ws;
+
+    /* Load starter program */
+    try { Blockly.serialization.workspaces.load(STARTER_PROGRAM, ws); } catch(_) {}
+
+    /* Recompile on any structural change */
+    const recompile = () => { onCodeChange?.(compileWorkspace(ws)); };
+    ws.addChangeListener(e => { if (!e.isUiEvent) recompile(); });
+    setTimeout(recompile, 80); // initial compile after DOM settles
+
+    return () => { ws.dispose(); workspaceRef.current = null; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // intentionally run only once
+
+  /* Update toolbox when robot capabilities change */
+  useEffect(() => {
+    const ws = workspaceRef.current;
+    if (!ws) return;
+    try { ws.updateToolbox(buildToolbox(robotConfig)); } catch(_) {}
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    robotConfig?.movementId,
+    robotConfig?.armId,
+    robotConfig?.lightId,
+    (robotConfig?.sensors||[]).join(','),
+  ]);
+
+  /* Highlight the currently executing block */
+  useEffect(() => {
+    const ws = workspaceRef.current;
+    if (!ws) return;
+    const clear = (id) => { if (!id) return; try { ws.highlightBlock(id, false); const b=ws.getBlockById(id); b?.setHighlighted?.(false); } catch(_){} };
+    const set   = (id) => { if (!id) return; try { ws.highlightBlock(id, true);  const b=ws.getBlockById(id); b?.setHighlighted?.(true);  } catch(_){} };
+    clear(prevHlRef.current);
+    set(execBlockId);
+    prevHlRef.current = execBlockId;
+  }, [execBlockId]);
+
   return (
-    <div style={{width:196,flexShrink:0,background:'#fff',borderRight:'1px solid #e2e8f0',display:'flex',flexDirection:'column',overflowY:'auto'}}>
-      <div style={{padding:'11px 13px 7px',fontSize:10,fontWeight:800,color:'#64748b',textTransform:'uppercase',letterSpacing:0.5,borderBottom:'1px solid #f1f5f9'}}>
-        Challenges
+    <div className="bb-sim-code-panel">
+      <div className="bb-sim-code-header">
+        <span className="bb-sim-code-title">🤖 Robot Code</span>
+        <span className="bb-sim-code-badge">
+          {blockCount > 0 ? `${blockCount} step${blockCount !== 1 ? 's' : ''}` : 'Empty program'}
+        </span>
       </div>
-      {CHALLENGES.map(ch=>{
-        const active=ch.id===activeChallenge.id;
-        return (
-          <button key={ch.id} onClick={()=>!running&&onSelect(ch)} style={{
-            display:'flex',flexDirection:'column',gap:2,padding:'9px 13px',
-            border:'none',borderLeft:active?('4px solid '+ch.color):'4px solid transparent',
-            background:active?(ch.color+'15'):'transparent',
-            textAlign:'left',cursor:running&&!active?'default':'pointer',
-            borderBottom:'1px solid #f1f5f9',opacity:running&&!active?0.35:1,transition:'all 0.15s',
-          }}>
-            <div style={{display:'flex',alignItems:'center',gap:6}}>
-              <span style={{fontSize:15}}>{ch.icon}</span>
-              <span style={{fontSize:12,fontWeight:700,color:'#1e293b'}}>{ch.name}</span>
-            </div>
-            <div style={{fontSize:10,color:'#94a3b8',marginLeft:21}}>{ch.desc}</div>
-            <div style={{display:'flex',gap:5,marginLeft:21,marginTop:2}}>
-              <span style={{fontSize:9,fontWeight:700,padding:'1px 6px',borderRadius:8,background:ch.color+'22',color:ch.color}}>{ch.difficulty}</span>
-              {active&&stats.progress>0&&<span style={{fontSize:9,fontWeight:700,padding:'1px 6px',borderRadius:8,background:'#dbeafe',color:'#1d4ed8'}}>{Math.round(stats.progress)}%</span>}
-            </div>
-          </button>
-        );
-      })}
-      {running&&(
-        <div style={{padding:'9px 13px',marginTop:'auto',borderTop:'1px solid #f1f5f9'}}>
-          <div style={{fontSize:9,fontWeight:700,color:'#64748b',marginBottom:3}}>RUNNING...</div>
-          <div style={{height:5,background:'#e2e8f0',borderRadius:3,overflow:'hidden'}}>
-            <div style={{height:'100%',borderRadius:3,background:activeChallenge.color,width:(stats.progress+'%'),transition:'width 0.3s'}} />
-          </div>
-          <div style={{fontSize:10,color:'#94a3b8',marginTop:3}}>{Math.round(stats.progress)}% complete</div>
-        </div>
-      )}
+      <div ref={containerRef} className="bb-sim-blockly-wrap" />
     </div>
   );
 }
 
-const sl={fontSize:9,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:0.5};
-function cBtn(bg){return{flex:1,padding:'9px 0',borderRadius:8,border:'none',background:bg,color:'#fff',fontWeight:800,fontSize:12,cursor:'pointer'};}
-
-function SBar({label,value,color,unit=''}){
-  return(
-    <div>
-      <div style={{display:'flex',justifyContent:'space-between',marginBottom:3}}>
-        <div style={sl}>{label}</div>
-        <div style={{fontSize:11,fontWeight:800,color}}>{Math.round(value)}{unit}</div>
-      </div>
-      <div style={{height:5,background:'#f1f5f9',borderRadius:3,overflow:'hidden'}}>
-        <div style={{height:'100%',borderRadius:3,background:color,width:(Math.max(0,Math.min(100,value))+'%'),transition:'width 0.4s'}} />
+// ─── Stat helpers ─────────────────────────────────────────────────────────────
+function StatBar({ label, value, color, unit='' }) {
+  return (
+    <div className="bb-sim-stat-row">
+      <div className="bb-sim-stat-label">{label}</div>
+      <div className="bb-sim-stat-val" style={{ color }}>{Math.round(value)}{unit}</div>
+      <div className="bb-sim-stat-track">
+        <div className="bb-sim-stat-fill" style={{ width:`${Math.max(0,Math.min(100,value))}%`, background:color }} />
       </div>
     </div>
   );
 }
-
-function LivePanel({running,paused,stats,robotConfig,onStart,onPause,onStop,execBlock}){
-  const movId=robotConfig.movementId||'wheels';
-  const sensors=robotConfig.sensors||[];
-  const tools=robotConfig.tools||[];
-  const battColor=stats.battery>60?'#22c55e':stats.battery>30?'#f59e0b':'#ef4444';
-  return(
-    <div style={{width:218,flexShrink:0,background:'#fff',borderLeft:'1px solid #e2e8f0',display:'flex',flexDirection:'column',overflowY:'auto'}}>
-      <div style={{padding:'11px 13px',borderBottom:'1px solid #f1f5f9',background:'linear-gradient(135deg,#f8faff,#f1f5f9)'}}>
-        <div style={{fontSize:13,fontWeight:800,color:'#1e293b'}}>Robot {robotConfig.name||'My Robot'}</div>
-        <div style={{fontSize:10,color:'#64748b',marginTop:2}}>{robotConfig.chassisId} {movId}{sensors.length>0&&(' '+sensors.length+' sensors')}</div>
-      </div>
-      <div style={{padding:'9px 12px',borderBottom:'1px solid #f1f5f9',display:'flex',gap:5}}>
-        {!running?(
-          <button onClick={()=>onStart?.()} style={{flex:1,padding:'9px 0',borderRadius:8,border:'none',background:'linear-gradient(135deg,#22c55e,#15803d)',color:'#fff',fontWeight:800,fontSize:13,cursor:'pointer'}}>
-            Launch
-          </button>
-        ):paused?(
-          <button onClick={onPause} style={cBtn('#3b82f6')}>Resume</button>
-        ):(
-          <React.Fragment>
-            <button onClick={onPause} style={cBtn('#f59e0b')}>Pause</button>
-            <button onClick={onStop}  style={cBtn('#ef4444')}>Stop</button>
-          </React.Fragment>
-        )}
-        {!running&&stats.progress>0&&<button onClick={onStop} style={cBtn('#64748b')}>Reset</button>}
-      </div>
-      <div style={{padding:'10px 13px',display:'flex',flexDirection:'column',gap:9}}>
-        <SBar label="Battery" value={stats.battery} color={battColor} unit="%" />
-        <div>
-          <div style={sl}>Distance</div>
-          <div style={{fontSize:17,fontWeight:800,color:'#1e293b'}}>{stats.dist.toFixed(1)}<span style={{fontSize:10,color:'#94a3b8',marginLeft:2}}>m</span></div>
-        </div>
-        <div>
-          <div style={sl}>Time</div>
-          <div style={{fontSize:17,fontWeight:800,color:'#1e293b'}}>
-            {String(Math.floor(stats.time/60)).padStart(2,'0')}:{String(Math.floor(stats.time%60)).padStart(2,'0')}
-          </div>
-        </div>
-        <div>
-          <div style={sl}>Obstacles cleared</div>
-          <div style={{fontSize:17,fontWeight:800,color:'#1e293b'}}>{stats.avoided}</div>
-        </div>
-      </div>
-      {running&&execBlock&&(
-        <div style={{margin:'0 12px 8px',padding:'6px 10px',borderRadius:8,background:'linear-gradient(135deg,#ede9fe,#ddd6fe)',border:'1px solid #c4b5fd'}}>
-          <div style={{fontSize:9,fontWeight:800,color:'#7c3aed',textTransform:'uppercase',letterSpacing:0.5}}>Running</div>
-          <div style={{fontSize:11,fontWeight:700,color:'#4c1d95',marginTop:2}}>{execBlock}</div>
-        </div>
-      )}
-      {sensors.length>0&&(
-        <div style={{padding:'8px 13px',borderTop:'1px solid #f1f5f9'}}>
-          <div style={sl}>Sensors</div>
-          <div style={{display:'flex',flexWrap:'wrap',gap:4,marginTop:4}}>
-            {sensors.map(s=>(
-              <span key={s} style={{fontSize:10,fontWeight:700,padding:'2px 7px',borderRadius:10,background:running?'#dcfce7':'#f1f5f9',color:running?'#16a34a':'#64748b',border:'1px solid '+(running?'#86efac':'#e2e8f0')}}>
-                {running&&'running '}{s}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-      {tools.length>0&&(
-        <div style={{padding:'8px 13px',borderTop:'1px solid #f1f5f9'}}>
-          <div style={sl}>Tools</div>
-          <div style={{display:'flex',flexWrap:'wrap',gap:4,marginTop:4}}>
-            {tools.map(t=>(<span key={t} style={{fontSize:10,fontWeight:700,padding:'2px 7px',borderRadius:10,background:'#f0f9ff',color:'#0369a1',border:'1px solid #bae6fd'}}>{t}</span>))}
-          </div>
-        </div>
-      )}
-      {!running&&stats.progress>=100&&(
-        <div style={{margin:'8px 12px 12px',padding:'12px',borderRadius:10,background:'linear-gradient(135deg,#dcfce7,#bbf7d0)',border:'1px solid #86efac',textAlign:'center'}}>
-          <div style={{fontSize:26}}>Trophy</div>
-          <div style={{fontSize:13,fontWeight:800,color:'#14532d',marginTop:3}}>Challenge Complete!</div>
-          <div style={{fontSize:10,color:'#16a34a',marginTop:2}}>{stats.dist.toFixed(1)}m</div>
-          <button onClick={()=>onStart?.()} style={{marginTop:8,width:'100%',padding:'7px 0',borderRadius:7,border:'none',background:'#22c55e',color:'#fff',fontWeight:800,fontSize:11,cursor:'pointer'}}>Play Again</button>
-        </div>
-      )}
+function StatNum({ label, value, unit='' }) {
+  return (
+    <div className="bb-sim-stat-num">
+      <div className="bb-sim-stat-label">{label}</div>
+      <div className="bb-sim-stat-big">{value}<span className="bb-sim-stat-unit">{unit}</span></div>
     </div>
   );
 }
 
-function ActivityFeed({events}){
-  const ref=useRef(null);
-  useEffect(()=>{if(ref.current) ref.current.scrollLeft=ref.current.scrollWidth;},[events]);
-  return(
-    <div style={{height:34,background:'#0f172a',borderTop:'1px solid #1e293b',display:'flex',alignItems:'center',padding:'0 12px',gap:0,overflow:'hidden',flexShrink:0}}>
-      <div style={{fontSize:9,fontWeight:700,color:'#475569',marginRight:8,whiteSpace:'nowrap'}}>ACTIVITY:</div>
-      <div ref={ref} style={{display:'flex',gap:0,overflow:'hidden',flex:1}}>
-        {events.slice(-14).map((ev,i)=>(
-          <span key={i} style={{fontSize:10,color:i===events.slice(-14).length-1?'#00d9ff':'#475569',fontFamily:'monospace',whiteSpace:'nowrap',padding:'0 7px',borderRight:'1px solid #1e293b'}}>{ev}</span>
+// ─── Activity feed ────────────────────────────────────────────────────────────
+function ActivityFeed({ events }) {
+  const ref = useRef(null);
+  useEffect(() => { if(ref.current) ref.current.scrollLeft=ref.current.scrollWidth; }, [events]);
+  return (
+    <div className="bb-sim-activity">
+      <span className="bb-sim-activity-label">ACTIVITY</span>
+      <div ref={ref} className="bb-sim-activity-scroll">
+        {events.slice(-16).map((ev,i) => (
+          <span key={i} className={`bb-sim-activity-item${i===events.slice(-16).length-1?' latest':''}`}>{ev}</span>
         ))}
       </div>
     </div>
   );
 }
 
-export default function SimulatorPage({robotConfig,robotCode=[],preflight,onFpsUpdate}){
-  const [running,setRunning]=useState(false);
-  const [paused,setPaused]=useState(false);
-  const [stats,setStats]=useState(INIT_STATS);
-  const [activeChallenge,setChallenge]=useState(CHALLENGES[0]);
-  const [execBlock,setExecBlock]=useState(null);
-  const [activity,setActivity]=useState(['Robot ready','Select a challenge and launch!']);
-  const [fps,setFps]=useState(null);
-  const simKeyRef=useRef(0);
-  const [simKey,setSimKey]=useState(0);
-  const prevProgRef=useRef(0);
+// ─── Main SimulatorPage ───────────────────────────────────────────────────────
+export default function SimulatorPage({ robotConfig }) {
+  const [robotCode,      setRobotCode]    = useState([]);
+  const [running,        setRunning]      = useState(false);
+  const [paused,         setPaused]       = useState(false);
+  const [stats,          setStats]        = useState(INIT_STATS);
+  const [activeChallenge,setChallenge]    = useState(CHALLENGES[0]);
+  const [execBlockId,    setExecBlockId]  = useState(null);
+  const [execLabel,      setExecLabel]    = useState(null);
+  const [activity,       setActivity]     = useState(['🟢 Robot ready — build your code and press Launch!']);
+  const [fps,            setFps]          = useState(null);
+  const simKeyRef  = useRef(0);
+  const [simKey,   setSimKey]  = useState(0);
+  const prevProgRef = useRef(0);
 
-  const handleFps=useCallback(f=>{setFps(f);onFpsUpdate?.(f);},[onFpsUpdate]);
+  const handleCodeChange = useCallback(code => setRobotCode(code), []);
 
-  const handleProgress=useCallback((data)=>{
-    setStats({time:data.time,dist:data.dist,battery:data.battery,avoided:data.avoided,progress:data.progress});
-    if(data.execBlock&&data.execBlock!==execBlock){
-      setExecBlock(data.execBlock);
-      setActivity(a=>[...a,'Running: '+data.execBlock]);
+  const handleProgress = useCallback(data => {
+    setStats({ time:data.time, dist:data.dist, battery:data.battery, avoided:data.avoided, progress:data.progress });
+    if (data.execBlockId !== undefined) { setExecBlockId(data.execBlockId||null); setExecLabel(data.execBlock||null); }
+    const cp = Math.floor(data.progress/34);
+    if (cp > Math.floor(prevProgRef.current/34)) setActivity(a=>[...a,`🏁 Checkpoint ${cp}!`]);
+    prevProgRef.current = data.progress;
+    if (data.done) {
+      setRunning(false); setPaused(false); setExecBlockId(null); setExecLabel(null);
+      setActivity(a=>[...a,'🏆 Challenge complete! Great job!']);
     }
-    const cp=Math.floor(data.progress/34);
-    if(cp>Math.floor(prevProgRef.current/34)) setActivity(a=>[...a,'Checkpoint '+cp+' reached!']);
-    prevProgRef.current=data.progress;
-    if(data.done){
-      setRunning(false);setPaused(false);setExecBlock(null);
-      setActivity(a=>[...a,'Challenge complete!']);
-    }
-  },[execBlock]);
+  }, []);
 
-  const doStart=useCallback((ch)=>{
-    const challenge=ch||activeChallenge;
-    if(ch) setChallenge(ch);
+  const doStart = useCallback(() => {
     setStats(INIT_STATS); prevProgRef.current=0;
     simKeyRef.current++; setSimKey(simKeyRef.current);
-    setRunning(true);setPaused(false);setExecBlock(null);
-    const cc=robotCode.filter(b=>b.id!=='repeat').length;
+    setRunning(true); setPaused(false); setExecBlockId(null); setExecLabel(null);
     setActivity([
-      (robotConfig.name||'Robot')+' launching...',
-      'Movement: '+(robotConfig.movementId||'wheels'),
-      'Challenge: '+challenge.name,
-      cc>0?(cc+' code blocks'):'Auto-navigation mode',
+      `🚀 ${robotConfig?.name||'Robot'} launching…`,
+      `📋 Program: ${robotCode.length} step${robotCode.length!==1?'s':''}`,
+      `🏁 ${activeChallenge.name}`,
+      robotCode.length===0 ? '⚡ Auto-navigation mode' : '▶ Running your Blockly code!',
     ]);
-  },[activeChallenge,robotConfig,robotCode]);
+  }, [robotConfig, robotCode, activeChallenge]);
 
-  const handlePause=useCallback(()=>setPaused(p=>{setActivity(a=>[...a,!p?'Paused':'Resumed']);return !p;}),[]);
+  const doStop = useCallback(() => {
+    setRunning(false); setPaused(false); setStats(INIT_STATS); prevProgRef.current=0;
+    simKeyRef.current++; setSimKey(simKeyRef.current);
+    setExecBlockId(null); setExecLabel(null);
+    setActivity(['🟡 Stopped — edit your code and try again!']);
+  }, []);
 
-  const handleStop=useCallback(()=>{
-    setRunning(false);setPaused(false);setStats(INIT_STATS);
-    prevProgRef.current=0;simKeyRef.current++;setSimKey(simKeyRef.current);
-    setExecBlock(null);setActivity(['Robot ready','Simulation stopped.']);
-  },[]);
+  const doPause = useCallback(() => {
+    setPaused(p => { setActivity(a=>[...a, p?'▶ Resumed':'⏸ Paused']); return !p; });
+  }, []);
 
-  const codeCount=robotCode.filter(b=>b.id!=='repeat').length;
+  const battColor = stats.battery>60?'#22c55e':stats.battery>30?'#f59e0b':'#ef4444';
 
-  return(
-    <div style={{flex:1,display:'flex',flexDirection:'column',background:'#f8faff',overflow:'hidden'}}>
-      <div style={{height:42,background:'#fff',borderBottom:'1px solid #e2e8f0',display:'flex',alignItems:'center',padding:'0 14px',gap:10,flexShrink:0}}>
-        <span style={{fontSize:14,fontWeight:800,color:'#1e293b',flex:1}}>
-          {activeChallenge.icon} {activeChallenge.name}
-        </span>
-        <div style={{display:'flex',alignItems:'center',gap:6,padding:'4px 10px',borderRadius:20,
-          background:running?(paused?'#fff3cd':'#dcfce7'):'#f1f5f9',
-          border:'1px solid '+(running?(paused?'#fbbf24':'#86efac'):'#e2e8f0'),
-          fontSize:11,fontWeight:700,color:running?(paused?'#92400e':'#15803d'):'#64748b'}}>
-          <span style={{width:7,height:7,borderRadius:'50%',background:running?(paused?'#fbbf24':'#22c55e'):'#94a3b8',display:'inline-block'}} />
-          {running?(paused?'Paused':'Simulating'):'Ready'}
+  return (
+    <div className="bb-sim-root">
+
+      {/* ── Top bar ── */}
+      <div className="bb-sim-topbar">
+        <div className="bb-sim-topbar-left">
+          <span className="bb-sim-ch-icon">{activeChallenge.icon}</span>
+          <span className="bb-sim-ch-title">{activeChallenge.name}</span>
+          <span className="bb-sim-ch-diff" style={{ background:activeChallenge.color+'22', color:activeChallenge.color }}>
+            {activeChallenge.difficulty}
+          </span>
         </div>
-        {fps!==null&&(
-          <div style={{fontSize:10,fontFamily:'monospace',fontWeight:700,color:fps>=50?'#22c55e':fps>=30?'#f59e0b':'#ef4444',background:'#f1f5f9',padding:'3px 7px',borderRadius:6}}>
-            {fps} FPS
+        <div className="bb-sim-topbar-center">
+          <div className={`bb-sim-status-pill ${running?(paused?'paused':'running'):''}`}>
+            <span className="bb-sim-status-dot" />
+            {running?(paused?'Paused':'Simulating'):'Ready'}
           </div>
-        )}
+          {fps!==null && (
+            <span className="bb-sim-fps" style={{color:fps>=50?'#22c55e':fps>=30?'#f59e0b':'#ef4444'}}>
+              {fps} FPS
+            </span>
+          )}
+        </div>
+        <div className="bb-sim-topbar-right">
+          {!running ? (
+            <button className="bb-sim-btn launch" onClick={doStart}>▶ Launch</button>
+          ) : (
+            <>
+              <button className="bb-sim-btn pause" onClick={doPause}>{paused?'▶ Resume':'⏸ Pause'}</button>
+              <button className="bb-sim-btn stop"  onClick={doStop}>⏹ Stop</button>
+            </>
+          )}
+          {!running && stats.progress>0 && (
+            <button className="bb-sim-btn reset" onClick={doStop}>↺ Reset</button>
+          )}
+        </div>
       </div>
 
-      <div style={{flex:1,display:'flex',overflow:'hidden',minHeight:0}}>
-        <ChallengePanel activeChallenge={activeChallenge} onSelect={setChallenge} running={running} stats={stats} />
+      {/* ── Body (3 columns) ── */}
+      <div className="bb-sim-body">
 
-        <div style={{flex:1,position:'relative',overflow:'hidden'}}>
+        {/* LEFT – Blockly workspace */}
+        <BlocklyPanel
+          robotConfig={robotConfig}
+          onCodeChange={handleCodeChange}
+          execBlockId={execBlockId}
+          blockCount={robotCode.length}
+        />
+
+        {/* CENTER – 3D simulator */}
+        <div className="bb-sim-viewport">
           <SimCanvas
             key={simKey}
             robotConfig={robotConfig}
             robotCode={robotCode}
             running={running&&!paused}
             onProgress={handleProgress}
-            onFpsUpdate={handleFps}
+            onFpsUpdate={setFps}
             challenge={activeChallenge}
           />
-          {running&&(
-            <div style={{position:'absolute',top:0,left:0,right:0,height:4,background:'rgba(255,255,255,0.3)'}}>
-              <div style={{height:'100%',background:activeChallenge.color,width:(stats.progress+'%'),transition:'width 0.4s',boxShadow:'0 0 8px '+activeChallenge.color}} />
+
+          {/* Progress bar */}
+          {running && (
+            <div className="bb-sim-prog-bar">
+              <div className="bb-sim-prog-fill" style={{width:stats.progress+'%',background:activeChallenge.color}} />
             </div>
           )}
-          {running&&!paused&&execBlock&&(
-            <div style={{position:'absolute',bottom:12,left:'50%',transform:'translateX(-50%)',background:'rgba(15,23,42,0.85)',backdropFilter:'blur(8px)',color:'#fff',fontSize:12,fontWeight:700,padding:'6px 16px',borderRadius:20,border:'1px solid rgba(124,58,237,0.6)',pointerEvents:'none',display:'flex',alignItems:'center',gap:7}}>
-              <span style={{width:7,height:7,borderRadius:'50%',background:'#7c3aed',display:'inline-block'}} />
-              {execBlock}
+
+          {/* Executing-block overlay */}
+          {running && !paused && execLabel && (
+            <div className="bb-sim-exec-bubble">
+              <span className="bb-sim-exec-dot" />
+              {execLabel}
             </div>
           )}
-          {!running&&stats.progress===0&&(
-            <div style={{position:'absolute',top:12,left:'50%',transform:'translateX(-50%)',background:'rgba(255,255,255,0.93)',backdropFilter:'blur(8px)',borderRadius:12,padding:'10px 18px',border:'1px solid #e2e8f0',display:'flex',alignItems:'center',gap:12,boxShadow:'0 4px 20px rgba(0,0,0,0.1)',zIndex:2}}>
+
+          {/* Launch prompt */}
+          {!running && stats.progress===0 && (
+            <div className="bb-sim-launch-hint">
+              <span style={{fontSize:22}}>{activeChallenge.icon}</span>
               <div>
-                <div style={{fontSize:13,fontWeight:800,color:'#1e293b'}}>{activeChallenge.icon} {activeChallenge.name}</div>
-                <div style={{fontSize:11,color:'#64748b'}}>{codeCount>0?(codeCount+' code blocks ready'):'Auto-navigation will run'}</div>
+                <div className="bb-sim-launch-hint-title">{activeChallenge.name}</div>
+                <div className="bb-sim-launch-hint-sub">
+                  {robotCode.length>0 ? `${robotCode.length} blocks ready` : 'Build your code on the left, then launch!'}
+                </div>
               </div>
-              <button onClick={()=>doStart()} style={{padding:'9px 22px',borderRadius:10,border:'none',background:'linear-gradient(135deg,#22c55e,#15803d)',color:'#fff',fontWeight:900,fontSize:13,cursor:'pointer',whiteSpace:'nowrap',boxShadow:'0 2px 8px rgba(34,197,94,0.4)'}}>
-                Launch!
-              </button>
+              <button className="bb-sim-btn launch" onClick={doStart}>▶ Launch!</button>
             </div>
           )}
         </div>
 
-        <LivePanel running={running} paused={paused} stats={stats} robotConfig={robotConfig} onStart={doStart} onPause={handlePause} onStop={handleStop} execBlock={execBlock} />
+        {/* RIGHT – stats + challenge picker */}
+        <div className="bb-sim-right">
+
+          <div className="bb-sim-robot-card">
+            <div className="bb-sim-robot-name">{robotConfig?.name||'My Robot'}</div>
+            <div className="bb-sim-robot-sub">
+              {robotConfig?.chassisId||'rover'} · {robotConfig?.movementId||'wheels'}
+              {(robotConfig?.sensors?.length||0)>0&&` · ${robotConfig.sensors.length} sensors`}
+            </div>
+          </div>
+
+          <div className="bb-sim-stats-block">
+            <StatBar label="Battery"   value={stats.battery}       color={battColor} unit="%" />
+            <StatNum label="Distance"  value={stats.dist.toFixed(1)} unit="m" />
+            <StatNum label="Time"
+              value={`${String(Math.floor(stats.time/60)).padStart(2,'0')}:${String(Math.floor(stats.time%60)).padStart(2,'0')}`} />
+            <StatNum label="Obstacles" value={stats.avoided} />
+          </div>
+
+          <div className="bb-sim-ch-section-label">Challenges</div>
+          <div className="bb-sim-ch-list">
+            {CHALLENGES.map(ch=>{
+              const active=ch.id===activeChallenge.id;
+              return (
+                <button key={ch.id}
+                  className={`bb-sim-ch-row ${active?'active':''}`}
+                  style={active?{borderLeftColor:ch.color,background:ch.color+'18'}:{}}
+                  onClick={()=>!running&&setChallenge(ch)}
+                  disabled={running&&!active}
+                >
+                  <span className="bb-sim-ch-row-icon">{ch.icon}</span>
+                  <div className="bb-sim-ch-row-info">
+                    <span className="bb-sim-ch-row-name">{ch.name}</span>
+                    <span className="bb-sim-ch-row-diff"
+                      style={{background:ch.color+'22',color:ch.color}}>{ch.difficulty}</span>
+                  </div>
+                  {active&&stats.progress>0&&(
+                    <span className="bb-sim-ch-row-pct">{Math.round(stats.progress)}%</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {running&&(
+            <div className="bb-sim-running-bar">
+              <div className="bb-sim-running-label">Running…</div>
+              <div className="bb-sim-running-track">
+                <div className="bb-sim-running-fill" style={{width:stats.progress+'%',background:activeChallenge.color}} />
+              </div>
+              <div className="bb-sim-running-pct">{Math.round(stats.progress)}%</div>
+            </div>
+          )}
+
+          {!running&&stats.progress>=100&&(
+            <div className="bb-sim-complete">
+              <div style={{fontSize:30}}>🏆</div>
+              <div className="bb-sim-complete-title">Complete!</div>
+              <div className="bb-sim-complete-sub">{stats.dist.toFixed(1)}m · {Math.floor(stats.time)}s</div>
+              <button className="bb-sim-btn launch" style={{width:'100%',marginTop:8}} onClick={doStart}>
+                ▶ Play Again
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       <ActivityFeed events={activity} />

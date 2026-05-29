@@ -18,8 +18,12 @@ export default function TestArenaToolbar({
   onSpeedChange,
   onReset,
   onCameraReset,
+  onZoomIn,
+  onZoomOut,
   onFullscreen,
   isFullscreen,
+  cinemaMode,
+  onCinemaToggle,
   onGoDesign,
   onGoCode,
 }) {
@@ -28,7 +32,7 @@ export default function TestArenaToolbar({
   return (
     <header className="ta-toolbar">
       <div className="ta-toolbar-brand">
-        <span className="ta-toolbar-badge">🚀 Test Arena</span>
+        <span className="ta-toolbar-badge">🚀 Test Arena — NEW</span>
         <h1>{course.label}</h1>
         <p>Running <strong>{robotName || 'your robot'}</strong> — same invention from the lab</p>
       </div>
@@ -40,8 +44,22 @@ export default function TestArenaToolbar({
         <button type="button" className="ta-tool-btn" onClick={onReset}>
           ↺ Reset robot
         </button>
-        <button type="button" className="ta-tool-btn" onClick={onCameraReset}>
-          ◎ Camera
+        <button type="button" className="ta-tool-btn" onClick={onZoomOut} title="Zoom out — see more of the arena">
+          －
+        </button>
+        <button type="button" className="ta-tool-btn" onClick={onZoomIn} title="Zoom in — closer to robot">
+          ＋
+        </button>
+        <button type="button" className="ta-tool-btn" onClick={onCameraReset} title="Reset camera view">
+          ◎ View
+        </button>
+        <button
+          type="button"
+          className={`ta-tool-btn ${cinemaMode ? 'ta-tool-btn--on' : ''}`}
+          onClick={onCinemaToggle}
+          title="Hide side panels — giant arena view"
+        >
+          {cinemaMode ? '◧ Panels' : '▣ Focus'}
         </button>
         <button type="button" className="ta-tool-btn" onClick={onFullscreen}>
           {isFullscreen ? '✕ Exit' : '⛶ Fullscreen'}

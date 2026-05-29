@@ -1305,7 +1305,7 @@
 @media (max-width: 1100px) {
   .vrd-designer {
     grid-template-columns: 1fr;
-    grid-template-rows: var(--vrd-header-h) auto 1fr auto var(--vrd-bottom-h);
+    grid-template-rows: var(--vrd-header-h) auto auto auto var(--vrd-bottom-h);
     grid-template-areas:
       "header"
       "left"
@@ -1323,5 +1323,10 @@
   .vrd-designer-left,
   .vrd-designer-right {
     max-height: 320px;
+  }
+  /* Give center a real height on mobile so the canvas renders */
+  .vrd-designer-center {
+    height: 480px;
+    min-height: 480px;
   }
 }

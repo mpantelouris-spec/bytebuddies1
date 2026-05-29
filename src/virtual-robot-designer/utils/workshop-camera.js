@@ -36,11 +36,11 @@ export function computeRobotCameraFrame({
     Math.min(0.35, blockCount * 0.018);
 
   const idealDistance = robotRadius * 3.6 + 0.85;
-  const minDistance = robotRadius * 2.15 + 0.5;
-  const maxDistance = idealDistance * 2.35 + 1.4;
+  const minDistance = robotRadius * 2.0 + 0.45;
+  const maxDistance = Math.max(idealDistance * 3.85 + 2.8, 18);
 
-  const azimuth = 0.52;
-  const polar = 1.02;
+  const azimuth = 0.38;  // more front-facing (was 0.52)
+  const polar = 1.22;   // slightly lower angle, more frontal (was 1.18)
   const sinP = Math.sin(polar);
   const cosP = Math.cos(polar);
 

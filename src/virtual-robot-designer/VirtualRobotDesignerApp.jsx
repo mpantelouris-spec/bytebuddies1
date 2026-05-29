@@ -26,7 +26,7 @@ export default function VirtualRobotDesignerApp() {
   }
 
   return (
-    <div className="vrd-app vrd-app--product">
+    <div className="vrd-app vrd-app--product vrd-app--academy">
       <AcademyExperience />
     </div>
   );

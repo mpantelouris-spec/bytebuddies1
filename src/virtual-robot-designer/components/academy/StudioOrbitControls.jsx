@@ -76,7 +76,7 @@ export default function StudioOrbitControls({
           maxDistance,
         );
       },
-      zoomOut(step = 0.14) {
+      zoomOut(step = 0.2) {
         const c = controlsRef.current;
         if (!c) return;
         const d = getOrbitDistance(c, camera);
@@ -91,8 +91,8 @@ export default function StudioOrbitControls({
         if (!c) return;
         _desiredTarget.set(...target);
         c.target.copy(_desiredTarget);
-        c.setAzimuthalAngle(0.52);
-        c.setPolarAngle(1.02);
+        c.setAzimuthalAngle(0.38);  // matches workshop-camera.js
+        c.setPolarAngle(1.22);     // matches workshop-camera.js
         if (smoothDistance.current != null) {
           setOrbitDistance(c, camera, smoothDistance.current);
         }

@@ -23,7 +23,7 @@ if (smoke.code !== 0) {
 }
 
 console.log('\n── Jest (unit + integration) ──\n');
-const jest = run('npx', ['jest', 'tests/vrd-designer.test.js', 'tests/vrd-comprehensive.test.js', '--no-coverage', '--verbose']);
+const jest = run('npx', ['jest', 'tests/vrd-designer.test.js', 'tests/vrd-comprehensive.test.js', 'tests/vrd-smart-stage.test.js', '--no-coverage', '--verbose']);
 process.stdout.write(jest.out);
 
 const passed = (jest.out.match(/Tests:\s+(\d+) passed/) || [])[1];

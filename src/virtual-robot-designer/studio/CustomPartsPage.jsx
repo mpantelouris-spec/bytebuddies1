@@ -19,40 +19,98 @@ function uid() { return `cp_${Date.now()}_${Math.random().toString(36).slice(2, 
 
 // ─── Part type metadata ────────────────────────────────────────────────────
 const PART_TYPES = [
-  { id: 'chassis',    icon: '📦', label: 'Chassis',    color: '#7c3aed', desc: 'The main body of your robot' },
-  { id: 'wheel',      icon: '⚙️', label: 'Wheel',      color: '#0891b2', desc: 'How your robot moves around' },
-  { id: 'sensor',     icon: '📡', label: 'Sensor',     color: '#059669', desc: 'Lets your robot see the world' },
-  { id: 'arm',        icon: '🦾', label: 'Arm',        color: '#dc2626', desc: 'Pick up and interact with things' },
-  { id: 'decoration', icon: '✨', label: 'Decoration',  color: '#d97706', desc: 'Make your robot look awesome' },
+  // Body / Chassis
+  { id: 'chassis',     icon: '📦', label: 'Chassis',          color: '#7c3aed', desc: 'Main robot body & frame' },
+  { id: 'rover-body',  icon: '🚙', label: 'Rover Body',       color: '#8b5cf6', desc: 'Wheeled ground vehicle body' },
+  { id: 'spider-body', icon: '🕷️', label: 'Spider Body',      color: '#6d28d9', desc: 'Multi-legged walker body' },
+  { id: 'humanoid',    icon: '🤖', label: 'Humanoid Body',    color: '#7c3aed', desc: 'Bipedal robot torso' },
+  { id: 'drone-body',  icon: '🚁', label: 'Drone Frame',      color: '#5b21b6', desc: 'Aerial quadcopter frame' },
+  { id: 'plane-body',  icon: '✈️', label: 'Plane Body',       color: '#4c1d95', desc: 'Fixed-wing aircraft body' },
+  { id: 'hover-body',  icon: '🛸', label: 'Hover Body',       color: '#7c3aed', desc: 'Anti-gravity platform' },
+  { id: 'aqua-body',   icon: '🌊', label: 'Aqua Body',        color: '#0891b2', desc: 'Underwater hull' },
+  // Movement
+  { id: 'wheel',       icon: '🛞', label: 'Wheel',            color: '#0891b2', desc: 'How your robot rolls' },
+  { id: 'track',       icon: '⛓️', label: 'Track',            color: '#075985', desc: 'Tank-tread crawler track' },
+  { id: 'leg',         icon: '🦵', label: 'Robot Leg',        color: '#0369a1', desc: 'Walking leg joint system' },
+  { id: 'propeller',   icon: '🌀', label: 'Propeller',        color: '#0284c7', desc: 'Spinning thrust propeller' },
+  { id: 'fin',         icon: '🐟', label: 'Aqua Fin',         color: '#0e7490', desc: 'Underwater fin or jet' },
+  { id: 'hover-pad',   icon: '🔵', label: 'Hover Pad',        color: '#06b6d4', desc: 'Anti-gravity levitation pad' },
+  // Arms & Tools
+  { id: 'arm',         icon: '🦾', label: 'Arm',              color: '#dc2626', desc: 'Reach & manipulate things' },
+  { id: 'claw',        icon: '🦀', label: 'Claw',             color: '#b91c1c', desc: 'Grip and grab objects' },
+  { id: 'drill-tool',  icon: '⛏️', label: 'Drill Tool',       color: '#92400e', desc: 'Mining & drilling tool' },
+  { id: 'laser-tool',  icon: '⚡', label: 'Laser Tool',       color: '#7c3aed', desc: 'Precision laser cutter' },
+  { id: 'weld-tool',   icon: '🔥', label: 'Welder',           color: '#ea580c', desc: 'Welding & repair tool' },
+  { id: 'rescue-tool', icon: '🚨', label: 'Rescue Tool',      color: '#ef4444', desc: 'Emergency rescue attachment' },
+  // Sensors
+  { id: 'sensor',      icon: '📡', label: 'Sensor',           color: '#059669', desc: 'Detect the environment' },
+  { id: 'camera-part', icon: '📷', label: 'Camera',           color: '#0891b2', desc: 'Vision & recording module' },
+  { id: 'scanner',     icon: '🔍', label: 'Scanner',          color: '#047857', desc: 'LIDAR or radar scanner' },
+  { id: 'detector',    icon: '🧲', label: 'Detector',         color: '#065f46', desc: 'Magnetic or bio detector' },
+  // Power
+  { id: 'battery',     icon: '🔋', label: 'Battery',          color: '#16a34a', desc: 'Power storage module' },
+  { id: 'solar-panel', icon: '☀️', label: 'Solar Panel',      color: '#ca8a04', desc: 'Solar energy collector' },
+  { id: 'reactor',     icon: '⚛️', label: 'Reactor',          color: '#0e7490', desc: 'Advanced power core' },
+  // AI & Communication
+  { id: 'ai-chip',     icon: '🧠', label: 'AI Module',        color: '#6d28d9', desc: 'Intelligent processing unit' },
+  { id: 'antenna',     icon: '📶', label: 'Antenna',          color: '#0284c7', desc: 'Communication system' },
+  // Head & Lighting
+  { id: 'head',        icon: '🤖', label: 'Robot Head',       color: '#7c3aed', desc: 'Head unit & optics' },
+  { id: 'light-part',  icon: '💡', label: 'Light',            color: '#d97706', desc: 'Lighting system' },
+  // Structural & Decoration
+  { id: 'armor',       icon: '🛡️', label: 'Armor',            color: '#374151', desc: 'Protective plating' },
+  { id: 'joint',       icon: '🔄', label: 'Joint / Hinge',   color: '#6366f1', desc: 'Rotating mechanical joint' },
+  { id: 'decoration',  icon: '✨', label: 'Decoration',       color: '#d97706', desc: 'Make your robot look awesome' },
+  // LEGO Mode
+  { id: 'lego-block',  icon: '🧱', label: 'LEGO Block',       color: '#ef4444', desc: 'Snap-together brick part' },
 ];
 
-const TYPE_COLORS = {
-  chassis: '#7c3aed', wheel: '#0891b2', sensor: '#059669', arm: '#dc2626', decoration: '#d97706',
-};
+const TYPE_COLORS = Object.fromEntries(PART_TYPES.map(p => [p.id, p.color]));
 
 // ─── Default configs per part type ────────────────────────────────────────
+// Shared chassis default for all body types
+const CHASSIS_DEFAULT = { shape: 'box', width: 1.4, height: 0.6, depth: 1.8, material: 'plastic', color: '#FF8C00', weight: 3, wheelSockets: 4, sensorSockets: 2, armSockets: 1, hasHead: true };
+const WHEEL_DEFAULT   = { style: 'standard', radius: 0.35, thickness: 0.22, tireColor: '#222222', rimColor: '#888888', grip: 80, weight: 0.5 };
+const SENSOR_DEFAULT  = { type: 'camera', range: 6, accuracy: 90, powerDrain: 2, size: 0.3, color: '#00d9ff' };
+const ARM_DEFAULT     = { type: 'grabber', length: 1.2, strength: 70, color: '#888888', side: 'right' };
+const DECO_DEFAULT    = { type: 'led-strip', color: '#00ffff', glowIntensity: 1.2, position: 'top', size: 0.6 };
+
 const DEFAULTS = {
-  chassis: {
-    name: 'My Chassis', shape: 'box', width: 1.4, height: 0.6, depth: 1.8,
-    material: 'plastic', color: '#FF8C00', weight: 3,
-    wheelSockets: 4, sensorSockets: 2, armSockets: 1, hasHead: true,
-  },
-  wheel: {
-    name: 'My Wheel', style: 'standard', radius: 0.35, thickness: 0.22,
-    tireColor: '#222222', rimColor: '#888888', grip: 80, weight: 0.5,
-  },
-  sensor: {
-    name: 'My Sensor', type: 'camera', range: 6, accuracy: 90,
-    powerDrain: 2, size: 0.3, color: '#00d9ff',
-  },
-  arm: {
-    name: 'My Arm', type: 'grabber', length: 1.2, strength: 70,
-    color: '#888888', side: 'right',
-  },
-  decoration: {
-    name: 'My Decoration', type: 'led-strip', color: '#00ffff',
-    glowIntensity: 1.2, position: 'top', size: 0.6,
-  },
+  chassis:     { name: 'My Chassis',       ...CHASSIS_DEFAULT },
+  'rover-body':{ name: 'My Rover Body',    ...CHASSIS_DEFAULT, color: '#FF8C00' },
+  'spider-body':{ name: 'My Spider Body',  ...CHASSIS_DEFAULT, shape: 'sphere', color: '#10b981', wheelSockets: 0 },
+  humanoid:    { name: 'My Humanoid',      ...CHASSIS_DEFAULT, color: '#9B59B6', height: 1.2 },
+  'drone-body':{ name: 'My Drone Frame',   ...CHASSIS_DEFAULT, shape: 'cylinder', color: '#06b6d4', wheelSockets: 0, weight: 0.8 },
+  'plane-body':{ name: 'My Plane Body',    ...CHASSIS_DEFAULT, color: '#1e40af', depth: 2.4, weight: 1.4 },
+  'hover-body':{ name: 'My Hover Body',    ...CHASSIS_DEFAULT, shape: 'cylinder', color: '#8b5cf6', wheelSockets: 0, weight: 1.0 },
+  'aqua-body': { name: 'My Aqua Body',     ...CHASSIS_DEFAULT, color: '#0284c7', depth: 2.2, weight: 3.0 },
+  wheel:       { name: 'My Wheel',         ...WHEEL_DEFAULT },
+  track:       { name: 'My Track',         ...WHEEL_DEFAULT, style: 'track', radius: 0.4, tireColor: '#333333' },
+  leg:         { name: 'My Robot Leg',     type: 'spider', length: 1.0, joints: 2, color: '#10b981', weight: 0.6 },
+  propeller:   { name: 'My Propeller',     type: 'quad', radius: 0.5, blades: 4, color: '#374151', weight: 0.2 },
+  fin:         { name: 'My Aqua Fin',      type: 'tail', length: 0.8, color: '#0284c7', weight: 0.3 },
+  'hover-pad': { name: 'My Hover Pad',     type: 'antigrav', size: 0.6, color: '#8b5cf6', weight: 0.4 },
+  arm:         { name: 'My Arm',           ...ARM_DEFAULT },
+  claw:        { name: 'My Claw',          ...ARM_DEFAULT, type: 'claw', color: '#FF6B6B' },
+  'drill-tool':{ name: 'My Drill',         type: 'drill', length: 0.8, color: '#888888', weight: 1.2 },
+  'laser-tool':{ name: 'My Laser',         type: 'laser', range: 5, color: '#FF00FF', powerDrain: 3 },
+  'weld-tool': { name: 'My Welder',        type: 'welder', reach: 0.6, color: '#FF4500', weight: 0.8 },
+  'rescue-tool':{ name: 'My Rescue Tool', type: 'cutter', force: 80, color: '#ef4444', weight: 1.0 },
+  sensor:      { name: 'My Sensor',        ...SENSOR_DEFAULT },
+  'camera-part':{ name: 'My Camera',       ...SENSOR_DEFAULT, type: 'camera', color: '#1E90FF' },
+  scanner:     { name: 'My Scanner',       ...SENSOR_DEFAULT, type: 'lidar', range: 15, color: '#FF3333' },
+  detector:    { name: 'My Detector',      ...SENSOR_DEFAULT, type: 'magnetic', range: 3, color: '#6366f1' },
+  battery:     { name: 'My Battery',       type: 'lithium', capacity: 5000, voltage: 12, color: '#00C851', weight: 1.5 },
+  'solar-panel':{ name: 'My Solar Panel',  type: 'solar', area: 0.5, efficiency: 80, color: '#FFD700', weight: 0.4 },
+  reactor:     { name: 'My Reactor',       type: 'fusion', output: 100, color: '#00D9FF', weight: 3.0 },
+  'ai-chip':   { name: 'My AI Module',     type: 'neural', cores: 8, memory: 16, color: '#7c3aed', weight: 0.1 },
+  antenna:     { name: 'My Antenna',       type: 'wifi', range: 100, frequency: 2.4, color: '#00D9FF', weight: 0.2 },
+  head:        { name: 'My Robot Head',    ...CHASSIS_DEFAULT, shape: 'sphere', width: 0.6, height: 0.6, depth: 0.6, color: '#9B59B6', weight: 0.5 },
+  'light-part':{ name: 'My Light',         ...DECO_DEFAULT, type: 'led', color: '#00ffff' },
+  armor:       { name: 'My Armor',         ...CHASSIS_DEFAULT, shape: 'box', color: '#374151', height: 0.2, weight: 2.0 },
+  joint:       { name: 'My Joint',         type: 'rotating', range: 180, torque: 50, color: '#818CF8', weight: 0.3 },
+  decoration:  { name: 'My Decoration',    ...DECO_DEFAULT },
+  'lego-block':{ name: 'My LEGO Block',    shape: 'box', studs: 4, color: '#E74C3C', width: 0.32, height: 0.19, depth: 0.32, weight: 0.1 },
 };
 
 // ─── 3D Preview builders ───────────────────────────────────────────────────
@@ -287,6 +345,12 @@ function PartPreviewCanvas({ partType, config }) {
   const groupRef = useRef(null);
   const rafRef   = useRef(null);
   const roRef    = useRef(null);
+  // Holographic extras
+  const platRingRef  = useRef(null);
+  const innerRingRef = useRef(null);
+  const holoRingRef  = useRef(null);
+  // Orbit state
+  const orbitRef = useRef({ theta: 0.4, phi: 0.52, radius: 3.6, isDragging: false, lastX: 0, lastY: 0, autoSpin: true });
 
   // Init once
   useEffect(() => {
@@ -295,62 +359,179 @@ function PartPreviewCanvas({ partType, config }) {
     const W = Math.max(el.clientWidth, 1);
     const H = Math.max(el.clientHeight, 1);
 
+    // ── Scene ──────────────────────────────────────────────────────────────
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x0a0e1a);
-    scene.fog = new THREE.FogExp2(0x0a0e1a, 0.065);
+    scene.background = new THREE.Color(0xeef1f8);
+    scene.fog = new THREE.FogExp2(0xeef1f8, 0.045);
     sceneRef.current = scene;
 
-    const camera = new THREE.PerspectiveCamera(48, W / H, 0.1, 80);
-    camera.position.set(0, 1.4, 3.6);
-    camera.lookAt(0, 0.2, 0);
+    // ── Camera (spherical orbit) ───────────────────────────────────────────
+    const camera = new THREE.PerspectiveCamera(46, W / H, 0.1, 80);
+    const updateCamera = () => {
+      const o = orbitRef.current;
+      camera.position.set(
+        o.radius * Math.sin(o.phi) * Math.sin(o.theta),
+        o.radius * Math.cos(o.phi) + 0.2,
+        o.radius * Math.sin(o.phi) * Math.cos(o.theta)
+      );
+      camera.lookAt(0, 0.2, 0);
+    };
+    updateCamera();
     camRef.current = camera;
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+    // ── Renderer ──────────────────────────────────────────────────────────
+    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
     renderer.setSize(W, H);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.4;
+    renderer.toneMappingExposure = 0.95;
     el.appendChild(renderer.domElement);
     rendRef.current = renderer;
 
-    // Lights
-    scene.add(new THREE.AmbientLight(0x334488, 0.4));
-    scene.add(new THREE.HemisphereLight(0x1a2850, 0x08090e, 0.35));
-
-    const sun = new THREE.DirectionalLight(0xfff8f0, 1.3);
-    sun.position.set(5, 8, 6);
-    sun.castShadow = true;
-    sun.shadow.mapSize.set(1024, 1024);
-    scene.add(sun);
-
-    const fill = new THREE.DirectionalLight(0x1e40a0, 0.3);
+    // ── Lighting: bright studio 3-point ──────────────────────────────────
+    scene.add(new THREE.AmbientLight(0xc8d4f0, 1.4));
+    const key = new THREE.DirectionalLight(0xfff8f0, 1.8);
+    key.position.set(5, 10, 7);
+    key.castShadow = true;
+    key.shadow.mapSize.set(1024, 1024);
+    key.shadow.bias = -0.0003;
+    scene.add(key);
+    const fill = new THREE.DirectionalLight(0xd0e4ff, 0.7);
     fill.position.set(-5, 4, -3);
     scene.add(fill);
+    const rim = new THREE.DirectionalLight(0xf0e8ff, 0.5);
+    rim.position.set(0, -1, -5);
+    scene.add(rim);
 
-    const pl1 = new THREE.PointLight(0x8b5cf6, 0.4, 10);
-    pl1.position.set(-2, 3, -1);
-    scene.add(pl1);
+    // ── Floor + subtle grid ───────────────────────────────────────────────
+    const floor = new THREE.Mesh(
+      new THREE.PlaneGeometry(16, 16),
+      new THREE.MeshStandardMaterial({ color: 0xe8ecf5, metalness: 0.0, roughness: 0.9 })
+    );
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.y = -0.14;
+    floor.receiveShadow = true;
+    scene.add(floor);
 
-    const pl2 = new THREE.PointLight(0x00d9ff, 0.25, 7);
-    pl2.position.set(2, 0.5, 3);
-    scene.add(pl2);
+    const gridMat    = new THREE.LineBasicMaterial({ color: 0xc4cce0, transparent: true, opacity: 0.55 });
+    const gridAccMat = new THREE.LineBasicMaterial({ color: 0xa0aace, transparent: true, opacity: 0.75 });
+    const GS = 6; const GStep = 0.8;
+    for (let i = -GS; i <= GS; i++) {
+      const m = i % 3 === 0 ? gridAccMat : gridMat;
+      scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(-GS * GStep, -0.13, i * GStep), new THREE.Vector3(GS * GStep, -0.13, i * GStep)]), m));
+      scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(i * GStep, -0.13, -GS * GStep), new THREE.Vector3(i * GStep, -0.13, GS * GStep)]), m));
+    }
 
-    // Platform
-    const platMat = new THREE.MeshStandardMaterial({ color: 0x1e2238, metalness: 0.8, roughness: 0.2 });
-    const plat = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 0.08, 48), platMat);
-    plat.position.y = -0.04;
+    // ── Platform & rings ─────────────────────────────────────────────────
+    const platMat = new THREE.MeshStandardMaterial({ color: 0xdde3f4, metalness: 0.25, roughness: 0.35 });
+    const plat = new THREE.Mesh(new THREE.CylinderGeometry(1.25, 1.25, 0.06, 64), platMat);
+    plat.position.y = -0.08;
     plat.receiveShadow = true;
     scene.add(plat);
 
-    const ringMat = new THREE.MeshStandardMaterial({ color: 0x7c3aed, emissive: new THREE.Color(0x7c3aed), emissiveIntensity: 1.0 });
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(1.22, 0.045, 8, 64), ringMat);
-    ring.position.y = 0.02;
-    ring.rotation.x = Math.PI / 2;
-    scene.add(ring);
+    // Outer purple ring (animated pulse)
+    const platRingMat = new THREE.MeshStandardMaterial({
+      color: 0x7c3aed, emissive: new THREE.Color(0x7c3aed), emissiveIntensity: 0.9,
+    });
+    const platRing = new THREE.Mesh(new THREE.TorusGeometry(1.26, 0.038, 8, 72), platRingMat);
+    platRing.position.y = -0.05;
+    platRing.rotation.x = Math.PI / 2;
+    scene.add(platRing);
+    platRingRef.current = platRing;
 
-    // ResizeObserver
+    // Inner accent ring
+    const innerRingMat = new THREE.MeshStandardMaterial({
+      color: 0x4f46e5, emissive: new THREE.Color(0x4f46e5), emissiveIntensity: 0.55,
+    });
+    const innerRing = new THREE.Mesh(new THREE.TorusGeometry(0.88, 0.022, 8, 56), innerRingMat);
+    innerRing.position.y = -0.05;
+    innerRing.rotation.x = Math.PI / 2;
+    scene.add(innerRing);
+    innerRingRef.current = innerRing;
+
+    // Floating soft ring
+    const holoMat = new THREE.MeshStandardMaterial({
+      color: 0x7c3aed, emissive: new THREE.Color(0x7c3aed), emissiveIntensity: 0.3,
+      transparent: true, opacity: 0.12, side: THREE.DoubleSide, depthWrite: false,
+    });
+    const holoRing = new THREE.Mesh(new THREE.TorusGeometry(1.8, 0.04, 6, 40), holoMat);
+    holoRing.rotation.x = Math.PI * 0.3;
+    holoRing.position.y = 0.7;
+    scene.add(holoRing);
+    holoRingRef.current = holoRing;
+
+    // Crosshair guide
+    const crossMat = new THREE.LineBasicMaterial({ color: 0x8888cc, transparent: true, opacity: 0.3 });
+    scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(-1.2, -0.12, 0), new THREE.Vector3(1.2, -0.12, 0)]), crossMat));
+    scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(0, -0.12, -1.2), new THREE.Vector3(0, -0.12, 1.2)]), crossMat));
+
+    // ── Orbit / mouse controls ─────────────────────────────────────────────
+    const onMouseDown = (e) => {
+      const o = orbitRef.current;
+      o.isDragging = true; o.autoSpin = false;
+      o.lastX = e.clientX; o.lastY = e.clientY;
+      el.style.cursor = 'grabbing';
+    };
+    const onMouseMove = (e) => {
+      const o = orbitRef.current;
+      if (!o.isDragging) return;
+      const dx = e.clientX - o.lastX;
+      const dy = e.clientY - o.lastY;
+      o.theta -= dx * 0.012;
+      o.phi = Math.max(0.1, Math.min(Math.PI * 0.46, o.phi + dy * 0.009));
+      o.lastX = e.clientX; o.lastY = e.clientY;
+      updateCamera();
+    };
+    const onMouseUp = () => {
+      orbitRef.current.isDragging = false;
+      el.style.cursor = 'grab';
+      clearTimeout(orbitRef.current._t);
+      orbitRef.current._t = setTimeout(() => { orbitRef.current.autoSpin = true; }, 2500);
+    };
+    const onWheel = (e) => {
+      orbitRef.current.radius = Math.max(1.8, Math.min(8, orbitRef.current.radius + e.deltaY * 0.006));
+      updateCamera();
+    };
+    const onTouchStart = (e) => {
+      if (e.touches.length !== 1) return;
+      const o = orbitRef.current;
+      o.isDragging = true; o.autoSpin = false;
+      o.lastX = e.touches[0].clientX; o.lastY = e.touches[0].clientY;
+    };
+    const onTouchMove = (e) => {
+      if (e.touches.length !== 1) return;
+      const o = orbitRef.current;
+      if (!o.isDragging) return;
+      const dx = e.touches[0].clientX - o.lastX;
+      const dy = e.touches[0].clientY - o.lastY;
+      o.theta -= dx * 0.012;
+      o.phi = Math.max(0.1, Math.min(Math.PI * 0.46, o.phi + dy * 0.009));
+      o.lastX = e.touches[0].clientX; o.lastY = e.touches[0].clientY;
+      updateCamera();
+    };
+    const onTouchEnd = () => { orbitRef.current.isDragging = false; };
+    el.addEventListener('dblclick', () => {
+      const o = orbitRef.current; o.theta = 0.4; o.phi = 0.52; o.radius = 3.6; o.autoSpin = true;
+      updateCamera();
+    });
+
+    el.style.cursor = 'grab';
+    el.addEventListener('mousedown',  onMouseDown);
+    el.addEventListener('mousemove',  onMouseMove);
+    el.addEventListener('mouseup',    onMouseUp);
+    el.addEventListener('mouseleave', onMouseUp);
+    el.addEventListener('wheel',      onWheel, { passive: true });
+    el.addEventListener('touchstart', onTouchStart, { passive: true });
+    el.addEventListener('touchmove',  onTouchMove,  { passive: true });
+    el.addEventListener('touchend',   onTouchEnd);
+
+    // ── ResizeObserver ─────────────────────────────────────────────────────
     const onResize = () => {
       if (!el) return;
       const w = Math.max(el.clientWidth, 1);
@@ -363,20 +544,47 @@ function PartPreviewCanvas({ partType, config }) {
     ro.observe(el);
     roRef.current = ro;
 
-    // Animate
+    // ── Animation loop ─────────────────────────────────────────────────────
     let t = 0;
     const tick = () => {
       rafRef.current = requestAnimationFrame(tick);
-      t += 0.005;
+      t += 0.016;
+
+      // Auto-spin when idle
+      const o = orbitRef.current;
+      if (o.autoSpin && !o.isDragging) {
+        o.theta += 0.007;
+        updateCamera();
+      }
+
+      // Part levitation
       if (groupRef.current) {
-        groupRef.current.rotation.y = t;
         groupRef.current.position.y = Math.sin(t * 1.2) * 0.05 + 0.1;
       }
+
+      // Platform ring pulse
+      if (platRingRef.current)  platRingRef.current.material.emissiveIntensity  = 1.0 + Math.sin(t * 2.4) * 0.35;
+      if (innerRingRef.current) innerRingRef.current.material.emissiveIntensity = 0.5 + Math.sin(t * 3.8 + 1) * 0.28;
+
+      // Holographic ring orbit
+      if (holoRingRef.current) {
+        holoRingRef.current.rotation.y += 0.008;
+        holoRingRef.current.material.opacity = 0.1 + Math.sin(t * 1.6) * 0.05;
+      }
+
       renderer.render(scene, camera);
     };
     tick();
 
     return () => {
+      el.removeEventListener('mousedown',  onMouseDown);
+      el.removeEventListener('mousemove',  onMouseMove);
+      el.removeEventListener('mouseup',    onMouseUp);
+      el.removeEventListener('mouseleave', onMouseUp);
+      el.removeEventListener('wheel',      onWheel);
+      el.removeEventListener('touchstart', onTouchStart);
+      el.removeEventListener('touchmove',  onTouchMove);
+      el.removeEventListener('touchend',   onTouchEnd);
       cancelAnimationFrame(rafRef.current);
       roRef.current?.disconnect();
       if (el && renderer.domElement.parentNode === el) el.removeChild(renderer.domElement);
@@ -757,12 +965,52 @@ function BuilderView({ partType, editingId, savedConfig, onSave, onBack }) {
 
   const renderBuilder = () => {
     switch (partType) {
-      case 'chassis':    return <ChassisBuilder    config={config} setConfig={setConfig} />;
-      case 'wheel':      return <WheelBuilder      config={config} setConfig={setConfig} />;
-      case 'sensor':     return <SensorBuilder     config={config} setConfig={setConfig} />;
-      case 'arm':        return <ArmBuilder        config={config} setConfig={setConfig} />;
-      case 'decoration': return <DecorationBuilder config={config} setConfig={setConfig} />;
-      default: return null;
+      // Body types — all use ChassisBuilder
+      case 'chassis':
+      case 'rover-body':
+      case 'spider-body':
+      case 'humanoid':
+      case 'drone-body':
+      case 'plane-body':
+      case 'hover-body':
+      case 'aqua-body':
+      case 'head':
+      case 'armor':
+      case 'lego-block':
+        return <ChassisBuilder config={config} setConfig={setConfig} />;
+      // Wheel/movement types
+      case 'wheel':
+      case 'track':
+      case 'leg':
+      case 'propeller':
+      case 'fin':
+      case 'hover-pad':
+        return <WheelBuilder config={config} setConfig={setConfig} />;
+      // Sensor types
+      case 'sensor':
+      case 'camera-part':
+      case 'scanner':
+      case 'detector':
+      case 'battery':
+      case 'solar-panel':
+      case 'reactor':
+      case 'ai-chip':
+      case 'antenna':
+        return <SensorBuilder config={config} setConfig={setConfig} />;
+      // Arm / tool types
+      case 'arm':
+      case 'claw':
+      case 'drill-tool':
+      case 'laser-tool':
+      case 'weld-tool':
+      case 'rescue-tool':
+      case 'joint':
+        return <ArmBuilder config={config} setConfig={setConfig} />;
+      // Decoration / lights
+      case 'decoration':
+      case 'light-part':
+        return <DecorationBuilder config={config} setConfig={setConfig} />;
+      default: return <ChassisBuilder config={config} setConfig={setConfig} />;
     }
   };
 
@@ -796,7 +1044,7 @@ function BuilderView({ partType, editingId, savedConfig, onSave, onBack }) {
             <PartPreviewCanvas partType={partType} config={config} key={partType} />
           </div>
           <div className="bb-cp-preview-hint">
-            Model updates as you change parameters
+            Drag to rotate · Scroll to zoom · Double-click to reset
           </div>
         </div>
 
@@ -822,7 +1070,22 @@ function BuilderView({ partType, editingId, savedConfig, onSave, onBack }) {
 function MyCustomPartsLibrary({ parts, onNew, onEdit, onDelete }) {
   const [filter, setFilter] = useState('all');
 
-  const filtered = filter === 'all' ? parts : parts.filter(p => p.type === filter);
+  const GROUP_TYPES = {
+    body:      ['chassis','rover-body','spider-body','humanoid','drone-body','plane-body','hover-body','aqua-body','head'],
+    movement:  ['wheel','track','leg','propeller','fin','hover-pad'],
+    arms:      ['arm','claw','drill-tool','laser-tool','weld-tool','rescue-tool','joint'],
+    sensors:   ['sensor','camera-part','scanner','detector'],
+    power:     ['battery','solar-panel','reactor'],
+    ai:        ['ai-chip','antenna'],
+    structure: ['armor'],
+    deco:      ['decoration','light-part'],
+    lego:      ['lego-block'],
+  };
+  const filtered = filter === 'all'
+    ? parts
+    : GROUP_TYPES[filter]
+      ? parts.filter(p => GROUP_TYPES[filter].includes(p.type))
+      : parts.filter(p => p.type === filter);
 
   return (
     <div className="bb-cp-page">
@@ -839,15 +1102,41 @@ function MyCustomPartsLibrary({ parts, onNew, onEdit, onDelete }) {
 
       {/* Filter pills */}
       <div className="bb-cp-filter-row">
-        {['all', ...PART_TYPES.map(pt => pt.id)].map(f => (
-          <button
-            key={f}
-            className={`bb-cp-filter-pill${filter === f ? ' active' : ''}`}
-            onClick={() => setFilter(f)}
-          >
-            {f === 'all' ? 'All Parts' : `${PART_TYPES.find(pt => pt.id === f)?.icon} ${f.charAt(0).toUpperCase() + f.slice(1)}`}
-          </button>
-        ))}
+        {[
+          { id: 'all',        label: 'All Parts',  icon: '🔍' },
+          { id: 'body',       label: 'Body',        icon: '📦' },
+          { id: 'movement',   label: 'Movement',    icon: '🛞' },
+          { id: 'arms',       label: 'Arms & Tools',icon: '🦾' },
+          { id: 'sensors',    label: 'Sensors',     icon: '📡' },
+          { id: 'power',      label: 'Power',       icon: '🔋' },
+          { id: 'ai',         label: 'AI & Comms',  icon: '🧠' },
+          { id: 'structure',  label: 'Structural',  icon: '🛡️' },
+          { id: 'deco',       label: 'Decoration',  icon: '✨' },
+          { id: 'lego',       label: 'LEGO',        icon: '🧱' },
+        ].map(f => {
+          const GROUP_MAP = {
+            body:      ['chassis','rover-body','spider-body','humanoid','drone-body','plane-body','hover-body','aqua-body','head'],
+            movement:  ['wheel','track','leg','propeller','fin','hover-pad'],
+            arms:      ['arm','claw','drill-tool','laser-tool','weld-tool','rescue-tool','joint'],
+            sensors:   ['sensor','camera-part','scanner','detector'],
+            power:     ['battery','solar-panel','reactor'],
+            ai:        ['ai-chip','antenna'],
+            structure: ['armor'],
+            deco:      ['decoration','light-part'],
+            lego:      ['lego-block'],
+          };
+          const isActive = f.id === 'all' ? filter === 'all' : GROUP_MAP[f.id]?.includes(filter) || filter === f.id;
+          const handleClick = () => setFilter(f.id === 'all' ? 'all' : f.id);
+          return (
+            <button
+              key={f.id}
+              className={`bb-cp-filter-pill${isActive ? ' active' : ''}`}
+              onClick={handleClick}
+            >
+              {f.icon} {f.label}
+            </button>
+          );
+        })}
       </div>
 
       {/* Empty state */}

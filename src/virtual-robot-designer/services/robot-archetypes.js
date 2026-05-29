@@ -40,8 +40,20 @@ export function detectRobotArchetype(design) {
   if (chassis === 'mech' || tags.includes('mech')) return ARCHETYPES.mech;
   if (chassis === 'battle_bot' || chassis === 'combat') return ARCHETYPES.battle;
   if (chassis === 'companion' || (d.sensors?.ai && d.sensors?.voice)) return ARCHETYPES.companion;
-  if (wt === 'hover' || tags.includes('flying') || chassis === 'drone' || chassis === 'hover_platform') {
+  if (tags.includes('underwater') === false && (mov === 'jet' || mov === 'jets' || tags.includes('jet'))) {
+    return { ...ARCHETYPES.drone, id: 'jet', label: 'Jet / Plane', icon: '✈️', missions: ['Canyon Fly-Through', 'Sky Loop Race', 'Precision Landing'] };
+  }
+  if (tags.includes('rotors') || mov === 'quad_props' || mov === 'rotors') {
+    return { ...ARCHETYPES.drone, id: 'helicopter', label: 'Helicopter', icon: '🚁', missions: ['Rescue Zone', 'Rooftop Landing', 'Cargo Lift'] };
+  }
+  if (wt === 'hover' || chassis === 'hover_platform') {
+    return { ...ARCHETYPES.drone, id: 'hover', label: 'Hover Bot', icon: '🛸', missions: ['Floating Gap Cross', 'Hover Race', 'Energy Bridge'] };
+  }
+  if (tags.includes('flying') || chassis === 'drone') {
     return ARCHETYPES.drone;
+  }
+  if (d.tools?.drill && !wt) {
+    return { ...ARCHETYPES.inventor, id: 'drill', label: 'Drill Bot', icon: '⛏️', missions: ['Mining Tunnel', 'Crystal Collect', 'Cave Explore'] };
   }
   if (wt === 'legs' && (d.wheels?.count >= 6 || tags.includes('spider') || chassis === 'spider')) {
     return ARCHETYPES.spider;
@@ -61,15 +73,25 @@ export function getArchetypePhysicsOverrides(archetypeId, design) {
   const d = migrateDesign(design);
   switch (archetypeId) {
     case 'drone':
-      return { isFlying: true, hoverLift: 0.55 };
+    case 'jet':
+    case 'helicopter':
+    case 'hover':
+      return { isFlying: true, hoverLift: archetypeId === 'hover' ? 0.45 : 0.55 };
     case 'submarine':
       return { isFlying: false, hoverLift: -0.15, underwater: true };
     case 'spider':
       return { legAnimSpeed: 1.8, climb: true };
     case 'humanoid':
-      return { legAnimSpeed: 1.3 };
+      return { legAnimSpeed: 1.3, climb: true };
     case 'tank':
-      return { trackAnimSpeed: 1.6 };
+    case 'mech':
+      return { trackAnimSpeed: 1.6, pxMult: 0.92 };
+    case 'arm':
+      return { pxMult: 0.75, degMult: 1.2 };
+    case 'drill':
+      return { pxMult: 0.85, underwater: false };
+    case 'lego':
+      return { pxMult: 0.9 };
     default:
       return {};
   }

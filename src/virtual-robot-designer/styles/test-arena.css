@@ -9,14 +9,12 @@
   --ta-blue: #1e90ff;
   --ta-text: #1e293b;
   --ta-muted: #64748b;
-  --ta-courses-w: min(220px, 18vw);
-  --ta-systems-w: min(240px, 20vw);
-  --ta-toolbar-h: 56px;
-  --ta-log-h: 72px;
+  --ta-toolbar-h: 52px;
+  --ta-log-h: 56px;
 
   display: grid;
   grid-template-rows: auto auto 1fr var(--ta-log-h);
-  grid-template-columns: var(--ta-courses-w) 1fr var(--ta-systems-w);
+  grid-template-columns: 0.13fr 0.74fr 0.13fr;
   grid-template-areas:
     'journey journey journey'
     'toolbar toolbar toolbar'
@@ -37,9 +35,59 @@
 
 .ta-app .vrd-journey {
   grid-area: journey;
-  padding: 8px 16px;
+  padding: 6px 14px;
   background: rgba(255, 255, 255, 0.85);
   border-bottom: 1px solid var(--ta-border);
+}
+
+/* Cinema / focus — arena fills ~100% width */
+.ta-app--cinema {
+  grid-template-rows: var(--ta-toolbar-h) 1fr var(--ta-log-h);
+  grid-template-columns: 1fr;
+  grid-template-areas:
+    'toolbar'
+    'arena'
+    'log';
+}
+
+.ta-app--cinema .ta-courses,
+.ta-app--cinema .ta-systems,
+.ta-app--cinema .aw-panel {
+  display: none;
+}
+
+/* AdaptiveWorldsPanel placed in the courses grid slot */
+.ta-app .aw-panel {
+  grid-area: courses;
+  border-right: 1px solid rgba(30, 144, 255, 0.12);
+}
+
+.ta-app--cinema .ta-arena {
+  margin: 4px;
+}
+
+.ta-cinema-dock {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  z-index: 12;
+  display: flex;
+  gap: 8px;
+}
+
+.ta-cinema-dock .ta-run-btn {
+  width: auto;
+  padding: 14px 28px;
+  font-size: 1.05rem;
+  box-shadow: 0 8px 28px rgba(0, 200, 83, 0.35);
+}
+
+.vrd-app--product .ta-app {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  height: 100vh;
+  height: 100dvh;
 }
 
 /* Toolbar — top */
@@ -111,6 +159,12 @@
 .ta-tool-btn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+
+.ta-tool-btn--on {
+  background: var(--ta-blue);
+  color: #fff;
+  border-color: var(--ta-blue);
 }
 
 .ta-speed-pills {
@@ -264,7 +318,7 @@
   box-shadow: 0 6px 20px rgba(239, 68, 68, 0.25);
 }
 
-/* Arena — hero center (60–75% visual focus) */
+/* Arena — hero center (~74% column width) */
 .ta-arena {
   grid-area: arena;
   position: relative;
@@ -272,13 +326,113 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  margin: 8px;
-  border-radius: 16px;
+  margin: 6px 4px;
+  border-radius: 14px;
   overflow: hidden;
   box-shadow:
-    0 12px 40px rgba(30, 60, 100, 0.15),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.6);
-  background: linear-gradient(180deg, #b8d4f0 0%, #9ec5e8 100%);
+    0 14px 48px rgba(30, 60, 100, 0.18),
+    inset 0 0 0 2px rgba(255, 255, 255, 0.75);
+  background: linear-gradient(180deg, #a8cceb 0%, #8ebde5 50%, #7eb0df 100%);
+}
+
+/* Viewport overlays */
+.ta-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 7;
+  pointer-events: none;
+}
+
+.ta-robot-badge {
+  position: absolute;
+  top: 52px;
+  left: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.ta-robot-badge-icon {
+  font-size: 1.1rem;
+}
+
+.ta-mission-progress {
+  position: absolute;
+  top: 52px;
+  right: 12px;
+  width: min(200px, 40%);
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.ta-mission-progress-head {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: var(--ta-muted);
+  margin-bottom: 6px;
+}
+
+.ta-mission-progress-bar {
+  height: 8px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  overflow: hidden;
+}
+
+.ta-mission-progress-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.35s ease;
+}
+
+.ta-celebrate {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.35);
+  backdrop-filter: blur(4px);
+  animation: ta-celebrate-in 0.4s ease;
+  z-index: 20;
+}
+
+.ta-celebrate-burst {
+  font-size: 3.5rem;
+  animation: ta-bounce 0.6s ease infinite;
+}
+
+.ta-celebrate strong {
+  font-size: 1.5rem;
+  color: var(--ta-blue);
+}
+
+.ta-celebrate span {
+  font-size: 0.95rem;
+  color: var(--ta-muted);
+  font-weight: 700;
+}
+
+@keyframes ta-celebrate-in {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes ta-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-12px); }
 }
 
 .ta-arena-hud {
@@ -323,6 +477,23 @@
   width: 100% !important;
   height: 100% !important;
   display: block;
+}
+
+.ta-viewport-hint {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9;
+  margin: 0;
+  padding: 4px 12px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: rgba(30, 41, 59, 0.75);
+  background: rgba(255, 255, 255, 0.82);
+  border-radius: 999px;
+  pointer-events: none;
+  white-space: nowrap;
 }
 
 .ta-viewport-vignette {
@@ -553,4 +724,95 @@
   .ta-course-card {
     min-width: 140px;
   }
+}
+
+/* Smart stage recommendation */
+.ta-smart-banner {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 8;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: min(92%, 640px);
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(30, 144, 255, 0.25);
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(30, 64, 120, 0.12);
+  backdrop-filter: blur(8px);
+}
+
+.ta-smart-banner-icon {
+  font-size: 1.75rem;
+  line-height: 1;
+}
+
+.ta-smart-banner-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.ta-smart-banner-body strong {
+  display: block;
+  font-size: 0.95rem;
+  color: var(--ta-text);
+}
+
+.ta-smart-banner-body p {
+  margin: 2px 0 0;
+  font-size: 0.8rem;
+  color: var(--ta-muted);
+  line-height: 1.35;
+}
+
+.ta-smart-mission {
+  display: inline-block;
+  margin-top: 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--ta-blue);
+}
+
+.ta-smart-profile-pill {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(30, 144, 255, 0.12);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--ta-blue);
+}
+
+.ta-course-section-label {
+  margin: 10px 0 6px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ta-muted);
+}
+
+.ta-course-card--star {
+  border-color: rgba(245, 158, 11, 0.45);
+}
+
+.ta-course-star {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  color: #f59e0b;
+  font-size: 0.85rem;
+}
+
+.ta-course-card {
+  position: relative;
+}
+
+.bb-archetype-missions--sub {
+  opacity: 0.75;
+  font-size: 0.8rem;
+  margin-top: 2px;
 }

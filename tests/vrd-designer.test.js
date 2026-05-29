@@ -6,7 +6,12 @@ import { slotAcceptsPart, SNAP_SLOTS } from '../src/virtual-robot-designer/data/
 import { computeDesignStats } from '../src/virtual-robot-designer/services/design-service.js';
 import VirtualRobotDB from '../src/virtual-robot-designer/database/virtual-robot-db.js';
 import { createFreshRobotDesign } from '../src/virtual-robot-designer/utils/initRobotDesign.js';
-import { MODULAR_CHASSIS } from '../src/virtual-robot-designer/data/modular-parts-registry.js';
+import {
+  MODULAR_CHASSIS,
+  MODULAR_PARTS,
+  CATALOG_PART_COUNT,
+  aggregatePartStatMods,
+} from '../src/virtual-robot-designer/data/modular-parts-registry.js';
 import { migrateDesign } from '../src/virtual-robot-designer/config.js';
 
 describe('VRD — chassis catalog (FT-001)', () => {
@@ -15,6 +20,16 @@ describe('VRD — chassis catalog (FT-001)', () => {
     const ids = new Set(MODULAR_CHASSIS.map((c) => c.id));
     expect(ids.has('rover')).toBe(true);
     expect(ids.has('tank')).toBe(true);
+  });
+
+  test('expanded catalog includes specialized robot families', () => {
+    expect(CATALOG_PART_COUNT).toBeGreaterThanOrEqual(300);
+    const chassisIds = new Set(MODULAR_CHASSIS.map((c) => c.id));
+    expect(chassisIds.has('jet_fighter')).toBe(true);
+    expect(chassisIds.has('quadcopter')).toBe(true);
+    expect(chassisIds.has('submarine_hull')).toBe(true);
+    expect(MODULAR_PARTS.some((p) => p.id === 'lego_block')).toBe(true);
+    expect(MODULAR_PARTS.some((p) => p.id === 'security_camera')).toBe(true);
   });
 });
 
@@ -90,6 +105,18 @@ describe('VRD — stats (FT-009–FT-012, ET-005)', () => {
     const with2 = computeDesignStats({ ...base, wheels: { type: 'standard', count: 2 } });
     const with8 = computeDesignStats({ ...base, wheels: { type: 'standard', count: 8 } });
     expect(with2.speed).not.toBe(with8.speed);
+  });
+
+  test('part statMods change computed stats', () => {
+    let d = placePartOnSlot(createFreshRobotDesign(), 'movement', 'movement', 'racing_wheels');
+    const boosted = computeDesignStats(d);
+    d = placePartOnSlot(createFreshRobotDesign(), 'movement', 'movement', 'standard');
+    const base = computeDesignStats(d);
+    expect(boosted.speed).toBeGreaterThanOrEqual(base.speed);
+    const mods = aggregatePartStatMods({
+      movement: { category: 'movement', partId: 'racing_wheels' },
+    });
+    expect(mods.speed).toBeGreaterThan(0);
   });
 });
 

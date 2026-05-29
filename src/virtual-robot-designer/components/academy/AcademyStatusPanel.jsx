@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { migrateDesign } from '../../config.js';
 import { migrateAssembly } from '../../services/assembly-service.js';
 import { getWorkshopPart } from '../../data/assembly-parts.js';
-import { detectRobotArchetype } from '../../services/robot-archetypes.js';
+import { analyzeRobot } from '../../services/robot-profile.js';
 import AnimatedNumber from '../AnimatedNumber.jsx';
 import { statBarColor } from '../../hooks/useRobotStats.js';
 
@@ -85,7 +85,10 @@ export default function AcademyStatusPanel({
         <div>
           <strong>{archetype.label}</strong>
           <p className="bb-archetype-missions">
-            Missions: {archetype.missions.slice(0, 2).join(' · ')}
+            {profile.recommend}
+          </p>
+          <p className="bb-archetype-missions bb-archetype-missions--sub">
+            Try: {archetype.missions.slice(0, 2).join(' · ')}
           </p>
         </div>
       </motion.div>

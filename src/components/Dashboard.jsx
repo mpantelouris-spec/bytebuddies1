@@ -136,7 +136,7 @@ export default function Dashboard({ onNavigate }) {
           <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
             <button className="btn" style={{ background:'white', color:'#6366f1', fontWeight:700 }} onClick={() => onNavigate('workspace')}>💻 Open Workspace</button>
             <button className="btn" style={{ background:'rgba(255,255,255,0.18)', color:'white', border:'1px solid rgba(255,255,255,0.3)' }} onClick={() => onNavigate('learn')}>📚 Continue Learning</button>
-            <button className="btn" style={{ background:'rgba(255,0,110,0.25)', color:'#ff9ed2', border:'1px solid rgba(255,0,110,0.5)' }} onClick={() => onNavigate('vrd')}>🎨 Robot Design</button>
+            <button className="btn" style={{ background:'rgba(255,0,110,0.25)', color:'#ff9ed2', border:'1px solid rgba(255,0,110,0.5)' }} onClick={() => onNavigate('studio')}>🤖 Robot Studio</button>
           </div>
         </div>
 
@@ -169,18 +169,27 @@ export default function Dashboard({ onNavigate }) {
           display:'flex', flexDirection:'column', gap:12,
         }}>
           <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-            <span style={{ fontSize:36 }}>🎨</span>
+            <span style={{ fontSize:36 }}>🤖</span>
             <div>
-              <div style={{ fontWeight:800, fontSize:17, color:'var(--text-primary)' }}>Virtual Robot Designer</div>
-              <div style={{ fontSize:12, color:'var(--text-muted)' }}>Create · Program · Test — no hardware needed</div>
+              <div style={{ fontWeight:800, fontSize:17, color:'var(--text-primary)' }}>Robot Invention Studio</div>
+              <div style={{ fontSize:12, color:'var(--text-muted)' }}>Build · Simulate · Challenge — no hardware needed</div>
             </div>
           </div>
           <p style={{ margin:0, fontSize:13, color:'var(--text-secondary)', lineHeight:1.5 }}>
-            Build a real-looking robot or snap LEGO blocks, program it with Blockly, and test in a 3D simulator.
+            Design custom robots with 3D parts, test them in an obstacle course simulator, and complete XP challenges.
           </p>
-          <button className="btn btn-primary" style={{ alignSelf:'flex-start', fontWeight:700 }} onClick={() => onNavigate('vrd')}>
-            Open Robot Design →
-          </button>
+          <div style={{ display:'flex', flexWrap:'wrap', gap:10 }}>
+            <button className="btn btn-primary" style={{ fontWeight:700 }} onClick={() => onNavigate('studio')}>
+              Open Robot Studio →
+            </button>
+            <button
+              className="btn"
+              style={{ fontWeight:700, background:'rgba(0,200,83,0.2)', color:'#00c853', border:'1px solid rgba(0,200,83,0.45)' }}
+              onClick={() => onNavigate('studio')}
+            >
+              🏆 Try Challenges
+            </button>
+          </div>
         </div>
 
         <div style={{

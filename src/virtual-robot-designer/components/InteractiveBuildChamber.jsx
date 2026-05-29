@@ -11,7 +11,7 @@ import AssemblyAttachmentMeshes from './AssemblyAttachmentMeshes.jsx';
 import SnapSocketMarkers from './SnapSocketMarkers.jsx';
 import WorkshopStage3D from './workshop/WorkshopStage3D.jsx';
 import WorkshopBackdrop3D from './workshop/WorkshopBackdrop3D.jsx';
-import WorkshopSceneLighting from './workshop/WorkshopSceneLighting.jsx';
+import PremiumVisualRig from './common/PremiumVisualRig.jsx';
 import RobotAssemblyRoot from './workshop/RobotAssemblyRoot.jsx';
 import { PLATFORM, computeWorkshopRobotScale } from '../constants/workshop-scene.js';
 import WorkshopCameraRig from './workshop/WorkshopCameraRig.jsx';
@@ -170,8 +170,8 @@ function ChamberCamera({ isArm, controlsRef, isProduct }) {
     <OrbitControls
       ref={controlsRef}
       enablePan={false}
-      minDistance={isProduct ? (isArm ? 2.1 : 2.35) : (isArm ? 2.4 : 2.8)}
-      maxDistance={isProduct ? (isArm ? 5.5 : 6.2) : (isArm ? 6.5 : 7.5)}
+      minDistance={isProduct ? (isArm ? 2.0 : 2.2) : (isArm ? 2.4 : 2.8)}
+      maxDistance={isProduct ? (isArm ? 14 : 16) : (isArm ? 10 : 12)}
       maxPolarAngle={Math.PI / 2 + 0.08}
       minPolarAngle={0.32}
       target={target}
@@ -323,7 +323,7 @@ export default function InteractiveBuildChamber({
             <fog attach="fog" args={[isBrightStudio ? '#eef2f7' : '#0A0A1A', isWorkshop ? 16 : 12, isWorkshop ? 36 : 28]} />
             {!isWorkshop && <Environment preset={isProduct ? 'studio' : 'night'} />}
             {isWorkshop ? (
-              <WorkshopSceneLighting />
+              <PremiumVisualRig variant="workshop" bloomIntensity={0.26} />
             ) : (
               <>
                 <ambientLight intensity={isProduct ? 0.85 : 0.6} color="#ffffff" />
@@ -372,14 +372,16 @@ export default function InteractiveBuildChamber({
                 <AssemblyArm position={[2.5, 0.5, -0.5]} rotation={[0, -0.4, -0.5]} color="#00d4ff" />
               </>
             )}
+            {!isWorkshop && (
             <ContactShadows
-              position={[0, isWorkshop ? PLATFORM.topY + 0.002 : -0.55, 0]}
+              position={[0, -0.55, 0]}
               opacity={isBrightStudio ? 0.45 : 0.65}
-              scale={isWorkshop ? 8 : 9}
+              scale={9}
               blur={2.2}
               far={5}
-              color={isWorkshop ? '#64748b' : '#000000'}
+              color={isBrightStudio ? '#64748b' : '#000000'}
             />
+            )}
             {(buildMode === 'blocks' || buildMode === 'hybrid') && (
               <BlockGrid3D design={d} highlightLayer={blockLayer} pulse={!!snapPulse} />
             )}

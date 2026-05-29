@@ -30,6 +30,11 @@ import { findFirstOpenSlot } from '../utils/build-slots.js';
 import { createFreshRobotDesign } from '../utils/initRobotDesign.js';
 import { applyRobotStyle } from '../services/robot-style.js';
 import { useRobotStats } from './useRobotStats.js';
+import { generateRobotClassPython } from '../services/robot-code-generator.js';
+
+function emptyProgram() {
+  return { mode: 'blocks', blocks: [], python: '', javascript: '' };
+}
 
 const NEXT_SLOT = ['movement', 'head', 'front', 'left', 'right', 'back', 'top', 'addon_a', 'addon_b'];
 
@@ -100,7 +105,7 @@ export function useWorkshopActions() {
 
   const handleMountPart = (slotId, category, partId, label) => {
     if (!slotAcceptsPart(slotId, category)) {
-      showError('That part does not fit there. Drag to a glowing green spot!');
+      showError(`Cannot attach ${label || partId} to that socket — try a green glow spot!`);
       return;
     }
     const next = placePartOnSlot(d, slotId, category, partId);
@@ -109,10 +114,15 @@ export function useWorkshopActions() {
       return;
     }
     setDesign(next);
+    setSelectedSlot(slotId);
     setSnapPulse(true);
+    useUiStore.getState().setSnapPulseSlot(slotId);
     triggerSnapBurst();
     playVrdSoundSync('snap');
-    setTimeout(() => setSnapPulse(false), 600);
+    setTimeout(() => {
+      setSnapPulse(false);
+      useUiStore.getState().setSnapPulseSlot(null);
+    }, 600);
     if (!asm.slots[slotId]) advanceSlot(slotId);
   };
 
@@ -181,7 +191,18 @@ export function useWorkshopActions() {
     setEditingName(false);
   };
 
-  const handleDropPart = (payload) => {
+  function handleCodeMyRobot(onGoCode) {
+    const python = generateRobotClassPython(migrateDesign(d));
+    const prog = d.program || emptyProgram();
+    setDesign((prev) => ({
+      ...migrateDesign(prev),
+      program: { ...prog, mode: 'python', python },
+    }));
+    playVrdSoundSync('success');
+    onGoCode?.();
+  }
+
+  const handleDropPart = (payload, forcedSlot = null) => {
     if (payload.type === 'chassis') {
       const chassis = CHASSIS_TYPES.find((c) => c.id === payload.id);
       if (chassis) {
@@ -200,14 +221,20 @@ export function useWorkshopActions() {
     }
     if (payload.type === 'part' || payload.category) {
       const { category, id, label } = payload;
-      let slot = selectedSlot;
+      const hovered = forcedSlot || useUiStore.getState().hoveredSocket;
+      let slot = hovered;
+      if (!slot || !slotAcceptsPart(slot, category)) {
+        slot = selectedSlot;
+      }
       if (!slot || !slotAcceptsPart(slot, category)) {
         slot = findFirstOpenSlot(asm.slots, category, isArm);
       }
       if (slot && slotAcceptsPart(slot, category)) {
         handleMountPart(slot, category, id, label);
+      } else if (hovered && !slotAcceptsPart(hovered, category)) {
+        showError(`Cannot attach ${label || id} to that socket — wrong spot!`);
       } else {
-        showError('No room for that part — tap a green socket first!');
+        showError('No room for that part — drag to a green glowing socket!');
       }
     }
   };
@@ -219,16 +246,31 @@ export function useWorkshopActions() {
     onGoSimulator?.();
   };
 
+  const updateDragPointer = (e) => {
+    const canvas = e.currentTarget.querySelector('.iw-hero-canvas');
+    const rect = canvas?.getBoundingClientRect();
+    if (rect) {
+      useUiStore.getState().setDragPointer({
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
+        width: rect.width,
+        height: rect.height,
+      });
+    }
+  };
+
   const handleViewportDragOver = (e) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'copy';
     setDragOver(true);
     setDragOverViewport(true);
+    updateDragPointer(e);
   };
 
   const handleViewportDrop = (e) => {
     e.preventDefault();
     setDragOver(false);
+    const hovered = useUiStore.getState().hoveredSocket;
     clearDragState();
     const chassisId = e.dataTransfer.getData('application/vrd-chassis');
     if (chassisId) {
@@ -238,7 +280,7 @@ export function useWorkshopActions() {
     const raw = e.dataTransfer.getData('application/vrd-part');
     if (raw) {
       try {
-        handleDropPart({ type: 'part', ...JSON.parse(raw) });
+        handleDropPart({ type: 'part', ...JSON.parse(raw) }, hovered);
       } catch { /* ignore */ }
     }
   };
@@ -284,6 +326,7 @@ export function useWorkshopActions() {
     handleRobotNameSave,
     handleDropPart,
     handleTestInSimulator,
+    handleCodeMyRobot,
     handleViewportDragOver,
     handleViewportDrop,
     setDragOver: (v) => { setDragOver(v); if (!v) setDragOverViewport(false); },

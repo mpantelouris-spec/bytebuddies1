@@ -1,5 +1,100 @@
 import { migrateDesign } from '../config.js';
 import { buildDemoProgram, computeDesignStats } from './design-service.js';
+import { generatePythonFromDesign, generateRobotClassPython } from './robot-code-generator.js';
+
+/** Motion blocks unlocked per smart-stage profile (not shown for wrong robot types). */
+export const ARCHETYPE_MOTION_BLOCKS = {
+  wheeled: [],
+  inventor: [],
+  tank: [
+    { id: 'tank_steer', label: '🎮 Tank steer', icon: '🎮', color: '#78716c', params: { direction: 'left', degrees: 45 } },
+    { id: 'rotate_place', label: '🔄 Rotate in place', icon: '🔄', color: '#78716c', params: { degrees: 90 } },
+    { id: 'climb_mode', label: '🏔️ Climb mode', icon: '🏔️', color: '#f97316', params: {} },
+    { id: 'power_mode', label: '⚡ Power mode', icon: '⚡', color: '#eab308', params: {} },
+    { id: 'push_object', label: '💪 Push object', icon: '💪', color: '#94a3b8', params: { amount: 40 } },
+  ],
+  drone: [
+    { id: 'takeoff', label: '🛸 Take off', icon: '🛸', color: '#0ea5e9', params: {} },
+    { id: 'land', label: '🛬 Land', icon: '🛬', color: '#0ea5e9', params: {} },
+    { id: 'fly_up', label: '⬆ Fly up', icon: '⬆', color: '#38bdf8', params: { amount: 30 } },
+    { id: 'fly_down', label: '⬇ Fly down', icon: '⬇', color: '#38bdf8', params: { amount: 30 } },
+    { id: 'hover', label: '🛸 Hover', icon: '🛸', color: '#06b6d4', params: { secs: 1 } },
+    { id: 'rotate_air', label: '🔄 Rotate mid-air', icon: '🔄', color: '#8b5cf6', params: { degrees: 90 } },
+    { id: 'altitude_hold', label: '✈️ Altitude hold', icon: '✈️', color: '#6366f1', params: { secs: 2 } },
+    { id: 'aerial_scan', label: '📡 Aerial scan', icon: '📡', color: '#22c55e', params: {} },
+  ],
+  jet: [
+    { id: 'thrust', label: '🔥 Increase thrust', icon: '🔥', color: '#f97316', params: { amount: 60 } },
+    { id: 'roll_left', label: '↰ Roll left', icon: '↰', color: '#ef4444', params: {} },
+    { id: 'roll_right', label: '↱ Roll right', icon: '↱', color: '#ef4444', params: {} },
+    { id: 'pitch_up', label: '⬆ Pitch up', icon: '⬆', color: '#f59e0b', params: {} },
+    { id: 'pitch_down', label: '⬇ Pitch down', icon: '⬇', color: '#f59e0b', params: {} },
+    { id: 'glide', label: '🪂 Glide', icon: '🪂', color: '#94a3b8', params: { secs: 2 } },
+    { id: 'jet_boost', label: '⚡ Jet boost', icon: '⚡', color: '#eab308', params: { amount: 50 } },
+    { id: 'loop_maneuver', label: '🔁 Loop', icon: '🔁', color: '#ec4899', params: {} },
+  ],
+  helicopter: [
+    { id: 'takeoff', label: '🛸 Take off', icon: '🛸', color: '#0ea5e9', params: {} },
+    { id: 'hover', label: '⚖️ Hover stabilize', icon: '⚖️', color: '#06b6d4', params: { secs: 2 } },
+    { id: 'fly_up', label: '⬆ Ascend', icon: '⬆', color: '#38bdf8', params: { amount: 25 } },
+    { id: 'fly_down', label: '⬇ Lower cable', icon: '⬇', color: '#38bdf8', params: { amount: 25 } },
+    { id: 'land', label: '🛬 Emergency land', icon: '🛬', color: '#64748b', params: {} },
+    { id: 'grab', label: '📦 Pickup cargo', icon: '📦', color: '#94a3b8', params: {} },
+  ],
+  spider: [
+    { id: 'step_forward', label: '🦶 Step forward', icon: '🦶', color: '#10b981', params: { steps: 3, amount: 35 } },
+    { id: 'climb_wall', label: '🧗 Climb wall', icon: '🧗', color: '#ef4444', params: {} },
+    { id: 'stabilize_legs', label: '⚖️ Stabilize legs', icon: '⚖️', color: '#6366f1', params: {} },
+    { id: 'crouch', label: '🫳 Crouch', icon: '🫳', color: '#78716c', params: {} },
+    { id: 'leap', label: '🏃 Leap', icon: '🏃', color: '#f59e0b', params: {} },
+    { id: 'terrain_detect', label: '🔍 Terrain detect', icon: '🔍', color: '#22c55e', params: {} },
+  ],
+  humanoid: [
+    { id: 'walk', label: '🦿 Walk', icon: '🦿', color: '#22c55e', params: { steps: 4, amount: 30 } },
+    { id: 'crouch', label: '🫳 Crouch', icon: '🫳', color: '#78716c', params: {} },
+    { id: 'balance_mode', label: '⚖️ Balance mode', icon: '⚖️', color: '#a855f7', params: {} },
+    { id: 'wave', label: '👋 Wave', icon: '👋', color: '#ec4899', params: {} },
+  ],
+  arm: [
+    { id: 'rotate_arm', label: '🦾 Rotate arm', icon: '🦾', color: '#0ea5e9', params: { degrees: 90 } },
+    { id: 'precision_mode', label: '🎯 Precision mode', icon: '🎯', color: '#8b5cf6', params: {} },
+    { id: 'stack_object', label: '📚 Stack object', icon: '📚', color: '#22c55e', params: {} },
+    { id: 'sort_color', label: '🎨 Sort by color', icon: '🎨', color: '#f59e0b', params: {} },
+  ],
+  submarine: [
+    { id: 'dive', label: '🌊 Dive', icon: '🌊', color: '#0ea5e9', params: {} },
+    { id: 'ascend', label: '💨 Ascend', icon: '💨', color: '#38bdf8', params: {} },
+    { id: 'sonar_scan', label: '📡 Sonar scan', icon: '📡', color: '#06b6d4', params: {} },
+    { id: 'water_stabilize', label: '⚖️ Water stabilize', icon: '⚖️', color: '#0284c7', params: {} },
+    { id: 'sample_collect', label: '🧪 Collect sample', icon: '🧪', color: '#14b8a6', params: {} },
+  ],
+  hover: [
+    { id: 'hover', label: '🛸 Hover stabilize', icon: '🛸', color: '#c026d3', params: { secs: 2 } },
+    { id: 'float_up', label: '⬆ Float upward', icon: '⬆', color: '#d946ef', params: { amount: 25 } },
+    { id: 'anti_gravity_boost', label: '✨ Anti-gravity boost', icon: '✨', color: '#a855f7', params: {} },
+    { id: 'side_drift', label: '↔ Side drift', icon: '↔', color: '#06b6d4', params: { amount: 30 } },
+  ],
+  drill: [
+    { id: 'activate_drill', label: '⛏️ Activate drill', icon: '⛏️', color: '#a16207', params: { secs: 2 } },
+    { id: 'tunnel_forward', label: '🕳️ Tunnel forward', icon: '🕳️', color: '#78716c', params: { amount: 40 } },
+    { id: 'scan_minerals', label: '💎 Scan minerals', icon: '💎', color: '#eab308', params: {} },
+  ],
+  lego: [
+    { id: 'attach_block', label: '🧱 Attach block', icon: '🧱', color: '#f97316', params: {} },
+    { id: 'stack_pieces', label: '📚 Stack pieces', icon: '📚', color: '#22c55e', params: {} },
+  ],
+  battle: [],
+  companion: [],
+  mech: [
+    { id: 'power_mode', label: '⚡ Power mode', icon: '⚡', color: '#eab308', params: {} },
+    { id: 'push_object', label: '💪 Push object', icon: '💪', color: '#94a3b8', params: { amount: 50 } },
+  ],
+};
+
+export const UNIVERSAL_BLOCKS = [
+  { id: 'wait', label: '⏱ Wait', icon: '⏱', color: '#fbbf24', params: { secs: 1 } },
+  { id: 'stop', label: '⏹ Stop', icon: '⏹', color: '#ef4444', params: {} },
+];
 
 export const VRD_BLOCK_PALETTE = [
   { id: 'forward', label: '▶ Move forward', icon: '▶', color: '#00D4FF', params: { amount: 50 } },
@@ -54,35 +149,7 @@ export function defaultProgram() {
   return { mode: 'blocks', blocks: [], python: '', javascript: '' };
 }
 
-export function generatePythonFromDesign(design) {
-  const d = migrateDesign(design);
-  const stats = computeDesignStats(d);
-  const fwd = Math.round(40 + stats.speed * 0.4);
-  const turn = Math.round(30 + stats.agility * 0.3);
-  const lines = [
-    '# ByteBuddies Robot Program',
-    `# Unit: ${d.name || 'My Robot'} | Template: ${d.template}`,
-    'from robot import ByteBuddy',
-    '',
-    'bot = ByteBuddy()',
-    'bot.lights_on()',
-  ];
-  if (d.sensors?.ultrasonic) lines.push('bot.enable_ultrasonic()');
-  if (d.sensors?.lidar) lines.push('bot.enable_lidar()');
-  if (d.sensors?.camera) lines.push('bot.enable_camera()');
-  lines.push('');
-  lines.push(`bot.forward(${fwd})`);
-  if (d.sensors?.ultrasonic) {
-    lines.push('if bot.obstacle_ahead():');
-    lines.push(`    bot.turn_left(${turn})`);
-    lines.push(`    bot.forward(${Math.round(fwd * 0.5)})`);
-  }
-  lines.push(`bot.turn_left(${turn})`);
-  lines.push(`bot.forward(${Math.round(fwd * 0.7)})`);
-  if (d.abilities?.speedBoost) lines.push(`bot.forward(${fwd})  # speed boost!`);
-  lines.push('bot.stop()');
-  return lines.join('\n');
-}
+export { generatePythonFromDesign, generateRobotClassPython };
 
 export function generateJavaScriptFromDesign(design) {
   const d = migrateDesign(design);
@@ -111,13 +178,13 @@ export function parsePythonToSteps(code) {
   for (const line of lines) {
     const t = line.trim();
     if (!t || t.startsWith('#') || t.startsWith('from ') || t.startsWith('import ') || t.startsWith('bot =')) continue;
-    const fwd = t.match(/(?:bot\.)?forward\s*\(\s*(\d+)/);
+    const fwd = t.match(/(?:(?:self\.)?bot\.)?forward\s*\(\s*(\d+)/);
     if (fwd) { steps.push({ id: 'forward', params: { amount: Number(fwd[1]) } }); continue; }
-    const back = t.match(/(?:bot\.)?backward\s*\(\s*(\d+)/);
+    const back = t.match(/(?:(?:self\.)?bot\.)?backward\s*\(\s*(\d+)/);
     if (back) { steps.push({ id: 'back', params: { amount: Number(back[1]) } }); continue; }
     const left = t.match(/(?:bot\.)?turn_left\s*\(\s*(\d+)/);
     if (left) { steps.push({ id: 'left', params: { degrees: Number(left[1]) } }); continue; }
-    const right = t.match(/(?:bot\.)?turn_right\s*\(\s*(\d+)/);
+    const right = t.match(/(?:(?:self\.)?bot\.)?turn_right\s*\(\s*(\d+)/);
     if (right) { steps.push({ id: 'right', params: { degrees: Number(right[1]) } }); continue; }
     if (t.includes('stop()')) { steps.push({ id: 'stop', params: {} }); continue; }
     if (t.includes('scan()')) { steps.push({ id: 'scan', params: {} }); continue; }

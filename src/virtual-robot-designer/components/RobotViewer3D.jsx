@@ -329,22 +329,19 @@ export default function RobotViewer3D({ robotConfig }) {
     scene.background = new THREE.Color(0x0f0f23);
     sceneRef.current = scene;
 
-    // Camera
-    const camera = new THREE.PerspectiveCamera(
-      50,
-      containerRef.current.clientWidth / containerRef.current.clientHeight,
-      0.1,
-      1000
-    );
+    // Camera — use fallback dimensions if container hasn't sized yet
+    const initW = Math.max(containerRef.current.clientWidth, 300);
+    const initH = Math.max(containerRef.current.clientHeight, 400);
+    const camera = new THREE.PerspectiveCamera(50, initW / initH, 0.1, 1000);
     camera.position.set(2.5, 1.5, 2.5);
     camera.lookAt(0, 0.5, 0);
     cameraRef.current = camera;
 
     // Renderer
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
-    renderer.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight);
+    renderer.setSize(initW, initH);
     renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFShadowShadowMap;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     containerRef.current.appendChild(renderer.domElement);
     rendererRef.current = renderer;
 
@@ -400,15 +397,17 @@ export default function RobotViewer3D({ robotConfig }) {
     scene.add(robotGroup);
     robotGroupRef.current = robotGroup;
 
-    // Handle resize
+    // Handle resize — use ResizeObserver so we catch CSS layout changes, not just window resize
     const handleResize = () => {
       if (!containerRef.current) return;
-      const w = containerRef.current.clientWidth;
-      const h = containerRef.current.clientHeight;
+      const w = Math.max(containerRef.current.clientWidth, 1);
+      const h = Math.max(containerRef.current.clientHeight, 1);
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
       renderer.setSize(w, h);
     };
+    const ro = new ResizeObserver(handleResize);
+    ro.observe(containerRef.current);
     window.addEventListener('resize', handleResize);
 
     // Animation loop
@@ -425,9 +424,12 @@ export default function RobotViewer3D({ robotConfig }) {
     animate();
 
     return () => {
+      ro.disconnect();
       window.removeEventListener('resize', handleResize);
       cancelAnimationFrame(animationIdRef.current);
-      containerRef.current?.removeChild(renderer.domElement);
+      if (containerRef.current && renderer.domElement.parentNode === containerRef.current) {
+        containerRef.current.removeChild(renderer.domElement);
+      }
       renderer.dispose();
     };
   }, []);

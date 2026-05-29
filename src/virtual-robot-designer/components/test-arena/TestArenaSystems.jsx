@@ -69,9 +69,23 @@ export default function TestArenaSystems({
         <SystemRow
           icon="📡"
           label="Detections"
-          status={sensorHits > 0 ? `${sensorHits} obstacle reads` : 'All clear'}
-          active={sensorHits > 0}
+          status={
+            running && sensorHits > 0
+              ? `Spotted ${sensorHits} obstacle${sensorHits > 1 ? 's' : ''}!`
+              : running
+                ? 'Scanning ahead…'
+                : 'All clear'
+          }
+          active={running && sensorHits > 0}
         />
+        {running && (
+          <SystemRow
+            icon="🏁"
+            label="Challenge"
+            status={paused ? 'Paused — tap Resume' : 'Your robot is LIVE!'}
+            active={!paused}
+          />
+        )}
       </div>
 
       <div className="ta-mission-stats">

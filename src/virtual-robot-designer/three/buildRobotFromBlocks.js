@@ -47,7 +47,24 @@ function createBlockMesh(type, disposables) {
       break;
     case 'wheel':
     case 'track':
+    case 'toy_wheel':
+    case 'propeller':
       mesh = new THREE.Mesh(new THREE.CylinderGeometry(BLOCK_CELL * 0.38, BLOCK_CELL * 0.38, BLOCK_CELL * 0.22, 20), mat);
+      mesh.rotation.z = Math.PI / 2;
+      if (type.id === 'propeller') tagAnim(mesh, 'spin-y', { speed: 2.5 });
+      break;
+    case 'technic_gear':
+    case 'technic_gearbox':
+      mesh = new THREE.Mesh(new THREE.CylinderGeometry(BLOCK_CELL * 0.35, BLOCK_CELL * 0.35, BLOCK_CELL * 0.12, 16), mat);
+      if (type.id === 'technic_gear') tagAnim(mesh, 'spin-y', { speed: 1.2 });
+      break;
+    case 'fin_block':
+      mesh = new THREE.Mesh(new THREE.ConeGeometry(BLOCK_CELL * 0.35, BLOCK_CELL * 0.7, 3), mat);
+      mesh.rotation.z = Math.PI / 2;
+      break;
+    case 'pipe':
+    case 'technic_beam':
+      mesh = new THREE.Mesh(new THREE.CylinderGeometry(BLOCK_CELL * 0.12, BLOCK_CELL * 0.12, BLOCK_CELL * 0.9, 10), mat);
       mesh.rotation.z = Math.PI / 2;
       break;
     case 'motor':
@@ -102,6 +119,10 @@ function createBlockMesh(type, disposables) {
     }
     case 'neon':
     case 'energy':
+    case 'energy_clear':
+    case 'energy_core_mini':
+    case 'reactor_blk':
+    case 'light_brick':
     case 'disco':
       mesh = new THREE.Mesh(new THREE.BoxGeometry(BLOCK_CELL * 0.88, BLOCK_CELL * 0.88, BLOCK_CELL * 0.88), mat);
       tagAnim(mesh, 'pulse', { base: type.emissive * 0.7, amp: type.emissive * 0.4 });
@@ -115,7 +136,7 @@ function createBlockMesh(type, disposables) {
   disposables.push(mesh.geometry, mat);
   g.add(mesh);
 
-  if (['cube', 'round', 'armor', 'neon', 'energy'].includes(type.id) || type.category === 'structure') {
+  if (['cube', 'round', 'armor', 'neon', 'energy', 'energy_clear', 'brick_2x2', 'brick_2x4', 'lego_1x1', 'lego_1x2', 'lego_1x4'].includes(type.id) || type.category === 'structure') {
     addConnectorStuds(g, mat, disposables);
   }
 

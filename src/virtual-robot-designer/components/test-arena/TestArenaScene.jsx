@@ -1,23 +1,25 @@
-import React, { useRef, forwardRef, useImperativeHandle, useMemo } from 'react';
+import React, { useRef, forwardRef, useImperativeHandle, useMemo, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { ContactShadows } from '@react-three/drei';
+import PremiumVisualRig from '../common/PremiumVisualRig.jsx';
+import { getCourseMeta } from '../../data/test-arena-courses.js';
 import RobotAssemblyRoot from '../workshop/RobotAssemblyRoot.jsx';
 import { getRobotPhysics } from '../../services/robot-runtime.js';
 import { createSimExecutor } from '../../services/sim-robot-executor.js';
 import SensorRays3D from '../SensorRays3D.jsx';
 import TestArenaEnvironment from './TestArenaEnvironment.jsx';
-import TestArenaCamera from './TestArenaCamera.jsx';
+import TestArenaCameraRig from './TestArenaCameraRig.jsx';
 import { computeSimRobotScale } from '../../constants/test-arena-scene.js';
 import { computeWorkshopAnchorY } from '../../constants/workshop-scene.js';
 import { migrateDesign } from '../../config.js';
 
-function TestArenaRobot({ design, simScale, anchorY, posRef, movingRef, physics, grabRef, running, activeStep, arenaId }) {
+function TestArenaRobot({ design, simScale, anchorY, posRef, movingRef, physics, grabRef, camTargetRef, running, activeStep, arenaId }) {
   const groupRef = useRef(null);
 
   useFrame((state, dt) => {
     if (!groupRef.current) return;
     const p = posRef.current;
-    const hover = physics.hoverLift + Math.sin(state.clock.elapsedTime * 2) * (physics.isFlying ? 0.1 : 0.025);
+    const baseHover = camTargetRef?.current?.hover ?? physics.hoverLift;
+    const hover = baseHover + Math.sin(state.clock.elapsedTime * 2) * (physics.isFlying ? 0.1 : 0.025);
     groupRef.current.position.set(p.x, anchorY + hover, p.z);
     groupRef.current.rotation.y = (p.angle * Math.PI) / 180;
     if (movingRef.current) {
@@ -44,7 +46,7 @@ function TestArenaRobot({ design, simScale, anchorY, posRef, movingRef, physics,
 }
 
 export const TestArenaScene = forwardRef(function TestArenaScene(
-  { design, arenaId = 'open', onMove, running = false, activeStep = '', onSensorRead },
+  { design, arenaId = 'open', arenaTheme = 'ground', onMove, running = false, activeStep = '', onSensorRead, cameraApiRef },
   ref,
 ) {
   const d = migrateDesign(design);
@@ -56,6 +58,8 @@ export const TestArenaScene = forwardRef(function TestArenaScene(
   const movingRef = useRef(false);
   const grabRef = useRef(0);
   const camTargetRef = useRef({ x: 0, z: 0, hover: physics.hoverLift, angle: -90, moving: false });
+  const userInteractingRef = useRef(false);
+  const [focusRequest, setFocusRequest] = useState(0);
 
   useFrame(() => {
     const p = posRef.current;
@@ -93,20 +97,53 @@ export const TestArenaScene = forwardRef(function TestArenaScene(
     movingRef.current = false;
   };
 
-  useImperativeHandle(ref, () => ({ execute, reset, resetState }), [d, arenaId, execute]);
+  const resetCamera = () => setFocusRequest((n) => n + 1);
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      execute,
+      reset,
+      resetState,
+      resetCamera,
+      zoomIn: () => cameraApiRef?.current?.zoomIn?.(),
+      zoomOut: () => cameraApiRef?.current?.zoomOut?.(),
+    }),
+    [d, arenaId, execute, cameraApiRef],
+  );
+
+  const course = getCourseMeta(arenaId);
+  const themeVisual = useMemo(() => {
+    switch (arenaTheme) {
+      case 'sky':
+        return { bg: '#87b8f7', fog: '#a8d4ff', bloom: 0.42 };
+      case 'underwater':
+        return { bg: '#0c4a6e', fog: '#0369a1', bloom: 0.28 };
+      case 'rough':
+      case 'mining':
+        return { bg: '#d6cfc4', fog: '#c4b8a8', bloom: 0.3 };
+      case 'factory':
+        return { bg: '#e8ecf2', fog: '#d0d8e4', bloom: 0.32 };
+      case 'terrain':
+        return { bg: '#c8e6c9', fog: '#a5d6a7', bloom: 0.34 };
+      case 'hover':
+        return { bg: '#1a1033', fog: '#2d1b69', bloom: 0.45 };
+      case 'lego':
+        return { bg: '#fff3e0', fog: '#ffe0b2', bloom: 0.36 };
+      case 'ai':
+        return { bg: '#ede9fe', fog: '#ddd6fe', bloom: 0.38 };
+      default:
+        return { bg: '#c5daf0', fog: '#d4e6f8', bloom: 0.34 };
+    }
+  }, [arenaTheme]);
 
   return (
     <>
-      <color attach="background" args={['#c5d9f0']} />
-      <fog attach="fog" args={['#d4e4f7', 18, 42]} />
-      <ambientLight intensity={0.65} color="#ffffff" />
-      <hemisphereLight intensity={0.55} color="#ffffff" groundColor="#94a3b8" />
-      <directionalLight position={[8, 14, 6]} intensity={1.25} castShadow shadow-mapSize={[2048, 2048]} color="#fffef8" />
-      <directionalLight position={[-6, 8, -4]} intensity={0.45} color="#b3e5fc" />
-      <pointLight position={[0, 6, 0]} intensity={0.35} color="#1e90ff" distance={20} />
+      <color attach="background" args={[themeVisual.bg]} />
+      <fog attach="fog" args={[themeVisual.fog, 20, 55]} />
+      <PremiumVisualRig variant="arena" accent={course.color} bloomIntensity={themeVisual.bloom} />
 
-      <TestArenaEnvironment arenaId={arenaId} />
-      <ContactShadows position={[0, 0.01, 0]} opacity={0.4} scale={18} blur={2.5} far={5} color="#64748b" />
+      <TestArenaEnvironment arenaId={arenaId} arenaTheme={arenaTheme} />
 
       <TestArenaRobot
         design={d}
@@ -116,12 +153,19 @@ export const TestArenaScene = forwardRef(function TestArenaScene(
         movingRef={movingRef}
         physics={physics}
         grabRef={grabRef}
+        camTargetRef={camTargetRef}
         running={running}
         activeStep={activeStep}
         arenaId={arenaId}
       />
 
-      <TestArenaCamera targetRef={camTargetRef} running={running} />
+      <TestArenaCameraRig
+        controlsRef={cameraApiRef}
+        targetRef={camTargetRef}
+        running={running}
+        userInteractingRef={userInteractingRef}
+        focusRequest={focusRequest}
+      />
     </>
   );
 });

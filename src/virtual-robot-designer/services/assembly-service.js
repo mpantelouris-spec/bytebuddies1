@@ -74,14 +74,16 @@ export function updateAssemblyBase(design, basePatch) {
   const d = migrateDesign(design);
   const asm = migrateAssembly(d);
   const base = { ...asm.base, ...basePatch };
+  const sizeFromScale = base.scale >= 1.2 ? 'large' : base.scale <= 0.85 ? 'small' : 'medium';
   const next = {
     ...d,
     template: 'blank',
     assembly: { ...asm, mode: 'custom', base },
     chassis: {
       ...d.chassis,
+      type: base.chassisType ?? d.chassis?.type,
       color: base.color ?? d.chassis.color,
-      size: base.scale >= 1.2 ? 'large' : base.scale <= 0.85 ? 'small' : 'medium',
+      size: base.chassisSize || sizeFromScale,
       material: base.material ?? d.chassis.material,
       shape: base.shape === 'round' ? 'circular' : base.shape === 'hex' ? 'circular' : 'rectangular',
     },

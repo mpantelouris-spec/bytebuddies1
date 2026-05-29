@@ -2,12 +2,15 @@
  * ByteBuddies Robotics Academy — Invention Workshop (robot-first, kid-friendly).
  */
 
-import React, { useState, Suspense, lazy } from 'react';
+import React, { useState, useEffect, useCallback, Suspense, lazy } from 'react';
 import InventionWorkshop from '../pages/InventionWorkshop.jsx';
+import Simulator from '../pages/Simulator.jsx';
+import { parseVrdAcademyView, setVrdAcademyHash } from '../utils/vrdNavigation.js';
+import { useRobotStore } from '../store/robotStore.js';
 import '../styles/invention-workshop.css';
+import '../styles/test-arena.css';
 
 const CodeStudio = lazy(() => import('../pages/CodeStudio.jsx'));
-const Simulator = lazy(() => import('../pages/Simulator.jsx'));
 const MyCreations = lazy(() => import('../pages/MyCreations.jsx'));
 const Gallery = lazy(() => import('../pages/Gallery.jsx'));
 
@@ -20,7 +23,27 @@ function ViewFallback({ label }) {
 }
 
 export default function AcademyExperience() {
-  const [view, setView] = useState('design');
+  const [view, setViewState] = useState(() => parseVrdAcademyView());
+
+  const setView = useCallback((next) => {
+    setViewState(next);
+    setVrdAcademyHash(next);
+  }, []);
+
+  useEffect(() => {
+    const onHashChange = () => {
+      const sub = parseVrdAcademyView();
+      setViewState(sub);
+    };
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
+
+  useEffect(() => {
+    if (useRobotStore.getState().simAutoRun) {
+      setView('test');
+    }
+  }, [setView]);
 
   if (view === 'code') {
     return (
@@ -31,9 +54,7 @@ export default function AcademyExperience() {
   }
   if (view === 'test') {
     return (
-      <Suspense fallback={<ViewFallback label="Simulator" />}>
-        <Simulator onGoDesign={() => setView('design')} onGoCode={() => setView('code')} />
-      </Suspense>
+      <Simulator onGoDesign={() => setView('design')} onGoCode={() => setView('code')} />
     );
   }
   if (view === 'creations') {

@@ -9,6 +9,7 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { VIEWPORT } from '../constants/sizes.js';
 import { VRD_COLORS } from '../constants/colors.js';
+import ChassisBody from './workshop/ChassisBodies.jsx';
 
 /* ── Material helpers ───────────────────────────────────────── */
 function steelMat({ color = '#1a2a50', metalness = 0.88, roughness = 0.28, emissive = '#000000', emissiveIntensity = 0, product = false } = {}) {
@@ -18,10 +19,11 @@ function steelMat({ color = '#1a2a50', metalness = 0.88, roughness = 0.28, emiss
   const isBright = product || hsl.l > 0.82;
   return new THREE.MeshStandardMaterial({
     color,
-    metalness: isBright ? 0.28 : metalness,
-    roughness: isBright ? 0.38 : roughness,
+    metalness: isBright ? 0.32 : metalness,
+    roughness: isBright ? 0.34 : roughness,
     emissive,
     emissiveIntensity,
+    envMapIntensity: isBright ? 0.52 : 0.95,
   });
 }
 
@@ -88,7 +90,7 @@ function LEDStrip({ position, rotation = [0, 0, 0], size = [1, 0.025, 0.025], co
 
 function RoverBody({ primaryColor, accentColor, product = false }) {
   const bodyMat  = useMemo(() => steelMat({ color: primaryColor, metalness: 0.85, roughness: 0.32, product }), [primaryColor, product]);
-  const armorMat = useMemo(() => steelMat({ color: product ? '#E8E8E8' : primaryColor, metalness: 0.92, roughness: 0.2, product }), [primaryColor, product]);
+  const armorMat = useMemo(() => steelMat({ color: primaryColor, metalness: 0.92, roughness: 0.2, product }), [primaryColor, product]);
   const darkM    = useMemo(() => darkMat('#0d1525'), []);
   const accentM  = useMemo(() => glowMat({ color: accentColor, emissiveIntensity: 0.9 }), [accentColor]);
   const coreM    = useMemo(() => glowMat({ color: product ? accentColor : '#a855f7', emissiveIntensity: product ? 1.2 : 1.6 }), [accentColor, product]);
@@ -175,8 +177,8 @@ function RoverBody({ primaryColor, accentColor, product = false }) {
 
 /** Scanning head that rotates left/right */
 function RobotHead({ accentColor, headRef, product = false, mountY = 1.05, mountZ = 0.32 }) {
-  const bodyMat  = useMemo(() => steelMat({ color: product ? '#E8E8E8' : '#141e38', metalness: 0.88, roughness: 0.26, product }), [product]);
-  const armorMat = useMemo(() => steelMat({ color: product ? '#FFFFFF' : '#1a2640', metalness: 0.94, roughness: 0.18, product }), [product]);
+  const bodyMat  = useMemo(() => steelMat({ color: '#141e38', metalness: 0.88, roughness: 0.26, product }), [product]);
+  const armorMat = useMemo(() => steelMat({ color: '#1a2640', metalness: 0.94, roughness: 0.18, product }), [product]);
   const eyeM     = useMemo(() => glowMat({ color: accentColor, emissiveIntensity: 1.8 }), [accentColor]);
   const darkM    = useMemo(() => darkMat('#080e1c'), []);
 
@@ -234,10 +236,10 @@ function WheelSystem({ primaryColor, accentColor, wheelsRef, product = false }) 
   const rimGlowM = useMemo(() => glowMat({ color: product ? '#1E90FF' : accentColor, emissiveIntensity: product ? 1.0 : 0.7 }), [accentColor, product]);
 
   const pods = useMemo(() => [
-    { pos: [-0.68, -0.1, 0.58],  mirror: 1  },
-    { pos: [ 0.68, -0.1, 0.58],  mirror: -1 },
-    { pos: [-0.68, -0.1, -0.5],  mirror: 1  },
-    { pos: [ 0.68, -0.1, -0.5],  mirror: -1 },
+    { pos: [-0.68, -0.12, 0.58],  mirror: 1  },
+    { pos: [ 0.68, -0.12, 0.58],  mirror: -1 },
+    { pos: [-0.68, -0.12, -0.5],  mirror: 1  },
+    { pos: [ 0.68, -0.12, -0.5],  mirror: -1 },
   ], []);
 
   return (
@@ -247,20 +249,21 @@ function WheelSystem({ primaryColor, accentColor, wheelsRef, product = false }) 
           {/* Suspension arm */}
           <mesh geometry={BOX_GEO} material={armMat} scale={[0.22, 0.06, 0.06]} position={[pod.mirror * -0.05, 0, 0]} />
           {/* Wheel housing */}
-          <mesh geometry={BOX_GEO} material={houseMat} scale={[0.18, 0.28, 0.42]} position={[pod.mirror * 0.05, 0, 0]} />
-          {/* Tire */}
-          <mesh material={tireMat} position={[pod.mirror * 0.08, 0, 0]} scale={[0.15, 0.25, 0.25]}
+          <mesh geometry={BOX_GEO} material={houseMat} scale={[0.22, 0.42, 0.52]} position={[pod.mirror * 0.05, 0, 0]} />
+          {/* Tire — cylinder rotated 90° so it faces sideways (rolls on X axis) */}
+          <mesh material={tireMat} position={[pod.mirror * 0.10, 0, 0]} scale={[0.22, 0.32, 0.32]}
+            rotation={[0, 0, Math.PI / 2]}
             ref={el => { if (wheelsRef.current) wheelsRef.current[i] = el; }}>
             <cylinderGeometry args={[1, 1, 1, 20]} />
           </mesh>
           {/* Hub cap */}
-          <mesh material={hubMat} position={[pod.mirror * 0.14, 0, 0]} scale={[0.04, 0.12, 0.12]}>
+          <mesh material={hubMat} position={[pod.mirror * 0.18, 0, 0]} scale={[0.04, 0.16, 0.16]}>
             <cylinderGeometry args={[1, 1, 1, 8]} />
           </mesh>
           {/* Rim glow ring */}
-          <mesh material={rimGlowM} position={[pod.mirror * 0.08, 0, 0]} rotation={[0, 0, Math.PI / 2]}
-            scale={[0.15, 0.15, 0.15]}>
-            <torusGeometry args={[1, 0.08, 6, 20]} />
+          <mesh material={rimGlowM} position={[pod.mirror * 0.10, 0, 0]} rotation={[0, 0, Math.PI / 2]}
+            scale={[0.30, 0.30, 0.30]}>
+            <torusGeometry args={[1, 0.06, 8, 24]} />
           </mesh>
           {/* Hydraulic strut */}
           <Hydraulic from={[0, 0.14, 0]} to={[0, -0.06, 0]} radius={0.025} color="#1e3050" />
@@ -531,7 +534,7 @@ export default function HeroRobotModel({
   const cosmetics   = design?.cosmetics || {};
 
   const primaryColor = productVisual
-    ? (base.color && base.color !== '#8B00FF' ? base.color : VRD_COLORS.chassis)
+    ? (base.color && base.color !== '#8B00FF' ? base.color : '#1a3060')
     : (cosmetics.primaryColor || base.color || '#1a3060');
   const accentColor = productVisual
     ? (cosmetics.ledColor || VRD_COLORS.cyan)
@@ -632,8 +635,19 @@ export default function HeroRobotModel({
         </>
       )}
 
-      {/* Main body */}
-      <RoverBody primaryColor={primaryColor} accentColor={accentColor} product={productVisual} />
+      {/* Main body — switches mesh by chassisType + shape */}
+      <ChassisBody
+        chassisType={chassisType}
+        shape={base.shape}
+        width={base.width ?? 1}
+        height={base.height ?? 0.62}
+        depth={base.depth ?? 1.2}
+        scale={base.scale ?? 1}
+        primaryColor={primaryColor}
+        accentColor={accentColor}
+        product={productVisual}
+        material={base.material || 'plastic'}
+      />
 
       {/* Head */}
       {showHead && (
