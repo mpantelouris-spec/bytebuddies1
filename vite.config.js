@@ -19,7 +19,8 @@ export default defineConfig({
         manualChunks(id) {
           if (id.includes('node_modules/three')) return 'three';
           if (id.includes('node_modules/@react-three')) return 'r3f';
-          if (id.includes('node_modules/framer-motion')) return 'framer';
+          // Removed framer-motion chunking to prevent initialization order issues
+          // if (id.includes('node_modules/framer-motion')) return 'framer';
           if (id.includes('virtual-robot-designer')) return 'vrd';
         },
       },
