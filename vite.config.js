@@ -17,6 +17,8 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
+          // React must be in its own chunk so it initializes before r3f and other consumers
+          if (id.includes('node_modules/react-dom/') || id.includes('node_modules/react/')) return 'react-vendor';
           if (id.includes('node_modules/three')) return 'three';
           if (id.includes('node_modules/@react-three')) return 'r3f';
           // Removed framer-motion chunking to prevent initialization order issues
