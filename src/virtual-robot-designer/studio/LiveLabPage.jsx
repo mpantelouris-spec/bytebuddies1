@@ -8,7 +8,9 @@ import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
+import { FXAAShader } from 'three/examples/jsm/shaders/FXAAShader.js';
 import { buildSimRobot, normalizeRobotBuildConfig } from '../services/studio-robot-builder.js';
 import {
   applyArenaAtmosphere, animateRobotWheels, animateRobotIdle, emitWheelDust, resolveArenaTheme,
@@ -9433,10 +9435,20 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
 
     const isForestCourse=arenaType==='ground'||challenge?.isFoxChase||challenge?.id==='fox_battery_chase';
 
+    // Per-arena colour grade (saturation + warm/cool gain tint)
+    const _AG={sky:{s:1.05,g:[1.02,1.02,1.05],b:0.9,t:0.55},space:{s:1.10,g:[0.95,0.98,1.12],b:1.6,t:0.30},cavern:{s:1.20,g:[1.00,0.96,1.10],b:1.7,t:0.25},neon_race:{s:1.25,g:[1.05,0.98,1.10],b:1.8,t:0.22},underwater:{s:1.15,g:[0.92,1.02,1.10],b:1.4,t:0.30},jungle:{s:1.30,g:[1.05,1.05,0.92],b:1.0,t:0.45},factory:{s:1.00,g:[0.96,1.00,1.05],b:1.5,t:0.30},temple:{s:1.18,g:[1.06,1.00,0.90],b:1.2,t:0.38},combat:{s:1.15,g:[1.08,0.95,0.92],b:1.6,t:0.28},jet:{s:1.10,g:[1.03,1.02,0.98],b:1.0,t:0.50},zero_g:{s:1.10,g:[0.97,0.99,1.10],b:1.5,t:0.30},lego:{s:1.20,g:[1.04,1.02,1.00],b:0.9,t:0.55},terrain:{s:1.15,g:[1.05,1.02,0.94],b:1.0,t:0.48},ground:{s:1.30,g:[1.05,1.05,0.92],b:1.2,t:0.42},default:{s:1.10,g:[1.02,1.01,1.00],b:1.2,t:0.40}};
+    const _g=_AG[arenaType]||_AG.default;
+    const ColorGradeShader={uniforms:{tDiffuse:{value:null},sat:{value:_g.s},gain:{value:new THREE.Vector3(..._g.g)}},vertexShader:`varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,fragmentShader:`uniform sampler2D tDiffuse;uniform float sat;uniform vec3 gain;varying vec2 vUv;void main(){vec4 t=texture2D(tDiffuse,vUv);vec3 c=t.rgb;float l=dot(c,vec3(0.2126,0.7152,0.0722));c=mix(vec3(l),c,sat)*gain;gl_FragColor=vec4(clamp(c,0.0,1.0),t.a);}`};
+
     const composer=new EffectComposer(renderer);
     composer.addPass(new RenderPass(scene,camera));
-    const bloomPass=new UnrealBloomPass(new THREE.Vector2(W,H),0.1,0.35,0.92);
+    const bloomPass=new UnrealBloomPass(new THREE.Vector2(W,H),_g.b,0.5,_g.t);
     composer.addPass(bloomPass);
+    composer.addPass(new ShaderPass(ColorGradeShader));
+    const fxaaPass=new ShaderPass(FXAAShader);
+    const _setFxaa=(w,h)=>{const pr=Math.min(window.devicePixelRatio,2);fxaaPass.material.uniforms.resolution.value.set(1/(w*pr),1/(h*pr));};
+    _setFxaa(W,H);
+    composer.addPass(fxaaPass);
     composer.addPass(new OutputPass());
     configureLabRenderer(renderer, bloomPass, { isForest: isForestCourse });
     const renderFrame=()=>composer.render();
@@ -9576,7 +9588,7 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
     // Robust canvas size fix — try immediately, then fallback with rAF chain
     const _forceSize=()=>{
       const nW=el.clientWidth,nH=el.clientHeight;
-      if(nW>4&&nH>4){renderer.setSize(nW,nH);composer.setSize(nW,nH);camera.aspect=nW/nH;camera.updateProjectionMatrix();}
+      if(nW>4&&nH>4){renderer.setSize(nW,nH);composer.setSize(nW,nH);_setFxaa(nW,nH);camera.aspect=nW/nH;camera.updateProjectionMatrix();}
     };
     _forceSize();
     renderFrame();
@@ -9608,7 +9620,7 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
       if(firstTick){
         firstTick=false;
         const nW=el.clientWidth,nH=el.clientHeight;
-        if(nW>4&&nH>4){renderer.setSize(nW,nH);composer.setSize(nW,nH);camera.aspect=nW/nH;camera.updateProjectionMatrix();}
+        if(nW>4&&nH>4){renderer.setSize(nW,nH);composer.setSize(nW,nH);_setFxaa(nW,nH);camera.aspect=nW/nH;camera.updateProjectionMatrix();}
       }
       const now=performance.now()/1000;
       const dt=Math.min(now-lastTime,0.05); lastTime=now;
