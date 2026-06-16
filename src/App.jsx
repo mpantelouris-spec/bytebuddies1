@@ -29,6 +29,7 @@ import Sidebar from './components/Sidebar';
 import WorkspaceEditor from './components/WorkspaceEditor';
 import Dashboard from './components/Dashboard';
 import LearningHub from './components/LearningHub';
+import LearnSection from './components/learn/LearnSection.jsx';
 import Community from './components/Community';
 import Classroom from './components/Classroom';
 import GameBuilder from './components/GameBuilder';
@@ -109,7 +110,8 @@ function AppInner() {
         ? <TeacherHome onNavigate={navigate} />
         : <Dashboard onNavigate={navigate} />;
       case 'workspace':  return <WorkspaceEditor />;
-      case 'learn':      return <LearningHub />;
+      case 'learn':      return <LearnSection />;
+      case 'learningHub':return <LearningHub />;
       case 'community':  return <Community />;
       case 'classroom':  return user.role === 'teacher'
         ? <TeacherDashboard onNavigate={navigate} />

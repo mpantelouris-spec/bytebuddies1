@@ -6,7 +6,7 @@ import { migrateDesign } from '../../config.js';
 import { ARENA_CAMERA } from '../../constants/test-arena-scene.js';
 
 const TestArenaViewport = forwardRef(function TestArenaViewport(
-  { design, arenaId, arenaTheme, running, activeStep, onMove, onSensorRead },
+  { design, arenaId, arenaTheme, difficulty = 'easy', running, activeStep, onMove, onSensorRead },
   ref,
 ) {
   const d = migrateDesign(design);
@@ -39,6 +39,7 @@ const TestArenaViewport = forwardRef(function TestArenaViewport(
             design={d}
             arenaId={arenaId}
             arenaTheme={arenaTheme}
+            difficulty={difficulty}
             running={running}
             activeStep={activeStep}
             onMove={onMove}

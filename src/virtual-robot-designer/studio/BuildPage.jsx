@@ -92,6 +92,145 @@ const MOVEMENT_OPTS = [
   { id: 'jets',    name: 'Jets',       icon: '🚀', desc: 'Rocket propulsion',bg: '#FFEBEE', accent: '#FF3333' },
 ];
 
+// ─── Socket System ──────────────────────────────────────────────────────────
+// Which socket type accepts which part categories
+const SOCKET_ACCEPTS = {
+  wheel_socket:   ['movement'],
+  sensor_socket:  ['sensor', 'light', 'comm'],
+  head_socket:    ['head'],
+  arm_socket:     ['arm', 'tool'],
+  battery_socket: ['power'],
+  ai_socket:      ['ai'],
+  struct_socket:  ['struct', 'deco', 'lego'],
+};
+// Part category → socket type (for MIME type encoding during drag)
+const PART_TO_SOCKET_TYPE = {
+  movement: 'wheel_socket',  sensor: 'sensor_socket', light: 'sensor_socket',
+  comm:     'sensor_socket', head:   'head_socket',   arm:   'arm_socket',
+  tool:     'arm_socket',    power:  'battery_socket', ai:   'ai_socket',
+  struct:   'struct_socket', deco:   'struct_socket',  lego: 'struct_socket',
+};
+
+// Socket positions [x%, y%] relative to the Three.js canvas area.
+// Camera is elevated ~30° so "top" = low y%, "bottom" = high y%.
+const _s = (id, type, x, y, label, max, icon) => ({ id, type, pos:[x,y], label, max, icon });
+
+const SOCKET_DEFS = {
+  rover: [
+    _s('head',     'head_socket',    50, 14, 'Head Mount',       1, '🤖'),
+    _s('sensor_t', 'sensor_socket',  50, 26, 'Top Sensor',       2, '📡'),
+    _s('arm_l',    'arm_socket',     18, 46, 'Left Arm',         1, '🦾'),
+    _s('arm_r',    'arm_socket',     82, 46, 'Right Arm',        1, '🦾'),
+    _s('wheel_fl', 'wheel_socket',   32, 57, 'Front-L Wheel',    1, '🛞'),
+    _s('wheel_fr', 'wheel_socket',   68, 57, 'Front-R Wheel',    1, '🛞'),
+    _s('wheel_rl', 'wheel_socket',   30, 67, 'Rear-L Wheel',     1, '🛞'),
+    _s('wheel_rr', 'wheel_socket',   70, 67, 'Rear-R Wheel',     1, '🛞'),
+    _s('battery',  'battery_socket', 50, 75, 'Power Source',     1, '🔋'),
+    _s('ai',       'ai_socket',      50, 46, 'AI Core',          1, '🧠'),
+  ],
+  tank: [
+    _s('head',     'head_socket',    50, 16, 'Head Mount',       1, '🤖'),
+    _s('sensor_t', 'sensor_socket',  50, 28, 'Top Sensor',       2, '📡'),
+    _s('arm_t',    'arm_socket',     50, 42, 'Turret Arm',       1, '🦾'),
+    _s('track_l',  'wheel_socket',   16, 62, 'Left Track',       1, '⛓️'),
+    _s('track_r',  'wheel_socket',   84, 62, 'Right Track',      1, '⛓️'),
+    _s('battery',  'battery_socket', 50, 74, 'Power Source',     1, '🔋'),
+    _s('ai',       'ai_socket',      50, 50, 'AI Core',          1, '🧠'),
+  ],
+  spider: [
+    _s('sensor_t', 'sensor_socket',  50, 20, 'Top Sensor',       2, '📡'),
+    _s('arm_l',    'arm_socket',     20, 44, 'Left Arm',         1, '🦾'),
+    _s('arm_r',    'arm_socket',     80, 44, 'Right Arm',        1, '🦾'),
+    _s('leg_fl',   'wheel_socket',   33, 52, 'Front-L Leg',      1, '🦵'),
+    _s('leg_fr',   'wheel_socket',   67, 52, 'Front-R Leg',      1, '🦵'),
+    _s('leg_ml',   'wheel_socket',   16, 62, 'Mid-L Leg',        1, '🦵'),
+    _s('leg_mr',   'wheel_socket',   84, 62, 'Mid-R Leg',        1, '🦵'),
+    _s('leg_bl',   'wheel_socket',   28, 72, 'Back-L Leg',       1, '🦵'),
+    _s('leg_br',   'wheel_socket',   72, 72, 'Back-R Leg',       1, '🦵'),
+    _s('battery',  'battery_socket', 50, 68, 'Power Source',     1, '🔋'),
+  ],
+  drone: [
+    _s('sensor_t', 'sensor_socket',  50, 24, 'Top Sensor',       2, '📡'),
+    _s('prop_fl',  'wheel_socket',   26, 36, 'Front-L Rotor',    1, '🚁'),
+    _s('prop_fr',  'wheel_socket',   74, 36, 'Front-R Rotor',    1, '🚁'),
+    _s('prop_rl',  'wheel_socket',   26, 64, 'Rear-L Rotor',     1, '🚁'),
+    _s('prop_rr',  'wheel_socket',   74, 64, 'Rear-R Rotor',     1, '🚁'),
+    _s('camera',   'sensor_socket',  50, 72, 'Camera Gimbal',    1, '📷'),
+    _s('battery',  'battery_socket', 50, 50, 'Battery Slot',     1, '🔋'),
+    _s('ai',       'ai_socket',      50, 42, 'AI Core',          1, '🧠'),
+  ],
+  humanoid: [
+    _s('head',     'head_socket',    50, 11, 'Head Mount',       1, '🤖'),
+    _s('sensor_c', 'sensor_socket',  50, 28, 'Chest Sensor',     2, '📡'),
+    _s('arm_l',    'arm_socket',     18, 38, 'Left Arm',         1, '🦾'),
+    _s('arm_r',    'arm_socket',     82, 38, 'Right Arm',        1, '🦾'),
+    _s('battery',  'battery_socket', 50, 48, 'Chest Battery',    1, '🔋'),
+    _s('ai',       'ai_socket',      50, 40, 'AI Core',          1, '🧠'),
+    _s('leg_l',    'wheel_socket',   38, 72, 'Left Leg',         1, '🦵'),
+    _s('leg_r',    'wheel_socket',   62, 72, 'Right Leg',        1, '🦵'),
+  ],
+  heli: [
+    _s('rotor',    'wheel_socket',   50, 20, 'Main Rotor',       1, '🚁'),
+    _s('sensor_n', 'sensor_socket',  28, 46, 'Nose Sensor',      1, '📡'),
+    _s('sensor_t', 'sensor_socket',  50, 28, 'Top Sensor',       1, '📡'),
+    _s('tail',     'arm_socket',     82, 48, 'Tail Rotor',       1, '🦾'),
+    _s('battery',  'battery_socket', 50, 60, 'Fuel Cell',        1, '🔋'),
+    _s('ai',       'ai_socket',      50, 50, 'AI Core',          1, '🧠'),
+    _s('cargo',    'struct_socket',  50, 72, 'Cargo Slot',       1, '📦'),
+  ],
+  hover: [
+    _s('sensor_t', 'sensor_socket',  50, 20, 'Top Sensor',       2, '📡'),
+    _s('lift_fl',  'wheel_socket',   28, 38, 'Front-L Lift',     1, '🚀'),
+    _s('lift_fr',  'wheel_socket',   72, 38, 'Front-R Lift',     1, '🚀'),
+    _s('lift_rl',  'wheel_socket',   28, 64, 'Rear-L Lift',      1, '🚀'),
+    _s('lift_rr',  'wheel_socket',   72, 64, 'Rear-R Lift',      1, '🚀'),
+    _s('arm_l',    'arm_socket',     18, 50, 'Left Arm',         1, '🦾'),
+    _s('arm_r',    'arm_socket',     82, 50, 'Right Arm',        1, '🦾'),
+    _s('battery',  'battery_socket', 50, 55, 'Power Core',       1, '🔋'),
+  ],
+  sub: [
+    _s('sensor_f', 'sensor_socket',  22, 48, 'Front Sensor',     1, '📡'),
+    _s('sensor_t', 'sensor_socket',  50, 26, 'Top Sensor',       1, '📡'),
+    _s('arm_l',    'arm_socket',     22, 58, 'Port Arm',         1, '🦾'),
+    _s('arm_r',    'arm_socket',     78, 58, 'Starboard Arm',    1, '🦾'),
+    _s('prop',     'wheel_socket',   84, 52, 'Propeller',        1, '🌀'),
+    _s('battery',  'battery_socket', 50, 60, 'Power Cell',       1, '🔋'),
+    _s('ai',       'ai_socket',      50, 48, 'AI Core',          1, '🧠'),
+  ],
+  plane: [
+    _s('sensor_n', 'sensor_socket',  20, 48, 'Nose Sensor',      1, '📡'),
+    _s('engine_l', 'wheel_socket',   28, 58, 'Left Engine',      1, '🚀'),
+    _s('engine_r', 'wheel_socket',   72, 58, 'Right Engine',     1, '🚀'),
+    _s('arm_l',    'arm_socket',     25, 52, 'Left Wing',        1, '🦾'),
+    _s('arm_r',    'arm_socket',     75, 52, 'Right Wing',       1, '🦾'),
+    _s('battery',  'battery_socket', 50, 52, 'Fuel Tank',        1, '🔋'),
+    _s('ai',       'ai_socket',      50, 44, 'AI Core',          1, '🧠'),
+  ],
+  arm: [
+    _s('gripper',  'arm_socket',     50, 20, 'End Effector',     1, '🦾'),
+    _s('sensor',   'sensor_socket',  34, 34, 'Wrist Sensor',     2, '📡'),
+    _s('battery',  'battery_socket', 50, 70, 'Power Base',       1, '🔋'),
+    _s('ai',       'ai_socket',      50, 58, 'Controller',       1, '🧠'),
+  ],
+};
+
+// Map each chassis ID to its socket set
+const CHASSIS_SOCKETS = {
+  rover: SOCKET_DEFS.rover, scout: SOCKET_DEFS.rover, crawler: SOCKET_DEFS.rover,
+  spacerover: SOCKET_DEFS.rover, legobot: SOCKET_DEFS.rover,
+  tank: SOCKET_DEFS.tank, stealth: SOCKET_DEFS.tank, miningbot: SOCKET_DEFS.tank,
+  securitybot: SOCKET_DEFS.tank, battlebot: SOCKET_DEFS.tank, farmbot: SOCKET_DEFS.tank,
+  factorybot: SOCKET_DEFS.tank, medbot: SOCKET_DEFS.tank, firebot: SOCKET_DEFS.tank,
+  spider: SOCKET_DEFS.spider,
+  drone: SOCKET_DEFS.drone, racedrone: SOCKET_DEFS.drone, rescuedrone: SOCKET_DEFS.drone,
+  droid: SOCKET_DEFS.humanoid, mech: SOCKET_DEFS.humanoid,
+  helicopter: SOCKET_DEFS.heli,
+  hoverbot: SOCKET_DEFS.hover, hoverracer: SOCKET_DEFS.hover,
+  submarine: SOCKET_DEFS.sub, deepseabot: SOCKET_DEFS.sub,
+  robotarm: SOCKET_DEFS.arm,
+  jetplane: SOCKET_DEFS.plane, stealthjet: SOCKET_DEFS.plane, aerobat: SOCKET_DEFS.plane,
+};
+
 const CATEGORIES = [
   { id: 'body',       label: 'Body',       icon: '📦' },
   { id: 'movement',   label: 'Movement',   icon: '⚙️' },
@@ -109,11 +248,25 @@ const CATEGORIES = [
 ];
 
 // ─── Rich part tile ────────────────────────────────────────────────────────
-function PartTile({ id, icon, name, desc, active, onClick, bg = '#F5F5F5', accent = '#7c3aed', isCustom = false }) {
+function PartTile({ id, icon, name, desc, active, onClick, bg = '#F5F5F5', accent = '#7c3aed', isCustom = false, partType }) {
+  const handleDragStart = (e) => {
+    if (!partType) return;
+    e.dataTransfer.setData('text/plain', JSON.stringify({ partType, id }));
+    // Encode part type in MIME key so it's readable during dragover (data values aren't accessible then)
+    e.dataTransfer.setData(`bb/${partType}`, '1');
+    e.dataTransfer.effectAllowed = 'copy';
+  };
   return (
-    <button
+    // Use div instead of button to avoid browser button+drag conflicts
+    <div
+      role="button"
+      tabIndex={0}
       className={`bb-pt${active ? ' bb-pt--active' : ''}`}
       onClick={onClick}
+      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick && onClick(); } }}
+      draggable={!!partType}
+      onDragStart={handleDragStart}
+      title={desc ? `${name} — ${desc}` : name}
       style={active
         ? { '--pt-accent': accent, '--pt-bg': bg, borderColor: accent, background: bg }
         : { '--pt-accent': accent, '--pt-bg': bg }
@@ -121,6 +274,7 @@ function PartTile({ id, icon, name, desc, active, onClick, bg = '#F5F5F5', accen
     >
       {active && <span className="bb-pt-check">✓</span>}
       {isCustom && <span className="bb-pt-custom-star">✨</span>}
+      {partType && !active && <span className="bb-pt-drag-hint">⠿ drag</span>}
       <div className="bb-pt-icon-wrap" style={{ background: active ? `${accent}22` : '#f0f0f0' }}>
         <span className="bb-pt-icon">{icon}</span>
       </div>
@@ -128,16 +282,26 @@ function PartTile({ id, icon, name, desc, active, onClick, bg = '#F5F5F5', accen
         <span className="bb-pt-name">{name}</span>
         {desc && <span className="bb-pt-desc">{desc}</span>}
       </div>
-    </button>
+    </div>
   );
 }
 
 // ─── Chassis card (larger card for body category) ─────────────────────────
+
+// ─── Chassis card (larger card for body category) ─────────────────────────
 function ChassisCard({ ch, active, onClick }) {
+  const handleDragStart = (e) => {
+    e.dataTransfer.setData('text/plain', JSON.stringify({ partType: 'chassis', id: ch.id }));
+    e.dataTransfer.setData('bb/chassis', '1');
+    e.dataTransfer.effectAllowed = 'copy';
+  };
   return (
     <button
       className={`bb-chassis-card${active ? ' selected' : ''}`}
       onClick={onClick}
+      draggable
+      onDragStart={handleDragStart}
+      title={ch.desc || ch.name}
       style={active ? { background: `linear-gradient(160deg,${ch.bgGrad[0]},${ch.bgGrad[1]})`, borderColor: ch.accentColor || '#7c3aed' } : {}}
     >
       <span className="bb-chassis-icon">{ch.icon}</span>
@@ -152,8 +316,191 @@ function ChassisCard({ ch, active, onClick }) {
   );
 }
 
+// ─── Body Size Picker ──────────────────────────────────────────────────────
+function BodySizePicker({ bodySize, onChange }) {
+  const sizes = [
+    { id: 'S', label: 'Small', desc: 'Lighter · Faster · Less durable', spd: '+15%', wt: '−30%' },
+    { id: 'M', label: 'Medium', desc: 'Balanced — recommended', spd: '—',    wt: '—'     },
+    { id: 'L', label: 'Large',  desc: 'Heavier · Slower · More durable', spd: '−15%', wt: '+40%' },
+  ];
+  return (
+    <div style={{ padding: '8px 0 4px' }}>
+      <p className="bb-studio-section-label" style={{ marginBottom: 6 }}>Body Size</p>
+      <div style={{ display: 'flex', gap: 6 }}>
+        {sizes.map(s => (
+          <button key={s.id} onClick={() => onChange(s.id)}
+            title={s.desc}
+            style={{
+              flex: 1, padding: '8px 4px', borderRadius: 10, cursor: 'pointer',
+              border: `2px solid ${bodySize === s.id ? '#7c3aed' : '#e0e0e0'}`,
+              background: bodySize === s.id ? 'rgba(124,58,237,0.10)' : '#fafafa',
+              color: bodySize === s.id ? '#7c3aed' : '#666',
+              fontWeight: bodySize === s.id ? 800 : 600,
+              fontSize: 11, transition: 'all 0.15s',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+            }}>
+            <span style={{ fontSize: 16 }}>
+              {s.id === 'S' ? '🤏' : s.id === 'M' ? '👐' : '🤲'}
+            </span>
+            <span>{s.label}</span>
+            <span style={{ fontSize: 9, opacity: 0.7, fontWeight: 400 }}>Spd {s.spd}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Color Toolbar (always-visible in viewport) ────────────────────────────
+function ColorToolbar({ robotConfig, setRobotConfig }) {
+  const [activePop, setActivePop] = useState(null);
+  const [popTab, setPopTab]       = useState('classic');
+  const containerRef              = useRef(null);
+
+  const PALETTES = {
+    classic:  PALETTE_CLASSIC,
+    metallic: PALETTE_METALLIC,
+    neon:     PALETTE_NEON,
+    dark:     PALETTE_DARK,
+  };
+
+  const COLOR_DEFS = [
+    { key: 'primaryColor', label: 'Body',   def: '#FF8C00', hasTabs: true },
+    { key: 'accentColor',  label: 'Accent', def: '#FFD700', hasTabs: true },
+    { key: 'trimColor',    label: 'Trim',   def: '#FFD700', hasTabs: true },
+    { key: 'wheelColor',   label: 'Wheel',  def: '#1a1a1a', hasTabs: false, swatches: WHEEL_COLORS },
+    { key: 'ledColor',     label: 'LED',    def: '#00D9FF', hasTabs: false, swatches: LED_COLORS },
+  ];
+
+  // Close popover on outside click
+  useEffect(() => {
+    const handler = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) setActivePop(null);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  return (
+    <div ref={containerRef} style={{
+      display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px',
+      background: 'rgba(0,0,0,0.18)', borderBottom: '1px solid rgba(255,255,255,0.06)',
+      flexShrink: 0,
+    }}>
+      <span style={{ fontSize: 11, color: '#aaa', fontWeight: 700, marginRight: 2, flexShrink: 0 }}>🎨 Colors</span>
+
+      {/* Colour swatches */}
+      {COLOR_DEFS.map(({ key, label, def, hasTabs, swatches }) => {
+        const value  = robotConfig[key] || def;
+        const isOpen = activePop === key;
+        const currentSwatches = hasTabs ? (PALETTES[popTab] || PALETTE_CLASSIC) : (swatches || PALETTE_CLASSIC);
+
+        return (
+          <div key={key} style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            {/* Swatch circle button */}
+            <button
+              title={`${label}: ${value}`}
+              onClick={() => { setActivePop(isOpen ? null : key); setPopTab('classic'); }}
+              style={{
+                width: 28, height: 28, borderRadius: '50%', border: 'none',
+                background: value, cursor: 'pointer',
+                outline: isOpen ? '3px solid #fff' : '2px solid rgba(255,255,255,0.3)',
+                outlineOffset: 2,
+                boxShadow: '0 2px 8px rgba(0,0,0,0.5)',
+                transition: 'outline 0.12s, transform 0.12s',
+                transform: isOpen ? 'scale(1.15)' : 'scale(1)',
+              }}
+            />
+            <span style={{ fontSize: 9, color: '#888', marginTop: 3, userSelect: 'none' }}>{label}</span>
+
+            {/* Popover */}
+            {isOpen && (
+              <div style={{
+                position: 'absolute', top: 48, left: '50%', transform: 'translateX(-50%)',
+                background: '#1a1a2e', border: '1px solid #2a2a40', borderRadius: 12,
+                padding: 12, zIndex: 9999,
+                boxShadow: '0 16px 48px rgba(0,0,0,0.75)',
+                minWidth: 220,
+              }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#ddd', marginBottom: 8, textAlign: 'center' }}>
+                  {label} Color
+                </div>
+
+                {/* Palette tabs */}
+                {hasTabs && (
+                  <div style={{ display: 'flex', gap: 3, marginBottom: 8 }}>
+                    {[['classic','Classic'],['metallic','Metal'],['neon','Neon'],['dark','Dark']].map(([k, l]) => (
+                      <button key={k} onClick={() => setPopTab(k)} style={{
+                        flex: 1, fontSize: 9, padding: '3px 0', borderRadius: 6, border: 'none',
+                        background: popTab === k ? '#7c3aed' : '#2a2a40',
+                        color: popTab === k ? '#fff' : '#777', cursor: 'pointer', fontWeight: 700,
+                      }}>{l}</button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Colour swatches grid */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 10 }}>
+                  {currentSwatches.map(c => (
+                    <button key={c} onClick={() => setRobotConfig(prev => ({ ...prev, [key]: c }))}
+                      title={c} style={{
+                        width: 26, height: 26, borderRadius: 5, border: 'none', cursor: 'pointer',
+                        background: c,
+                        outline: value === c ? '2px solid #fff' : '1px solid rgba(255,255,255,0.15)',
+                        outlineOffset: value === c ? 1 : 0,
+                        transition: 'outline 0.08s',
+                      }}
+                    />
+                  ))}
+                  {/* Custom colour input */}
+                  <input type="color" value={value}
+                    onChange={e => setRobotConfig(prev => ({ ...prev, [key]: e.target.value }))}
+                    title="Custom colour"
+                    style={{ width: 26, height: 26, border: 'none', borderRadius: 5, cursor: 'pointer', padding: 0, background: 'none' }}
+                  />
+                </div>
+
+                {/* Current colour preview */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ width: 20, height: 20, borderRadius: 4, background: value, border: '1px solid rgba(255,255,255,0.2)', flexShrink: 0 }} />
+                  <span style={{ fontFamily: 'monospace', fontSize: 11, color: '#aaa' }}>{value.toUpperCase()}</span>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })}
+
+      {/* Divider */}
+      <div style={{ width: 1, height: 28, background: 'rgba(255,255,255,0.12)', margin: '0 4px', flexShrink: 0 }} />
+
+      {/* Metalness slider */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+        <span style={{ fontSize: 12 }} title="Metallic shine">🔩</span>
+        <input type="range" min={0} max={1} step={0.05}
+          value={robotConfig.materialMetalness ?? 0.4}
+          onChange={e => setRobotConfig(prev => ({ ...prev, materialMetalness: parseFloat(e.target.value) }))}
+          style={{ width: 56, accentColor: '#aaa' }}
+          title={`Metallic: ${Math.round((robotConfig.materialMetalness ?? 0.4) * 100)}%`}
+        />
+      </div>
+
+      {/* Glow slider */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+        <span style={{ fontSize: 12 }} title="LED glow intensity">💡</span>
+        <input type="range" min={0} max={3} step={0.1}
+          value={robotConfig.materialGlow ?? 1.0}
+          onChange={e => setRobotConfig(prev => ({ ...prev, materialGlow: parseFloat(e.target.value) }))}
+          style={{ width: 56, accentColor: '#00D9FF' }}
+          title={`Glow: ${Math.round((robotConfig.materialGlow ?? 1.0) / 3 * 100)}%`}
+        />
+      </div>
+    </div>
+  );
+}
+
 // ─── 3D Viewer ─────────────────────────────────────────────────────────────
-function RobotCanvas({ robotConfig, onRobotClick }) {
+function RobotCanvas({ robotConfig, onRobotClick, onDrop, children }) {
   const wrapRef  = useRef(null);
   const sceneRef = useRef(null);
   const camRef   = useRef(null);
@@ -480,8 +827,13 @@ function RobotCanvas({ robotConfig, onRobotClick }) {
     }
   }, [robotConfig]);
 
-  return <div ref={wrapRef} className="bb-studio-canvas-wrap" style={{ cursor: 'pointer' }} />;
+  return (
+    <div ref={wrapRef} className="bb-studio-canvas-wrap" style={{ cursor: 'pointer' }} onDrop={onDrop}>
+      {children}
+    </div>
+  );
 }
+
 
 // ─── Left Panel ────────────────────────────────────────────────────────────
 function LeftPanel({ robotConfig, setRobotConfig, activeRobotId, setActiveRobotId, customParts = [], onGoCreate }) {
@@ -564,6 +916,7 @@ function LeftPanel({ robotConfig, setRobotConfig, activeRobotId, setActiveRobotI
                     chassisId: ch.id,
                     primaryColor: ch.primaryColor || prev.primaryColor,
                     accentColor: ch.accentColor || prev.accentColor,
+                    socketAttachments: {}, // reset sockets when chassis changes
                   }))}
                 />
               ))}
@@ -573,6 +926,10 @@ function LeftPanel({ robotConfig, setRobotConfig, activeRobotId, setActiveRobotI
                 <span className="bb-chassis-badge" style={{ background: '#7c3aed', color: '#fff' }}>New</span>
               </button>
             </div>
+            <BodySizePicker
+              bodySize={robotConfig.bodySize || 'M'}
+              onChange={size => setRobotConfig(prev => ({ ...prev, bodySize: size }))}
+            />
           </>
         );
       }
@@ -585,6 +942,7 @@ function LeftPanel({ robotConfig, setRobotConfig, activeRobotId, setActiveRobotI
             <div className="bb-pt-grid">
               {filtered.map(m => (
                 <PartTile key={m.id} {...m} bg={m.bg} accent={m.accent}
+                  partType="movement"
                   active={robotConfig.movementId === m.id}
                   onClick={() => setRobotConfig(prev => ({ ...prev, movementId: m.id }))}
                 />
@@ -606,6 +964,7 @@ function LeftPanel({ robotConfig, setRobotConfig, activeRobotId, setActiveRobotI
                 return (
                   <PartTile key={h.id} id={h.id} icon={h.icon} name={h.name}
                     desc={m.desc} bg={m.bg} accent={m.accent || h.color}
+                    partType="head"
                     active={robotConfig.headId === h.id}
                     onClick={() => setRobotConfig(prev => ({ ...prev, headId: prev.headId === h.id ? null : h.id }))}
                   />
@@ -632,6 +991,7 @@ function LeftPanel({ robotConfig, setRobotConfig, activeRobotId, setActiveRobotI
                   <PartTile key={s.id} id={s.id} icon={s.icon} name={s.name}
                     desc={m.desc || (s.isCustom ? 'Custom sensor' : '')}
                     bg={m.bg || '#f0eeff'} accent={m.accent || s.color}
+                    partType="sensor"
                     active={robotConfig.sensors.includes(s.id)}
                     isCustom={s.isCustom}
                     onClick={() => toggleSensor(s.id)}
@@ -655,6 +1015,7 @@ function LeftPanel({ robotConfig, setRobotConfig, activeRobotId, setActiveRobotI
                 return (
                   <PartTile key={a.id} id={a.id} icon={a.icon} name={a.name}
                     desc={m.desc} bg={m.bg} accent={m.accent || a.color}
+                    partType="arm"
                     active={robotConfig.armId === a.id}
                     onClick={() => setRobotConfig(prev => ({ ...prev, armId: prev.armId === a.id ? null : a.id }))}
                   />
@@ -677,6 +1038,7 @@ function LeftPanel({ robotConfig, setRobotConfig, activeRobotId, setActiveRobotI
                 return (
                   <PartTile key={t.id} id={t.id} icon={t.icon} name={t.name}
                     desc={m.desc} bg={m.bg} accent={m.accent || t.color}
+                    partType="tool"
                     active={robotConfig.tools.includes(t.id)}
                     onClick={() => toggleTool(t.id)}
                   />
@@ -699,6 +1061,7 @@ function LeftPanel({ robotConfig, setRobotConfig, activeRobotId, setActiveRobotI
                 return (
                   <PartTile key={p.id} id={p.id} icon={p.icon} name={p.name}
                     desc={m.desc} bg={m.bg} accent={m.accent || p.color}
+                    partType="power"
                     active={robotConfig.powerId === p.id}
                     onClick={() => setRobotConfig(prev => ({ ...prev, powerId: p.id }))}
                   />
@@ -720,6 +1083,7 @@ function LeftPanel({ robotConfig, setRobotConfig, activeRobotId, setActiveRobotI
                 return (
                   <PartTile key={l.id} id={l.id} icon={l.icon} name={l.name}
                     desc={m.desc} bg={m.bg} accent={m.accent || l.color}
+                    partType="light"
                     active={robotConfig.lightId === l.id}
                     onClick={() => setRobotConfig(prev => ({ ...prev, lightId: prev.lightId === l.id ? null : l.id }))}
                   />
@@ -739,6 +1103,7 @@ function LeftPanel({ robotConfig, setRobotConfig, activeRobotId, setActiveRobotI
                 <PartTile key={a.id} id={a.id} icon={a.icon} name={a.name}
                   desc={a.unlock}
                   bg={`${a.color}18`} accent={a.color}
+                  partType="ai"
                   active={robotConfig.aiId === a.id}
                   onClick={() => setRobotConfig(prev => ({ ...prev, aiId: prev.aiId === a.id ? null : a.id }))}
                 />
@@ -758,6 +1123,7 @@ function LeftPanel({ robotConfig, setRobotConfig, activeRobotId, setActiveRobotI
                 <PartTile key={c.id} id={c.id} icon={c.icon} name={c.name}
                   desc={c.unlock}
                   bg={`${c.color}18`} accent={c.color}
+                  partType="comm"
                   active={robotConfig.commId === c.id}
                   onClick={() => setRobotConfig(prev => ({ ...prev, commId: prev.commId === c.id ? null : c.id }))}
                 />
@@ -778,6 +1144,7 @@ function LeftPanel({ robotConfig, setRobotConfig, activeRobotId, setActiveRobotI
                 <PartTile key={s.id} id={s.id} icon={s.icon} name={s.name}
                   desc={s.unlock}
                   bg={`${s.color}18`} accent={s.color}
+                  partType="struct"
                   active={(robotConfig.structParts || []).includes(s.id)}
                   onClick={() => toggleStructural(s.id)}
                 />
@@ -797,6 +1164,7 @@ function LeftPanel({ robotConfig, setRobotConfig, activeRobotId, setActiveRobotI
                 <PartTile key={d.id} id={d.id} icon={d.icon} name={d.name}
                   desc={d.unlock}
                   bg={`${d.color}18`} accent={d.color}
+                  partType="deco"
                   active={(robotConfig.decoParts || []).includes(d.id)}
                   onClick={() => toggleDeco(d.id)}
                 />
@@ -816,6 +1184,7 @@ function LeftPanel({ robotConfig, setRobotConfig, activeRobotId, setActiveRobotI
                 <PartTile key={l.id} id={l.id} icon={l.icon} name={l.name}
                   desc={l.unlock}
                   bg={`${l.color}18`} accent={l.color}
+                  partType="lego"
                   active={(robotConfig.legoParts || []).includes(l.id)}
                   onClick={() => toggleLego(l.id)}
                 />
@@ -867,43 +1236,6 @@ function LeftPanel({ robotConfig, setRobotConfig, activeRobotId, setActiveRobotI
         {renderParts()}
       </div>
 
-      {/* Blocks strip */}
-      <div className="bb-studio-blocks">
-        <p className="bb-studio-section-label" style={{ margin: '10px 0 4px' }}>Blocks</p>
-        <div className="bb-studio-blocks-grid">
-          {BLOCKS_DATA.map(b => (
-            <div key={b.id} className="bb-studio-block-item" style={{ background: b.color }} title={b.label} />
-          ))}
-        </div>
-        <button className="bb-studio-more-btn">＋ More Parts</button>
-      </div>
-
-      {/* My Robots strip */}
-      <div className="bb-studio-my-robots">
-        <div className="bb-studio-my-robots-head">
-          <span className="bb-studio-my-robots-title">My Robots</span>
-          <button className="bb-studio-new-btn">＋ New</button>
-        </div>
-        <div className="bb-studio-robots-row">
-          {savedRobots.map(r => (
-            <button
-              key={r.id}
-              className={`bb-studio-robot-thumb ${activeRobotId === r.id ? 'selected' : ''}`}
-              onClick={() => {
-                setActiveRobotId(r.id);
-                setRobotConfig(prev => ({
-                  ...prev, chassisId: r.chassisId,
-                  primaryColor: r.primaryColor, accentColor: r.accentColor,
-                  sensors: r.sensors, tools: r.tools,
-                }));
-              }}
-            >
-              <span className="bb-studio-robot-thumb-icon">{r.icon}</span>
-              <span className="bb-studio-robot-thumb-name">{r.name}</span>
-            </button>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }
@@ -975,11 +1307,19 @@ function RightPanel({ robotConfig, setRobotConfig, onSimulate, robotValidation }
     const s = STRUCTURAL_DATA.find(x => x.id === id);
     return acc + (s?.stat?.armor ?? 0);
   }, 0);
+  // Body size multipliers
+  const sizeKey = robotConfig.bodySize || 'M';
+  const sizeSpeedDelta = sizeKey === 'S' ? 15 : sizeKey === 'L' ? -15 : 0;
+  const sizeDurDelta   = sizeKey === 'S' ? -15 : sizeKey === 'L' ? 20 : 0;
+  const sizeWeightMult = sizeKey === 'S' ? 0.7 : sizeKey === 'L' ? 1.4 : 1.0;
+  const sizeLabel      = sizeKey === 'S' ? '🤏 Small' : sizeKey === 'L' ? '🤲 Large' : '👐 Medium';
+
   const stats = {
-    speed:      Math.min(chassis.speed + (robotConfig.movementId === 'flying' ? 30 : robotConfig.movementId === 'jets' ? 50 : 0) + powerBoost, 100),
+    speed:      Math.min(chassis.speed + sizeSpeedDelta + (robotConfig.movementId === 'flying' ? 30 : robotConfig.movementId === 'jets' ? 50 : 0) + powerBoost, 100),
     power:      Math.min(chassis.power + (robotConfig.tools.length * 5) + (aiBoost > 0 ? Math.floor(aiBoost / 4) : 0), 100),
-    durability: Math.min(chassis.durability + Math.floor(armorBoost / 2), 100),
+    durability: Math.min(chassis.durability + sizeDurDelta + Math.floor(armorBoost / 2), 100),
     ai:         Math.min(aiBoost, 100),
+    weight:     Math.round(chassis.weight * sizeWeightMult * 10) / 10,
   };
 
   // Build full installed-parts list with remove callbacks
@@ -1055,11 +1395,11 @@ function RightPanel({ robotConfig, setRobotConfig, onSimulate, robotValidation }
         {/* Specs card */}
         <div className="bb-studio-specs-card">
           <div className="bb-studio-specs-name">{robotConfig.name || 'My Robot'}</div>
-          <div className="bb-studio-specs-sub">{chassis.name} · {chassis.movement}</div>
+          <div className="bb-studio-specs-sub">{chassis.name} · {sizeLabel} · {chassis.movement}</div>
           <div className="bb-studio-specs-grid">
             <div className="bb-studio-spec-item">
               <div className="bb-studio-spec-label">Weight</div>
-              <div className="bb-studio-spec-val">{chassis.weight}</div>
+              <div className="bb-studio-spec-val">{stats.weight}kg</div>
             </div>
             <div className="bb-studio-spec-item">
               <div className="bb-studio-spec-label">Parts</div>
@@ -1202,19 +1542,174 @@ function RightPanel({ robotConfig, setRobotConfig, onSimulate, robotValidation }
   );
 }
 
+// ─── Socket Overlay ──────────────────────────────────────────────────────────
+function SocketOverlay({ sockets, draggingPartType, socketAttachments, onSocketDrop, onDetach }) {
+  const isDragging = !!draggingPartType;
+  return (
+    <div className="bb-socket-overlay" aria-hidden="true">
+      {sockets.map(socket => {
+        const attached   = socketAttachments[socket.id] || [];
+        const isOccupied = attached.length > 0;
+        const accepts    = SOCKET_ACCEPTS[socket.type] || [];
+        const isCompat   = isDragging && accepts.includes(draggingPartType);
+        const isFull     = attached.length >= socket.max;
+
+        // Only render if dragging (show all sockets) or occupied (show badge + remove btn)
+        if (!isDragging && !isOccupied) return null;
+
+        let cls = 'bb-socket';
+        if (isDragging) cls += isCompat && !isFull ? ' bb-socket--valid' : ' bb-socket--invalid';
+        else if (isOccupied)                          cls += ' bb-socket--occupied';
+
+        return (
+          <div
+            key={socket.id}
+            className={cls}
+            style={{ left: `${socket.pos[0]}%`, top: `${socket.pos[1]}%` }}
+            onDragOver={e => {
+              if (!isDragging) return;
+              e.preventDefault(); e.stopPropagation();
+              e.dataTransfer.dropEffect = (isCompat && !isFull) ? 'copy' : 'none';
+            }}
+            onDrop={e => {
+              e.preventDefault(); e.stopPropagation();
+              if (!isCompat || isFull) return;
+              const raw = e.dataTransfer.getData('text/plain');
+              if (raw) onSocketDrop(socket.id, JSON.parse(raw));
+            }}
+          >
+            <span className="bb-socket-icon">{socket.icon}</span>
+
+            {/* Tooltip shown during drag */}
+            {isDragging && (
+              <div className="bb-socket-tooltip">
+                <strong>{socket.label}</strong>
+                <span className="bb-socket-cap">{attached.length}/{socket.max} slots</span>
+                {isCompat && !isFull  && <span className="bb-socket-accept">✓ Drop here!</span>}
+                {isCompat && isFull   && <span className="bb-socket-reject">✗ Slot full</span>}
+                {!isCompat            && <span className="bb-socket-reject">✗ Wrong type</span>}
+              </div>
+            )}
+
+            {/* Occupied badge */}
+            {isOccupied && (
+              <span className="bb-socket-badge">
+                {attached.length > 1 ? `×${attached.length}` : '✓'}
+              </span>
+            )}
+
+            {/* Detach button (visible when not dragging) */}
+            {isOccupied && !isDragging && (
+              <button
+                className="bb-socket-detach"
+                title={`Remove ${attached[attached.length - 1]?.id || 'part'}`}
+                onClick={e => {
+                  e.stopPropagation();
+                  onDetach(socket.id, attached[attached.length - 1]);
+                }}
+              >×</button>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ─── Build Page ─────────────────────────────────────────────────────────────
 export default function BuildPage({ robotConfig, setRobotConfig, onSimulate, customParts = [], onGoCreate, robotValidation }) {
-  const [activeRobotId, setActiveRobotId] = useState(1);
-  const [partsOverlay, setPartsOverlay]   = useState(false);
-  const chassis = CHASSIS_DATA.find(c => c.id === robotConfig.chassisId) || CHASSIS_DATA[0];
+  const [activeRobotId,    setActiveRobotId]    = useState(1);
+  const [partsOverlay,     setPartsOverlay]     = useState(false);
+  const [isDragOver,       setIsDragOver]       = useState(false);
+  const [draggingPartType, setDraggingPartType] = useState(null);
+  const chassis        = CHASSIS_DATA.find(c => c.id === robotConfig.chassisId) || CHASSIS_DATA[0];
+  const currentSockets = CHASSIS_SOCKETS[robotConfig.chassisId] || CHASSIS_SOCKETS.rover;
 
-  const removeSensor     = (id) => setRobotConfig(prev => ({ ...prev, sensors:       prev.sensors.filter(s => s !== id) }));
-  const removeTool       = (id) => setRobotConfig(prev => ({ ...prev, tools:         prev.tools.filter(t => t !== id) }));
-  const removeAI         = ()   => setRobotConfig(prev => ({ ...prev, aiId:          null }));
-  const removeComm       = ()   => setRobotConfig(prev => ({ ...prev, commId:        null }));
-  const removeStructural = (id) => setRobotConfig(prev => ({ ...prev, structParts: (prev.structParts || []).filter(s => s !== id) }));
-  const removeDeco       = (id) => setRobotConfig(prev => ({ ...prev, decoParts:       (prev.decoParts || []).filter(d => d !== id) }));
-  const removeLego       = (id) => setRobotConfig(prev => ({ ...prev, legoParts:       (prev.legoParts || []).filter(l => l !== id) }));
+  // ── Helpers: apply a part to the flat robotConfig fields ─────────────────
+  const applyPartToConfig = useCallback((prev, partType, id) => {
+    switch (partType) {
+      case 'sensor':   return { ...prev, sensors:    prev.sensors.includes(id) ? prev.sensors : [...prev.sensors, id] };
+      case 'tool':     return { ...prev, tools:      prev.tools.includes(id)   ? prev.tools   : [...prev.tools,   id] };
+      case 'head':     return { ...prev, headId:     id };
+      case 'arm':      return { ...prev, armId:      id };
+      case 'power':    return { ...prev, powerId:    id };
+      case 'light':    return { ...prev, lightId:    id };
+      case 'ai':       return { ...prev, aiId:       id };
+      case 'comm':     return { ...prev, commId:     id };
+      case 'movement': return { ...prev, movementId: id };
+      case 'struct':   { const c = prev.structParts||[]; return { ...prev, structParts: c.includes(id)?c:[...c,id] }; }
+      case 'deco':     { const c = prev.decoParts||[];   return { ...prev, decoParts:   c.includes(id)?c:[...c,id] }; }
+      case 'lego':     { const c = prev.legoParts||[];   return { ...prev, legoParts:   c.includes(id)?c:[...c,id] }; }
+      case 'chassis':  { const ch=CHASSIS_DATA.find(c=>c.id===id); return {...prev,chassisId:id,socketAttachments:{},primaryColor:ch?.primaryColor||prev.primaryColor,accentColor:ch?.accentColor||prev.accentColor}; }
+      default: return prev;
+    }
+  }, []);
+
+  const removePartFromConfig = useCallback((prev, partType, id) => {
+    switch (partType) {
+      case 'sensor':   return { ...prev, sensors:    prev.sensors.filter(s=>s!==id) };
+      case 'tool':     return { ...prev, tools:      prev.tools.filter(t=>t!==id) };
+      case 'head':     return { ...prev, headId:     null };
+      case 'arm':      return { ...prev, armId:      null };
+      case 'power':    return { ...prev, powerId:    null };
+      case 'light':    return { ...prev, lightId:    null };
+      case 'ai':       return { ...prev, aiId:       null };
+      case 'comm':     return { ...prev, commId:     null };
+      case 'movement': return { ...prev, movementId: null };
+      case 'struct':   return { ...prev, structParts: (prev.structParts||[]).filter(s=>s!==id) };
+      case 'deco':     return { ...prev, decoParts:   (prev.decoParts||[]).filter(d=>d!==id) };
+      case 'lego':     return { ...prev, legoParts:   (prev.legoParts||[]).filter(l=>l!==id) };
+      default: return prev;
+    }
+  }, []);
+
+  // ── Socket drop: snap part to a specific socket ───────────────────────────
+  const handleSocketDrop = useCallback((socketId, { partType, id }) => {
+    setDraggingPartType(null);
+    setIsDragOver(false);
+    setRobotConfig(prev => {
+      const sockets = CHASSIS_SOCKETS[prev.chassisId] || CHASSIS_SOCKETS.rover;
+      const socket  = sockets.find(s => s.id === socketId);
+      if (!socket) return prev;
+      const sa      = { ...(prev.socketAttachments || {}) };
+      const cur     = sa[socketId] || [];
+      if (cur.length >= socket.max) return prev;
+      sa[socketId]  = [...cur, { partType, id }];
+      return applyPartToConfig({ ...prev, socketAttachments: sa }, partType, id);
+    });
+  }, [setRobotConfig, applyPartToConfig]);
+
+  // ── Socket detach: remove a part from a specific socket ───────────────────
+  const handleSocketDetach = useCallback((socketId, { partType, id }) => {
+    setRobotConfig(prev => {
+      const sa     = { ...(prev.socketAttachments || {}) };
+      sa[socketId] = (sa[socketId] || []).filter(p => !(p.partType === partType && p.id === id));
+      // Only remove from flat config if no other socket still holds this part
+      const stillUsed = Object.values(sa).flat().some(p => p.partType === partType && p.id === id);
+      let next = { ...prev, socketAttachments: sa };
+      if (!stillUsed) next = removePartFromConfig(next, partType, id);
+      return next;
+    });
+  }, [setRobotConfig, removePartFromConfig]);
+
+  // ── Background drop (on canvas, not a socket) ────────────────────────────
+  const handleDrop = useCallback((e) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    setDraggingPartType(null);
+    const raw = e.dataTransfer.getData('text/plain');
+    if (!raw) return;
+    const { partType, id } = JSON.parse(raw);
+    setRobotConfig(prev => applyPartToConfig(prev, partType, id));
+  }, [setRobotConfig, applyPartToConfig]);
+
+  const removeSensor     = (id) => setRobotConfig(prev => removePartFromConfig(prev, 'sensor',   id));
+  const removeTool       = (id) => setRobotConfig(prev => removePartFromConfig(prev, 'tool',     id));
+  const removeAI         = ()   => setRobotConfig(prev => removePartFromConfig(prev, 'ai',       null));
+  const removeComm       = ()   => setRobotConfig(prev => removePartFromConfig(prev, 'comm',     null));
+  const removeStructural = (id) => setRobotConfig(prev => removePartFromConfig(prev, 'struct',   id));
+  const removeDeco       = (id) => setRobotConfig(prev => removePartFromConfig(prev, 'deco',     id));
+  const removeLego       = (id) => setRobotConfig(prev => removePartFromConfig(prev, 'lego',     id));
 
   return (
     <div className="bb-studio-build">
@@ -1228,10 +1723,30 @@ export default function BuildPage({ robotConfig, setRobotConfig, onSimulate, cus
       />
 
       {/* Center Viewport */}
-      <div className="bb-studio-center">
+      <div
+        className="bb-studio-center"
+        onDragEnter={e => {
+          // Detect part type from MIME key (readable during drag, unlike data values)
+          const bbMime = [...e.dataTransfer.types].find(t => t.startsWith('bb/'));
+          const pt = bbMime ? bbMime.slice(3) : null;
+          setDraggingPartType(pt);
+          setIsDragOver(true);
+        }}
+        onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }}
+        onDragLeave={e => {
+          if (!e.currentTarget.contains(e.relatedTarget)) {
+            setIsDragOver(false);
+            setDraggingPartType(null);
+          }
+        }}
+      >
         <div className="bb-studio-viewport-header">
           <span className="bb-studio-viewport-title">🤖 {robotConfig.name || 'My Robot'}</span>
-          <span style={{ fontSize: 11, color: '#aaa', fontStyle: 'italic' }}>Click robot to manage parts</span>
+          <span style={{ fontSize: 11, color: '#aaa', fontStyle: 'italic' }}>
+            {draggingPartType
+              ? `🎯 Hover a glowing socket to snap ${draggingPartType} here`
+              : 'Drag parts onto glowing sockets · Click robot to manage'}
+          </span>
           <button className="bb-studio-vp-btn bb-studio-vp-btn--test" onClick={onSimulate}>📝 Code My Robot</button>
           <button className="bb-studio-vp-btn bb-studio-vp-btn--reset"
             onClick={() => setRobotConfig(prev => ({
@@ -1240,17 +1755,31 @@ export default function BuildPage({ robotConfig, setRobotConfig, onSimulate, cus
               headId: null, armId: null, lightId: null,
               aiId: null, commId: null,
               structParts: [], decoParts: [], legoParts: [],
+              socketAttachments: {},
             }))}>
             ↺ Clear
           </button>
         </div>
 
-        {/* The 3D canvas — rebuilds on config change */}
+        {/* Always-visible colour toolbar */}
+        <ColorToolbar robotConfig={robotConfig} setRobotConfig={setRobotConfig} />
+
+        {/* 3D canvas — socket overlay rendered as children so it lives inside the canvas-wrap */}
         <RobotCanvas
-          key={JSON.stringify(robotConfig)}
           robotConfig={robotConfig}
           onRobotClick={() => setPartsOverlay(v => !v)}
-        />
+          onDrop={handleDrop}
+        >
+          <SocketOverlay
+            sockets={currentSockets}
+            draggingPartType={draggingPartType}
+            socketAttachments={robotConfig.socketAttachments || {}}
+            onSocketDrop={handleSocketDrop}
+            onDetach={handleSocketDetach}
+          />
+          <span className="bb-studio-canvas-label">{chassis.name} · {chassis.badge}</span>
+          <span className="bb-studio-canvas-hint">🖱 Drag to rotate · Click robot to manage parts</span>
+        </RobotCanvas>
 
         {/* Click-robot overlay */}
         {partsOverlay && (
@@ -1286,8 +1815,6 @@ export default function BuildPage({ robotConfig, setRobotConfig, onSimulate, cus
           </div>
         )}
 
-        <span className="bb-studio-canvas-label">{chassis.name} · {chassis.badge}</span>
-        <span className="bb-studio-canvas-hint">🖱 Drag to rotate · Click robot to manage parts</span>
       </div>
 
       <RightPanel

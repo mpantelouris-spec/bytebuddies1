@@ -225,4 +225,235 @@
 .blocklyFlyoutBackground { fill: #161b22 !important; opacity: 1 !important; }
 
 /* ─── Blockly workspace background ─── */
-.blocklyMainBackground { fill: #0d1117 !important; }
+.blocklyMainBackground { fill: #0a0e14 !important; }
+
+/* ─── Block execution HUD pop animation ─── */
+@keyframes execLabelPop {
+  from { opacity: 0; transform: scale(0.82) translateY(6px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* ─── Game shell (whole Live Lab) ─── */
+.ll-game-shell {
+  background: linear-gradient(155deg, #120a22 0%, #0a1628 45%, #081a12 100%);
+}
+.ll-game-topbar {
+  background: linear-gradient(90deg, rgba(124, 58, 237, 0.42), rgba(14, 165, 233, 0.22), rgba(236, 72, 153, 0.18));
+  border-bottom: 2px solid rgba(167, 139, 250, 0.45);
+  box-shadow: 0 4px 28px rgba(124, 58, 237, 0.28);
+}
+.ll-game-code-panel {
+  background: linear-gradient(180deg, #14102c 0%, #0a1420 100%);
+  border-right: 2px solid rgba(124, 58, 237, 0.35);
+  box-shadow: inset -12px 0 32px rgba(124, 58, 237, 0.08);
+}
+.ll-game-panel-head {
+  background: linear-gradient(90deg, rgba(124, 58, 237, 0.25), rgba(59, 130, 246, 0.12));
+  border-bottom: 1px solid rgba(167, 139, 250, 0.3);
+}
+.ll-sim-stage {
+  background: radial-gradient(ellipse at 50% 35%, #1e0a3a 0%, #050510 72%);
+  box-shadow: inset 0 0 100px rgba(124, 58, 237, 0.18);
+}
+.ll-sim-frame {
+  position: absolute;
+  inset: 10px;
+  border: 2px solid rgba(96, 165, 250, 0.55);
+  border-radius: 18px;
+  pointer-events: none;
+  z-index: 6;
+  box-shadow:
+    0 0 36px rgba(59, 130, 246, 0.4),
+    inset 0 0 48px rgba(124, 58, 237, 0.14);
+  animation: llFramePulse 2.8s ease-in-out infinite alternate;
+}
+.ll-sim-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+  background: radial-gradient(ellipse at center, transparent 42%, rgba(0, 0, 0, 0.55) 100%);
+}
+@keyframes llFramePulse {
+  from { border-color: rgba(96, 165, 250, 0.45); box-shadow: 0 0 28px rgba(59, 130, 246, 0.3), inset 0 0 40px rgba(124, 58, 237, 0.1); }
+  to   { border-color: rgba(167, 139, 250, 0.85); box-shadow: 0 0 48px rgba(167, 139, 250, 0.55), inset 0 0 56px rgba(236, 72, 153, 0.16); }
+}
+.ll-arena-theme-badge {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 7;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #e9d5ff;
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.75), rgba(59, 130, 246, 0.55));
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 4px 20px rgba(124, 58, 237, 0.45);
+  pointer-events: none;
+  animation: llBadgeGlow 2.5s ease-in-out infinite alternate;
+}
+@keyframes llBadgeGlow {
+  from { filter: brightness(1); }
+  to   { filter: brightness(1.18); }
+}
+.ll-zone-hud {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  z-index: 7;
+  padding: 8px 16px;
+  border-radius: 14px;
+  background: rgba(8, 12, 8, 0.82);
+  backdrop-filter: blur(10px);
+  border: 2px solid #22c55e;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  animation: llZoneIn 0.35s ease-out;
+}
+.ll-zone-num {
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+}
+.ll-zone-name {
+  font-size: 12px;
+  font-weight: 800;
+  color: #f0f6ff;
+  letter-spacing: 0.03em;
+}
+@keyframes llZoneIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Live Lab 3D viewport */
+.ll-sim-wrap {
+  position: absolute;
+  inset: 0;
+  min-height: 200px;
+}
+.ll-sim-wrap canvas,
+canvas.ll-sim-canvas {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* ─── Game UI buttons ─── */
+.ll-btn-run {
+  padding: 7px 18px;
+  border-radius: 10px;
+  border: none;
+  background: linear-gradient(135deg, #4ade80, #15803d);
+  color: #fff;
+  font-weight: 800;
+  font-size: 13px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(34, 197, 94, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
+}
+.ll-btn-run:hover {
+  transform: translateY(-1px) scale(1.03);
+  box-shadow: 0 6px 20px rgba(34, 197, 94, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  filter: brightness(1.08);
+}
+.ll-btn-run:active { transform: scale(0.97); }
+
+/* ─── Run countdown ─── */
+.ll-countdown-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, rgba(124, 58, 237, 0.22) 0%, transparent 65%);
+}
+.ll-countdown-num {
+  font-size: clamp(64px, 14vw, 110px);
+  font-weight: 900;
+  color: #fff;
+  text-shadow: 0 0 30px rgba(167, 139, 250, 0.9), 0 4px 0 #4338ca;
+  animation: llCountPop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1);
+  line-height: 1;
+}
+.ll-countdown-go {
+  color: #4ade80;
+  text-shadow: 0 0 40px rgba(74, 222, 128, 1), 0 4px 0 #15803d;
+  font-size: clamp(52px, 12vw, 96px);
+}
+.ll-countdown-sub {
+  margin-top: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #c4b5fd;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+@keyframes llCountPop {
+  from { opacity: 0; transform: scale(0.4); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* ─── Victory celebration ─── */
+.ll-victory-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 19;
+  pointer-events: none;
+  overflow: hidden;
+}
+.ll-victory-burst {
+  position: absolute;
+  top: 18%;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  animation: llVictoryIn 0.5s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+.ll-victory-stars { font-size: 28px; margin-bottom: 4px; }
+.ll-victory-title {
+  font-size: 22px;
+  font-weight: 900;
+  color: #fef08a;
+  text-shadow: 0 0 20px rgba(251, 191, 36, 0.8);
+}
+.ll-victory-medal { font-size: 14px; font-weight: 800; color: #f0f6ff; margin-top: 6px; }
+.ll-victory-xp {
+  font-size: 18px;
+  font-weight: 900;
+  color: #4ade80;
+  margin-top: 4px;
+  text-shadow: 0 0 12px rgba(74, 222, 128, 0.7);
+}
+@keyframes llVictoryIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(20px) scale(0.8); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+}
+.ll-confetti {
+  position: absolute;
+  top: -12px;
+  width: 8px;
+  height: 14px;
+  border-radius: 2px;
+  opacity: 0.9;
+  animation: llConfettiFall 2.8s ease-in forwards;
+  transform: rotate(var(--rot, 0deg));
+}
+@keyframes llConfettiFall {
+  0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+}
+
+/* ─── Playful Blockly workspace ─── */
+.blocklyToolboxCategoryLabel { font-weight: 800 !important; }
+.blocklyTreeRow { border-radius: 8px !important; margin: 2px 4px !important; }
+.blocklyFlyoutBackground { fill: #141a24 !important; }

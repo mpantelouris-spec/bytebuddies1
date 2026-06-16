@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { migrateDesign } from '../../config.js';
+import { computeArenaScore, DIFF_CONFIG } from '../../services/robot-runtime.js';
 
 function SystemRow({ icon, label, status, active }) {
   return (
@@ -24,8 +25,15 @@ export default function TestArenaSystems({
   elapsed,
   distance,
   activeStep,
+  difficulty = 'easy',
 }) {
   const d = migrateDesign(design);
+  const diffCfg = DIFF_CONFIG[difficulty] || DIFF_CONFIG.easy;
+  const score = useMemo(
+    () => computeArenaScore(elapsed, sensorHits, difficulty),
+    [elapsed, sensorHits, difficulty],
+  );
+  const timeLeft = Math.max(0, diffCfg.timeLimit - elapsed);
   const s = d.sensors || {};
   const wheels = d.wheels?.type || 'wheels';
 
@@ -38,7 +46,22 @@ export default function TestArenaSystems({
 
   return (
     <aside className="ta-systems">
-      <h2 className="ta-panel-heading">Robot systems</h2>
+
+      {/* Score card */}
+      <div className="ta-score-card" style={{ '--diff-color': diffCfg.color }}>
+        <div className="ta-score-diff-badge" style={{ background: diffCfg.color + '22', color: diffCfg.color }}>
+          {diffCfg.label}
+        </div>
+        <div className="ta-score-value">{score}</div>
+        <div className="ta-score-label">SCORE</div>
+        {running && (
+          <div className="ta-score-timeleft" style={{ color: timeLeft < 30 ? '#ef4444' : diffCfg.color }}>
+            ⏱ {timeLeft.toFixed(0)}s left
+          </div>
+        )}
+      </div>
+
+      <h2 className="ta-panel-heading">Systems</h2>
       <p className="ta-panel-sub">{d.name || 'My Robot'}</p>
 
       <div className="ta-systems-list">
@@ -91,6 +114,7 @@ export default function TestArenaSystems({
       <div className="ta-mission-stats">
         <div><span>Time</span><strong>{elapsed.toFixed(1)}s</strong></div>
         <div><span>Distance</span><strong>{distance.toFixed(1)} m</strong></div>
+        <div><span>Cleared</span><strong style={{ color: '#14b8a6' }}>{sensorHits}</strong></div>
         <div><span>Status</span><strong>{status}</strong></div>
         {activeStep && (
           <div className="ta-mission-step">

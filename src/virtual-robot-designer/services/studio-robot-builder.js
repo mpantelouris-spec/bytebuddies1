@@ -4,6 +4,7 @@
  * Creates distinct, visually rich 3D models for each chassis type.
  */
 import * as THREE from 'three';
+import { prepareLabRobot } from './art-direction.js';
 
 // Shared geometry instances (reused across builds)
 const BOX_GEO = new THREE.BoxGeometry(1, 1, 1);
@@ -29,9 +30,9 @@ function getPanelTex(key = 'panel') {
   const S = 512;
   const c = document.createElement('canvas'); c.width = S; c.height = S;
   const g = c.getContext('2d');
-  // Subtle gradient base
+  // Light gradient base — stays near white so it doesn't mute the base color
   const grd = g.createLinearGradient(0, 0, S, S);
-  grd.addColorStop(0, '#8e8e8e'); grd.addColorStop(0.5, '#767676'); grd.addColorStop(1, '#828282');
+  grd.addColorStop(0, '#e8e8e8'); grd.addColorStop(0.5, '#d8d8d8'); grd.addColorStop(1, '#e0e0e0');
   g.fillStyle = grd; g.fillRect(0, 0, S, S);
   // Panel seam grid lines
   g.strokeStyle = 'rgba(30,30,30,0.45)'; g.lineWidth = 1.8;
@@ -834,10 +835,12 @@ export const SAMPLE_ROBOTS = [
 
 // ─── Material helpers ──────────────────────────────────────────────────────
 function mat(color, metalness = 0.3, roughness = 0.5, emissive = null, emissiveIntensity = 0.8) {
+  const c = new THREE.Color(color);
   const m = new THREE.MeshStandardMaterial({
-    color: new THREE.Color(color),
-    metalness,
+    color: c,
+    metalness: Math.min(metalness, 0.25),
     roughness,
+    envMapIntensity: 0,
   });
   if (emissive) {
     m.emissive = new THREE.Color(emissive);
@@ -846,18 +849,14 @@ function mat(color, metalness = 0.3, roughness = 0.5, emissive = null, emissiveI
   return m;
 }
 
-/** Metal panel material — adds rivet/seam texture overlay */
+/** Body panel material */
 function matPanel(color, metalness = 0.55, roughness = 0.42, emissive = null, emissiveIntensity = 0.8) {
-  const c = new THREE.Color(color);
   const m = new THREE.MeshStandardMaterial({
-    color: c,
-    metalness,
-    roughness,
-    map: getPanelTex(),
+    color: new THREE.Color(color),
+    metalness: 0.08,
+    roughness: 0.55,
+    envMapIntensity: 0,
   });
-  // Blend color with texture (multiply the panel texture tint with user color)
-  m.map = getPanelTex();
-  m.color.multiplyScalar(1.4); // compensate for dark overlay
   if (emissive) { m.emissive = new THREE.Color(emissive); m.emissiveIntensity = emissiveIntensity; }
   return m;
 }
@@ -899,43 +898,41 @@ function matRubber(color = '#1a1a1a') {
   });
 }
 
-function mesh(geo, material, sx = 1, sy = 1, sz = 1) {
+function mesh(geo, material) {
   const m = new THREE.Mesh(geo, material);
-  m.scale.set(sx, sy, sz);
   m.castShadow = true;
   m.receiveShadow = true;
   return m;
 }
 
 function box(w, h, d, color, metalness = 0.3, roughness = 0.5, emissive = null) {
-  return mesh(BOX_GEO, mat(color, metalness, roughness, emissive), w, h, d);
+  return mesh(new THREE.BoxGeometry(w, h, d), mat(color, metalness, roughness, emissive));
 }
 
 function sphere(r, color, metalness = 0.4, roughness = 0.4, emissive = null) {
-  return mesh(SPHERE_GEO, mat(color, metalness, roughness, emissive), r, r, r);
+  return mesh(new THREE.SphereGeometry(r, 12, 8), mat(color, metalness, roughness, emissive));
 }
 
 function cylinder(r, h, color, metalness = 0.5, roughness = 0.4) {
-  return mesh(CYL_GEO, mat(color, metalness, roughness), r, h, r);
+  return mesh(new THREE.CylinderGeometry(r, r, h, 20), mat(color, metalness, roughness));
 }
 
 function wheel(radius, thick, tireColor, rimColor = '#cccccc') {
   const g = new THREE.Group();
-  // Tire — rubber textured
-  const tire = new THREE.Mesh(CYL_GEO, matRubber(tireColor));
-  tire.scale.set(radius, thick, radius);
+  // Tire — rubber textured (unique geometry per wheel — shared CYL_GEO + scale breaks culling)
+  const tire = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, thick, 20), matRubber(tireColor));
   tire.rotation.z = Math.PI / 2;
   tire.castShadow = true; tire.receiveShadow = true;
   g.add(tire);
   // Rim — brushed metal
-  const rim = new THREE.Mesh(CYL_GEO, matBrushed(rimColor, 0.85, 0.22));
-  rim.scale.set(radius * 0.52, thick * 1.02, radius * 0.52);
+  const rimR = radius * 0.52;
+  const rim = new THREE.Mesh(new THREE.CylinderGeometry(rimR, rimR, thick * 1.02, 16), matBrushed(rimColor, 0.85, 0.22));
   rim.rotation.z = Math.PI / 2;
   rim.castShadow = true;
   g.add(rim);
   // Lug nut detail ring
-  const hub = new THREE.Mesh(CYL_GEO, mat('#aaaaaa', 0.9, 0.15));
-  hub.scale.set(radius * 0.18, thick * 1.04, radius * 0.18);
+  const hubR = radius * 0.18;
+  const hub = new THREE.Mesh(new THREE.CylinderGeometry(hubR, hubR, thick * 1.04, 12), mat('#aaaaaa', 0.9, 0.15));
   hub.rotation.z = Math.PI / 2;
   g.add(hub);
   // 5 lug bolts arranged radially
@@ -959,6 +956,8 @@ function addWheels(group, positions, radius, thick, tireColor) {
   positions.forEach(([x, y, z]) => {
     const w = wheel(radius, thick, tireColor);
     w.position.set(x, y, z);
+    w.userData.isWheel = true;
+    w.traverse((c) => { if (c.isMesh) c.userData.isWheel = true; });
     group.add(w);
   });
 }
@@ -967,14 +966,12 @@ function addWheels(group, positions, radius, thick, tireColor) {
 
 function buildRover(primary, accent) {
   const g = new THREE.Group();
-  // Main body — panel-textured
-  const body = new THREE.Mesh(BOX_GEO, matPanel(primary, 0.42, 0.45));
-  body.scale.set(1.15, 0.42, 1.55);
+  // Main body — panel-textured (sized geometry, not shared BOX_GEO + scale)
+  const body = new THREE.Mesh(new THREE.BoxGeometry(1.15, 0.42, 1.55), matPanel(primary, 0.42, 0.45));
   body.position.set(0, 0.42, 0); body.castShadow = true; body.receiveShadow = true;
   g.add(body);
   // Cab — panel-textured
-  const cab = new THREE.Mesh(BOX_GEO, matPanel(primary, 0.42, 0.45));
-  cab.scale.set(0.84, 0.38, 0.74);
+  const cab = new THREE.Mesh(new THREE.BoxGeometry(0.84, 0.38, 0.74), matPanel(primary, 0.42, 0.45));
   cab.position.set(0, 0.77, -0.15); cab.castShadow = true; cab.receiveShadow = true;
   g.add(cab);
   // Hood
@@ -982,12 +979,12 @@ function buildRover(primary, accent) {
   hood.position.set(0, 0.64, 0.52);
   g.add(hood);
   // Windshield
-  const wind = box(0.72, 0.3, 0.04, '#1a3a5c', 0.7, 0.08);
+  const wind = box(0.72, 0.3, 0.04, '#1a1a2a', 0.7, 0.08);
   wind.position.set(0, 0.76, 0.24);
   wind.rotation.x = -0.36;
   g.add(wind);
   // Rear window
-  const rear = box(0.64, 0.24, 0.04, '#1a3a5c', 0.7, 0.08);
+  const rear = box(0.64, 0.24, 0.04, '#1a1a2a', 0.7, 0.08);
   rear.position.set(0, 0.79, -0.54);
   g.add(rear);
   // Roof rack
@@ -1450,6 +1447,7 @@ function buildDroid(primary, accent) {
   // ════════════════════════════════════════════════════════
   const headGrp = new THREE.Group();
   headGrp.position.set(0, 1.08, 0);
+  headGrp.userData.isHead = true;
   upperGroup.add(headGrp);
 
   // Helmet base — rounded top, flat bottom
@@ -2048,6 +2046,7 @@ function buildMech(primary, accent) {
   // ── HEAD ─────────────────────────────────────────────────────────────────
   const headGrp = new THREE.Group();
   headGrp.position.set(0, 1.38, 0);
+  headGrp.userData.isHead = true;
   torsoGrp.add(headGrp);
 
   const head = box(0.54, 0.44, 0.5, primary, 0.62, 0.3);
@@ -2401,7 +2400,7 @@ function buildHelicopter(primary, accent) {
   fuse.position.set(0, 0.42, 0);
   g.add(fuse);
   // Nose bubble (glass)
-  const nose = sphere(0.3, '#1a3a5c', 0.7, 0.08);
+  const nose = sphere(0.3, '#1a1a2a', 0.7, 0.08);
   nose.position.set(0, 0.44, 0.78);
   g.add(nose);
   // Tail boom
@@ -2423,7 +2422,7 @@ function buildHelicopter(primary, accent) {
   });
   // Side windows
   [-0.34, 0.34].forEach(x => {
-    const win = box(0.04, 0.2, 0.38, '#1a3a5c', 0.7, 0.08);
+    const win = box(0.04, 0.2, 0.38, '#1a1a2a', 0.7, 0.08);
     win.position.set(x, 0.5, 0.32);
     g.add(win);
   });
@@ -4009,14 +4008,18 @@ function buildFactoryBot(primary, accent) {
 // ─── Attachment builders ───────────────────────────────────────────────────
 
 function addCamera(group) {
-  const body = box(0.2, 0.18, 0.18, '#111', 0.8, 0.2);
-  body.position.set(0, 1.3, 0.28);
+  // Mounted on the roof — small bracket + housing + lens
+  const mount = cylinder(0.045, 0.1, '#2a2a30', 0.6, 0.5);
+  mount.position.set(0, 0.92, 0.18);
+  group.add(mount);
+  const body = box(0.16, 0.13, 0.15, '#23232a', 0.55, 0.45);
+  body.position.set(0, 1.0, 0.2);
   group.add(body);
-  const lens = cylinder(0.07, 0.09, '#1a1aff', 0.5, 0.15);
+  const lens = cylinder(0.05, 0.07, '#1a1aff', 0.5, 0.15);
   lens.rotation.x = Math.PI / 2;
-  lens.material.emissive = new THREE.Color('#0000cc');
-  lens.material.emissiveIntensity = 0.6;
-  lens.position.set(0, 1.3, 0.38);
+  lens.material.emissive = new THREE.Color('#0044cc');
+  lens.material.emissiveIntensity = 0.55;
+  lens.position.set(0, 1.0, 0.29);
   group.add(lens);
 }
 
@@ -4042,7 +4045,106 @@ function addGrabber(group) {
 
 // ─── Main export ───────────────────────────────────────────────────────────
 
-export function buildRobotModel(config) {
+/** Modular builder chassis IDs → studio build keys */
+const MODULAR_BUILD_KEYS = {
+  'rover-explorer': 'rover', 'rover-racer': 'scout', 'rover-cargo': 'crawler',
+  'mech-slim': 'mech', 'mech-warrior': 'mech', 'mech-heavy': 'droid',
+  'spider-nano': 'spider', 'spider-scout': 'spider', 'spider-tank': 'battlebot',
+  'drone-quad': 'drone', 'drone-hex': 'drone', 'drone-wing': 'jetplane',
+  'tank-fast': 'tank', 'tank-heavy': 'tank', 'tank-siege': 'battlebot',
+  'hover-pod': 'hoverbot', 'hover-skiff': 'hoverracer', 'hover-orb': 'hoverbot',
+  'sub-torpedo': 'submarine', 'sub-squid': 'submarine', 'sub-heavy': 'deepseabot',
+  'carrier-launch': 'spacerover', 'carrier-bus': 'spacerover', 'carrier-orbital': 'spacerover',
+};
+
+export function normalizeRobotBuildConfig(config = {}) {
+  const base = {
+    name: 'Rover X1',
+    chassisId: 'rover',
+    primaryColor: '#FF8C00',
+    accentColor: '#FFD700',
+    trimColor: '#FFD700',
+    wheelColor: '#1a1a1a',
+    ledColor: '#00D9FF',
+    movementId: 'wheels',
+    sensors: ['camera'],
+    tools: [],
+    materialMetalness: 0.4,
+    materialRoughness: 0.5,
+    materialGlow: 1.0,
+    ...config,
+  };
+  if (!base.chassisBuildKey && MODULAR_BUILD_KEYS[base.chassisId]) {
+    base.chassisBuildKey = MODULAR_BUILD_KEYS[base.chassisId];
+  }
+  if (!CHASSIS_DATA.find(c => c.id === base.chassisId)) {
+    if (!base.chassisBuildKey) base.chassisBuildKey = MODULAR_BUILD_KEYS[base.chassisId] || 'rover';
+    base.chassisId = 'rover';
+  }
+  return base;
+}
+
+/** Clone geometry per mesh and bake scale — fixes shared-geometry rendering bugs in WebGL */
+export function bakeMeshScalesIntoGeometry(root) {
+  root.traverse(obj => {
+    if (!obj.isMesh || !obj.geometry) return;
+    const { x, y, z } = obj.scale;
+    obj.geometry = obj.geometry.clone();
+    if (Math.abs(x - 1) > 1e-4 || Math.abs(y - 1) > 1e-4 || Math.abs(z - 1) > 1e-4) {
+      obj.geometry.scale(x, y, z);
+      obj.scale.set(1, 1, 1);
+    }
+    obj.frustumCulled = false;
+    obj.castShadow = true;
+    obj.receiveShadow = true;
+  });
+}
+
+function buildFallbackSimRobot(cfg) {
+  const primary = cfg.primaryColor || '#FF8C00';
+  const accent = cfg.accentColor || '#FFD700';
+  const g = new THREE.Group();
+  const bodyMat = new THREE.MeshStandardMaterial({ color: primary, metalness: 0.45, roughness: 0.48 });
+  const accentMat = new THREE.MeshStandardMaterial({ color: accent, metalness: 0.5, roughness: 0.4 });
+  const body = new THREE.Mesh(new THREE.BoxGeometry(1.15, 0.42, 1.55), bodyMat);
+  body.position.set(0, 0.42, 0);
+  g.add(body);
+  const cab = new THREE.Mesh(new THREE.BoxGeometry(0.84, 0.38, 0.74), bodyMat);
+  cab.position.set(0, 0.77, -0.15);
+  g.add(cab);
+  const hood = new THREE.Mesh(new THREE.BoxGeometry(0.98, 0.08, 0.52), accentMat);
+  hood.position.set(0, 0.64, 0.52);
+  g.add(hood);
+  [[-0.7, 0.28, 0.55], [0.7, 0.28, 0.55], [-0.7, 0.28, -0.55], [0.7, 0.28, -0.55]].forEach(([x, y, z]) => {
+    const w = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.2, 16), new THREE.MeshStandardMaterial({ color: '#1a1a1a', roughness: 0.92 }));
+    w.rotation.z = Math.PI / 2;
+    w.position.set(x, y, z);
+    g.add(w);
+  });
+  g.userData.chassisId = cfg.chassisBuildKey || cfg.chassisId || 'rover';
+  g.userData.envTex = buildEnvTex();
+  bakeMeshScalesIntoGeometry(g);
+  return g;
+}
+
+/** Build + prepare robot for Live Lab / simulator (handles shared-geometry WebGL bugs) */
+export function buildSimRobot(config = {}) {
+  const cfg = normalizeRobotBuildConfig(config);
+  try {
+    const group = buildRobotModel(cfg);
+    bakeMeshScalesIntoGeometry(group);
+    let meshCount = 0;
+    group.traverse(o => { if (o.isMesh) meshCount++; });
+    if (meshCount < 2) throw new Error('robot mesh count too low');
+    prepareLabRobot(group);
+    return group;
+  } catch (e) {
+    console.warn('[buildSimRobot] using fallback rover mesh', e);
+    return buildFallbackSimRobot(cfg);
+  }
+}
+
+export function buildRobotModel(config = {}) {
   const chassis = CHASSIS_DATA.find(c => c.id === config.chassisId) || CHASSIS_DATA[0];
   const buildId = config.chassisBuildKey || chassis.id;
 

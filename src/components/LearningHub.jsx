@@ -544,7 +544,8 @@ function LessonView({ course, completedSet, onComplete, onBack }) {
           </div>
           <h2 style={{ fontSize: 20, fontWeight: 800, marginBottom: 6 }}>{course.title}</h2>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-            <span className="tag" style={difficultyStyle}>{course.difficulty}</span>
+            {course.difficulty && <span className="tag" style={difficultyStyle}>{course.difficulty}</span>}
+            {course.year && !course.difficulty && <span className="tag" style={{ background: `${course.color}22`, color: course.color, border: `1px solid ${course.color}44` }}>🇬🇧 {course.year} · UK Curriculum</span>}
             <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
               {completedInCourse}/{course.modules.length} modules
             </span>
@@ -712,6 +713,24 @@ function LessonView({ course, completedSet, onComplete, onBack }) {
                 </div>
               )}
 
+              {/* Learning Objectives (CS Curriculum) */}
+              {content?.objectives && content.objectives.length > 0 && (
+                <div style={{ background: `${course.color}0d`, border: `1px solid ${course.color}30`, borderRadius: 12, padding: '14px 18px', marginBottom: 16 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                    <span style={{ fontSize: 16 }}>🎯</span>
+                    <h4 style={{ fontSize: 13, fontWeight: 800, color: course.color, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Learning Objectives</h4>
+                  </div>
+                  <ul style={{ margin: 0, paddingLeft: 20, listStyle: 'none' }}>
+                    {content.objectives.map((obj, i) => (
+                      <li key={i} style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.7, paddingLeft: 4, marginBottom: 3, display: 'flex', gap: 8 }}>
+                        <span style={{ color: course.color, fontWeight: 700, flexShrink: 0 }}>✓</span>
+                        <span>{obj}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
               {/* Activity */}
               {content?.activity && (
                 <div style={{ background: 'linear-gradient(135deg, #f59e0b12, #ef444412)', borderRadius: 12, padding: '16px 20px', marginBottom: 16, border: '1px solid #f59e0b30' }}>
@@ -723,6 +742,79 @@ function LessonView({ course, completedSet, onComplete, onBack }) {
                 </div>
               )}
 
+              {/* Structured Activities (CS Curriculum — 3 activities per lesson) */}
+              {content?.activities && content.activities.length > 0 && (
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                    <span style={{ fontSize: 18 }}>🔬</span>
+                    <h4 style={{ fontSize: 14, fontWeight: 800, color: 'var(--text-primary)' }}>Activities</h4>
+                  </div>
+                  {content.activities.map((act, ai) => (
+                    <div key={ai} style={{
+                      background: ai % 3 === 0 ? `${course.color}0d` : ai % 3 === 1 ? '#3b82f60d' : '#8b5cf60d',
+                      border: `1px solid ${ai % 3 === 0 ? course.color : ai % 3 === 1 ? '#3b82f6' : '#8b5cf6'}30`,
+                      borderRadius: 12, padding: '14px 18px', marginBottom: 12,
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                        <span style={{
+                          width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          background: ai % 3 === 0 ? course.color : ai % 3 === 1 ? '#3b82f6' : '#8b5cf6',
+                          color: 'white', fontSize: 12, fontWeight: 900, flexShrink: 0,
+                        }}>{act.num}</span>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-primary)' }}>{act.title}</div>
+                          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>⏱ {act.duration}</div>
+                        </div>
+                      </div>
+                      {act.desc && <p style={{ fontSize: 13, color: 'var(--text-muted)', fontStyle: 'italic', marginBottom: 8 }}>{act.desc}</p>}
+                      {act.steps && act.steps.length > 0 && (
+                        <ol style={{ margin: 0, paddingLeft: 18 }}>
+                          {act.steps.map((step, si) => (
+                            <li key={si} style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.7, marginBottom: 2 }}>{step}</li>
+                          ))}
+                        </ol>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Extension Challenge (CS Curriculum) */}
+              {content?.extension && (
+                <div style={{ background: 'linear-gradient(135deg, #10b98112, #06b6d412)', border: '1px solid #10b98130', borderRadius: 12, padding: '14px 18px', marginBottom: 16 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                    <span style={{ fontSize: 16 }}>🚀</span>
+                    <h4 style={{ fontSize: 13, fontWeight: 800, color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Extension Challenge</h4>
+                  </div>
+                  <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.75 }}>{content.extension}</p>
+                </div>
+              )}
+
+              {/* Reflection (CS Curriculum) */}
+              {content?.reflection && (
+                <div style={{ background: '#f59e0b0a', border: '1px solid #f59e0b25', borderRadius: 12, padding: '14px 18px', marginBottom: 16 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                    <span style={{ fontSize: 16 }}>💭</span>
+                    <h4 style={{ fontSize: 13, fontWeight: 800, color: '#f59e0b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Think & Reflect</h4>
+                  </div>
+                  <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.75, fontStyle: 'italic' }}>{content.reflection}</p>
+                </div>
+              )}
+
+              {/* UK Curriculum Alignment (CS Curriculum) */}
+              {content?.ukCurriculum && content.ukCurriculum.length > 0 && (
+                <div style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', borderRadius: 10, padding: '12px 16px', marginBottom: 16 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                    <span style={{ fontSize: 14 }}>🇬🇧</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>UK National Curriculum — KS2 Computing</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    {content.ukCurriculum.map((obj, i) => (
+                      <span key={i} style={{ fontSize: 11, padding: '3px 10px', borderRadius: 20, background: '#3b82f615', color: '#3b82f6', fontWeight: 600, border: '1px solid #3b82f625' }}>{obj}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* UNIQUE FEATURE 6: Module Notes */}
               <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: 14, marginTop: 8 }}>
@@ -1042,7 +1134,7 @@ export default function LearningHub() {
     const q = search.toLowerCase();
     filtered = filtered.filter(c =>
       c.title.toLowerCase().includes(q) ||
-      c.description.toLowerCase().includes(q) ||
+      (c.description || c.tagline || '').toLowerCase().includes(q) ||
       (c.topics || []).some(t => t.toLowerCase().includes(q))
     );
   }
@@ -1214,7 +1306,8 @@ export default function LearningHub() {
                 const isStarted = done > 0;
                 const statusLabel = isComplete ? '✅ Completed!' : isStarted ? `Continue (${progress}%)` : 'Start Learning →';
                 const statusColor = isComplete ? '#10b981' : isStarted ? course.color : 'var(--text-muted)';
-                const yearColor = YEAR_COLORS[course.yearGroup];
+                const yearColor = YEAR_COLORS[course.yearGroup] || course.color;
+                const isCsCurriculum = course.id && course.id.startsWith('y') && course.id.includes('-cs-');
                 return (
                   <div key={course.id} className="course-card" onClick={() => openCourse(course)}
                     style={{ display: 'flex', flexDirection: 'column', transition: 'all 0.2s', cursor: 'pointer' }}
@@ -1224,10 +1317,12 @@ export default function LearningHub() {
                     {/* Thumbnail */}
                     <div style={{ height: 140, display: 'flex', alignItems: 'center', justifyContent: 'center', background: `linear-gradient(135deg, ${course.color}35 0%, ${course.color}12 100%)`, position: 'relative', overflow: 'hidden', borderRadius: '12px 12px 0 0' }}>
                       <div style={{ fontSize: 62, filter: 'drop-shadow(0 6px 12px rgba(0,0,0,0.22))' }}>{course.icon}</div>
-                      {/* Difficulty badge */}
-                      <div style={{ position: 'absolute', top: 10, right: 10, background: `${course.color}25`, border: `1px solid ${course.color}40`, color: course.color, borderRadius: 20, padding: '3px 10px', fontSize: 10, fontWeight: 800 }}>{course.difficulty}</div>
+                      {/* Difficulty / year badge */}
+                      {course.difficulty && <div style={{ position: 'absolute', top: 10, right: 10, background: `${course.color}25`, border: `1px solid ${course.color}40`, color: course.color, borderRadius: 20, padding: '3px 10px', fontSize: 10, fontWeight: 800 }}>{course.difficulty}</div>}
                       {/* Year badge */}
-                      <div style={{ position: 'absolute', top: 10, left: 10, background: yearColor, color: '#fff', borderRadius: 20, padding: '3px 10px', fontSize: 10, fontWeight: 800 }}>Year {course.yearGroup}</div>
+                      {course.yearGroup && <div style={{ position: 'absolute', top: 10, left: 10, background: yearColor, color: '#fff', borderRadius: 20, padding: '3px 10px', fontSize: 10, fontWeight: 800 }}>Year {course.yearGroup}</div>}
+                      {course.year && !course.yearGroup && <div style={{ position: 'absolute', top: 10, left: 10, background: course.color, color: '#fff', borderRadius: 20, padding: '3px 10px', fontSize: 10, fontWeight: 800 }}>{course.year}</div>}
+                      {isCsCurriculum && <div style={{ position: 'absolute', top: 10, right: 10, background: 'rgba(0,0,0,0.5)', color: '#fff', borderRadius: 20, padding: '3px 10px', fontSize: 9, fontWeight: 800, letterSpacing: '0.04em' }}>🇬🇧 UK CURRICULUM</div>}
                       {/* Completed glow */}
                       {isComplete && <div style={{ position: 'absolute', inset: 0, background: 'rgba(16,185,129,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><span style={{ fontSize: 38 }}>🏆</span></div>}
                       {/* Progress bar on thumbnail */}
@@ -1236,16 +1331,18 @@ export default function LearningHub() {
                     {/* Body */}
                     <div style={{ padding: '14px 16px', flex: 1, display: 'flex', flexDirection: 'column' }}>
                       <h3 style={{ fontSize: 15, fontWeight: 800, marginBottom: 5, lineHeight: 1.3 }}>{course.title}</h3>
-                      <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12, lineHeight: 1.65, flex: 1 }}>{simplifyText(course.description)}</p>
+                      <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12, lineHeight: 1.65, flex: 1 }}>
+                        {course.tagline || (course.description ? simplifyText(course.description) : '')}
+                      </p>
                       <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 12 }}>
-                        {course.topics.slice(0, 3).map(t => (
+                        {(course.topics || []).slice(0, 3).map(t => (
                           <span key={t} style={{ fontSize: 10, padding: '2px 8px', borderRadius: 10, background: `${course.color}18`, color: course.color, fontWeight: 700, border: `1px solid ${course.color}28` }}>{t}</span>
                         ))}
-                        {course.topics.length > 3 && <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 10, background: 'var(--bg-tertiary)', color: 'var(--text-muted)', fontWeight: 700 }}>+{course.topics.length - 3}</span>}
+                        {(course.topics || []).length > 3 && <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 10, background: 'var(--bg-tertiary)', color: 'var(--text-muted)', fontWeight: 700 }}>+{course.topics.length - 3}</span>}
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-muted)', marginBottom: 10 }}>
-                        <span>📖 {course.modules.length} modules</span>
-                        <span>⏱️ {course.duration}</span>
+                        <span>📖 {course.modules.length} lessons</span>
+                        {course.duration && <span>⏱️ {course.duration}</span>}
                         <span style={{ color: '#f59e0b', fontWeight: 700 }}>⚡ {totalXPCourse} XP</span>
                       </div>
                       <div style={{ height: 5, background: 'var(--bg-tertiary)', borderRadius: 4, overflow: 'hidden', marginBottom: 10 }}>

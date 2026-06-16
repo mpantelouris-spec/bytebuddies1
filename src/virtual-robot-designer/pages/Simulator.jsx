@@ -52,6 +52,7 @@ export default function SimulatorPage({ onGoDesign, onGoCode }) {
   const [sensorHits, setSensorHits] = useState(0);
   const [status, setStatus] = useState('Ready');
   const [activeStep, setActiveStep] = useState('');
+  const [difficulty, setDifficulty] = useState('easy');
   const [cinemaMode, setCinemaMode] = useState(false);
   const [showCelebrate, setShowCelebrate] = useState(false);
   const [consoleLines, setConsoleLines] = useState(() => {
@@ -215,9 +216,11 @@ export default function SimulatorPage({ onGoDesign, onGoCode }) {
         design={d}
         activeEnvironmentId={simTrack}
         activeMissionId={activeMission}
+        difficulty={difficulty}
         onSelectEnvironment={handleCourseSelect}
         onSelectMission={handleMissionSelect}
         onRunMission={() => runSimulation()}
+        onDifficultyChange={setDifficulty}
         running={running}
         onStop={stopSim}
       />
@@ -248,6 +251,7 @@ export default function SimulatorPage({ onGoDesign, onGoCode }) {
           design={d}
           arenaId={simTrack}
           arenaTheme={robotProfile.arenaTheme}
+          difficulty={difficulty}
           running={running}
           activeStep={activeStep}
           onMove={(p) => {
@@ -276,6 +280,7 @@ export default function SimulatorPage({ onGoDesign, onGoCode }) {
         elapsed={elapsed}
         distance={distance}
         activeStep={activeStep}
+        difficulty={difficulty}
       />
       )}
 

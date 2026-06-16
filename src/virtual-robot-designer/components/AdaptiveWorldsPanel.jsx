@@ -115,13 +115,21 @@ function Section({ label, icon, defaultOpen = true, children, count }) {
 
 /* ── Main export ─────────────────────────────────────────────────────── */
 
+const DIFFICULTIES = [
+  { id: 'easy',   label: 'Easy',   icon: '🟢', color: '#22c55e' },
+  { id: 'medium', label: 'Medium', icon: '🟡', color: '#f59e0b' },
+  { id: 'hard',   label: 'Hard',   icon: '🔴', color: '#ef4444' },
+];
+
 export default function AdaptiveWorldsPanel({
   design,
   activeEnvironmentId,
   activeMissionId,
+  difficulty = 'easy',
   onSelectEnvironment,
   onSelectMission,
   onRunMission,
+  onDifficultyChange,
   running,
   onStop,
 }) {
@@ -152,6 +160,26 @@ export default function AdaptiveWorldsPanel({
         >
           {running ? '⏹ Stop Mission' : '▶ Launch Mission!'}
         </button>
+      </div>
+
+      {/* Difficulty selector */}
+      <div className="aw-diff-selector">
+        <p className="aw-diff-label">Difficulty</p>
+        <div className="aw-diff-btns">
+          {DIFFICULTIES.map((d) => (
+            <button
+              key={d.id}
+              type="button"
+              className={`aw-diff-btn ${difficulty === d.id ? 'aw-diff-btn--active' : ''}`}
+              style={{ '--diff-color': d.color }}
+              onClick={() => !running && onDifficultyChange?.(d.id)}
+              disabled={running}
+              title={running ? 'Stop mission to change difficulty' : `Set difficulty to ${d.label}`}
+            >
+              {d.icon} {d.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Smart recommendation */}

@@ -332,9 +332,9 @@ export default function RobotViewer3D({ robotConfig }) {
     // Camera — use fallback dimensions if container hasn't sized yet
     const initW = Math.max(containerRef.current.clientWidth, 300);
     const initH = Math.max(containerRef.current.clientHeight, 400);
-    const camera = new THREE.PerspectiveCamera(50, initW / initH, 0.1, 1000);
-    camera.position.set(2.5, 1.5, 2.5);
-    camera.lookAt(0, 0.5, 0);
+    const camera = new THREE.PerspectiveCamera(45, initW / initH, 0.1, 1000);
+    camera.position.set(2.2, 2.0, 2.2);
+    camera.lookAt(0, 0.55, 0);
     cameraRef.current = camera;
 
     // Renderer
@@ -363,8 +363,8 @@ export default function RobotViewer3D({ robotConfig }) {
     dirLight.shadow.camera.far = 100;
     scene.add(dirLight);
 
-    // Accent light (cyan)
-    const accentLight = new THREE.PointLight(0x00d9ff, 0.3);
+    // Accent light (subtle cyan fill)
+    const accentLight = new THREE.PointLight(0x00d9ff, 0.08);
     accentLight.position.set(-3, 3, 3);
     scene.add(accentLight);
 
@@ -380,15 +380,15 @@ export default function RobotViewer3D({ robotConfig }) {
     platform.receiveShadow = true;
     scene.add(platform);
 
-    // Glow ring under platform
-    const ringGeom = new THREE.TorusGeometry(1.2, 0.08, 8, 32);
-    const ringMat = new THREE.MeshStandardMaterial({
+    // Subtle accent ring around platform edge
+    const ringGeom = new THREE.TorusGeometry(1.2, 0.04, 8, 64);
+    const ringMat = new THREE.MeshBasicMaterial({
       color: 0x00d9ff,
-      emissive: 0x00d9ff,
-      emissiveIntensity: 0.6,
+      transparent: true,
+      opacity: 0.22,
     });
     const ring = new THREE.Mesh(ringGeom, ringMat);
-    ring.position.y = 0.02;
+    ring.position.y = 0.045;
     ring.rotation.x = Math.PI / 2;
     scene.add(ring);
 

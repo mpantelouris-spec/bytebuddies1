@@ -4,10 +4,13 @@
    Year 5 (ages 9-10), Year 6 (ages 10-11)
 
    12 full courses with 10-15 modules each, 3-4 quiz questions per module
-   Dedicated Sprite tracks (Y3, Y4) and Python tracks (Y5, Y6)
+   + 4 CS Curriculum courses (52 lessons, UK National Curriculum aligned)
    =================================================================== */
 
+import { csCurriculumCourses } from './csCurriculum.js';
+
 export const courses = [
+  ...csCurriculumCourses,
 
   /* ====== YEAR 3 - Ages 7-8 ====== */
 

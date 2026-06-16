@@ -816,3 +816,102 @@
   font-size: 0.8rem;
   margin-top: 2px;
 }
+
+/* ── Score card (TestArenaSystems) ───────────────────────────────────── */
+.ta-score-card {
+  background: linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(240,248,255,0.95) 100%);
+  border: 2px solid var(--diff-color, #22c55e);
+  border-radius: 16px;
+  padding: 14px 12px 12px;
+  text-align: center;
+  margin-bottom: 14px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08), 0 0 0 1px rgba(255,255,255,0.6) inset;
+  position: relative;
+}
+
+.ta-score-diff-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  margin-bottom: 8px;
+}
+
+.ta-score-value {
+  font-size: 2.6rem;
+  font-weight: 900;
+  color: var(--diff-color, #22c55e);
+  line-height: 1;
+  letter-spacing: -0.02em;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.ta-score-label {
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: var(--ta-muted, #64748b);
+  margin-top: 2px;
+}
+
+.ta-score-timeleft {
+  margin-top: 8px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+/* ── Difficulty selector (AdaptiveWorldsPanel) ───────────────────────── */
+.aw-diff-selector {
+  padding: 10px 12px 8px;
+  border-bottom: 1px solid rgba(30,144,255,0.1);
+}
+
+.aw-diff-label {
+  margin: 0 0 6px;
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ta-muted, #64748b);
+}
+
+.aw-diff-btns {
+  display: flex;
+  gap: 6px;
+}
+
+.aw-diff-btn {
+  flex: 1;
+  border: 1.5px solid rgba(0,0,0,0.1);
+  border-radius: 10px;
+  background: #fff;
+  padding: 6px 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  color: #374151;
+  white-space: nowrap;
+}
+
+.aw-diff-btn:hover:not(:disabled) {
+  border-color: var(--diff-color, #22c55e);
+  background: color-mix(in srgb, var(--diff-color, #22c55e) 10%, #fff);
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+}
+
+.aw-diff-btn--active {
+  background: var(--diff-color, #22c55e) !important;
+  border-color: var(--diff-color, #22c55e) !important;
+  color: #fff !important;
+  box-shadow: 0 3px 12px color-mix(in srgb, var(--diff-color, #22c55e) 50%, transparent) !important;
+}
+
+.aw-diff-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
+}
