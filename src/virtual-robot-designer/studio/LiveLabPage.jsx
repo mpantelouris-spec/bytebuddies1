@@ -9453,7 +9453,7 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
     canvas.style.height='100%';
     el.appendChild(canvas);
 
-    const isForestCourse=arenaType==='ground'||challenge?.isFoxChase||challenge?.id==='fox_battery_chase';
+    const isForestCourse=arenaType==='jungle'||arenaType==='forest_trail'||challenge?.isFoxChase||challenge?.id==='fox_battery_chase';
 
     // Per-arena colour grade (saturation + warm/cool gain tint)
     const _AG={sky:{s:1.05,g:[1.02,1.02,1.05],b:0.9,t:0.55},space:{s:1.10,g:[0.95,0.98,1.12],b:1.6,t:0.30},cavern:{s:1.20,g:[1.00,0.96,1.10],b:1.7,t:0.25},neon_race:{s:1.25,g:[1.05,0.98,1.10],b:1.8,t:0.22},underwater:{s:1.15,g:[0.92,1.02,1.10],b:1.4,t:0.30},jungle:{s:1.30,g:[1.05,1.05,0.92],b:1.0,t:0.45},factory:{s:1.00,g:[0.96,1.00,1.05],b:1.5,t:0.30},temple:{s:1.18,g:[1.06,1.00,0.90],b:1.2,t:0.38},combat:{s:1.15,g:[1.08,0.95,0.92],b:1.6,t:0.28},jet:{s:1.10,g:[1.03,1.02,0.98],b:1.0,t:0.50},zero_g:{s:1.10,g:[0.97,0.99,1.10],b:1.5,t:0.30},lego:{s:1.20,g:[1.04,1.02,1.00],b:0.9,t:0.55},terrain:{s:1.15,g:[1.05,1.02,0.94],b:1.0,t:0.48},ground:{s:1.30,g:[1.05,1.05,0.92],b:1.2,t:0.42},default:{s:1.10,g:[1.02,1.01,1.00],b:1.2,t:0.40}};
