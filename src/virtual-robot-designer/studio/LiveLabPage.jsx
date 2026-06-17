@@ -5047,12 +5047,25 @@ function _neonRaceArena(scene) {
 
 function _jungleArena(scene) {
   const g = new THREE.Group(); g.name = 'arena';
-  scene.background = new THREE.Color(0x0d2b0a);
-  scene.fog = new THREE.Fog(0x1a4a12, 18, 48);
-  // Muddy ground
-  const groundMat = new THREE.MeshStandardMaterial({color:0x3d2b1a,roughness:0.98,metalness:0.02});
+  scene.background = new THREE.Color(0x0d1a10);
+  scene.fog = new THREE.FogExp2(0x0d1a10, 0.018);
+  // Dark forest ground
+  const groundMat = new THREE.MeshStandardMaterial({color:0x1a3020,roughness:0.98,metalness:0.02});
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(36, 65), groundMat);
   ground.rotation.x = -Math.PI/2; ground.receiveShadow = true; g.add(ground);
+  // Firefly particles
+  const ffPos=[]; for(let i=0;i<80;i++){ffPos.push((Math.random()-0.5)*32,0.4+Math.random()*3.5,-(Math.random()*40)+4);}
+  const ffGeo=new THREE.BufferGeometry(); ffGeo.setAttribute('position',new THREE.Float32BufferAttribute(ffPos,3));
+  const fireflies=new THREE.Points(ffGeo,new THREE.PointsMaterial({color:0xccff88,size:0.18,transparent:true,opacity:0.9,blending:THREE.AdditiveBlending,depthWrite:false,sizeAttenuation:true}));
+  fireflies.name='mover0'; g.add(fireflies);
+  // Warm lantern posts
+  [[-6,-4],[6,-12],[-7,-20],[6,-28]].forEach(([lx,lz])=>{
+    const post=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.1,2.4,6),new THREE.MeshStandardMaterial({color:0x2a1c10,roughness:0.9}));
+    post.position.set(lx,1.2,lz); g.add(post);
+    const lantern=new THREE.Mesh(new THREE.SphereGeometry(0.3,10,8),new THREE.MeshStandardMaterial({color:0xffcc66,emissive:0xffaa33,emissiveIntensity:2.4}));
+    lantern.position.set(lx,2.5,lz); g.add(lantern);
+    const glow=new THREE.PointLight(0xffaa44,0.9,8); glow.position.set(lx,2.5,lz); g.add(glow);
+  });
   // Mud puddles
   const mudMat = new THREE.MeshStandardMaterial({color:0x2a1a0a,roughness:0.96,transparent:true,opacity:0.85});
   [[-3,-4],[4,-9],[-5,-14],[2,-20],[-3,-26]].forEach(([mx,mz])=>{
@@ -5061,7 +5074,7 @@ function _jungleArena(scene) {
   });
   // Trees — trunk + canopy
   const trunkMat = new THREE.MeshStandardMaterial({color:0x3d2610,roughness:0.95});
-  const leafColors = [0x1a5c18, 0x22681a, 0x2d7a20, 0x16a34a, 0x15803d];
+  const leafColors = [0x1a3d12, 0x234d1a, 0x1a5c18, 0x163d12, 0x1f4a16];
   [[-7,-5],[7,-8],[-9,-14],[8,-18],[-6,-22],[9,-26],[-8,-10],[6,-30],[-10,-32]].forEach(([tx,tz],i)=>{
     const tH = 4 + (i%3)*2;
     const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.22,0.32,tH,7),trunkMat);
@@ -5105,6 +5118,13 @@ function _jungleArena(scene) {
       new THREE.MeshStandardMaterial({color:cols[i],emissive:cols[i],emissiveIntensity:0.8,transparent:true,opacity:0.88}));
     ring.rotation.x=Math.PI/2; ring.position.set(cpx,0.5,cpz); ring.name='cp'; g.add(ring);
   });
+  // Glowing paw-print trail markers (pulse via 'cp' name handler)
+  for(let z=2; z>=-32; z-=3){
+    const px=Math.sin(z*0.3)*2;
+    const paw=new THREE.Mesh(new THREE.CircleGeometry(0.28,12),
+      new THREE.MeshStandardMaterial({color:0xccff88,emissive:0xccff88,emissiveIntensity:1.4,transparent:true,opacity:0.85}));
+    paw.rotation.x=-Math.PI/2; paw.position.set(px,0.04,z); paw.name='cp'; g.add(paw);
+  }
   scene.add(g);
 }
 
@@ -9546,6 +9566,10 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
     attachRobotAccentGlow(robot);
     scene.add(robot);
 
+    // Blob shadow under robot
+    const blobShadow=new THREE.Mesh(new THREE.CircleGeometry(0.8,16),new THREE.MeshBasicMaterial({color:0x000000,transparent:true,opacity:0.35,depthWrite:false}));
+    blobShadow.rotation.x=-Math.PI/2; blobShadow.position.y=0.02; scene.add(blobShadow);
+
     // Soft spawn ring — goal-oriented starting marker
     const spawnRingGeo=new THREE.RingGeometry(1.1,1.55,32);
     const spawnRingMat=new THREE.MeshBasicMaterial({color:WORLD_COLORS.pathGlow,transparent:true,opacity:0.35,side:THREE.DoubleSide,depthWrite:false});
@@ -9776,6 +9800,7 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
 
       const {yOff,rollZ}=getGroundEffect(movId,rs.bobPhase||0,rs.t);
       robot.position.set(rs.x,rs.y+yOff,rs.z);
+      blobShadow.position.x=rs.x; blobShadow.position.z=rs.z;
       const stateFx=robotState.apply(rs.t,dt,mode);
       robot.position.y+=stateFx.yOff;
       robot.rotation.y=rs.angle+(stateFx.rotY||0);
