@@ -4,6 +4,7 @@
  */
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import * as Blockly from 'blockly';
+import 'blockly/blocks';
 import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
@@ -16,26 +17,102 @@ import {
   applyArenaAtmosphere, animateRobotWheels, animateRobotIdle, emitWheelDust, resolveArenaTheme,
 } from '../services/sim-visual-polish.js';
 import {
-  setupSimLighting, setupSoftEnvironment, configureLabRenderer,
-  stylizeMeshMaterials, createExecutionTrail, WORLD_COLORS,
+  setupSimLighting, setupSoftEnvironment, setupRaceEnvironment, setupStadiumNightEnvironment, setupMKDayEnvironment, setupCombatEnvironment, setupFootballEnvironment, configureLabRenderer,
+  stylizeMeshMaterials, createExecutionTrail, createPreviewPath, WORLD_COLORS,
+  detectQualityTier, QUALITY_PRESETS, createSimWebGLRenderer, formatSimStartupError, isEmbeddedPreviewBrowser,
 } from '../services/art-direction.js';
 import { createRobotStateController, attachRobotAccentGlow } from '../services/robot-visual-states.js';
 import { ROBOT_COURSES, TIERS, ROBOT_TYPE_TO_CATALOG } from '../../data/courseCatalog.js';
 import { ROBOT_TRACKS, trackLevelToCourse, calcTrackScore, calcTrackXp, getTrackLevel, getTrackLevelById, BONUS_COURSES, ALL_COURSES_CATALOG, COURSE_LENGTHS, TRACK_CATEGORIES, LEVELS_PER_TRACK } from '../data/robot-tracks.js';
 import { GameProgress, fmtTime, LVL_THRESH, DIFF_XP } from '../services/game-progress.js';
 import {
-  MissionControlPanel, StatsBar,
+  MissionControlPanel, StatsBar, ChallengeMedalBar,
   GameLevelSelect, GameVictoryScreen, GameFailureScreen, robotMood,
-  CustomCodePanel, getRobotGroup,
+  CustomCodePanel,
 } from './LiveLabGameUI.jsx';
+import {
+  FLAPPY_STARTER_SCRIPT,
+  flattenHandlerActions,
+  compileEventHandlers,
+  compileHandlerTree,
+} from '../data/flappy-starter-script.js';
+import { isFlappyBirdCourse } from '../data/flappy-bird-blocks.js';
+import { UNIVERSAL_BLOCKLY_EVENT_TYPES } from '../data/universal-event-blocks.js';
+import { FLAPPY_BLOCK_DEFS } from '../data/flappy-block-defs.js';
+import { compileFlappyScratchScript, FlappyBlockRuntime } from '../data/flappy-block-runtime.js';
+import { isFightingCourse, FIGHTING_STARTER_SCRIPT } from '../data/fighting-blocks.js';
+import { isFootballCourse, FOOTBALL_STARTER_SCRIPT, FOOTBALL_ROLE_STARTERS, FOOTBALL_TEAM_ROLES } from '../data/football-blocks.js';
+import { isRaceCourse, getRaceStarterScript } from '../data/racing-starter-script.js';
+import { getCarRacingTrack, isCarChassis } from '../data/car-racing-tracks.js';
+import { getMKTrack } from '../racing/mk-tracks/MKTrackRegistry.js';
+import { FOOTBALL_COURSES, resolveFootballLabCourse } from '../data/football-courses.js';
+import { MK_RACING_COURSES, MK_RACING_COURSE_BY_ID } from '../data/mk-racing-courses.js';
+import { CodeRacerTrackCup } from '../racing/CodeRacerTrackCup.jsx';
+import { FIGHTING_COURSES } from '../data/fighting-courses.js';
+import { compileFightingScratchScript, FightingBlockRuntime } from '../data/fighting-block-runtime.js';
+import { compileFootballScratchScript, createFootballRuntimes, tickFootballRuntimes, resetFootballRuntimes } from '../data/football-block-runtime.js';
+import { getFightingArchetype } from '../data/fighting-robot-types.js';
+import { buildFightingArena, alignFighterToRingSurface } from './FightingArena.js';
+import { buildFootballArena } from './FootballArena.js';
+import { FootballHUD } from './FootballHUD.jsx';
+import { FootballHub } from './FootballHub.jsx';
+import { FightingHUD } from './FightingHUD.jsx';
+import { FightingAcademyHUD } from './FightingAcademyHUD.jsx';
+import { FightingHub } from './FightingHub.jsx';
+import { FightingResults } from './FightingResults.jsx';
+import { attachFightingKeyboard } from './fighting-keyboard-controls.js';
+import { recordFightResult, getFightCareer } from '../services/fight-career-progress.js';
+import { createFightingVfx, wireFightingVfx } from './fighting-vfx.js';
+import {
+  patchBlocklyToolbox,
+  pickSelectableToolboxItem,
+  safeCloseToolboxFlyout,
+  safeOpenFirstToolboxCategory,
+  safeSelectToolboxItem,
+} from '../../utils/blocklyToolboxSafe.js';
+import {
+  buildCircuitSprintArena,
+  buildTimeTrialArena,
+  buildSunnyCircuitArena,
+  buildDragonSkywayArena,
+  buildVolcanoDriftArena,
+  buildMKTrackArena,
+} from './CircuitSprintArena.js';
+import { MK_ARENA_TYPES } from '../racing/mk-tracks/MKTrackRegistry.js';
+import { BIOME_ARENA_TYPES, getBiomeTrack } from '../racing/mk-tracks/BiomeTrackRegistry.js';
+import { getBiomeCssGrade } from '../racing/mk-tracks/BiomeAAAVisualSpec.js';
+import { getHazardSpeedMultiplier } from '../racing/mk-tracks/TrackFeaturesKit.js';
+import { buildFlappyBirdArena } from './FlappyBirdArena.js';
+import { advanceAlongRaceTrack, sampleRaceCamera, sampleRaceStartCamera, sampleGridLaunchCamera, sampleFixedChaseCamera, FLAT_ROAD_SURFACE_Y, KART_VISUAL_LIFT, KART_CHASSIS_ROAD_GAP, plantKartOnRoad, roadSurfaceYAt, raycastRoadSurfaceY, measureKartWheelDrop } from '../racing/RacingRaceLogic.js';
+import { closestTrackT } from '../racing/RacingTrackSystem.js';
+import { downgradeTrackPerfBudget } from '../racing/mk-tracks/TrackPerformanceKit.js';
+import { buildAdventureArena } from './AdventureArenaBuilder.js';
+import { buildMissionArena } from './MissionArenaBuilder.js';
+import {
+  expandRobotMissionsAsCourses, getRobotMission, getRobotMissionStory, getMissionFailTip,
+  getCampaignSectionsForRobot, getMissionsForRobotType, calcMissionStars,
+} from '../data/robot-mission-campaign.js';
+import { RobotMissionProgress } from '../services/robot-mission-progress.js';
+import { RobotMissionPanel, MissionCodingTip, MissionVictoryBanner } from './RobotMissionPanel.jsx';
 import { expandFlagshipCourses, buildFlagshipStories } from '../data/flagship-courses.js';
 import { buildFlagshipArena } from '../services/flagship-arenas.js';
 import {
   expandGameMissionsAsCourses, getGameMission, getMissionStory, MISSION_GENRE_SECTIONS,
 } from '../data/game-missions.js';
 import {
-  filterCoursesForRobot, enrichCourseWithGameLogic, getGameLogicForCourse,
+  filterCoursesForRobot, enrichCourseWithGameLogic, getGameLogicForCourse, resolveCourseObjectives,
+  getDefaultCourseForRobot,
 } from '../data/course-game-logic.js';
+import {
+  ALL_CHASSIS_GAME_MODES,
+  CHASSIS_GAME_MODE_BY_ID,
+  getCoursesForChassis,
+  getDefaultChassisCourse,
+  isCourseForChassis,
+  resolveChassisModeCourse,
+  resolveChassisKey,
+} from '../data/chassis-game-modes.js';
+import { getChassisEnvironment, ARENA_CONFIG } from '../data/robot-arena-config.js';
 import {
   FOX_CHASE_WAYPOINTS, buildFoxChasePath, buildFoxChaseObstacles, buildFoxPawPrints,
   buildFoxForestZones, buildFoxMinimalBackdrop, buildFoxPathCoins,
@@ -48,6 +125,12 @@ import {
 import './LiveLabPage.css';
 import './LiveLabGame.css';
 
+/** Biome vista plates removed — 3D sky domes only (no CSS/PNG overlays). */
+const BIOME_SKY_PLATES = {};
+
+/** Wrong-course guard for adventure cavern vs racing track. */
+const WRONG_CRYSTAL_ARENAS = new Set(['crystal_caverns', 'crystal_cave', 'cavern', 'deep_cave']);
+
 // ─────────────────────────────────────────────────────────────────────────────
 // CUSTOM ROBOT BLOCK DEFINITIONS  (Blockly 10 JSON array format)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -56,6 +139,40 @@ const ROBOT_BLOCK_DEFS = [
   { type:'robot_when_start', message0:'🚀  When  START  clicked',
     nextStatement:null, style:'event_blocks', hat:'cap',
     tooltip:'Start your robot program here' },
+
+  { type:'robot_when_key', message0:'⌨️  When  %1  pressed',
+    args0:[{type:'field_dropdown',name:'KEY',options:[['spacebar ⌨️','space'],['up arrow ⬆','up'],['down arrow ⬇','down']]}],
+    nextStatement:null, style:'event_blocks', hat:'cap', tooltip:'Runs when key is pressed' },
+  { type:'robot_when_collision', message0:'💥  When collision detected',
+    nextStatement:null, style:'event_blocks', hat:'cap' },
+  { type:'robot_when_zone', message0:'📍  When zone reached',
+    nextStatement:null, style:'event_blocks', hat:'cap' },
+  { type:'robot_when_collect', message0:'✨  When item collected',
+    nextStatement:null, style:'event_blocks', hat:'cap' },
+  { type:'robot_when_sensor', message0:'📡  When sensor triggers',
+    nextStatement:null, style:'event_blocks', hat:'cap' },
+  { type:'robot_when_battery', message0:'🔋  When battery below  %1  %',
+    args0:[{type:'field_number',name:'PCT',value:20,min:5,max:50}],
+    nextStatement:null, style:'event_blocks', hat:'cap' },
+  { type:'robot_when_timer', message0:'⏱️  When timer reaches  %1  s',
+    args0:[{type:'field_number',name:'SECS',value:5,min:1,max:60}],
+    nextStatement:null, style:'event_blocks', hat:'cap' },
+
+  // ── FLAPPY BIRDBOT events ─────────────────────────────────────────────────
+  { type:'robot_when_gap_passed', message0:'🎯  When gap passed',
+    nextStatement:null, style:'event_blocks', hat:'cap', tooltip:'Fires when bird clears a pipe gap' },
+  { type:'robot_when_game_over', message0:'🛑  When game over',
+    nextStatement:null, style:'event_blocks', hat:'cap', tooltip:'Fires once when the run ends' },
+
+  { type:'robot_when_checkpoint', message0:'🚩  When checkpoint passed',
+    nextStatement:null, style:'event_blocks', hat:'cap', tooltip:'Fires when you pass a racing checkpoint gate' },
+  { type:'robot_when_lap', message0:'🏁  When lap  %1  completed',
+    args0:[{type:'field_number',name:'LAP',value:1,min:1,max:99}],
+    nextStatement:null, style:'event_blocks', hat:'cap', tooltip:'Fires when you finish the chosen lap' },
+  { type:'robot_when_race_won', message0:'🏆  When race won',
+    nextStatement:null, style:'event_blocks', hat:'cap', tooltip:'Fires when you cross the finish line and win' },
+  { type:'robot_when_goal', message0:'🎯  When goal reached',
+    nextStatement:null, style:'event_blocks', hat:'cap', tooltip:'Fires when the robot reaches the finish zone' },
 
   // ── MOVEMENT ─────────────────────────────────────────────────────────────
   { type:'robot_move_forward', message0:'⬆  Move forward  %1  steps',
@@ -69,14 +186,110 @@ const ROBOT_BLOCK_DEFS = [
 
   { type:'robot_turn_left', message0:'↺  Turn left  %1',
     args0:[{type:'field_dropdown',name:'ANGLE',options:[['45°','45'],['90°','90'],['135°','135'],['180°','180']]}],
-    previousStatement:null, nextStatement:null, style:'move_blocks' },
+    previousStatement:null, nextStatement:null, style:'move_blocks',
+    tooltip:'Rotate exactly that many degrees to the left. 90° = quarter turn. 180° = U-turn.' },
 
   { type:'robot_turn_right', message0:'↻  Turn right  %1',
     args0:[{type:'field_dropdown',name:'ANGLE',options:[['45°','45'],['90°','90'],['135°','135'],['180°','180']]}],
-    previousStatement:null, nextStatement:null, style:'move_blocks' },
+    previousStatement:null, nextStatement:null, style:'move_blocks',
+    tooltip:'Rotate exactly that many degrees to the right.' },
+
+  { type:'robot_turn_corner_left', message0:'↩  Corner left',
+    previousStatement:null, nextStatement:null, style:'move_blocks',
+    tooltip:'Smooth arc turn left — robot curves around the corner while moving.' },
+
+  { type:'robot_turn_corner_right', message0:'↪  Corner right',
+    previousStatement:null, nextStatement:null, style:'move_blocks',
+    tooltip:'Smooth arc turn right — robot curves around the corner while moving.' },
+
+  { type:'robot_u_turn', message0:'🔄  U-turn',
+    previousStatement:null, nextStatement:null, style:'move_blocks',
+    tooltip:'Smooth 180° arc — robot turns around while moving forward.' },
+
+  { type:'robot_move_forward_until', message0:'⬆  Move forward until  %1',
+    args0:[{type:'field_dropdown',name:'COND',options:[['wall detected','wall'],['goal reached','goal'],['item nearby','item'],['collision','collision']]}],
+    previousStatement:null, nextStatement:null, style:'move_blocks',
+    tooltip:'Robot moves forward until the chosen condition is true, then stops.' },
+
+  { type:'robot_zigzag', message0:'〰  Zigzag  %1  times',
+    args0:[{type:'field_number',name:'TIMES',value:4,min:2,max:10,precision:1}],
+    previousStatement:null, nextStatement:null, style:'move_blocks',
+    tooltip:'Robot weaves left and right in a zigzag pattern.' },
+
+  { type:'robot_circle', message0:'⭕  Circle  %1',
+    args0:[{type:'field_dropdown',name:'DIR',options:[['clockwise','cw'],['anticlockwise','ccw']]}],
+    previousStatement:null, nextStatement:null, style:'move_blocks',
+    tooltip:'Robot drives in a complete circle.' },
 
   { type:'robot_spin', message0:'🌀  Spin around',
     previousStatement:null, nextStatement:null, style:'move_blocks' },
+
+  { type:'robot_flap', message0:'🐦  Flap!',
+    previousStatement:null, nextStatement:null, style:'move_blocks',
+    tooltip:'Flap wings to rise through pipe gaps' },
+
+  { type:'robot_set_flap_strength', message0:'💪  Set flap strength  %1',
+    args0:[{type:'field_number',name:'STRENGTH',value:5,min:1,max:10,precision:1}],
+    previousStatement:null, nextStatement:null, style:'move_blocks' },
+
+  { type:'robot_set_gravity_strength', message0:'⬇️  Set gravity strength  %1',
+    args0:[{type:'field_number',name:'STRENGTH',value:5,min:1,max:10,precision:1}],
+    previousStatement:null, nextStatement:null, style:'move_blocks',
+    tooltip:'Adjust how fast the bird falls (advanced)' },
+
+  { type:'robot_show_score', message0:'📺  Show score',
+    previousStatement:null, nextStatement:null, style:'game_blocks' },
+  { type:'robot_restart_game', message0:'🔄  Restart game',
+    previousStatement:null, nextStatement:null, style:'game_blocks' },
+  { type:'robot_flappy_pause', message0:'⏱️  Pause  %1  seconds',
+    args0:[{type:'field_number',name:'SECS',value:1,min:0.1,max:5,precision:1}],
+    previousStatement:null, nextStatement:null, style:'game_blocks' },
+
+  { type:'robot_flappy_distance', message0:'📏  Distance to next pipe',
+    previousStatement:null, nextStatement:null, style:'sense_blocks' },
+  { type:'robot_flappy_height', message0:'📊  Height of bird',
+    previousStatement:null, nextStatement:null, style:'sense_blocks' },
+  { type:'robot_flappy_gap_center', message0:'🎯  Gap center height',
+    previousStatement:null, nextStatement:null, style:'sense_blocks' },
+  { type:'robot_flappy_falling', message0:'⬇️  Is falling?',
+    previousStatement:null, nextStatement:null, style:'sense_blocks' },
+  { type:'robot_read_score', message0:'⭐  Score',
+    previousStatement:null, nextStatement:null, style:'variable_blocks' },
+  { type:'robot_read_high_score', message0:'🏆  High Score',
+    previousStatement:null, nextStatement:null, style:'variable_blocks' },
+  { type:'robot_repeat_until_gameover', message0:'🔂  Repeat until game over',
+    args0:[], inputsInline:true,
+    message1:'%1', args1:[{type:'input_statement',name:'DO'}],
+    previousStatement:null, nextStatement:null, style:'control_blocks' },
+
+  // Flappy value blocks (Number / Boolean outputs for Logic)
+  { type:'robot_num_pipe_dist', message0:'📏  Distance to next pipe',
+    output:'Number', style:'sense_blocks' },
+  { type:'robot_num_bird_height', message0:'📊  Height of bird',
+    output:'Number', style:'sense_blocks' },
+  { type:'robot_num_gap_center', message0:'🎯  Gap center height',
+    output:'Number', style:'sense_blocks' },
+  { type:'robot_is_falling_bool', message0:'⬇️  Is falling?',
+    output:'Boolean', style:'sense_blocks' },
+  { type:'robot_num_score', message0:'⭐  Score',
+    output:'Number', style:'variable_blocks' },
+  { type:'robot_num_high_score', message0:'🏆  High Score',
+    output:'Number', style:'variable_blocks' },
+  { type:'robot_flappy_gt', message0:'%1  >  %2',
+    args0:[
+      {type:'input_value',name:'A',check:'Number'},
+      {type:'input_value',name:'B',check:'Number'},
+    ], output:'Boolean', style:'control_blocks' },
+  { type:'robot_flappy_lt', message0:'%1  <  %2',
+    args0:[
+      {type:'input_value',name:'A',check:'Number'},
+      {type:'input_value',name:'B',check:'Number'},
+    ], output:'Boolean', style:'control_blocks' },
+  { type:'robot_flappy_eq', message0:'%1  =  %2',
+    args0:[
+      {type:'input_value',name:'A',check:'Number'},
+      {type:'input_value',name:'B',check:'Number'},
+    ], output:'Boolean', style:'control_blocks' },
 
   { type:'robot_stop', message0:'⏹  Stop',
     previousStatement:null, nextStatement:null, style:'move_blocks' },
@@ -477,12 +690,19 @@ const ROBOT_BLOCK_DEFS = [
     previousStatement:null, nextStatement:null, style:'move_blocks' },
 
   // ── VARIABLES ────────────────────────────────────────────────────────────────
-  { type:'robot_var_set', message0:'📦  Set  %1  =  %2',
-    args0:[{type:'field_input',name:'VAR',text:'score'},{type:'field_number',name:'VAL',value:0}],
+  { type:'robot_var_set', message0:'📝  Set  %1  to  %2',
+    args0:[
+      {type:'field_input',name:'VAR',text:'myVar'},
+      {type:'input_value',name:'VAL',check:'Number'},
+    ],
     previousStatement:null, nextStatement:null, style:'variable_blocks', tooltip:'Set a variable to a value' },
   { type:'robot_var_change', message0:'📦  Change  %1  by  %2',
     args0:[{type:'field_input',name:'VAR',text:'score'},{type:'field_number',name:'DELTA',value:1}],
     previousStatement:null, nextStatement:null, style:'variable_blocks' },
+  { type:'robot_var_create', message0:'📦  Create variable  %1',
+    args0:[{type:'field_input',name:'VAR',text:'myVar'}],
+    previousStatement:null, nextStatement:null, style:'variable_blocks',
+    tooltip:'Create a new player variable (starts at 0)' },
   { type:'robot_var_get', message0:'📦  Get  %1',
     args0:[{type:'field_input',name:'VAR',text:'score'}],
     output:'Number', style:'variable_blocks' },
@@ -709,7 +929,7 @@ const ROBOT_BLOCK_DEFS = [
   // ── DRONE ADVANCED ───────────────────────────────────────────────────────────
   { type:'robot_emergency_land', message0:'🆘  Emergency land',
     previousStatement:null, nextStatement:null, style:'move_blocks', tooltip:'Controlled emergency descent' },
-  { type:'robot_altitude_hold', message0:'🔒  Hold altitude  %1  m',
+  { type:'robot_hold_at_altitude', message0:'🔒  Hold altitude  %1  m',
     args0:[{type:'field_number',name:'ALT',value:5,min:0.5,max:50}],
     previousStatement:null, nextStatement:null, style:'move_blocks' },
   { type:'robot_wind_correction', message0:'🌬️  Wind correction  %1',
@@ -743,7 +963,7 @@ const ROBOT_BLOCK_DEFS = [
   { type:'robot_navigate_to', message0:'📍  Navigate to  X:%1  Z:%2',
     args0:[{type:'field_number',name:'X',value:0,min:-50,max:50},{type:'field_number',name:'Z',value:5,min:-50,max:50}],
     previousStatement:null, nextStatement:null, style:'move_blocks' },
-  { type:'robot_follow_path', message0:'🛣️  Follow path  %1',
+  { type:'robot_follow_path_style', message0:'🛣️  Follow path  %1',
     args0:[{type:'field_dropdown',name:'PATH',options:[['waypoints 📍','waypoints'],['line ─','line'],['circle ○','circle']]}],
     previousStatement:null, nextStatement:null, style:'ai_blocks' },
   { type:'robot_dock', message0:'🔌  Dock at station',
@@ -764,9 +984,6 @@ const ROBOT_BLOCK_DEFS = [
   { type:'robot_orbit_point', message0:'🔄  Orbit point  R:%1 m  speed:%2',
     args0:[{type:'field_number',name:'RADIUS',value:3,min:1,max:20},{type:'field_number',name:'SPEED',value:30,min:5,max:180}],
     previousStatement:null, nextStatement:null, style:'move_blocks', tooltip:'Circular movement around current position' },
-  { type:'robot_maintain_distance', message0:'↔️  Keep  %1  m from target',
-    args0:[{type:'field_number',name:'DIST',value:2,min:0.5,max:10}],
-    previousStatement:null, nextStatement:null, style:'move_blocks' },
   { type:'robot_random_walk', message0:'🎲  Random walk in  %1  m radius',
     args0:[{type:'field_number',name:'RADIUS',value:5,min:1,max:20}],
     previousStatement:null, nextStatement:null, style:'move_blocks' },
@@ -822,7 +1039,7 @@ const ROBOT_BLOCK_DEFS = [
   { type:'robot_smart_avoid_obj', message0:'🧠  Smart avoid  %1',
     args0:[{type:'field_input',name:'OBJ',text:'obstacle'}],
     previousStatement:null, nextStatement:null, style:'ai_blocks' },
-  { type:'robot_formation_fly', message0:'🛸  Formation fly  %1',
+  { type:'robot_formation_layout', message0:'🛸  Formation fly  %1',
     args0:[{type:'field_dropdown',name:'FMT',options:[['line ─','line'],['triangle △','triangle'],['square □','square'],['circle ○','circle']]}],
     previousStatement:null, nextStatement:null, style:'ai_blocks' },
   { type:'robot_get_nearby_objects', message0:'📡  Objects within  %1  m',
@@ -863,7 +1080,7 @@ const ROBOT_BLOCK_DEFS = [
   { type:'robot_warning_lights', message0:'🚨  Warning lights',
     previousStatement:null, nextStatement:null, style:'lights_blocks' },
   { type:'robot_pulse_lights', message0:'💓  Pulse lights  %1',
-    args0:[{type:'field_colour',name:'COLOR',colour:'#00d9ff'}],
+    args0:[{type:'field_dropdown',name:'COLOR',options:[['cyan 💎','cyan'],['red 🔴','red'],['green 🟢','green'],['yellow 🟡','yellow']]}],
     previousStatement:null, nextStatement:null, style:'lights_blocks' },
   { type:'robot_hologram_display', message0:'🔮  Hologram display  %1',
     args0:[{type:'field_input',name:'MSG',text:'BYTEBUDDIES'}],
@@ -936,8 +1153,6 @@ const ROBOT_BLOCK_DEFS = [
   // ── HOVER — COMPLETE SET ─────────────────────────────────────────────────────
   { type:'robot_anti_grav_boost', message0:'🔮  Anti-gravity boost!',
     previousStatement:null, nextStatement:null, style:'move_blocks', tooltip:'1-second rapid altitude burst' },
-  { type:'robot_hover_stabilize', message0:'⚖️  Stabilize hover',
-    previousStatement:null, nextStatement:null, style:'move_blocks' },
   { type:'robot_hover_side_drift', message0:'↔️  Hover drift  %1  at  %2  m/s',
     args0:[{type:'field_dropdown',name:'DIR',options:[['left ←','left'],['right →','right']]},{type:'field_number',name:'SPD',value:1,min:0.5,max:5}],
     previousStatement:null, nextStatement:null, style:'move_blocks' },
@@ -954,19 +1169,15 @@ const ROBOT_BLOCK_DEFS = [
   // ── UNDERWATER — COMPLETE SET ────────────────────────────────────────────────
   { type:'robot_sonar_pulse', message0:'📡  Sonar pulse',
     previousStatement:null, nextStatement:null, style:'sense_blocks', tooltip:'50m range pulse' },
-  { type:'robot_sonar_scan', message0:'📡  Sonar scan  %1  m radius',
+  { type:'robot_sonar_radius_scan', message0:'📡  Sonar scan  %1  m radius',
     args0:[{type:'field_number',name:'RADIUS',value:20,min:5,max:100}],
     previousStatement:null, nextStatement:null, style:'sense_blocks' },
   { type:'robot_sub_stabilize', message0:'⚖️  Stabilize underwater',
     previousStatement:null, nextStatement:null, style:'move_blocks' },
-  { type:'robot_collect_sample', message0:'🧪  Collect sample',
-    previousStatement:null, nextStatement:null, style:'tools_blocks' },
   { type:'robot_scan_ocean_floor', message0:'🪸  Scan ocean floor',
     previousStatement:null, nextStatement:null, style:'sense_blocks' },
   { type:'robot_avoid_uw_obstacle', message0:'🪨  Avoid underwater obstacle',
     previousStatement:null, nextStatement:null, style:'move_blocks' },
-  { type:'robot_pressure_check', message0:'⚖️  Pressure check',
-    output:'Number', style:'sense_blocks' },
   { type:'robot_depth_measurement', message0:'📏  depth (m)',
     output:'Number', style:'sense_blocks' },
   { type:'robot_navigate_current', message0:'🌊  Navigate  %1  current',
@@ -974,12 +1185,6 @@ const ROBOT_BLOCK_DEFS = [
     previousStatement:null, nextStatement:null, style:'move_blocks' },
 
   // ── LOGIC EXTRAS ─────────────────────────────────────────────────────────────
-  { type:'robot_wait', message0:'⏳  Wait  %1  seconds',
-    args0:[{type:'field_number',name:'SECS',value:1,min:0.1,max:30}],
-    previousStatement:null, nextStatement:null, style:'move_blocks', tooltip:'Pause execution' },
-  { type:'robot_timer_start', message0:'⏱️  Start timer  %1  s',
-    args0:[{type:'field_number',name:'SECS',value:5,min:1,max:60}],
-    previousStatement:null, nextStatement:null, style:'sense_blocks' },
   { type:'robot_timer_done', message0:'⏱️  timer done?', output:'Boolean', style:'sense_blocks' },
   { type:'robot_counter_increment', message0:'🔢  Counter +1',
     previousStatement:null, nextStatement:null, style:'sense_blocks' },
@@ -1048,14 +1253,43 @@ const ROBOT_BLOCK_DEFS = [
     previousStatement:null, nextStatement:null, style:'tools_blocks', tooltip:'Pick up and lift object under gripper' },
   { type:'robot_drop_object', message0:'⬇  Drop object',
     previousStatement:null, nextStatement:null, style:'tools_blocks', tooltip:'Release and drop held object' },
+
+  ...FLAPPY_BLOCK_DEFS,
 ];
+
+/** Auto-build toolbox catalog from every block definition — ensures nothing is left out. */
+function buildBlockCatalogFromDefs() {
+  const STYLE_KEY = {
+    event_blocks:'events', move_blocks:'move', control_blocks:'control',
+    sense_blocks:'sense', ai_blocks:'ai', tools_blocks:'tools', game_blocks:'tools',
+    lights_blocks:'lights', variable_blocks:'variables', timer_blocks:'timers',
+  };
+  const cats = { events:[], move:[], control:[], sense:[], ai:[], tools:[], lights:[], variables:[], timers:[] };
+  const seen = new Set();
+  for (const def of ROBOT_BLOCK_DEFS) {
+    if (!def?.type || seen.has(def.type)) continue;
+    seen.add(def.type);
+    const entry = { kind:'block', type:def.type };
+    if (def.type.startsWith('robot_when_')) { cats.events.push(entry); continue; }
+    if (def.type.startsWith('gripper_')) { cats.tools.push(entry); continue; }
+    const key = STYLE_KEY[def.style] || 'move';
+    cats[key].push(entry);
+  }
+  return cats;
+}
+const BLOCK_CATALOG = buildBlockCatalogFromDefs();
 
 let _blocksReg = false;
 function registerRobotBlocks() {
   if (_blocksReg) return;
   _blocksReg = true;
-  try { Blockly.defineBlocksWithJsonArray(ROBOT_BLOCK_DEFS); }
-  catch(e) { console.warn('registerRobotBlocks:', e); }
+  const seen = new Set();
+  for (const def of ROBOT_BLOCK_DEFS) {
+    if (!def?.type || seen.has(def.type)) continue;
+    seen.add(def.type);
+    try { Blockly.defineBlocksWithJsonArray([def]); }
+    catch (e) { console.warn('[Blockly] block registration failed:', def.type, e); }
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1064,15 +1298,17 @@ function registerRobotBlocks() {
 function makeBBTheme() {
   return Blockly.Theme.defineTheme('bytebuddies', {
     blockStyles: {
-      event_blocks:   { colourPrimary:'#f43f5e', colourSecondary:'#e11d48', colourTertiary:'#be123c', hat:'cap' },
-      move_blocks:    { colourPrimary:'#3b82f6', colourSecondary:'#2563eb', colourTertiary:'#1d4ed8' },
-      control_blocks: { colourPrimary:'#fb923c', colourSecondary:'#f97316', colourTertiary:'#ea580c' },
-      sense_blocks:   { colourPrimary:'#4ade80', colourSecondary:'#22c55e', colourTertiary:'#16a34a' },
+      event_blocks:   { colourPrimary:'#C62828', colourSecondary:'#b71c1c', colourTertiary:'#8e0000', hat:'cap' },
+      move_blocks:    { colourPrimary:'#1565C0', colourSecondary:'#0d47a1', colourTertiary:'#0a3d91' },
+      control_blocks: { colourPrimary:'#E65100', colourSecondary:'#d84315', colourTertiary:'#bf360c' },
+      sense_blocks:   { colourPrimary:'#2E7D32', colourSecondary:'#1b5e20', colourTertiary:'#0d4f14' },
       ai_blocks:      { colourPrimary:'#c084fc', colourSecondary:'#a855f7', colourTertiary:'#9333ea' },
-      tools_blocks:    { colourPrimary:'#f472b6', colourSecondary:'#ec4899', colourTertiary:'#db2777' },
+      tools_blocks:    { colourPrimary:'#AD1457', colourSecondary:'#880e4f', colourTertiary:'#6a0d3d' },
+      game_blocks:     { colourPrimary:'#AD1457', colourSecondary:'#880e4f', colourTertiary:'#6a0d3d' },
       lights_blocks:   { colourPrimary:'#22d3ee', colourSecondary:'#06b6d4', colourTertiary:'#0891b2' },
-      variable_blocks: { colourPrimary:'#fbbf24', colourSecondary:'#f59e0b', colourTertiary:'#d97706' },
+      variable_blocks: { colourPrimary:'#BF360C', colourSecondary:'#a52714', colourTertiary:'#8d1f0f' },
       timer_blocks:    { colourPrimary:'#2dd4bf', colourSecondary:'#14b8a6', colourTertiary:'#0d9488' },
+      math_blocks:     { colourPrimary:'#00695C', colourSecondary:'#004d40', colourTertiary:'#00332a' },
     },
     fontStyle: { family:'system-ui, "Segoe UI", sans-serif', weight:'bold', size:13 },
     componentStyles: {
@@ -1099,6 +1335,13 @@ function detectRobotType(rc) {
   const chassis = rc.chassisId  || 'rover';
   const hasArm  = rc.armId != null;
   // Chassis-specific type overrides (highest priority)
+  if (chassis === 'birdbot')                               return 'birdbot';
+  if (chassis === 'footballbot')                           return 'footballbot';
+  if (chassis === 'striker')                               return 'striker';
+  if (chassis === 'blaster')                               return 'blaster';
+  if (chassis === 'ninja')                                 return 'ninja';
+  if (chassis === 'berserker')                             return 'berserker';
+  if (chassis === 'battlebot')                             return 'tank';
   if (['droid','mech','legobot'].includes(chassis)) return 'humanoid';
   if (chassis === 'spider')                          return 'spider';
   if (['drone','rescuedrone'].includes(chassis))             return 'drone';
@@ -1106,7 +1349,7 @@ function detectRobotType(rc) {
   if (chassis === 'helicopter')                      return 'drone';   // same arena/blocks
   if (['hoverbot','hoverracer'].includes(chassis))   return 'hover';
   if (['submarine','deepseabot'].includes(chassis))  return 'underwater';
-  if (chassis === 'miningbot')                       return 'tank';    // heavy tracked
+  if (chassis === 'miningbot')                       return 'miningbot'; // dedicated mining campaign
   if (chassis === 'securitybot')                     return 'security';
   if (chassis === 'medbot')                          return 'medbot';
   if (chassis === 'firebot')                         return 'firebot';
@@ -1121,6 +1364,20 @@ function detectRobotType(rc) {
   if (mov === 'legs')   return 'humanoid';  // default legs = humanoid
   if (hasArm)           return 'factory';
   return 'rover';
+}
+
+const FIGHTER_CHASSIS = new Set(['striker', 'blaster', 'ninja', 'berserker', 'battlebot', 'tank']);
+
+function isFighterRobot(rc) {
+  const type = detectRobotType(rc || {});
+  const chassis = rc?.chassisId || '';
+  return FIGHTER_CHASSIS.has(chassis) || ['striker', 'blaster', 'ninja', 'berserker', 'tank'].includes(type);
+}
+
+function isFootballRobot(rc) {
+  const type = detectRobotType(rc || {});
+  const chassis = rc?.chassisId || '';
+  return chassis === 'footballbot' || ['footballbot', 'football'].includes(type);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1177,6 +1434,7 @@ const CAT_META = {
 
 const FLAGSHIP_COURSES = expandFlagshipCourses();
 const GAME_MISSION_COURSES = expandGameMissionsAsCourses();
+const ROBOT_MISSION_COURSES = expandRobotMissionsAsCourses();
 
 // rec[] = robot-type keywords that find this course "recommended"
 const ALL_COURSES = [
@@ -1224,41 +1482,49 @@ const ALL_COURSES = [
   },
   // ── GAME CREATION MISSIONS (full 10-zone game builds) ─────────────────────
   ...GAME_MISSION_COURSES,
+  // ── ROBOT CAMPAIGN MISSIONS (year-long MG/CD/SV narratives per robot) ───
+  ...ROBOT_MISSION_COURSES,
   // ── 8 FLAGSHIP COURSE PROGRAMS (40 levels) ────────────────────────────────
   ...FLAGSHIP_COURSES,
+  // ── FIGHTING GAME COURSES ─────────────────────────────────────────────────
+  ...FIGHTING_COURSES,
+  // ── ROBOT FOOTBALL COURSES ────────────────────────────────────────────────
+  ...FOOTBALL_COURSES,
+  // ── MARIO KART CIRCUITS (12 playable tracks) ──────────────────────────────
+  ...MK_RACING_COURSES,
   // ── FOREST (GROUND ARENA) ──────────────────────────────────────────────────
-  {id:'obstacle',    cat:'ground', icon:'🏁', name:'Obstacle Course',        desc:'Navigate obstacles to the finish!',       arenaType:'ground',     color:'#22c55e', obstacles:10, totalDist:22, rec:['rover','tank','spider','humanoid']},
-  {id:'race_track',  cat:'ground', icon:'🏎️',name:'Race Track',             desc:'Speed around the track!',                 arenaType:'ground',     color:'#ef4444', obstacles:5,  totalDist:18, rec:['rover','race','jet']},
-  {id:'maze',        cat:'ground', icon:'🌀', name:'Maze Navigation',        desc:'Find the exit through the maze!',         arenaType:'ground',     color:'#8b5cf6', obstacles:18, totalDist:30, rec:['rover','spider','humanoid']},
-  {id:'cargo',       cat:'ground', icon:'📦', name:'Cargo Delivery',         desc:'Pick up and deliver all cargo!',          arenaType:'ground',     color:'#0ea5e9', obstacles:6,  totalDist:20, rec:['rover','factory','tank']},
-  {id:'speedrun',    cat:'ground', icon:'⚡', name:'Speed Run',              desc:'Beat the clock at full speed!',           arenaType:'ground',     color:'#f59e0b', obstacles:5,  totalDist:16, rec:['rover','race','hover']},
-  {id:'line_follow', cat:'ground', icon:'〰', name:'Line Follow Arena',      desc:'Follow the line perfectly!',              arenaType:'line_follow',color:'#10b981', obstacles:4,  totalDist:30, rec:['rover','humanoid']},
-  {id:'precision',   cat:'ground', icon:'🎯', name:'Precision Driving',      desc:'Park precisely in each target zone!',     arenaType:'ground',     color:'#ec4899', obstacles:4,  totalDist:12, rec:['rover','factory','humanoid']},
-  {id:'stem_play',   cat:'ground', icon:'🔬', name:'STEM Playground',        desc:'Explore the science lab arena!',          arenaType:'ground',     color:'#06b6d4', obstacles:8,  totalDist:22, rec:['rover','humanoid','spider']},
-  {id:'checkpoint',  cat:'ground', icon:'📍', name:'Checkpoint Challenge',   desc:'Hit every checkpoint in order!',          arenaType:'ground',     color:'#3b82f6', obstacles:6,  totalDist:22, rec:['rover','race','humanoid']},
-  {id:'run_easy',    cat:'ground', icon:'🟢', name:'Simple Sprint',          desc:'Sprint the short course — beat the 5-minute clock!', arenaType:'ground', color:'#4ade80', obstacles:3, totalDist:16, rec:['rover','hover','drone','racedrone','jet','humanoid','spider']},
+  {id:'obstacle',    cat:'ground', icon:'🏁', name:'Obstacle Course',        desc:'The Whispering Forest calls — logs, roots and stone walls block the path through all 9 zones to the Power Shrine!',       arenaType:'ground',     color:'#22c55e', obstacles:10, totalDist:22, rec:['rover','tank','spider','humanoid']},
+  {id:'race_track',  cat:'ground', icon:'🏎️',name:'Race Track',             desc:'Race the winding forest path from the wooden arch gate to the ancient shrine — speed and precision win this one!', arenaType:'ground',     color:'#ef4444', obstacles:5,  totalDist:18, rec:['rover','race','jet']},
+  {id:'maze',        cat:'ground', icon:'🌀', name:'Maze Navigation',        desc:'The forest maze shifts with fog and shadow — follow the paw prints, find the bridge, and escape before darkness falls!',         arenaType:'ground',     color:'#8b5cf6', obstacles:18, totalDist:30, rec:['rover','spider','humanoid']},
+  {id:'cargo',       cat:'ground', icon:'📦', name:'Cargo Delivery',         desc:'Supply crates are scattered across the forest — collect and deliver them to the Power Shrine before the forest spirits reclaim them!',          arenaType:'ground',     color:'#0ea5e9', obstacles:6,  totalDist:20, rec:['rover','factory','tank']},
+  {id:'speedrun',    cat:'ground', icon:'⚡', name:'Speed Run',              desc:'Full speed through the Whispering Forest — wooden gate to power shrine in record time, every second counts!',           arenaType:'ground',     color:'#f59e0b', obstacles:5,  totalDist:16, rec:['rover','race','hover']},
+  {id:'line_follow', cat:'ground', icon:'〰', name:'Line Follow Arena',      desc:'A glowing trail winds through the arena — keep your robot locked on the line for the highest tracking score!',              arenaType:'line_follow',color:'#10b981', obstacles:4,  totalDist:30, rec:['rover','humanoid']},
+  {id:'precision',   cat:'ground', icon:'🎯', name:'Precision Driving',      desc:'Park precisely inside glowing target circles across the forest floor — accuracy beats speed here!',     arenaType:'ground',     color:'#ec4899', obstacles:4,  totalDist:12, rec:['rover','factory','humanoid']},
+  {id:'stem_play',   cat:'ground', icon:'🔬', name:'STEM Playground',        desc:'The forest is a natural science lab — scan objects, measure distances, and explore 9 zones of hands-on STEM challenges!',          arenaType:'ground',     color:'#06b6d4', obstacles:8,  totalDist:22, rec:['rover','humanoid','spider']},
+  {id:'checkpoint',  cat:'ground', icon:'📍', name:'Checkpoint Challenge',   desc:'Glowing checkpoints are hidden across all 9 forest zones — hit every one in order or the timer resets!',          arenaType:'ground',     color:'#3b82f6', obstacles:6,  totalDist:22, rec:['rover','race','humanoid']},
+  {id:'run_easy',    cat:'ground', icon:'🟢', name:'Simple Sprint',          desc:'A short forest sprint from the wooden arch to the meadow — clear path, perfect for your very first run!', arenaType:'ground', color:'#4ade80', obstacles:3, totalDist:16, rec:['rover','hover','drone','racedrone','jet','humanoid','spider']},
   // ── AI / SENSOR (FOREST ARENA) ─────────────────────────────────────────────
-  {id:'ai_training', cat:'ai',     icon:'🧠', name:'AI Training Lab',        desc:'Train your AI algorithms!',               arenaType:'ground',     color:'#a855f7', obstacles:5,  totalDist:18, rec:['rover','drone','humanoid']},
-  {id:'stealth',     cat:'ai',     icon:'👻', name:'Stealth Arena',          desc:'Move without being detected!',            arenaType:'ground',     color:'#4b5563', obstacles:6,  totalDist:20, rec:['rover','spider','humanoid']},
-  {id:'obj_detect',  cat:'ai',     icon:'👁', name:'Object Detection',       desc:'Find and scan all objects!',              arenaType:'ground',     color:'#22c55e', obstacles:8,  totalDist:22, rec:['rover','drone','factory']},
-  {id:'smart_patrol',cat:'ai',     icon:'🏙️', name:'Smart City Patrol',     desc:'Patrol every sector of the city!',        arenaType:'ground',     color:'#0ea5e9', obstacles:6,  totalDist:24, rec:['rover','humanoid','security']},
-  {id:'auto_nav',    cat:'ai',     icon:'🗺️', name:'Autonomous Navigation',  desc:'Navigate completely on your own!',        arenaType:'ground',     color:'#f59e0b', obstacles:10, totalDist:28, rec:['rover','drone','humanoid']},
+  {id:'ai_training', cat:'ai',     icon:'🧠', name:'AI Training Lab',        desc:'The Whispering Forest is your training ground — navigate 9 zones using only your AI sensors, no manual override allowed!',               arenaType:'ground',     color:'#a855f7', obstacles:5,  totalDist:18, rec:['rover','drone','humanoid']},
+  {id:'stealth',     cat:'ai',     icon:'👻', name:'Stealth Arena',          desc:'Sensor towers scan the forest — move through the shadows, time your dashes between detection beams, and reach the shrine unseen!',            arenaType:'ground',     color:'#4b5563', obstacles:6,  totalDist:20, rec:['rover','spider','humanoid','security']},
+  {id:'obj_detect',  cat:'ai',     icon:'👁', name:'Object Detection',       desc:'Ancient artifacts are scattered across all 9 forest zones — scan and log every one with full sensor accuracy!',              arenaType:'ground',     color:'#22c55e', obstacles:8,  totalDist:22, rec:['rover','drone','factory','security']},
+  {id:'smart_patrol',cat:'ai',     icon:'🏙️', name:'Smart City Patrol',     desc:'Patrol all 9 sectors of the forest arena — map every zone, log every anomaly, and report back to base in order!',        arenaType:'ground',     color:'#0ea5e9', obstacles:6,  totalDist:24, rec:['rover','humanoid','security']},
+  {id:'auto_nav',    cat:'ai',     icon:'🗺️', name:'Autonomous Navigation',  desc:'Navigate the full forest — all 9 zones — using only your onboard map and sensors. No hints. Total autonomy.',        arenaType:'ground',     color:'#f59e0b', obstacles:10, totalDist:28, rec:['rover','drone','humanoid','security']},
   // ── CRYSTAL CAVERN ─────────────────────────────────────────────────────────
-  {id:'crystal_cave',  cat:'cavern', icon:'💎', name:'Crystal Cavern',        desc:'Scale the glowing crystal walls!',        arenaType:'cavern',     color:'#8b5cf6', obstacles:9,  totalDist:26, rec:['spider','humanoid','climbing']},
-  {id:'stalactite_run',cat:'cavern', icon:'🦇', name:'Stalactite Run',        desc:'Dodge stalactites as you climb!',         arenaType:'cavern',     color:'#7c3aed', obstacles:12, totalDist:30, rec:['spider','climbing']},
-  {id:'cavern_boss',   cat:'cavern', icon:'🕷️', name:'Cavern Boss Challenge', desc:'Defeat the cavern keeper!',               arenaType:'cavern',     color:'#a855f7', obstacles:14, totalDist:28, rec:['spider']},
-  {id:'deep_cave',     cat:'cavern', icon:'🌑', name:'Deep Cave Descent',     desc:'Reach the bottom of the dark cave!',      arenaType:'cavern',     color:'#6d28d9', obstacles:10, totalDist:32, rec:['spider','humanoid']},
+  {id:'crystal_cave',  cat:'cavern', icon:'💎', name:'Crystal Cavern',        desc:'Glowing crystals light the underground — navigate all 9 cavern zones from the entrance to the legendary Gemstone Throne!',        arenaType:'cavern',     color:'#8b5cf6', obstacles:9,  totalDist:26, rec:['spider','humanoid','climbing']},
+  {id:'stalactite_run',cat:'cavern', icon:'🦇', name:'Stalactite Run',        desc:'Stalactites drop from the ceiling without warning — dash through 9 underground chambers before the cavern collapses!',         arenaType:'cavern',     color:'#7c3aed', obstacles:12, totalDist:30, rec:['spider','climbing']},
+  {id:'cavern_boss',   cat:'cavern', icon:'🕷️', name:'Cavern Boss Challenge', desc:'The crystal spider guardian awakens — survive the Cavern Boss across all 9 zones and reach the Gemstone Throne!',               arenaType:'cavern',     color:'#a855f7', obstacles:14, totalDist:28, rec:['spider']},
+  {id:'deep_cave',     cat:'cavern', icon:'🌑', name:'Deep Cave Descent',     desc:'No light, no map — only your sensors guide you through 9 pitch-dark cavern zones to the deepest point underground!',      arenaType:'cavern',     color:'#6d28d9', obstacles:10, totalDist:32, rec:['spider','humanoid']},
   // ── NEON RACING CIRCUIT ────────────────────────────────────────────────────
-  {id:'neon_race',    cat:'race',   icon:'🏎️', name:'Neon Racing Circuit',   desc:'Race through the neon city track!',       arenaType:'neon_race',  color:'#ff6b35', obstacles:6,  totalDist:24, rec:['hover','race','rover','jet','drone','racedrone']},
-  {id:'neon_chase',   cat:'race',   icon:'🚓', name:'Neon City Chase',        desc:'Chase down the runaway bot!',             arenaType:'neon_race',  color:'#ef4444', obstacles:8,  totalDist:26, rec:['hover','rover','race','jet','drone','racedrone']},
-  {id:'drift_king',   cat:'race',   icon:'🌀', name:'Drift King',             desc:'Master the perfect drift line!',          arenaType:'neon_race',  color:'#ec4899', obstacles:5,  totalDist:22, rec:['hover','race','jet','drone']},
-  {id:'turbo_league', cat:'race',   icon:'⚡', name:'Turbo League Race',      desc:'First to cross the finish wins!',         arenaType:'neon_race',  color:'#fbbf24', obstacles:4,  totalDist:20, rec:['hover','race','rover','jet','racedrone']},
-  {id:'run_medium',   cat:'race',   icon:'🏆', name:'Optimized Race',         desc:'Pick your route and beat the 3-minute world record!', arenaType:'neon_race', color:'#f59e0b', obstacles:5, totalDist:22, rec:['hover','rover','drone','racedrone','jet','humanoid']},
+  {id:'neon_race',    cat:'race',   icon:'🏎️', name:'Neon Racing Circuit',   desc:'The neon circuit blazes to life — starting grid to finish line, 9 zones of pure speed through the city!',       arenaType:'neon_race',  color:'#ff6b35', obstacles:6,  totalDist:24, rec:['hover','race','rover','jet','drone','racedrone']},
+  {id:'neon_chase',   cat:'race',   icon:'🚓', name:'Neon City Chase',        desc:'A rogue bot has stolen cargo from the city — chase it through 9 neon zones and catch it before the exit!',             arenaType:'neon_race',  color:'#ef4444', obstacles:8,  totalDist:26, rec:['hover','rover','race','jet','drone','racedrone']},
+  {id:'drift_king',   cat:'race',   icon:'🌀', name:'Drift King',             desc:'This circuit rewards style — master the drift lines through 9 zones, perfect drifts multiply your score!',          arenaType:'neon_race',  color:'#ec4899', obstacles:5,  totalDist:22, rec:['hover','race','jet','drone']},
+  {id:'turbo_league', cat:'race',   icon:'⚡', name:'Turbo League Race',      desc:'First bot to cross the finish line wins — boost pads, scanner lanes, and 9 zones of pure race to the end!',         arenaType:'neon_race',  color:'#fbbf24', obstacles:4,  totalDist:20, rec:['hover','race','rover','jet','racedrone']},
+  {id:'run_medium',   cat:'race',   icon:'🏆', name:'Optimized Race',         desc:'Three different routes through the neon circuit, each with trade-offs — which path does your algorithm choose?', arenaType:'neon_race', color:'#f59e0b', obstacles:5, totalDist:22, rec:['hover','rover','drone','racedrone','jet','humanoid']},
   // ── ANCIENT TEMPLE ─────────────────────────────────────────────────────────
-  {id:'temple_run',    cat:'temple', icon:'🏛️', name:'Temple Run',            desc:'Escape the ancient temple traps!',        arenaType:'temple',     color:'#a16207', obstacles:10, totalDist:26, rec:['humanoid','spider','rover']},
-  {id:'pressure_path', cat:'temple', icon:'⬛', name:'Pressure Plate Path',   desc:'Step on every pressure plate in order!', arenaType:'temple',     color:'#92400e', obstacles:8,  totalDist:22, rec:['humanoid','spider']},
-  {id:'idol_heist',    cat:'temple', icon:'🏺', name:'Idol Heist',             desc:'Grab the idol and escape!',               arenaType:'temple',     color:'#d97706', obstacles:9,  totalDist:24, rec:['humanoid','spider','rover']},
-  {id:'guardian_fight',cat:'temple', icon:'⚔️', name:'Guardian Challenge',    desc:'Defeat the temple guardians!',            arenaType:'temple',     color:'#ef4444', obstacles:15, totalDist:28, rec:['tank','humanoid','spider']},
+  {id:'temple_run',    cat:'temple', icon:'🏛️', name:'Temple Run',            desc:'The ancient temple awakens with traps and pendulums — race through all 9 zones to reach the Idol Chamber!',        arenaType:'temple',     color:'#a16207', obstacles:10, totalDist:26, rec:['humanoid','spider','rover']},
+  {id:'pressure_path', cat:'temple', icon:'⬛', name:'Pressure Plate Path',   desc:'Temple pressure plates must be activated in exact order — wrong steps trigger ancient traps, read the wall symbols!', arenaType:'temple',     color:'#92400e', obstacles:8,  totalDist:22, rec:['humanoid','spider']},
+  {id:'idol_heist',    cat:'temple', icon:'🏺', name:'Idol Heist',             desc:'The legendary idol sits at the heart of the temple — grab it and escape through 9 guardian-filled zones!',               arenaType:'temple',     color:'#d97706', obstacles:9,  totalDist:24, rec:['humanoid','spider','rover']},
+  {id:'guardian_fight',cat:'temple', icon:'⚔️', name:'Guardian Challenge',    desc:'Four temple guardians block the path to the Inner Sanctum — battle through 9 zones to claim the ancient power!',            arenaType:'temple',     color:'#ef4444', obstacles:15, totalDist:28, rec:['tank','humanoid','spider']},
   // ── ROVER X1 EXCLUSIVE — underground transit & city grid ───────────────────
   {id:'rover_transit',  cat:'ground', icon:'🚇', name:'Transit Line Tracker',   desc:'Follow the cyan track through the sci-fi underground tunnel at speed!', arenaType:'rover_transit',   color:'#00e5ff', obstacles:4,  totalDist:30, rec:['rover'], exclusive:'rover'},
   {id:'rover_delivery', cat:'ground', icon:'🏙️', name:'City Delivery Grid',     desc:'Navigate city blocks, obey traffic lights, and hit every drop zone!',  arenaType:'rover_delivery',  color:'#22c55e', obstacles:8,  totalDist:24, rec:['rover'], exclusive:'rover'},
@@ -1280,6 +1546,163 @@ const ALL_COURSES = [
   // ── ROBOT ARM EXCLUSIVE — surgery, sorting ─────────────────────────────────
   {id:'arm_surgery',    cat:'ground', icon:'🔬', name:'Micro Surgery',           desc:'Repair every circuit board fault with the fine-tip tool — no misses!', arenaType:'arm_surgery',     color:'#00ff88', obstacles:5, totalDist:8,  rec:['factory'], exclusive:'arm'},
   {id:'arm_sort',       cat:'ground', icon:'📦', name:'Warehouse Sort',          desc:'Sort every belt item by type and destination before the shift ends!',  arenaType:'arm_sort',        color:'#06b6d4', obstacles:8, totalDist:10, rec:['factory'], exclusive:'arm'},
+
+  // ── BIRDBOT EXCLUSIVE — Flappy Bird & wrecking ball ────────────────────────
+  {id:'flappy_bird', cat:'bird', icon:'🐦', name:'Flappy BirdBot',
+    desc:'Code BirdBot through endless pipes! Press SPACE to flap — gravity pulls you down every second!',
+    arenaType:'flappy_bird', color:'#38bdf8', obstacles:0, totalDist:99, estMinutes:10, checkpoints:0,
+    genre:'action', storyWorld:'flappy_bird',
+    codeHint:'Add "When spacebar clicked" then "Flap!" — press Simulate, then hit SPACE to fly!',
+    rec:['birdbot'], exclusive:'birdbot',
+    systemsBuilt:['flap','spacebar','events'],
+    zones:1,
+  },
+  {id:'robo_wrecker', cat:'bird', icon:'💥', name:'Robo Wrecker',
+    desc:'Swing BirdBot into towers of blocks — knock them all down with timed flaps!',
+    arenaType:'flappy_bird', color:'#f97316', obstacles:0, totalDist:40, estMinutes:8, checkpoints:0,
+    rec:['birdbot'], exclusive:'birdbot',
+  },
+  {id:'birdbot_pipes', cat:'bird', icon:'🟢', name:'Pipe Master',
+    desc:'Classic endless pipes — code your flap timing and beat your high score!',
+    arenaType:'flappy_bird', color:'#22c55e', obstacles:0, totalDist:99, estMinutes:12, checkpoints:0,
+    genre:'action', rec:['birdbot'], exclusive:'birdbot',
+    codeHint:'When spacebar clicked → Flap! — press Simulate, then SPACE to fly!',
+    systemsBuilt:['flap','spacebar','events'],
+  },
+  {id:'birdbot_rings', cat:'bird', icon:'💫', name:'Ring Flier',
+    desc:'Fly through glowing ring gates in sequence — precision flapping required!',
+    arenaType:'flappy_bird', color:'#a855f7', obstacles:0, totalDist:60, estMinutes:10, checkpoints:8,
+    genre:'action', rec:['birdbot'], exclusive:'birdbot',
+    systemsBuilt:['flap','spacebar','timing'],
+  },
+  {id:'birdbot_storm', cat:'bird', icon:'⛈️', name:'Storm Bird',
+    desc:'Battle gale-force winds and lightning — hold altitude through the squall!',
+    arenaType:'flappy_bird', color:'#64748b', obstacles:0, totalDist:80, estMinutes:11, checkpoints:0,
+    genre:'action', rec:['birdbot'], exclusive:'birdbot',
+    systemsBuilt:['flap','spacebar','events'],
+  },
+  {id:'birdbot_night', cat:'bird', icon:'🌙', name:'Night Owl Flight',
+    desc:'Navigate a starlit canyon — only your LED trail shows the pipe gaps ahead!',
+    arenaType:'flappy_bird', color:'#312e81', obstacles:0, totalDist:70, estMinutes:10, checkpoints:0,
+    genre:'action', rec:['birdbot'], exclusive:'birdbot',
+    systemsBuilt:['flap','spacebar','lights'],
+  },
+  {id:'birdbot_canyon', cat:'bird', icon:'🏜️', name:'Canyon Flapper',
+    desc:'Thread through red-rock pipe gates in a desert canyon — tight gaps, big scores!',
+    arenaType:'flappy_bird', color:'#e8a060', obstacles:0, totalDist:85, estMinutes:11, checkpoints:0,
+    genre:'action', rec:['birdbot'], exclusive:'birdbot',
+    systemsBuilt:['flap','spacebar','timing'],
+  },
+  {id:'birdbot_reef', cat:'bird', icon:'🐠', name:'Reef Glider',
+    desc:'Glide between coral arches underwater — float up and dive through bubble gates!',
+    arenaType:'flappy_bird', color:'#06b6d4', obstacles:0, totalDist:75, estMinutes:10, checkpoints:0,
+    genre:'action', rec:['birdbot'], exclusive:'birdbot',
+    systemsBuilt:['flap','float_up','dive'],
+  },
+  {id:'birdbot_volcano', cat:'bird', icon:'🌋', name:'Volcano Flapper',
+    desc:'Flap through glowing lava pipe gates above an erupting volcano — heat rises fast!',
+    arenaType:'flappy_bird', color:'#ef4444', obstacles:0, totalDist:90, estMinutes:12, checkpoints:0,
+    genre:'action', rec:['birdbot'], exclusive:'birdbot',
+    codeHint:'When spacebar clicked → Flap! — dodge the rising heat!',
+    systemsBuilt:['flap','spacebar','timing'],
+  },
+  {id:'birdbot_forest', cat:'bird', icon:'🌲', name:'Forest Canopy',
+    desc:'Weave through tree-trunk pipe gates in a sunlit forest canopy — nature\'s obstacle course!',
+    arenaType:'flappy_bird', color:'#22c55e', obstacles:0, totalDist:80, estMinutes:11, checkpoints:0,
+    genre:'action', rec:['birdbot'], exclusive:'birdbot',
+    codeHint:'When spacebar clicked → Flap! — time your flaps between the branches!',
+    systemsBuilt:['flap','spacebar','events'],
+  },
+
+  // ── MININGBOT EXCLUSIVE — quarry & tunnel missions ───────────────────────────
+  {id:'mining_quarry_run', cat:'ground', icon:'⛏️', name:'Quarry Sprint',
+    desc:'Race across the open quarry floor — dodge ore carts and reach the crusher first!',
+    arenaType:'underground_mine', color:'#a16207', obstacles:8, totalDist:20, rec:['miningbot'], exclusive:'miningbot',
+    genre:'racing', systemsBuilt:['movement','obstacles','speed'],
+  },
+  {id:'mining_ore_haul', cat:'ground', icon:'🪨', name:'Ore Haul',
+    desc:'Collect ore chunks from 6 dig sites and deliver them to the smelter before shift ends!',
+    arenaType:'rough', color:'#78716c', obstacles:6, totalDist:18, rec:['miningbot'], exclusive:'miningbot',
+    systemsBuilt:['cargo','repeat','navigation'],
+  },
+  {id:'mining_tunnel_dig', cat:'ground', icon:'🚇', name:'Tunnel Dig',
+    desc:'Navigate dark mine tunnels — follow the ore vein markers to the deep shaft!',
+    arenaType:'underground_mine', color:'#6d28d9', obstacles:10, totalDist:24, rec:['miningbot'], exclusive:'miningbot',
+    systemsBuilt:['navigation','sensors','repeat'],
+  },
+  {id:'mining_crystal_vein', cat:'ground', icon:'💎', name:'Crystal Vein',
+    desc:'Extract glowing crystals from narrow cavern passages — your drill arm does the work!',
+    arenaType:'underground_mine', color:'#8b5cf6', obstacles:9, totalDist:22, rec:['miningbot'], exclusive:'miningbot',
+    systemsBuilt:['collect','navigation','precision'],
+  },
+  {id:'mining_rubble_clear', cat:'ground', icon:'🧱', name:'Rubble Clear',
+    desc:'Push rubble piles into dump zones — full bulldozer power through the collapsed tunnel!',
+    arenaType:'tank_demolition', color:'#f97316', obstacles:7, totalDist:16, rec:['miningbot'], exclusive:'miningbot',
+    systemsBuilt:['push','power','navigation'],
+  },
+  {id:'mining_deep_shaft', cat:'ground', icon:'🕳️', name:'Deep Shaft Descent',
+    desc:'Descend the vertical mine shaft — manage speed on steep grades without losing traction!',
+    arenaType:'underground_mine', color:'#1e293b', obstacles:12, totalDist:28, rec:['miningbot'], exclusive:'miningbot',
+    systemsBuilt:['speed_control','traction','repeat'],
+  },
+  {id:'mining_cart_dash', cat:'ground', icon:'🛤️', name:'Cart Track Dash',
+    desc:'Race the mine cart rails — dodge oncoming carts and hit every checkpoint gate!',
+    arenaType:'rough', color:'#ca8a04', obstacles:8, totalDist:20, rec:['miningbot'], exclusive:'miningbot',
+    genre:'racing', systemsBuilt:['speed','checkpoints','dodge'],
+  },
+  {id:'mining_blast_zone', cat:'ground', icon:'💥', name:'Blast Zone',
+    desc:'Timed detonations shake the quarry — reach all 4 blast markers before the charges blow!',
+    arenaType:'rough', color:'#dc2626', obstacles:11, totalDist:26, rec:['miningbot'], exclusive:'miningbot',
+    systemsBuilt:['timing','speed','navigation'],
+  },
+  {id:'mining_gem_rush', cat:'ground', icon:'✨', name:'Gem Rush',
+    desc:'A gem vein was discovered! Collect every gem before rival mining bots arrive!',
+    arenaType:'underground_mine', color:'#06b6d4', obstacles:6, totalDist:18, rec:['miningbot'], exclusive:'miningbot',
+    systemsBuilt:['collect','speed','repeat'],
+  },
+  {id:'mining_night_shift', cat:'ground', icon:'🌙', name:'Night Shift',
+    desc:'Night quarry patrol — use headlights and sensors to navigate in total darkness!',
+    arenaType:'underground_mine', color:'#312e81', obstacles:10, totalDist:22, rec:['miningbot'], exclusive:'miningbot',
+    systemsBuilt:['sensors','lights','navigation'],
+  },
+
+  // ── FACTORY EXCLUSIVE extras ─────────────────────────────────────────────────
+  {id:'factory_paint_line', cat:'ground', icon:'🎨', name:'Paint Line',
+    desc:'Spray-paint every product on the conveyor the correct colour before it ships!',
+    arenaType:'factory', color:'#ec4899', obstacles:5, totalDist:12, rec:['factory','factorybot'],
+    systemsBuilt:['if_color','repeat','precision'],
+  },
+  {id:'factory_supply_run', cat:'ground', icon:'📋', name:'Supply Run',
+    desc:'Fetch parts from 6 warehouse bins and restock the assembly line before it stalls!',
+    arenaType:'factory', color:'#14b8a6', obstacles:7, totalDist:16, rec:['factory','factorybot'],
+    systemsBuilt:['navigation','repeat','cargo'],
+  },
+
+  // ── MEDBOT / FIREBOT extras ────────────────────────────────────────────────
+  {id:'med_evac_drill', cat:'ground', icon:'🚁', name:'Evac Drill',
+    desc:'Guide 4 patients through the hospital to the rooftop helipad before the fire spreads!',
+    arenaType:'hospital_walk', color:'#ef4444', obstacles:8, totalDist:20, rec:['medbot'], exclusive:'medbot',
+    systemsBuilt:['navigation','rescue','timing'],
+  },
+  {id:'fire_checkpoint_drill', cat:'ground', icon:'🧯', name:'Checkpoint Drill',
+    desc:'Hit every fire hydrant checkpoint across the burning district in under 4 minutes!',
+    arenaType:'rough', color:'#f97316', obstacles:9, totalDist:22, rec:['firebot'], exclusive:'firebot',
+    systemsBuilt:['checkpoints','speed','navigation'],
+  },
+
+  // ── SECURITY EXCLUSIVE ───────────────────────────────────────────────────────
+  {id:'security_perimeter', cat:'ground', icon:'🚨', name:'Perimeter Lockdown',
+    desc:'Patrol the facility fence line and respond to every breach alarm in order!',
+    arenaType:'neon_city', color:'#ef4444', obstacles:8, totalDist:22, rec:['security'], exclusive:'security',
+  },
+  {id:'security_vault', cat:'ground', icon:'🔒', name:'Vault Breach Drill',
+    desc:'Navigate laser grids and pressure pads to reach the secure vault undetected!',
+    arenaType:'museum_heist', color:'#a855f7', obstacles:12, totalDist:24, rec:['security'], exclusive:'security',
+  },
+  {id:'security_skynet', cat:'sky', icon:'📡', name:'Aerial Surveillance',
+    desc:'Scan every rooftop sector from above and tag all unauthorized heat signatures!',
+    arenaType:'night_patrol', color:'#1e3a5f', obstacles:7, totalDist:26, rec:['security'], exclusive:'security',
+  },
 
   // ── UNDERWATER EXCLUSIVE — ocean & deep-sea ──────────────────────────────────
   {id:'coral_reef',     cat:'sky',   icon:'🪸', name:'Coral Reef Expedition',   desc:'Weave through towering coral towers and tag glowing sea life!',         arenaType:'coral_reef',      color:'#06b6d4', obstacles:8,  totalDist:24, rec:['underwater','submarine'], exclusive:'underwater'},
@@ -1356,7 +1779,7 @@ const ALL_COURSES = [
   {id:'space_station_orbit', cat:'sky', icon:'🛸', name:'Space Station Orbit',      desc:'Circle the orbital station and dock at every airlock gate!',               arenaType:'space_orbit',         color:'#c4b5fd', obstacles:8,  totalDist:28, rec:['drone','jet','hover','racedrone']},
   {id:'rainforest_canopy',   cat:'sky', icon:'🌴', name:'Rainforest Canopy',        desc:'Zip through tangled jungle canopy — branches and toucans everywhere!',     arenaType:'rainforest_canopy',   color:'#16a34a', obstacles:12, totalDist:24, rec:['drone','jet','hover','racedrone']},
   {id:'cloud_race',          cat:'sky', icon:'☁️', name:'Race Through Clouds',      desc:'Slalom between cloud pillars in a bright-blue sky gauntlet!',              arenaType:'cloud_race',          color:'#e0f2fe', obstacles:8,  totalDist:22, rec:['drone','jet','hover','racedrone']},
-  {id:'night_patrol',        cat:'sky', icon:'🌃', name:'Night City Patrol',        desc:'Survey every sector of the sleeping city from above — spot anomalies!',   arenaType:'night_patrol',        color:'#1e3a5f', obstacles:6,  totalDist:26, rec:['drone','jet','hover','racedrone']},
+  {id:'night_patrol',        cat:'sky', icon:'🌃', name:'Night City Patrol',        desc:'Survey every sector of the sleeping city from above — spot anomalies!',   arenaType:'night_patrol',        color:'#1e3a5f', obstacles:6,  totalDist:26, rec:['drone','jet','hover','racedrone','security']},
   {id:'desert_air_race',     cat:'sky', icon:'🏁', name:'Desert Air Race',          desc:'Full throttle across the scorching desert — checkpoint pylons mark your path!',arenaType:'desert_air',       color:'#fbbf24', obstacles:8,  totalDist:24, rec:['drone','jet','hover','racedrone']},
   {id:'mountain_pass_nav',   cat:'sky', icon:'⛰️', name:'Mountain Pass Navigation',desc:'Thread through alpine peaks on gusty winds — precision flying required!',   arenaType:'mountain_pass',       color:'#78716c', obstacles:10, totalDist:26, rec:['drone','jet','hover','racedrone']},
   {id:'glacier_flyover',     cat:'sky', icon:'🏔️', name:'Glacier Flyover',         desc:'Soar over crystal-blue glaciers and survey crevasse fields!',              arenaType:'glacier_flyover',     color:'#93c5fd', obstacles:5,  totalDist:20, rec:['drone','jet','hover','racedrone']},
@@ -1374,10 +1797,10 @@ const ALL_COURSES = [
   {id:'pipeline_crawl',      cat:'cavern', icon:'🔩', name:'Industrial Pipeline Crawl',   desc:'Crawl through twisting industrial pipes and tag every fault sensor!',   arenaType:'pipeline_crawl',    color:'#f97316', obstacles:8,  totalDist:18, rec:['spider','humanoid']},
   {id:'temple_climb_course', cat:'cavern', icon:'🏛️', name:'Crumbling Temple Climb',     desc:'Scale crumbling stone spires to reach the signal beacon at the top!',  arenaType:'temple_climb',      color:'#a16207', obstacles:11, totalDist:22, rec:['spider','humanoid']},
   {id:'collapsed_building',  cat:'cavern', icon:'🏚️', name:'Collapsed Building Search',  desc:'Navigate unstable floors of a collapsed building to save survivors!',   arenaType:'collapsed_building',color:'#78716c', obstacles:13, totalDist:26, rec:['spider','humanoid']},
-  {id:'military_infiltration',cat:'cavern',icon:'🪖', name:'Military Base Infiltration', desc:'Crawl under laser grids and over walls to reach the control room!',     arenaType:'military_base',     color:'#4b5563', obstacles:12, totalDist:24, rec:['spider','humanoid']},
+  {id:'military_infiltration',cat:'cavern',icon:'🪖', name:'Military Base Infiltration', desc:'Crawl under laser grids and over walls to reach the control room!',     arenaType:'military_base',     color:'#4b5563', obstacles:12, totalDist:24, rec:['spider','humanoid','security']},
   {id:'factory_floor_walk',  cat:'cavern', icon:'🏭', name:'Factory Assembly Floor',     desc:'Maneuver around active conveyor belts and robotic arms!',               arenaType:'factory_floor',     color:'#fbbf24', obstacles:10, totalDist:20, rec:['spider','humanoid']},
   {id:'space_eva',           cat:'cavern', icon:'🚀', name:'Space Station EVA',           desc:'Walk the exterior hull of a space station — magnetic boots required!',  arenaType:'space_eva',         color:'#c4b5fd', obstacles:9,  totalDist:22, rec:['spider','humanoid']},
-  {id:'hospital_emergency',  cat:'cavern', icon:'🏥', name:'Hospital Emergency',          desc:'Rush through packed corridors to deliver critical equipment in time!',  arenaType:'hospital_walk',     color:'#22c55e', obstacles:7,  totalDist:18, rec:['spider','humanoid']},
+  {id:'hospital_emergency',  cat:'cavern', icon:'🏥', name:'Hospital Emergency',          desc:'Rush through packed corridors to deliver critical equipment in time!',  arenaType:'hospital_walk',     color:'#22c55e', obstacles:7,  totalDist:18, rec:['spider','humanoid','medbot']},
   {id:'mine_shaft_descent',  cat:'cavern', icon:'⛏️', name:'Mining Shaft Descent',       desc:'Lower yourself down dark shafts between crystal-vein walls!',           arenaType:'mine_shaft',        color:'#7c3aed', obstacles:10, totalDist:24, rec:['spider','humanoid']},
   {id:'urban_obstacle',      cat:'cavern', icon:'🏙️', name:'Urban Obstacle Course',      desc:'Parkour across rooftops, scaffolding, and urban debris!',               arenaType:'urban_obstacle',    color:'#06b6d4', obstacles:12, totalDist:22, rec:['spider','humanoid']},
   {id:'ancient_colosseum',   cat:'cavern', icon:'🏟️', name:'Ancient Colosseum',          desc:'Navigate the arena floor while avoiding falling pillars!',              arenaType:'colosseum',         color:'#d97706', obstacles:14, totalDist:26, rec:['spider','humanoid']},
@@ -1415,6 +1838,8 @@ const ALL_COURSES = [
   {id:'eel_cavern',          cat:'sky', icon:'⚡', name:'Electric Eel Cavern',      desc:'Dodge electric eels guarding the passage through a dark sea cave!',       arenaType:'eel_cavern',        color:'#fbbf24', obstacles:11, totalDist:20, rec:['underwater','submarine']},
   {id:'tsunami_escape',      cat:'sky', icon:'🌊', name:'Tsunami Escape',           desc:'Outswim a wall of crushing water racing toward the safe zone!',           arenaType:'tsunami',           color:'#1d4ed8', obstacles:14, totalDist:30, rec:['underwater','submarine']},
   {id:'mariana_challenge',   cat:'sky', icon:'🌑', name:'Mariana Trench Challenge', desc:'Ultimate depth run — navigate the absolute darkest trench on Earth!',     arenaType:'mariana',           color:'#0f172a', obstacles:15, totalDist:32, rec:['underwater','submarine']},
+  // ── CHASSIS-EXCLUSIVE GAME MODES (36 chassis × 10 modes — strict UI filter) ──
+  ...ALL_CHASSIS_GAME_MODES,
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1513,6 +1938,13 @@ const ROBOT_COURSE_ACCESS = {
   security:   ['racing','forest'],
   medbot:     ['forest','puzzle'],
   firebot:    ['forest','puzzle'],
+  birdbot:    ['speedrun'],
+  miningbot:  ['forest','puzzle'],
+  striker:    ['temple'],
+  blaster:    ['temple'],
+  ninja:      ['temple','forest'],
+  berserker:  ['temple'],
+  footballbot: ['speedrun'],
 };
 const ROBOT_UNAVAIL_REASON = {
   racing:  { factory:"Industrial arm — not race-ready", factorybot:"Factory bot — no racing mode", underwater:"Sub — can't race on ground", medbot:"Medical bot — not a racer", firebot:"Fire truck — too slow" },
@@ -1542,9 +1974,7 @@ const COURSE_STORIES = {
   run_easy:     { emoji:'🟢', story:"A short forest sprint — wooden arch to the meadow. 5-minute target, clear path, perfect for your first run!", objectives:["Complete in under 5 minutes","Collect all 3 coins","Beat your personal best"], tip:"Fire the ACCELERATE block the instant the timer starts!", collectibles:"3 coins · 1 speed pad · 1 checkpoint" },
   // ── AI / Sensor ────────────────────────────────────────────────────────────
   ai_training:  { emoji:'🧠', story:"The Whispering Forest is your training ground. Navigate 9 zones using only your AI sensors — no manual override allowed!", objectives:["Complete 9 zones autonomously","Scan 15+ objects","Zero manual inputs"], tip:"Train your obstacle avoidance before the final canyon!", collectibles:"20 coins · 5 data beacons" },
-  stealth:      { emoji:'👻', story:"Sensor towers scan the forest. Move through shadows, time your dashes between detection beams, and reach the shrine unseen!", objectives:["Reach the shrine","Zero detections","Use stealth mode in every zone"], tip:"Wait for the sensor sweep to pass — then sprint!", collectibles:"15 coins · 3 stealth pickups" },
   obj_detect:   { emoji:'👁',  story:"Ancient artifacts are scattered across all 9 forest zones. Scan and log every one — your sensor accuracy determines your score!", objectives:["Scan 25+ objects","100% scan accuracy","Complete in under 8 minutes"], tip:"Hold still when scanning — movement reduces accuracy!", collectibles:"25 artifacts · 20 coins" },
-  smart_patrol: { emoji:'🏙️', story:"Patrol all 9 sectors of the forest arena. Map every zone, log every anomaly, and report back to base — in order!", objectives:["Patrol all 9 sectors","Log all anomalies","Complete the circuit"], tip:"Use COMPASS to track your sector count!", collectibles:"9 sector logs · 15 coins" },
   auto_nav:     { emoji:'🗺️', story:"Navigate the full forest — all 9 zones — using only your onboard map and sensors. No hints. Total autonomy.", objectives:["Navigate all 9 zones","Zero manual assists","Find the Power Shrine"], tip:"Build a waypoint list at the start — execute it perfectly!", collectibles:"20 coins · 5 hidden gems" },
   // ── Crystal Cavern ─────────────────────────────────────────────────────────
   crystal_cave:    { emoji:'💎', story:"Glowing crystals light the underground. Navigate all 9 cavern zones — from the entrance to the legendary Gemstone Throne!", objectives:["Reach the Gemstone Throne","Collect 15+ crystals","Complete 9 zones"], tip:"Crystal clusters mark safe paths — follow the purple glow!", collectibles:"20 crystals · 15 coins · 3 gems" },
@@ -1552,15 +1982,40 @@ const COURSE_STORIES = {
   cavern_boss:     { emoji:'🕷️', story:"The crystal spider guardian awakens. Survive the Cavern Boss across all 9 zones — reach the Gemstone Throne to claim victory!", objectives:["Defeat the Cavern Boss","Survive all 9 zones","Collect the throne gem"], tip:"The boss is slower in crystal clusters — use them as cover!", collectibles:"25 coins · boss treasure (200 pts)" },
   deep_cave:       { emoji:'🌑', story:"No light. No map. Only your sensors guide you through 9 pitch-dark cavern zones to the deepest point of the ancient underground.", objectives:["Reach Zone 9","Navigate in darkness","Discover 5 hidden chambers"], tip:"LIDAR_SCAN returns wall distances — use them to build a mental map!", collectibles:"20 coins · 5 hidden chambers · ancient relic" },
   // ── Neon Racing Circuit ────────────────────────────────────────────────────
-  neon_race:    { emoji:'🏎️', story:"The neon circuit blazes to life. Starting grid to finish line — 9 zones of pure speed through the city circuit. Race!", objectives:["Finish the circuit","Beat the target time","Collect 20+ coins"], tip:"Hit the boost pads in Zone 2 — they're worth the line!", collectibles:"25 coins · 4 boost pads · 2 shields" },
   neon_chase:   { emoji:'🚓', story:"A rogue bot has stolen cargo from the city! Chase it through 9 neon zones — catch it before it reaches the exit!", objectives:["Catch the runaway bot","Complete in under 4 minutes","No shortcuts"], tip:"The target bot slows in the drift hairpin — plan your intercept!", collectibles:"15 coins · 3 speed boosts" },
   drift_king:   { emoji:'🌀', story:"This circuit rewards style. Master the drift lines through 9 zones — perfect drifts multiply your score!", objectives:["Complete the circuit","10+ perfect drifts","Top the leaderboard"], tip:"Enter turns wide, hit the apex, exit with throttle — classic drift!", collectibles:"20 coins · drift bonus points" },
   turbo_league: { emoji:'⚡', story:"First bot to cross the finish line wins. Boost pads, scanner lanes, neon city skyline — 9 zones of pure race to the end!", objectives:["Cross the finish first","Use 3+ boost pads","Complete in under 3 minutes"], tip:"The boost corridor in Zone 7 gives the biggest speed gain!", collectibles:"20 coins · 5 boost pads · 1 trophy (100 pts)" },
   run_medium:   { emoji:'🏆', story:"Three different routes through the neon circuit. Each has trade-offs. Which path does your algorithm choose? The 3-minute record awaits.", objectives:["Complete in under 3 minutes","Test all 3 routes","Beat the world record"], tip:"The middle route looks longer but has fewer turns — do the math!", collectibles:"8 coins · 3 routes · split times per checkpoint" },
+  // ── Mario Kart Racing Worlds ───────────────────────────────────────────────
+  sunny_circuit: { emoji:'🍭', story:"Welcome to Candy Kingdom! Race through cookie villages, chocolate rivers, and donut tunnels — collect stars as you go!", objectives:["Complete 1 lap","Pass all 4 checkpoint gates","Collect bonus stars","Cross the finish line"], tip:"Use MOVE FORWARD on straights and TURN blocks in the chicanes!", collectibles:"Stars · coins · boost pads" },
+  street_grand_prix: { emoji:'🌈', story:"Rainbow Road is live! Your racer launches onto a glowing cosmic highway floating through outer space. Complete 3 laps, pass all 8 gates each lap — don't fall into the void!", objectives:["Complete 3 full laps","Pass all 8 checkpoint gates each lap","Don't fall off the track"], tip:"Code your racing line: SET SPEED on straights, TURN blocks in corners, REPEAT or FOREVER for full laps. Follow track is optional!", collectibles:"Stars · cosmic coins · boost pads" },
+  dragon_skyway: { emoji:'🐉', story:"Dragon Skyway opens above the clouds! Fly through floating castles, past sleeping dragons, and over rainbow waterfalls on this fantasy sky circuit.", objectives:["Complete the sky circuit","Pass every checkpoint gate","Collect dragon stars"], tip:"The track rises and falls — keep moving forward through the cloud bends!", collectibles:"Dragon stars · cloud coins · boost pads" },
+  volcano_drift: { emoji:'🌋', story:"Volcano Drift erupts into action! Race two laps around a smoking crater, dodge lava pools, drift past obsidian spires, and blast through fire geysers.", objectives:["Complete 2 laps","Pass all 6 checkpoint gates each lap","Collect bonus stars","Bonus: beat 60 seconds"], tip:"Use SET SPEED on straights and slow down before the obsidian gate!", collectibles:"Stars · lava coins · boost pads · power-ups" },
+  luigi_circuit: { emoji:'🏁', story:"Luigi Circuit — a wide Italian oval perfect for learning racing basics. Complete 2 laps with no obstacles!", objectives:["Complete 2 laps","Stay on track","Beat 2:30"], tip:"Gentle steering on the curves — smooth is fast!", collectibles:"Coins · checkpoint gates" },
+  moo_moo_meadows: { emoji:'🐄', story:"Moo Moo Meadows — pastoral figure-8 through green fields. Weave around gentle 180° turns!", objectives:["Complete the figure-8","Pass all gates","Smooth turns"], tip:"Ease into each turn — don't jerk the wheel!", collectibles:"Coins · meadow stars" },
+  mario_circuit: { emoji:'🍄', story:"Mario Circuit — classic Mushroom Kingdom racing with straights, chicanes, and traffic cones!", objectives:["Complete 2 laps","Navigate S-curves","Avoid cones"], tip:"Brake before tight turns, boost on straights!", collectibles:"Mario stars · coins · boost pads" },
+  peach_castle: { emoji:'👑', story:"Peach's Castle Grounds — elegant royal circuit. Smooth, precise driving wins here.", objectives:["Complete 2 laps","Smooth steering","Under 4:00"], tip:"Keep momentum through curves — no sudden jerks!", collectibles:"Royal coins · garden stars" },
+  dry_dry_desert: { emoji:'🏜️', story:"Dry Dry Desert — sand dunes, canyon narrows, and wind gusts push your rover sideways!", objectives:["Complete 2 laps","Navigate canyon","Manage wind"], tip:"Steer against the wind when it gusts!", collectibles:"Desert coins · cactus shields" },
+  mushroom_canyon: { emoji:'🍄', story:"Mushroom Canyon — technical elevation changes. Brake for downhills, power up climbs!", objectives:["Complete 2 laps","Master elevation","Minimal wall hits"], tip:"Heavy braking before the downhill section!", collectibles:"Canyon stars · rock coins" },
+  bowser_castle: { emoji:'🏰', story:"Bowser's Castle — dark fortress with lava moats, fire jets, and Thwomps. Don't lose all your health!", objectives:["Complete 2 laps","Dodge hazards","Keep 50%+ health"], tip:"Watch Thwomp patterns — time your passes!", collectibles:"Castle coins · fire shields" },
+  bone_dry_desert: { emoji:'💀', story:"Bone-Dry Desert — quicksand, sandstorms, and whirlwinds. Keep your momentum!", objectives:["Complete 2 laps","Don't get stuck","Navigate whirlwinds"], tip:"Never stop in quicksand — maintain speed!", collectibles:"Bone coins · storm shields" },
+  piranha_plant_slide: { emoji:'🌿', story:"Piranha Plant Slide — slick water slide at extreme speed. Brake hard and dodge plants!", objectives:["Complete 2 laps","Manage speed","Dodge Piranha Plants"], tip:"Brake before every sharp corner!", collectibles:"Slide coins · plant stars" },
+  grumble_volcano: { emoji:'🌋', story:"Grumble Volcano — active eruptions, geysers, and crumbling bridges. Adapt to chaos!", objectives:["Complete 2 laps","Cross bridge in time","Dodge geysers"], tip:"Speed up when the bridge starts crumbling!", collectibles:"Magma coins · geyser shields" },
+  cheese_land: { emoji:'🧀', story:"Cheese Land — surreal wavy track where nothing is quite what it seems. Stay focused!", objectives:["Complete 2 laps","Navigate distortion","Don't get lost"], tip:"Trust your minimap when visuals warp!", collectibles:"Cheese coins · surreal stars" },
+  rainbow_road_master: { emoji:'🌈', story:"Rainbow Road Master Edition — the ultimate 10km cosmic lap combining every challenge. This is the final test!", objectives:["Complete 1 mega-lap","Pass all 8 gates","Master every section"], tip:"Use everything you've learned — this is the championship!", collectibles:"Cosmic stars · rainbow coins · boost pads" },
+  sunset_cove_01: { emoji:'🏖️', story:"Sunset Cove Speedway — turquoise bay, palm trees, tiki torches, giant hibiscus arch.", objectives:["Complete 2 laps","Pass hibiscus arch","Beat the timer"], tip:"Smooth steering on the coastal straight!", collectibles:"Sand coins · sunset gems" },
+  candy_carnival_01: { emoji:'🎡', story:"Candy Carnival Circuit — ferris wheel, coaster bridge, neon ticket booth arch.", objectives:["Complete 2 laps","Under coaster bridge","Hit carnival arch"], tip:"Follow the hot-pink lane through the midway!", collectibles:"Confetti · candy tokens" },
+  neon_metro_01: { emoji:'🚇', story:"Neon Metro Rush — rainy tunnels, holographic departure arch, passing trains.", objectives:["Complete 3 laps","Navigate station corners","Pass departure arch"], tip:"Follow magenta-cyan lanes through the rain!", collectibles:"Metro tokens · holo sparks" },
+  cloud_citadel_01: { emoji:'🏰', story:"Cloud Citadel Loop — floating castle, gold guardrails, castle gate arch.", objectives:["Complete 2 laps","Cross rope bridge","Pass castle gate"], tip:"Watch elevation on floating island curves!", collectibles:"Cloud wisps · star coins" },
+  jungle_ruins_01: { emoji:'🗿', story:"Jungle Ruins Rally — temple pyramid, stone jaguar, glowing rune arch.", objectives:["Complete 2 laps","Weave temple turns","Pass rune arch"], tip:"Slalom through the jungle temple!", collectibles:"Leaf drift · relic gems" },
+  frost_peak_01: { emoji:'🏔️', story:"Frost Peak Descent — alpine descent, ice bridge over chasm, aurora sky.", objectives:["Complete 2 laps","Cross ice bridge","Master descent"], tip:"Gentle steering on frost track!", collectibles:"Snowflakes · frost gems" },
+  lava_foundry_01: { emoji:'🔥', story:"Lava Foundry Forge — molten rivers, gear arch, steam vents.", objectives:["Complete 2 laps","Cross lava channels","Pass gear arch"], tip:"Brake before tight forge turns!", collectibles:"Ember coins · forge tokens" },
+  star_station_01: { emoji:'🛸', story:"Star Station Ring — habitat domes, glass floor, airlock arch with Earth view.", objectives:["Complete 2 laps","Cross glass deck","Pass airlock"], tip:"Follow violet lanes on the orbital deck!", collectibles:"Cosmic dust · station stars" },
+  fairy_glen_01: { emoji:'🧚', story:"Fairy Glen Gardens — giant daisies, toadstool arch, firefly swarm.", objectives:["Complete 2 laps","Navigate garden spiral","Pass toadstool gate"], tip:"Follow golden lanes through the glen!", collectibles:"Rune sparkles · pollen" },
+  thunder_ridge_01: { emoji:'⛈️', story:"Thunder Ridge Challenge — windmill hairpin, storm clouds, lightning flashes.", objectives:["Complete 3 laps","Master hairpins","Survive the storm"], tip:"Brake early on cliff-edge hairpins!", collectibles:"Storm coins · lightning bolts" },
   // ── Ancient Temple ─────────────────────────────────────────────────────────
   temple_run:    { emoji:'🏛️', story:"The ancient temple awakens with traps and pendulums. Race through all 9 zones — reach the Idol Chamber before the walls close!", objectives:["Complete 9 zones","Avoid all traps","Reach the Idol Chamber"], tip:"Traps have rhythms — watch 2 cycles before you dash!", collectibles:"20 coins · 4 shields · 3 gems" },
   pressure_path: { emoji:'⬛', story:"Temple pressure plates must be activated in exact order. Wrong steps trigger ancient traps. Read the symbols — they hold the answer!", objectives:["Find the correct sequence","Activate all plates","Avoid every trap"], tip:"Wall symbols hint at the activation order — look carefully!", collectibles:"50 coins · 5 ancient artifacts" },
-  idol_heist:    { emoji:'🏺', story:"The legendary idol sits at the heart of the temple. Grab it and escape through 9 guardian-filled zones — but every step triggers something!", objectives:["Grab the idol","Escape the temple","Survive all 9 zones"], tip:"Once you grab the idol, go fast — every trap activates!", collectibles:"30 coins · 1 legendary idol (500 pts)" },
   guardian_fight:{ emoji:'⚔️', story:"Four temple guardians block the path to the Inner Sanctum. Battle through 9 zones — defeat each guardian to claim the ancient power!", objectives:["Defeat all 4 guardians","Reach the Inner Sanctum","Complete 9 zones"], tip:"Each guardian has a weak point — scan them before engaging!", collectibles:"30 coins · 4 guardian drops · ancient power (300 pts)" },
 
   // ── Spider Robot ────────────────────────────────────────────────────────────
@@ -1624,15 +2079,26 @@ const COURSE_STORIES = {
 // ─────────────────────────────────────────────────────────────────────────────
 function buildToolbox(rc) {
   const type  = detectRobotType(rc);
+  const knownTypes = new Set(['rover','tank','drone','jet','spider','humanoid','factory','hover','underwater','security','medbot','firebot','racedrone','factorybot','birdbot','miningbot']);
+  const effectiveType = knownTypes.has(type) ? type : 'rover';
   const sens  = rc.sensors || [];
   const tools = rc.tools   || [];
   const hasSens = (...n) => n.some(x => sens.includes(x));
   const hasTool = (...n) => n.some(x => tools.includes(x));
   const b = (t) => ({ kind:'block', type:t });
+  const dedupe = (items) => {
+    const seen = new Set();
+    return items.filter((item) => {
+      if (item.kind === 'sep') return true;
+      if (!item.type || seen.has(item.type)) return false;
+      seen.add(item.type);
+      return true;
+    });
+  };
 
   const ctrl   = [b('robot_wait'),b('robot_repeat'),b('robot_forever'),b('robot_if_then'),b('robot_if_else'),b('robot_while'),b('robot_wait_until')];
-  const lights = [b('robot_led_on'),b('robot_led_off'),b('robot_flash'),b('robot_rainbow'),b('robot_play_sound'),b('robot_voice'),b('robot_stealth_mode'),b('robot_emergency_lights'),b('robot_countdown'),b('robot_custom_sound')];
-  const vars   = [b('robot_var_set'),b('robot_var_change'),b('robot_var_get'),b('robot_timer_start'),b('robot_timer_check'),b('robot_timer_reset')];
+  const lights = dedupe([b('robot_led_on'),b('robot_led_off'),b('robot_flash'),b('robot_rainbow'),b('robot_play_sound'),b('robot_voice'),b('robot_stealth_mode'),b('robot_emergency_lights'),b('robot_countdown'),b('robot_custom_sound'),b('robot_hologram_display')]);
+  const vars   = dedupe([b('robot_var_set'),b('robot_var_change'),b('robot_var_get'),b('robot_timer_start'),b('robot_timer_check'),b('robot_timer_reset')]);
 
   // ── Gripper-specific block sets ─────────────────────────────────────────
   const gType = detectGripperType(rc);
@@ -1649,9 +2115,11 @@ function buildToolbox(rc) {
 
   let move=[], sense=[], ai=[], toolBlocks=[];
 
-  switch(type) {
+  switch(effectiveType) {
     case 'rover':
       move  = [b('robot_move_forward'),b('robot_move_backward'),b('robot_turn_left'),b('robot_turn_right'),
+               b('robot_turn_corner_left'),b('robot_turn_corner_right'),b('robot_u_turn'),
+               b('robot_move_forward_until'),b('robot_zigzag'),b('robot_circle'),
                b('robot_spin'),b('robot_stop'),b('robot_set_speed'),b('robot_boost'),b('robot_brake'),
                b('robot_drift'),b('robot_strafe'),b('robot_orbit_target'),b('robot_follow_path'),
                b('robot_move_to_xy'),b('robot_face_direction'),b('robot_orbit_point'),
@@ -1685,7 +2153,9 @@ function buildToolbox(rc) {
       break;
 
     case 'tank':
-      move  = [b('robot_move_forward'),b('robot_move_backward'),b('robot_tank_steer'),
+      move  = [b('robot_move_forward'),b('robot_move_backward'),b('robot_turn_left'),b('robot_turn_right'),
+               b('robot_turn_corner_left'),b('robot_turn_corner_right'),b('robot_move_forward_until'),
+               b('robot_tank_steer'),
                b('robot_rotate_place'),b('robot_climb_mode'),b('robot_power_mode'),b('robot_stop'),b('robot_boost'),
                b('robot_brake'),b('robot_set_speed'),b('robot_spin'),b('robot_emergency_stop'),b('robot_wait')];
       sense = [b('robot_obstacle_ahead'),b('robot_collision'),b('robot_battery_low'),b('robot_scan'),
@@ -1696,6 +2166,20 @@ function buildToolbox(rc) {
       ai    = [b('robot_avoid_obstacle'),b('robot_patrol_area'),b('robot_return_home'),b('robot_guard_area'),
                b('robot_map_env'),b('robot_predict_obstacle'),b('robot_explore_area'),b('robot_eval_strategy')];
       toolBlocks = [b('robot_push_object'),b('robot_tool_change'),b('robot_emergency_lights'),b('robot_alarm_sound'),
+                    ...(hasTool('grabber','claw')?[b('robot_grab'),b('robot_release')]:[] )];
+      break;
+
+    case 'miningbot':
+      move  = [b('robot_move_forward'),b('robot_move_backward'),b('robot_turn_left'),b('robot_turn_right'),
+               b('robot_turn_corner_left'),b('robot_turn_corner_right'),b('robot_move_forward_until'),
+               b('robot_tank_steer'),b('robot_power_mode'),b('robot_stop'),b('robot_boost'),
+               b('robot_brake'),b('robot_set_speed'),b('robot_spin'),b('robot_emergency_stop'),b('robot_wait')];
+      sense = [b('robot_obstacle_ahead'),b('robot_collision'),b('robot_battery_low'),b('robot_scan'),
+               b('robot_terrain_detect'),b('robot_motion_detect'),b('robot_distance_wall'),
+               b('robot_timer_start'),b('robot_timer_done')];
+      ai    = [b('robot_avoid_obstacle'),b('robot_patrol_area'),b('robot_return_home'),
+               b('robot_map_env'),b('robot_explore_area'),b('robot_eval_strategy')];
+      toolBlocks = [b('robot_push_object'),b('robot_drill'),b('robot_tool_change'),
                     ...(hasTool('grabber','claw')?[b('robot_grab'),b('robot_release')]:[] )];
       break;
 
@@ -1903,11 +2387,51 @@ function buildToolbox(rc) {
                     b('robot_led_color'),b('robot_custom_sound')];
       break;
 
+    case 'birdbot':
+      move  = [b('robot_flap'),b('robot_fly_up'),b('robot_fly_down'),b('robot_hover'),
+               b('robot_set_speed'),b('robot_stop'),b('robot_boost'),b('robot_air_brake')];
+      sense = [b('robot_obstacle_ahead'),b('robot_collision'),b('robot_battery_low'),
+               b('robot_motion_detect'),b('robot_target_found'),b('robot_distance_wall')];
+      ai    = [b('robot_avoid_obstacle'),b('robot_avoid_air_obstacle'),b('robot_return_home')];
+      toolBlocks = [b('robot_play_sound'),b('robot_flash'),b('robot_led_on'),b('robot_led_off'),
+                    b('robot_rainbow'),b('robot_voice'),b('robot_custom_sound')];
+      break;
+
     default: // rover fallback
-      move  = [b('robot_move_forward'),b('robot_move_backward'),b('robot_turn_left'),b('robot_turn_right'),b('robot_stop')];
-      sense = [b('robot_obstacle_ahead'),b('robot_battery_low'),b('robot_scan')];
-      ai    = [b('robot_avoid_obstacle'),b('robot_patrol_area'),b('robot_return_home')];
+      move  = [b('robot_move_forward'),b('robot_move_backward'),b('robot_turn_left'),b('robot_turn_right'),
+               b('robot_spin'),b('robot_stop'),b('robot_set_speed'),b('robot_boost'),b('robot_brake'),
+               b('robot_jump'),b('robot_strafe'),b('robot_drift'),b('robot_emergency_stop')];
+      sense = [b('robot_obstacle_ahead'),b('robot_battery_low'),b('robot_collision'),b('robot_scan'),
+               b('robot_look'),b('robot_line_below'),b('robot_see_object'),b('robot_motion_detect'),
+               ...(hasSens('ultrasonic','lidar')?[b('robot_distance_wall')]:[] )];
+      ai    = [b('robot_avoid_obstacle'),b('robot_patrol_area'),b('robot_return_home'),
+               b('robot_follow_line'),b('robot_follow_target'),b('robot_search_area')];
+      toolBlocks = [b('robot_grab'),b('robot_release'),b('robot_rotate_arm'),b('robot_drill'),
+                    b('robot_fire_laser'),b('robot_scan_object'),b('robot_tool_change')];
   }
+
+  // Universal extras — ensure key blocks appear for every robot type
+  const universalSense = [b('robot_scan_surroundings'), b('robot_calibrate_sensor'), b('robot_sound_detected')];
+  const universalAi    = [b('robot_protect_object'), b('robot_dock'), b('robot_autopilot')];
+  const universalMove  = [b('robot_navigate_checkpoint'), b('robot_random_move')];
+  const universalTools = [b('robot_pick_cargo'), b('robot_deploy_cable')];
+  move  = dedupe([...move,  ...universalMove]);
+  sense = dedupe([...sense, ...universalSense]);
+  ai    = dedupe([...ai,    ...universalAi]);
+  toolBlocks = dedupe([...toolBlocks, ...universalTools]);
+  if ((rc.legoParts || []).length > 0) {
+    toolBlocks = dedupe([...toolBlocks, b('robot_attach_block'), b('robot_rotate_block'), b('robot_build_structure')]);
+  }
+
+  // Merge FULL catalog — every defined block appears in the toolbox
+  const events = UNIVERSAL_BLOCKLY_EVENT_TYPES.map((t) => b(t));
+  move       = dedupe([...move,       ...BLOCK_CATALOG.move]);
+  sense      = dedupe([...sense,      ...BLOCK_CATALOG.sense]);
+  ai         = dedupe([...ai,         ...BLOCK_CATALOG.ai]);
+  toolBlocks = dedupe([...toolBlocks, ...BLOCK_CATALOG.tools]);
+  const ctrlFinal    = dedupe([...ctrl,    ...BLOCK_CATALOG.control]);
+  const lightsFinal  = dedupe([...lights,  ...BLOCK_CATALOG.lights]);
+  const varsFinal    = dedupe([...vars,    ...BLOCK_CATALOG.variables, ...BLOCK_CATALOG.timers]);
 
   // Always include a Tools category — use role-specific blocks or a universal fallback
   const defaultTools = [
@@ -1923,16 +2447,46 @@ function buildToolbox(rc) {
     ? [..._gripperBlocks, { kind:'sep' }, ...finalTools]
     : finalTools;
 
+  // Standard Blockly math blocks
+  const mathBlocks = [
+    { kind:'block', type:'math_number' },
+    { kind:'block', type:'math_arithmetic' },
+    { kind:'block', type:'math_single' },
+    { kind:'block', type:'math_round' },
+    { kind:'block', type:'math_random_int' },
+    { kind:'block', type:'math_constrain' },
+  ];
+
+  // Standard Blockly logic blocks (for custom if/else outside Control)
+  const logicBlocks = [
+    { kind:'block', type:'logic_compare' },
+    { kind:'block', type:'logic_operation' },
+    { kind:'block', type:'logic_negate' },
+    { kind:'block', type:'logic_boolean' },
+    { kind:'block', type:'logic_ternary' },
+  ];
+
+  // Standard Blockly procedure blocks for user-defined functions
+  const functionBlocks = [
+    { kind:'block', type:'procedures_defnoreturn' },
+    { kind:'block', type:'procedures_defreturn' },
+    { kind:'block', type:'procedures_callnoreturn' },
+    { kind:'block', type:'procedures_callreturn' },
+  ];
+
   const contents = [
-    { kind:'category', name:'⚡ Events',      colour:'#e11d48', contents:[b('robot_when_start')] },
-    { kind:'category', name:'🚀 Move',        colour:'#3b82f6', contents:move },
-    { kind:'category', name:'🔁 Control',     colour:'#f97316', contents:ctrl },
-    { kind:'category', name:'👁 Sensors',     colour:'#22c55e', contents:sense },
-    { kind:'category', name:'🧠 AI',          colour:'#a855f7', contents:ai },
-    { kind:'category', name:'⚙️ Tools',       colour:'#ec4899', contents:finalToolsWithGripper },
-    { kind:'category', name:'💡 Lights',      colour:'#06b6d4', contents:lights },
-    { kind:'category', name:'📦 Variables',    colour:'#f59e0b', contents:vars },
-    ...(_gripperBlocks.length > 0 ? [{ kind:'category', name:'🦾  Gripper',   colour:'#22c55e', contents:_gripperBlocks }] : []),
+    { kind:'category', name:'⚡ Events',      colour:'#e11d48', contents:events },
+    { kind:'category', name:'🚀 Motion',       colour:'#3b82f6', contents:move },
+    { kind:'category', name:'🔁 Loops',        colour:'#f97316', contents:ctrlFinal },
+    { kind:'category', name:'🔷 Logic',        colour:'#fb923c', contents:logicBlocks },
+    { kind:'category', name:'👁 Sensors',      colour:'#22c55e', contents:sense },
+    { kind:'category', name:'🧠 AI',           colour:'#a855f7', contents:ai },
+    { kind:'category', name:'⚙️ Robot',        colour:'#ec4899', contents:dedupe(finalToolsWithGripper) },
+    { kind:'category', name:'💡 LED',          colour:'#06b6d4', contents:lightsFinal },
+    { kind:'category', name:'📦 Variables',    colour:'#f59e0b', contents:varsFinal },
+    { kind:'category', name:'🔢 Math',         colour:'#10b981', contents:mathBlocks },
+    { kind:'category', name:'🧩 Functions',    colour:'#8b5cf6', contents:functionBlocks },
+    ...(_gripperBlocks.length > 0 ? [{ kind:'category', name:'🦾  Gripper',   colour:'#22c55e', contents:dedupe(_gripperBlocks) }] : []),
   ];
   return { kind:'categoryToolbox', contents };
 }
@@ -1940,13 +2494,43 @@ function buildToolbox(rc) {
 // ─────────────────────────────────────────────────────────────────────────────
 // WALK BLOCKLY TREE → flat SimCanvas action array
 // ─────────────────────────────────────────────────────────────────────────────
-function walkBlocks(block) {
+function walkBlocks(block, opts = {}) {
   const acts = [];
   while (block) {
     const t = block.type;
     const bid = block.id;
 
-    if (t === 'robot_when_start') { /* hat — skip */ }
+    if (t === 'robot_when_start' || t.startsWith('robot_when_')) { /* hat — skip */ }
+    else if (t === 'robot_flap')
+      acts.push({ id:'flap', cat:'move', icon:'🐦', label:'Flap!', blocklyId:bid, paramValues:{} });
+    else if (t === 'robot_set_flap_strength')
+      acts.push({ id:'set_flap_strength', cat:'move', icon:'💪', label:'Set Flap Strength', blocklyId:bid, paramValues:{ strength:+block.getFieldValue('STRENGTH')||5 } });
+    else if (t === 'robot_set_gravity_strength')
+      acts.push({ id:'set_gravity_strength', cat:'move', icon:'⬇️', label:'Set Gravity Strength', blocklyId:bid, paramValues:{ strength:+block.getFieldValue('STRENGTH')||5 } });
+    else if (t === 'robot_show_score')
+      acts.push({ id:'show_score', cat:'game', icon:'📺', label:'Show Score', blocklyId:bid, paramValues:{} });
+    else if (t === 'robot_restart_game')
+      acts.push({ id:'restart_game', cat:'game', icon:'🔄', label:'Restart Game', blocklyId:bid, paramValues:{} });
+    else if (t === 'robot_flappy_pause')
+      acts.push({ id:'pause', cat:'control', icon:'⏱️', label:'Pause', blocklyId:bid, paramValues:{ seconds:+block.getFieldValue('SECS')||1 } });
+    else if (t === 'robot_flappy_distance')
+      acts.push({ id:'distance_to_pipe', cat:'sense', icon:'📏', label:'Distance to Pipe', blocklyId:bid, paramValues:{} });
+    else if (t === 'robot_flappy_height')
+      acts.push({ id:'bird_height', cat:'sense', icon:'📊', label:'Bird Height', blocklyId:bid, paramValues:{} });
+    else if (t === 'robot_flappy_gap_center')
+      acts.push({ id:'gap_center_height', cat:'sense', icon:'🎯', label:'Gap Center', blocklyId:bid, paramValues:{} });
+    else if (t === 'robot_flappy_falling')
+      acts.push({ id:'is_falling', cat:'sense', icon:'⬇️', label:'Is Falling?', blocklyId:bid, paramValues:{} });
+    else if (t === 'robot_read_score')
+      acts.push({ id:'read_score', cat:'var', icon:'⭐', label:'Score', blocklyId:bid, paramValues:{} });
+    else if (t === 'robot_read_high_score')
+      acts.push({ id:'read_high_score', cat:'var', icon:'🏆', label:'High Score', blocklyId:bid, paramValues:{} });
+    else if (t === 'robot_repeat_until_gameover') {
+      const inner = block.getInputTargetBlock('DO');
+      const inner_acts = inner ? walkBlocks(inner, opts) : [];
+      if (opts.flappyLoop) inner_acts.forEach(a => acts.push({...a}));
+      else for (let i = 0; i < 8; i++) inner_acts.forEach(a => acts.push({...a}));
+    }
     else if (t === 'robot_move_forward')
       acts.push({ id:'move_forward',  cat:'move',    icon:'⬆', label:'Move Forward',  blocklyId:bid, paramValues:{ steps:   +block.getFieldValue('STEPS')||3 } });
     else if (t === 'robot_move_backward')
@@ -1955,6 +2539,18 @@ function walkBlocks(block) {
       acts.push({ id:'turn_left',     cat:'move',    icon:'↺', label:'Turn Left',      blocklyId:bid, paramValues:{ degrees: +block.getFieldValue('ANGLE')||90 } });
     else if (t === 'robot_turn_right')
       acts.push({ id:'turn_right',    cat:'move',    icon:'↻', label:'Turn Right',     blocklyId:bid, paramValues:{ degrees: +block.getFieldValue('ANGLE')||90 } });
+    else if (t === 'robot_turn_corner_left')
+      acts.push({ id:'turn_corner_left',  cat:'move', icon:'↩', label:'Corner Left',  blocklyId:bid, paramValues:{} });
+    else if (t === 'robot_turn_corner_right')
+      acts.push({ id:'turn_corner_right', cat:'move', icon:'↪', label:'Corner Right', blocklyId:bid, paramValues:{} });
+    else if (t === 'robot_u_turn')
+      acts.push({ id:'u_turn',            cat:'move', icon:'🔄', label:'U-Turn',       blocklyId:bid, paramValues:{} });
+    else if (t === 'robot_move_forward_until')
+      acts.push({ id:'move_forward_until',cat:'move', icon:'⬆', label:'Move Until',   blocklyId:bid, paramValues:{ condition: block.getFieldValue('COND')||'wall' } });
+    else if (t === 'robot_zigzag')
+      acts.push({ id:'zigzag',            cat:'move', icon:'〰', label:'Zigzag',       blocklyId:bid, paramValues:{ times: +block.getFieldValue('TIMES')||4 } });
+    else if (t === 'robot_circle')
+      acts.push({ id:'circle',            cat:'move', icon:'⭕', label:'Circle',       blocklyId:bid, paramValues:{ dir: block.getFieldValue('DIR')||'cw' } });
     else if (t === 'robot_spin')
       acts.push({ id:'spin',          cat:'move',    icon:'🌀', label:'Spin Around',   blocklyId:bid, paramValues:{ degrees: 360 } });
     else if (t === 'robot_stop')
@@ -1974,19 +2570,34 @@ function walkBlocks(block) {
     else if (t === 'robot_repeat') {
       const times = Math.max(1, parseInt(block.getFieldValue('TIMES'))||3);
       const inner = block.getInputTargetBlock('DO');
-      const inner_acts = inner ? walkBlocks(inner) : [];
+      const inner_acts = inner ? walkBlocks(inner, opts) : [];
       for (let i = 0; i < times; i++) inner_acts.forEach(a => acts.push({...a}));
     }
     else if (t === 'robot_forever') {
       const inner = block.getInputTargetBlock('DO');
-      const inner_acts = inner ? walkBlocks(inner) : [];
-      for (let i = 0; i < 5; i++) inner_acts.forEach(a => acts.push({...a}));
+      const inner_acts = inner ? walkBlocks(inner, opts) : [];
+      if (opts.flappyLoop) inner_acts.forEach(a => acts.push({...a}));
+      else for (let i = 0; i < 5; i++) inner_acts.forEach(a => acts.push({...a}));
     }
     else if (t === 'robot_if_then') {
       const inner = block.getInputTargetBlock('DO');
-      const inner_acts = inner ? walkBlocks(inner) : [];
+      const inner_acts = inner ? walkBlocks(inner, opts) : [];
       inner_acts.forEach(a => acts.push(a));
     }
+    else if (t === 'robot_if_else') {
+      const innerDo = block.getInputTargetBlock('DO');
+      const innerElse = block.getInputTargetBlock('ELSE');
+      const doActs = innerDo ? walkBlocks(innerDo, opts) : [];
+      const elseActs = innerElse ? walkBlocks(innerElse, opts) : [];
+      doActs.forEach(a => acts.push(a));
+      elseActs.forEach(a => acts.push(a));
+    }
+    else if (t === 'robot_var_create')
+      acts.push({ id:'create_var', cat:'var', icon:'📦', label:'Create Variable', blocklyId:bid, paramValues:{ name:block.getFieldValue('VAR')||'myVar' } });
+    else if (t === 'robot_var_set')
+      acts.push({ id:'set_var', cat:'var', icon:'📦', label:'Set Variable', blocklyId:bid, paramValues:{ name:block.getFieldValue('VAR')||'myVar', value:+block.getFieldValue('VAL')||0 } });
+    else if (t === 'robot_var_change')
+      acts.push({ id:'change_var', cat:'var', icon:'📦', label:'Change Variable', blocklyId:bid, paramValues:{ name:block.getFieldValue('VAR')||'myVar', value:+block.getFieldValue('DELTA')||1 } });
     else if (t === 'robot_obstacle_ahead' || t === 'robot_collision')
       acts.push({ id:'obstacle_ahead', cat:'sense',  icon:'🚧', label:'Obstacle?',    blocklyId:bid, paramValues:{} });
     else if (t === 'robot_line_below')
@@ -2078,8 +2689,8 @@ function walkBlocks(block) {
       acts.push({ id:'land',             cat:'move', icon:'🛬', label:'Land',            blocklyId:bid, paramValues:{} });
     else if (t === 'robot_rotate_air')
       acts.push({ id:'rotate_air',       cat:'move', icon:'🔄', label:'Rotate Air',     blocklyId:bid, paramValues:{ degrees:+block.getFieldValue('ANGLE')||90 } });
-    else if (t === 'robot_altitude_hold')
-      acts.push({ id:'altitude_hold',    cat:'move', icon:'✈️', label:'Hold Altitude',  blocklyId:bid, paramValues:{ seconds:+block.getFieldValue('SECS')||1 } });
+    else if (t === 'robot_altitude_hold' || t === 'robot_hold_at_altitude')
+      acts.push({ id:'altitude_hold',    cat:'move', icon:'✈️', label:'Hold Altitude',  blocklyId:bid, paramValues:{ seconds:+block.getFieldValue('SECS')||+block.getFieldValue('ALT')||1 } });
     else if (t === 'robot_avoid_air_obstacle')
       acts.push({ id:'avoid_air',        cat:'ai',   icon:'🛡', label:'Avoid Air',      blocklyId:bid, paramValues:{} });
     else if (t === 'robot_aerial_scan')
@@ -2202,7 +2813,7 @@ function walkBlocks(block) {
       acts.push({ id:'patrol_area',   cat:'ai',   icon:'🌀', label:'Orbit Target', blocklyId:bid, paramValues:{ laps:1 } });
     else if (t === 'robot_random_move' || t === 'robot_random_walk')
       acts.push({ id:'random_move',   cat:'ai',   icon:'🎲', label:'Random Move',  blocklyId:bid, paramValues:{} });
-    else if (t === 'robot_follow_path')
+    else if (t === 'robot_follow_path' || t === 'robot_follow_path_style')
       acts.push({ id:'follow_line',   cat:'ai',   icon:'🛤️', label:'Follow Path',  blocklyId:bid, paramValues:{ steps:8 } });
     else if (t === 'robot_patrol_route')
       acts.push({ id:'patrol_area',   cat:'ai',   icon:'🔄', label:'Patrol Route', blocklyId:bid, paramValues:{ laps:3 } });
@@ -2218,7 +2829,7 @@ function walkBlocks(block) {
       acts.push({ id:'follow_line',   cat:'ai',   icon:'🧠', label:'Smart Route',  blocklyId:bid, paramValues:{ steps:6 } });
     else if (t === 'robot_autonomous_nav')
       acts.push({ id:'follow_line',   cat:'ai',   icon:'🤖', label:'Autonomous',   blocklyId:bid, paramValues:{ steps:8 } });
-    else if (t === 'robot_formation_fly')
+    else if (t === 'robot_formation_fly' || t === 'robot_formation_layout')
       acts.push({ id:'patrol_area',   cat:'ai',   icon:'✈️', label:'Formation',    blocklyId:bid, paramValues:{ laps:2 } });
     else if (t === 'robot_eval_strategy' || t === 'robot_priority_decision' || t === 'robot_threat_assess' || t === 'robot_threat_assessment')
       acts.push({ id:'scan',          cat:'ai',   icon:'🧠', label:'Strategy',     blocklyId:bid, paramValues:{} });
@@ -2240,7 +2851,7 @@ function walkBlocks(block) {
       acts.push({ id:'see_object',    cat:'sense',icon:'🔍', label:'ID Shape',     blocklyId:bid, paramValues:{} });
     else if (t === 'robot_motion_detect' || t === 'robot_sound_detected')
       acts.push({ id:'scan',          cat:'sense',icon:'📡', label:'Detect',       blocklyId:bid, paramValues:{} });
-    else if (t === 'robot_sonar' || t === 'robot_sonar_pulse' || t === 'robot_sonar_scan')
+    else if (t === 'robot_sonar' || t === 'robot_sonar_pulse' || t === 'robot_sonar_scan' || t === 'robot_sonar_radius_scan')
       acts.push({ id:'scan',          cat:'sense',icon:'📡', label:'Sonar',        blocklyId:bid, paramValues:{} });
     else if (t === 'robot_thermal_scan')
       acts.push({ id:'see_object',    cat:'sense',icon:'🔥', label:'Thermal Scan', blocklyId:bid, paramValues:{} });
@@ -2494,13 +3105,79 @@ function walkBlocks(block) {
   return acts;
 }
 
-function extractActions(ws) {
+function parseBlocklyFlappyHandlers(ws) {
+  const handlers = { start: [], spacebar: [], collision: [], gap_passed: [], game_over: [] };
+  if (!ws) return handlers;
+  const opts = { flappyLoop: true };
+  for (const hat of ws.getTopBlocks(true)) {
+    if (!hat.type.startsWith('robot_when_')) continue;
+    let key = null;
+    if (hat.type === 'robot_when_start') key = 'start';
+    else if (hat.type === 'robot_when_key' && hat.getFieldValue('KEY') === 'space') key = 'spacebar';
+    else if (hat.type === 'robot_when_collision') key = 'collision';
+    else if (hat.type === 'robot_when_gap_passed') key = 'gap_passed';
+    else if (hat.type === 'robot_when_game_over') key = 'game_over';
+    if (key) handlers[key] = walkBlocks(hat.getNextBlock(), opts);
+  }
+  return handlers;
+}
+
+function blocklyHatHandlerKey(hat) {
+  const t = hat.type;
+  if (t === 'robot_when_start') return 'start';
+  if (t === 'robot_when_key') {
+    return hat.getFieldValue('KEY') === 'space' ? 'spacebar' : 'key';
+  }
+  if (t.startsWith('robot_when_')) return t.replace('robot_when_', '');
+  return null;
+}
+
+function parseBlocklyEventHandlers(ws) {
+  const parsed = {
+    start: [], spacebar: [], key: [], zone: [], collect: [], collision: [],
+    sensor: [], gap_passed: [], game_over: [], checkpoint: [], lap: [],
+    race_won: [], goal: [],
+    timers: [], batteries: [], laps: [], keys: [],
+  };
+  if (!ws) return parsed;
+  const opts = { flappyLoop: false };
+  for (const hat of ws.getTopBlocks(true)) {
+    if (!hat.type.startsWith('robot_when_')) continue;
+    const blocks = walkBlocks(hat.getNextBlock(), opts);
+    if (hat.type === 'robot_when_timer') {
+      parsed.timers.push({ seconds: +hat.getFieldValue('SECS') || 5, blocks });
+    } else if (hat.type === 'robot_when_battery') {
+      parsed.batteries.push({ percent: +hat.getFieldValue('PCT') || 20, blocks });
+    } else if (hat.type === 'robot_when_lap') {
+      parsed.laps.push({ lap: +hat.getFieldValue('LAP') || 1, blocks });
+    } else if (hat.type === 'robot_when_key') {
+      const k = hat.getFieldValue('KEY') || 'space';
+      if (k === 'space') parsed.spacebar.push(...blocks);
+      else parsed.keys.push({ key: k, blocks });
+    } else {
+      const key = blocklyHatHandlerKey(hat);
+      if (key && parsed[key]) parsed[key].push(...blocks);
+    }
+  }
+  return parsed;
+}
+
+function runInstantEventActions(actions, rs, scene, movId, onBlockActive, tag = '') {
+  if (!actions?.length) return;
+  actions.forEach((act) => {
+    applyBlock(act, rs, getBlockDuration(act), movId, scene);
+    onBlockActive?.(-1, tag ? `[${tag}] ${act.label || act.id}` : (act.label || act.id), act.blockUid);
+  });
+}
+
+function extractActions(ws, { flappyLoop = false } = {}) {
   if (!ws) return [];
   const tops = ws.getTopBlocks(true);
-  const hat  = tops.find(b => b.type === 'robot_when_start');
-  if (hat) return walkBlocks(hat.getNextBlock());
+  const hat  = tops.find(b => b.type === 'robot_when_start' || b.type.startsWith('robot_when_'));
+  const opts = { flappyLoop };
+  if (hat) return walkBlocks(hat.getNextBlock(), opts);
   const all = [];
-  tops.forEach(b => { if (b.type !== 'robot_when_start') all.push(...walkBlocks(b)); });
+  tops.forEach(b => { if (!b.type.startsWith('robot_when_')) all.push(...walkBlocks(b, opts)); });
   return all;
 }
 
@@ -2508,20 +3185,27 @@ function extractActions(ws) {
 // SMART ARENA PROFILES — driven by ALL_COURSES
 // ─────────────────────────────────────────────────────────────────────────────
 const PROFILE_DATA = {
-  rover:      { tipIcon:'🏎️', tip:'This rover is built for ground challenges!',          recommend:'Perfect for obstacle courses, delivery & speed runs',           arenaType:'ground',     arenaLabel:'STEM Challenge Arena',       recKeys:['rover','race','humanoid'] },
-  tank:       { tipIcon:'🚜', tip:'This tank crushes heavy terrain!',                    recommend:'Built for heavy-duty terrain, ramps & cargo pushing',           arenaType:'rough',      arenaLabel:'Heavy Terrain Course',       recKeys:['tank','bulldozer','mining'] },
-  drone:      { tipIcon:'🚁', tip:'This drone soars through aerial challenges!',         recommend:'Optimized for ring courses, altitude & sky missions',            arenaType:'sky',        arenaLabel:'Sky City Arena',             recKeys:['drone','hover'] },
-  jet:        { tipIcon:'✈️', tip:'This jet is built for high-speed aerial racing!',     recommend:'Perfect for canyon runs, sky loops & stunt shows',              arenaType:'jet',        arenaLabel:'Jet Racing Circuit',         recKeys:['jet'] },
-  spider:     { tipIcon:'🕷️', tip:'This spider scales walls and ceilings with ease!',   recommend:'Built for caverns, climbing, ceiling traversal & leaping',      arenaType:'cavern',     arenaLabel:'Crystal Cavern',             recKeys:['spider','humanoid','climbing'] },
-  factory:    { tipIcon:'🦾', tip:'This arm robot rules the factory floor!',             recommend:'Perfect for sorting, stacking, assembly & delivery',            arenaType:'factory',    arenaLabel:'Industrial Workstation',     recKeys:['factory','assembly','crane'] },
-  hover:      { tipIcon:'🛸', tip:'This hover robot flies above the neon city track!',   recommend:'Built for neon racing, anti-gravity & floating platform arenas', arenaType:'neon_race',  arenaLabel:'Neon Racing Circuit',        recKeys:['hover','race','drone'] },
-  underwater: { tipIcon:'🌊', tip:'This sub dives deep into underwater challenges!',     recommend:'Explore coral reefs, caves & deep-sea trenches',                 arenaType:'underwater', arenaLabel:'Ocean Exploration Zone',     recKeys:['underwater','submarine'] },
-  humanoid:   { tipIcon:'🧍', tip:'This humanoid explores temples and warehouses!',      recommend:'Built for temples, warehouses & urban navigation challenges',    arenaType:'temple',     arenaLabel:'Ancient Temple Challenge',   recKeys:['humanoid','race'] },
-  security:   { tipIcon:'👮', tip:'This security bot patrols and protects the zone!',  recommend:'Built for perimeter patrol, intruder detection & area lockdown', arenaType:'ground',     arenaLabel:'Security Patrol Zone',       recKeys:['security','rover'] },
-  medbot:     { tipIcon:'🏥', tip:'This medbot assists and heals on the field!',        recommend:'Built for obstacle navigation, delivery & triage missions',       arenaType:'ground',     arenaLabel:'STEM Challenge Arena',       recKeys:['rover','race'] },
-  firebot:    { tipIcon:'🔥', tip:'This fire truck robot battles blazes!',              recommend:'Built for heavy terrain, timed challenges & rescue missions',     arenaType:'rough',      arenaLabel:'Heavy Terrain Course',       recKeys:['tank','rover'] },
-  racedrone:  { tipIcon:'🏁', tip:'This racing drone blazes through aerial circuits!',  recommend:'Optimized for neon racing, tight ring courses & speed runs',      arenaType:'neon_race',  arenaLabel:'Neon Racing Circuit',        recKeys:['drone','hover','race'] },
-  factorybot: { tipIcon:'🏭', tip:'This factory bot lifts and sorts on the floor!',     recommend:'Perfect for sorting, stacking, assembly & precision delivery',    arenaType:'factory',    arenaLabel:'Industrial Workstation',     recKeys:['factory','assembly'] },
+  rover:      { tipIcon:'🏎️', tip:'This rover is built for ground racing & driving!',      recommend:'Rainbow Road, campaign missions, delivery & forest runs',         arenaType:'street_grand_prix', arenaLabel:'Rainbow Road',               recKeys:['rover','race','delivery'] },
+  tank:       { tipIcon:'🛡️', tip:'Heavy fighter — block, slam, and outlast in the boxing ring!', recommend:'Training Arena, Championship Bout, Rainbow Road & demolition', arenaType:'robot_fight', arenaLabel:'Combat Arena', recKeys:['tank','battlebot','bulldozer','mining','fighter','combat'] },
+  drone:      { tipIcon:'🚁', tip:'This drone soars through aerial challenges!',         recommend:'Sky rescue, canyon flights, racing leagues & campaign missions',  arenaType:'sky',        arenaLabel:'Sky City Arena',             recKeys:['drone','aerial','rescue'] },
+  jet:        { tipIcon:'✈️', tip:'This jet is built for high-speed aerial racing!',     recommend:'Stunt showdowns, supersonic sprints, storm chases & sky campaigns', arenaType:'jet_stunt',  arenaLabel:'Jet Stunt Circuit',          recKeys:['jet','aerial','stunt'] },
+  spider:     { tipIcon:'🕷️', tip:'This spider scales walls and ceilings with ease!',   recommend:'Cavern crawls, temple climbs, rescue ops & campaign missions',    arenaType:'cavern',     arenaLabel:'Crystal Cavern',             recKeys:['spider','climbing','humanoid'] },
+  factory:    { tipIcon:'🦾', tip:'This arm robot rules the factory floor!',             recommend:'Sorting lines, surgery sims, factory rush & campaign missions',     arenaType:'factory',    arenaLabel:'Industrial Workstation',     recKeys:['factory','arm','assembly'] },
+  hover:      { tipIcon:'🛸', tip:'This hover robot flies above the neon city track!',   recommend:'Neon racing, drift king, sky campaigns & aerial circuits',        arenaType:'neon_race',  arenaLabel:'Neon Racing Circuit',        recKeys:['hover','race','aerial'] },
+  underwater: { tipIcon:'🌊', tip:'This sub dives deep into underwater challenges!',     recommend:'Reef restoration, trench dives, shipwrecks & ocean grand prix',   arenaType:'coral_reef', arenaLabel:'Coral Reef Zone',            recKeys:['underwater','submarine','ocean'] },
+  humanoid:   { tipIcon:'🧍', tip:'This humanoid explores temples and warehouses!',      recommend:'Jump world, stairwells, temple runs & campaign parkour',          arenaType:'temple',     arenaLabel:'Ancient Temple Challenge',   recKeys:['humanoid','walker','temple'] },
+  security:   { tipIcon:'👮', tip:'This security bot patrols and protects the zone!',  recommend:'Stealth escapes, museum heists, patrol grids & cyber city',       arenaType:'neon_city',  arenaLabel:'Security Patrol Zone',       recKeys:['security','stealth','patrol'] },
+  medbot:     { tipIcon:'🏥', tip:'This medbot assists and heals on the field!',        recommend:'ER triage, hospital navigation, rescue runs & med delivery',        arenaType:'medbot_triage', arenaLabel:'MedBay Emergency',        recKeys:['medbot','hospital','rescue'] },
+  firebot:    { tipIcon:'🔥', tip:'This fire truck robot battles blazes!',              recommend:'Blaze protocol, wildfire response, rescue extraction & volcano runs', arenaType:'firebot_blaze', arenaLabel:'Blaze Response Zone',   recKeys:['firebot','fire','rescue'] },
+  racedrone:  { tipIcon:'🏁', tip:'This racing drone blazes through aerial circuits!',  recommend:'Drone racing league, warp gates, storm chases & sky campaigns',   arenaType:'neon_race',  arenaLabel:'Neon Racing Circuit',        recKeys:['racedrone','race','aerial'] },
+  factorybot: { tipIcon:'🏭', tip:'This factory bot lifts and sorts on the floor!',     recommend:'Auto factory, quality gates, crane challenges & campaign missions', arenaType:'factory',  arenaLabel:'Industrial Workstation',     recKeys:['factorybot','factory','assembly'] },
+  birdbot:    { tipIcon:'🐦', tip:'BirdBot flaps through pipe gaps — add When spacebar clicked → Flap!, then press SPACE during play!', recommend:'Flappy pipes, ring courses, storm flights & wrecking ball', arenaType:'flappy_bird', arenaLabel:'Flappy BirdBot', recKeys:['birdbot'] },
+  miningbot:  { tipIcon:'⛏️', tip:'This mining bot crushes ore and navigates quarries!', recommend:'Quarry runs, ore hauls, tunnel digs & heavy terrain missions', arenaType:'street_grand_prix', arenaLabel:'Rainbow Road', recKeys:['miningbot','tank','bulldozer'] },
+  striker:    { tipIcon:'🥊', tip:'Striker uses fast combos — add When START → Light Punch → Block!', recommend:'Training Arena, Sparring, Tournament & Survival', arenaType:'robot_fight', arenaLabel:'Combat Arena', recKeys:['striker','fighter','combat'] },
+  blaster:    { tipIcon:'✨', tip:'Blaster fights from range with elemental attacks!', recommend:'Sparring, Boss Gauntlet & Combat Strategies', arenaType:'robot_fight', arenaLabel:'Combat Arena', recKeys:['blaster','fighter','combat'] },
+  ninja:      { tipIcon:'🥷', tip:'Ninja strikes with precision — dodge then Swift Strike!', recommend:'Sparring, Survival & Combat Strategies', arenaType:'robot_fight', arenaLabel:'Combat Arena', recKeys:['ninja','fighter','combat'] },
+  berserker:  { tipIcon:'💢', tip:'Berserker grows stronger as health drops — use Rage blocks!', recommend:'Boss Gauntlet, Tournament & Survival', arenaType:'robot_fight', arenaLabel:'Combat Arena', recKeys:['berserker','fighter','combat'] },
+  footballbot:{ tipIcon:'⚽', tip:'Your robot leads a 3v3 team — chase, pass & shoot against AI opponents!', recommend:'FIFA 3v3 Match, 1v1 Skills & Championship', arenaType:'robot_football', arenaLabel:'Robot Football Arena', recKeys:['footballbot','football','striker'] },
 };
 
 function getSmartProfile(rc) {
@@ -2643,6 +3327,12 @@ function _placeGems(scene, g, pts) {
 // ─────────────────────────────────────────────────────────────────────────────
 function _groundArena(scene,ch){
   const g=new THREE.Group(); g.name='arena';
+  // Decorative trees/rocks are visually solid but were never collidable —
+  // the robot drove straight through them. Register the big, path-blocking
+  // ones (not ferns/mushrooms/lanterns, which are too small to matter and
+  // would feel unfair to block on) so "Avoid all obstacles" objectives are
+  // actually enforced. Preserve any hazards already pushed by other code.
+  if(!scene.userData.obstacles) scene.userData.obstacles=[];
   const isFox=ch?.id==='fox_battery_chase'||ch?.isFoxChase;
   const dist=Math.max(isFox?56:48,(ch?.totalDist||30)*1.4);
   const finishZ=4-dist;
@@ -2654,7 +3344,12 @@ function _groundArena(scene,ch){
   // ── PER-COURSE PROFILE — each mission gets its own sky, fog, hazards & feel ──
   const FOREST_PROFILES={
     // light: [ambient×, hemi×, sun×, optional sun color] · exp: tone-mapping exposure×
-    full: {sky:['#c87c28','#8a4c14','#1e3060','#080c1a'], fog:[0x5a3010,0.007], clutter:1.0,  boulder:true,  drone:true,  rocks:true,  light:[1.0,1.0,1.0], exp:1.0},
+    // Horizon-band colours (index 2-3) are what a ground-level camera mostly
+    // sees, not the zenith colour — the original near-black horizon made the
+    // whole course read as dark/flat next to the racing courses' bright
+    // palette even though the lighting rig itself was fine. Brightened the
+    // horizon and bumped exposure to close that gap.
+    full: {sky:['#e0a050','#c87c40','#4a6a3c','#1a2818'], fog:[0x6a4525,0.006], clutter:1.0,  boulder:true,  drone:true,  rocks:true,  light:[1.15,1.1,1.05], exp:1.15},
     race: {sky:['#7ec8f0','#ffd989','#6a9c45','#0c1a0a'], fog:[0x23481c,0.006], clutter:0.4,  boulder:false, drone:false, rocks:false, light:[1.0,1.0,1.0], exp:1.0},
     maze: {sky:['#3a5068','#a07040','#2a4820','#060d04'], fog:[0x102808,0.018], clutter:0.85, boulder:true,  drone:false, rocks:false, light:[0.72,0.62,0.52,0xd8c8a0], exp:0.88},
     night:{sky:['#060c1a','#12203a','#101e14','#020602'], fog:[0x060c18,0.014], clutter:0.6,  boulder:false, drone:true,  rocks:false, light:[0.3,0.22,0.16,0x9ab8ff], exp:0.60},
@@ -2845,6 +3540,7 @@ function _groundArena(scene,ch){
     const h=(3.2+Math.random()*1.1)*sz;
     const trunk=new THREE.Mesh(new THREE.CylinderGeometry(0.22*sz,0.38*sz,h,8),trunkMat);
     trunk.position.set(tx,h/2,tz2); trunk.castShadow=false; g.add(trunk);
+    scene.userData.obstacles.push({mesh:trunk,radius:0.45*sz,type:'tree'});
     // Root buttresses
     for(let ri=0;ri<4;ri++){
       const ra=(ri/4)*Math.PI*2;
@@ -2885,6 +3581,7 @@ function _groundArena(scene,ch){
     rock.position.set(rx,rs*0.55,rz2);
     rock.rotation.y=Math.sin(rx*rz2)*Math.PI; rock.rotation.x=Math.sin(rx*2)*0.32;
     rock.castShadow=true; g.add(rock);
+    scene.userData.obstacles.push({mesh:rock,radius:rs*0.85,type:'rock'});
     for(let si=0;si<2;si++){
       const sr=new THREE.Mesh(new THREE.DodecahedronGeometry(rs*(0.28+Math.random()*0.18),0),rockDarkMat);
       const sa=si*Math.PI+Math.random();
@@ -2924,6 +3621,7 @@ function _groundArena(scene,ch){
     const logMossMat2=new THREE.MeshStandardMaterial({color:0x2d5a18,roughness:0.98,emissive:0x0d2a0a,emissiveIntensity:0.09});
     const log=new THREE.Mesh(new THREE.CylinderGeometry(0.27*ls,0.21*ls,3.4*ls,8),logMat);
     log.position.set(lx,0.21*ls,lz2); log.rotation.z=Math.PI/2; log.rotation.y=la; log.castShadow=true; g.add(log);
+    scene.userData.obstacles.push({mesh:log,radius:1.5*ls,type:'log'});
     const mossLog=new THREE.Mesh(new THREE.CylinderGeometry(0.28*ls,0.22*ls,3.4*ls,8,1,false,0,Math.PI*0.58),logMossMat2);
     mossLog.position.set(lx,0.21*ls,lz2); mossLog.rotation.z=Math.PI/2-0.5; mossLog.rotation.y=la; g.add(mossLog);
     for(let mi=0;mi<3;mi++){
@@ -4172,140 +4870,8 @@ function _jetArena(scene) {
   scene.add(g);
 }
 
-function _spaceArena(scene) {
-  const g=new THREE.Group(); g.name='arena';
-  scene.background=new THREE.Color(0x00000a);
-  scene.fog=new THREE.Fog(0x00000a,48,95);
-
-  // Dense star field — thousands of stars
-  const sp=[]; for(let i=0;i<1800;i++){sp.push((Math.random()-.5)*200,(Math.random()*70-10),(Math.random()-.5)*200);}
-  const sg=new THREE.BufferGeometry(); sg.setAttribute('position',new THREE.Float32BufferAttribute(sp,3));
-  g.add(new THREE.Points(sg,new THREE.PointsMaterial({color:0xffffff,size:0.22,sizeAttenuation:true,transparent:true,opacity:0.9})));
-
-  // Distant galaxy spiral glow (just a few bright clusters)
-  const galaxyCols=[0x7c3aed,0x1e40af,0x0c4a6e];
-  [[-60,15,-80],[50,20,-90],[-40,25,-70]].forEach(([gx,gy,gz],i)=>{
-    const nebula=new THREE.Mesh(new THREE.SphereGeometry(12+i*4,12,8),
-      new THREE.MeshStandardMaterial({color:galaxyCols[i],emissive:galaxyCols[i],emissiveIntensity:0.3,transparent:true,opacity:0.18}));
-    nebula.position.set(gx,gy,gz); g.add(nebula);
-  });
-
-  // Moon/asteroid surface floor
-  const floor=new THREE.Mesh(new THREE.PlaneGeometry(60,95),
-    new THREE.MeshStandardMaterial({color:0x1c1917,roughness:0.97,metalness:0.08}));
-  floor.rotation.x=-Math.PI/2; floor.receiveShadow=true; g.add(floor);
-
-  // Surface cracks (glow lines)
-  const crackMat=new THREE.MeshStandardMaterial({color:0x7c3aed,emissive:0x7c3aed,emissiveIntensity:0.7,transparent:true,opacity:0.5});
-  [[-5,-8],[3,-15],[-8,-22],[6,-30],[-3,-38]].forEach(([cx,cz])=>{
-    const crack=new THREE.Mesh(new THREE.PlaneGeometry(0.1+Math.random()*0.15,4+Math.random()*6),crackMat);
-    crack.rotation.x=-Math.PI/2; crack.rotation.z=Math.random()*Math.PI;
-    crack.position.set(cx,0.01,cz); g.add(crack);
-  });
-
-  // Craters — deeper and more dramatic
-  const cMat=new THREE.MeshStandardMaterial({color:0x0c0a09,roughness:0.99});
-  const craterRimMat=new THREE.MeshStandardMaterial({color:0x2c2520,roughness:0.96});
-  [[-3,-6,1.4],[2,-12,1.0],[-5,-19,1.8],[4,-26,1.2],[-1,-33,1.6],[5,-10,0.9],[-4,-15,1.3],[2,-40,2.0]].forEach(([cx,cz,r])=>{
-    const crater=new THREE.Mesh(new THREE.CylinderGeometry(r*0.7,r,0.3,14),cMat);
-    crater.position.set(cx,-0.05,cz); g.add(crater);
-    const rim=new THREE.Mesh(new THREE.TorusGeometry(r,0.22,6,14),craterRimMat);
-    rim.rotation.x=Math.PI/2; rim.position.set(cx,0.1,cz); g.add(rim);
-  });
-
-  // Alien rock formations
-  const rockMat=new THREE.MeshStandardMaterial({color:0x2d2620,roughness:0.92,metalness:0.08});
-  const glowRockMat=new THREE.MeshStandardMaterial({color:0x4c1d95,emissive:0x4c1d95,emissiveIntensity:0.6,roughness:0.5,metalness:0.3});
-  [[-6,-4,1.2],[4,-9,0.9],[-3,-16,1.5],[6,-22,1.0],[-5,-28,1.8],[3,-35,1.1]].forEach(([rx,rz,r],i)=>{
-    const rock=new THREE.Mesh(new THREE.DodecahedronGeometry(r,0),i%3===0?glowRockMat:rockMat);
-    rock.position.set(rx,r*0.6,rz); rock.castShadow=true;
-    rock.rotation.set(Math.random()*Math.PI,Math.random()*Math.PI,0); g.add(rock);
-  });
-
-  // Space station / base — large dramatic structure
-  const stationMat=new THREE.MeshStandardMaterial({color:0x374151,metalness:0.85,roughness:0.18});
-  const station=new THREE.Mesh(new THREE.BoxGeometry(5,1.5,5),stationMat);
-  station.position.set(0,0.75,5.5); g.add(station);
-  // Solar panels
-  [-5,5].forEach(x=>{
-    const panel=new THREE.Mesh(new THREE.BoxGeometry(3.5,0.06,2),
-      new THREE.MeshStandardMaterial({color:0x1e3a5f,metalness:0.6,roughness:0.3,emissive:0x1e40af,emissiveIntensity:0.3}));
-    panel.position.set(x,1.7,5.5); g.add(panel);
-  });
-  // Station lights
-  for(let a=0;a<6;a++){
-    const ang=a/6*Math.PI*2;
-    const sl=new THREE.Mesh(new THREE.SphereGeometry(0.15,6,6),
-      new THREE.MeshStandardMaterial({color:0x00d9ff,emissive:0x00d9ff,emissiveIntensity:2.5}));
-    sl.position.set(Math.cos(ang)*2.2,1.8,5.5+Math.sin(ang)*2.2); g.add(sl);
-  }
-
-  // Checkpoint neon rings — floating in space
-  const cpCols=[0x00d9ff,0x7c3aed,0xec4899,0xf59e0b,0x22c55e];
-  [[-6,0.8,-8],[3,1.2,-16],[-4,1.0,-24],[7,1.5,-32],[-2,1.0,-40]].forEach(([rx,ry,rz],i)=>{
-    const col=cpCols[i];
-    const ring=new THREE.Mesh(new THREE.TorusGeometry(2.8,0.16,10,34),
-      new THREE.MeshStandardMaterial({color:col,emissive:col,emissiveIntensity:1.6,transparent:true,opacity:0.92}));
-    ring.rotation.x=Math.PI/2; ring.position.set(rx,ry,rz); ring.name='cp'; g.add(ring);
-    const pl=new THREE.PointLight(col,2.0,15); pl.position.set(rx,ry+1,rz); g.add(pl);
-    // Orbiting micro satellite effect
-    const sat=new THREE.Mesh(new THREE.BoxGeometry(0.4,0.15,0.4),
-      new THREE.MeshStandardMaterial({color:0x6b7280,metalness:0.9,roughness:0.2}));
-    sat.position.set(rx,ry+3.2,rz); sat.name=`mover_sat${i}`; g.add(sat);
-  });
-
-  // Dramatic planets in sky
-  const planet1=new THREE.Mesh(new THREE.SphereGeometry(11,20,16),
-    new THREE.MeshStandardMaterial({color:0xb45309,emissive:0x78350f,emissiveIntensity:0.25,roughness:0.85}));
-  planet1.position.set(35,22,-70); g.add(planet1);
-  // Planet ring
-  const pRing=new THREE.Mesh(new THREE.TorusGeometry(15,1.5,4,50),
-    new THREE.MeshStandardMaterial({color:0xd97706,transparent:true,opacity:0.5}));
-  pRing.rotation.x=Math.PI/3; pRing.position.set(35,22,-70); g.add(pRing);
-
-  const planet2=new THREE.Mesh(new THREE.SphereGeometry(6,16,12),
-    new THREE.MeshStandardMaterial({color:0x1d4ed8,emissive:0x1e3a8a,emissiveIntensity:0.3,roughness:0.7}));
-  planet2.position.set(-45,18,-60); g.add(planet2);
-
-  scene.add(g);
-}
-
-function _underwaterArena(scene) {
-  const g=new THREE.Group(); g.name='arena';
-  scene.background=new THREE.Color(0x003d5c);
-  scene.fog=new THREE.Fog(0x003d5c,18,48);
-  // Ocean floor
-  const floor=new THREE.Mesh(new THREE.PlaneGeometry(42,68),new THREE.MeshStandardMaterial({color:0xb8985a,roughness:0.96}));
-  floor.rotation.x=-Math.PI/2; floor.position.y=-0.1; floor.receiveShadow=true; g.add(floor);
-  // Coral
-  const coralC=[0xff6b6b,0xff8e53,0xffd93d,0x6bcb77,0x4d96ff];
-  [[-5,-4],[3,-8],[-3,-12],[5,-16],[-4,-20],[2,-24],[4,-28],[-6,-10]].forEach(([cx,cz],i)=>{
-    const h=0.9+Math.random()*1.4;
-    const coral=new THREE.Mesh(new THREE.ConeGeometry(0.35+Math.random()*0.25,h,6),
-      new THREE.MeshStandardMaterial({color:coralC[i%coralC.length],roughness:0.55,emissive:coralC[i%coralC.length],emissiveIntensity:0.18}));
-    coral.position.set(cx,h/2,cz); coral.castShadow=true; g.add(coral);
-  });
-  // Seabed rocks
-  const sRock=new THREE.MeshStandardMaterial({color:0x4a7c6f,roughness:0.92});
-  [[-7,-6],[4,-10],[-2,-16],[6,-22],[-5,-26]].forEach(([rx,rz])=>{
-    const r=0.5+Math.random()*0.9;
-    const rock=new THREE.Mesh(new THREE.DodecahedronGeometry(r,0),sRock);
-    rock.position.set(rx,r*0.5,rz); g.add(rock);
-  });
-  // Checkpoint arches
-  [[-7,-9],[0,-19],[7,-29]].forEach(([cpx,cpz],i)=>{
-    const cpC=[0x00ffcc,0x0099ff,0xcc00ff];
-    const ring=new THREE.Mesh(new THREE.TorusGeometry(2.8,0.14,8,32),
-      new THREE.MeshStandardMaterial({color:cpC[i],emissive:cpC[i],emissiveIntensity:1.25,transparent:true,opacity:0.9}));
-    ring.rotation.x=Math.PI/2; ring.position.set(cpx,0.5,cpz); ring.name='cp'; g.add(ring);
-  });
-  // Fish (animated movers)
-  coralC.forEach((col,i)=>{
-    const fish=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.18,0.28),new THREE.MeshStandardMaterial({color:col}));
-    fish.position.set(-3+i*1.5,1.5+i*0.4,-5-i*4); fish.name=`mover${i}`; g.add(fish);
-  });
-  scene.add(g);
-}
+function _spaceArena(scene) { buildAdventureArena(scene, 'space'); }
+function _underwaterArena(scene) { buildAdventureArena(scene, 'underwater'); }
 
 function _legoArena(scene) {
   const g=new THREE.Group(); g.name='arena';
@@ -5768,7 +6334,7 @@ function _dodgeBallsArena(scene) {
   const sunLight=new THREE.DirectionalLight(0xfffce0,1.2); sunLight.position.set(8,14,5); sunLight.castShadow=true; g.add(sunLight);
   // Active ball state — each ball rolls toward robot position
   const ballState=ballDefs.map((bd,i)=>({z:bd.pz, dir:i%2===0?-1:1, speed:3.5+i*0.6}));
-  scene.userData.finishZone={x:0,z:-28,radius:5};
+  scene.userData.finishZone={x:0,z:-28,radius:2.5};
   scene.userData.obstacles=balls.map((b,i)=>({mesh:b,radius:ballDefs[i].r+0.12,type:'rolling'}));
   scene.userData.movers=balls.map((b,i)=>({
     update(t,dt,rs){
@@ -5825,7 +6391,7 @@ function _dodgeLaserArena(scene) {
   [-32,18].forEach(wz=>{ const w=new THREE.Mesh(new THREE.BoxGeometry(66,8,0.5),wallMat); w.position.set(0,4,wz); g.add(w); });
   [-33,33].forEach(wx=>{ const w=new THREE.Mesh(new THREE.BoxGeometry(0.5,8,84),wallMat); w.position.set(wx,4,-7); g.add(w); });
   [[0x00ffdd,8,-10,10],[0xff00aa,4,-20,8],[0x0044ff,10,-4,6]].forEach(([col,x,z,r])=>{ const pl=new THREE.PointLight(col,0.7,r); pl.position.set(x,3,z); g.add(pl); });
-  scene.userData.finishZone={x:0,z:-28,radius:4.5};
+  scene.userData.finishZone={x:0,z:-28,radius:2.5};
   scene.userData.obstacles=laserObs;
   scene.userData.movers=laserGroups.map((lg,i)=>({
     update(t,dt,rs){
@@ -5875,7 +6441,7 @@ function _dodgeAsteroidArena(scene) {
   });
   const ambl=new THREE.AmbientLight(0x111122,1.0); g.add(ambl);
   [0x4466ff,0xffffff].forEach((col,i)=>{ const pl=new THREE.PointLight(col,i===0?1.8:0.6,80); pl.position.set(i*10-5,10,-20); g.add(pl); });
-  scene.userData.finishZone={x:0,z:-42,radius:4.5};
+  scene.userData.finishZone={x:0,z:-42,radius:2.5};
   scene.userData.obstacles=astMeshes.map((m,i)=>({mesh:m,radius:astDefs[i].sz+0.35,type:'asteroid',check3d:true}));
   scene.userData.movers=astMeshes.map((m,i)=>({
     update(t,dt,rs){
@@ -5924,7 +6490,7 @@ function _escapeWallArena(scene) {
   }
   const dustPl=new THREE.PointLight(0xaa6633,1.4,8); dustPl.position.set(0,5,18); g.add(dustPl);
   const ambl2=new THREE.AmbientLight(0x110800,1.0); g.add(ambl2);
-  scene.userData.finishZone={x:0,z:-34,radius:4.0};
+  scene.userData.finishZone={x:0,z:-34,radius:2.5};
   scene.userData.obstacles=[{mesh:wallMesh,radius:3.2,type:'wall'}];
   scene.userData.movers=[{
     update(t,dt,rs){
@@ -5980,7 +6546,7 @@ function _escapeHuntersArena(scene) {
     hg.position.set(hunterData[i].x,0.65,hunterData[i].z); g.add(hg); return hg;
   });
   const sunL=new THREE.DirectionalLight(0xc8e8a0,1.0); sunL.position.set(5,12,4); g.add(sunL);
-  scene.userData.finishZone={x:0,z:-38,radius:5.5};
+  scene.userData.finishZone={x:0,z:-38,radius:2.5};
   scene.userData.obstacles=hunters.map(h=>({mesh:h,radius:0.9,type:'hunter'}));
   scene.userData.movers=hunters.map((h,i)=>({
     update(t,dt,rs){
@@ -6036,7 +6602,7 @@ function _escapeSwarmArena(scene) {
     dg.position.set(dd.x,dd.y,dd.z); dg.name=`swarm_${i}`; g.add(dg); return dg;
   });
   const abl=new THREE.AmbientLight(0x0a0a15,1.0); g.add(abl);
-  scene.userData.finishZone={x:0,z:-65,radius:5.0};
+  scene.userData.finishZone={x:0,z:-65,radius:2.5};
   scene.userData.obstacles=droneMeshes.map(m=>({mesh:m,radius:0.65,type:'drone',check3d:true}));
   scene.userData.movers=droneMeshes.map((m,i)=>({
     update(t,dt,rs){
@@ -6094,7 +6660,7 @@ function _collectEasyArena(scene) {
   [-24,24].forEach(wz=>{ const w=new THREE.Mesh(new THREE.BoxGeometry(49,4,0.3),wMat); w.position.set(0,2,wz); g.add(w); });
   [-24,24].forEach(wx=>{ const w=new THREE.Mesh(new THREE.BoxGeometry(0.3,4,53),wMat); w.position.set(wx,2,-0.5); g.add(w); });
   const sunL2=new THREE.DirectionalLight(0xfff8f0,1.3); sunL2.position.set(8,15,5); sunL2.castShadow=true; g.add(sunL2);
-  scene.userData.finishZone={x:0,z:-19,radius:5.5};
+  scene.userData.finishZone={x:0,z:-19,radius:2.5};
   scene.userData.obstacles=[];
   scene.userData.movers=cubeMeshes.map((c,i)=>({
     update(t){ c.position.y=0.65+Math.sin(t*2+i)*0.18; c.rotation.y+=0.012; }
@@ -6131,7 +6697,7 @@ function _collectMediumArena(scene) {
   const wallObs=new THREE.Mesh(new THREE.BoxGeometry(15,3,0.5),new THREE.MeshStandardMaterial({color:0xff6600,emissive:0xff4400,emissiveIntensity:0.35,metalness:0.55,roughness:0.5}));
   wallObs.position.set(0,1.5,-16); g.add(wallObs);
   const floorL=new THREE.PointLight(0xffffff,1.2,42); g.add(floorL);
-  scene.userData.finishZone={x:0,z:-30,radius:5.0};
+  scene.userData.finishZone={x:0,z:-30,radius:2.5};
   scene.userData.obstacles=[{mesh:wallObs,radius:8,type:'wall'}];
   scene.userData.movers=[
     {update(t){wallObs.position.x=Math.sin(t*0.65)*6;}},
@@ -6178,7 +6744,7 @@ function _collectHardArena(scene) {
   });
   const ambl3=new THREE.AmbientLight(0x111118,1.0); g.add(ambl3);
   const fpl2=new THREE.PointLight(0xffffff,0.9,65); g.add(fpl2);
-  scene.userData.finishZone={x:0,z:-56,radius:6.0};
+  scene.userData.finishZone={x:0,z:-56,radius:2.5};
   scene.userData.obstacles=barMeshes.map(b=>({mesh:b,radius:11.5,type:'wall'}));
   scene.userData.movers=[
     ...barMeshes.map((b,i)=>({update(t){b.position.x=Math.sin(t*barDefs[i].speed)*9;}})),
@@ -6191,8 +6757,6 @@ function _flightRingsArena(scene) {
   const g = new THREE.Group(); g.name = 'arena';
   scene.background = new THREE.Color(0x1a6ad0);
   scene.fog = new THREE.Fog(0x5599dd, 55, 95);
-  const skyMat=new THREE.MeshStandardMaterial({color:0x4488cc,roughness:1,side:THREE.BackSide,emissive:0x2244aa,emissiveIntensity:0.22});
-  g.add(new THREE.Mesh(new THREE.SphereGeometry(82,16,12),skyMat));
   const groundMat=new THREE.MeshStandardMaterial({color:0x4a8a30,roughness:0.9});
   const groundM=new THREE.Mesh(new THREE.PlaneGeometry(200,200),groundMat); groundM.rotation.x=-Math.PI/2; groundM.position.y=-8; g.add(groundM);
   const cloudMat2=new THREE.MeshStandardMaterial({color:0xffffff,roughness:1,transparent:true,opacity:0.88});
@@ -6213,7 +6777,7 @@ function _flightRingsArena(scene) {
   const pathLine=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pathPts),new THREE.LineBasicMaterial({color:0xffffff,transparent:true,opacity:0.28})); g.add(pathLine);
   const sunDir=new THREE.DirectionalLight(0xfff8e0,1.3); sunDir.position.set(10,20,5); sunDir.castShadow=true; g.add(sunDir);
   const abl4=new THREE.AmbientLight(0xaac8ff,0.65); g.add(abl4);
-  scene.userData.finishZone={x:ringDefs[4].x,z:ringDefs[4].z,radius:4.5,y3d:ringDefs[4].y};
+  scene.userData.finishZone={x:ringDefs[4].x,z:ringDefs[4].z,radius:2.5,y3d:ringDefs[4].y};
   scene.userData.obstacles=ringMeshes.map((r,i)=>({mesh:r,radius:2.7,type:'ring_edge',check3d:true}));
   scene.userData.movers=ringMeshes.map((r,i)=>({
     update(t){ r.rotation.y+=0.008; r.position.y=ringDefs[i].y+Math.sin(t*0.85+i)*0.45; }
@@ -6251,7 +6815,7 @@ function _flightAcroArena(scene) {
   });
   const dirL=new THREE.DirectionalLight(0xc0d0ff,0.85); dirL.position.set(-10,15,5); g.add(dirL);
   const abl5=new THREE.AmbientLight(0x202835,0.75); g.add(abl5);
-  scene.userData.finishZone={x:acroDefs[9].x,z:acroDefs[9].z,radius:5.0};
+  scene.userData.finishZone={x:acroDefs[9].x,z:acroDefs[9].z,radius:2.5};
   scene.userData.obstacles=[
     ...acroRings.map((r,i)=>({mesh:r,radius:acroDefs[i].sz+0.22,type:'ring_edge',check3d:true})),
     ...spinObs.map(m=>({mesh:m,radius:1.7,type:'spinner',check3d:true}))
@@ -6293,7 +6857,7 @@ function _flightSlalomArena(scene) {
   [[-20,5,-52],[15,8,-74],[-10,3,-94]].forEach(([nx,ny,nz])=>{ const n=new THREE.Mesh(new THREE.SphereGeometry(19,8,6),nebMat2); n.position.set(nx,ny,nz); g.add(n); });
   const abl6=new THREE.AmbientLight(0x0a0a20,1.1); g.add(abl6);
   [0x4466ff,0xff44aa,0x44ffcc].forEach((col,i)=>{ const pl=new THREE.PointLight(col,2.2,85); pl.position.set(i*16-16,10,-52); g.add(pl); });
-  scene.userData.finishZone={x:slalomDefs[19].x,z:slalomDefs[19].z,radius:5.0};
+  scene.userData.finishZone={x:slalomDefs[19].x,z:slalomDefs[19].z,radius:2.5};
   scene.userData.obstacles=[
     ...slalomRings.map((r,i)=>({mesh:r,radius:slalomDefs[i].sz+0.22,type:'ring_edge',check3d:true})),
     ...astObs.map(m=>({mesh:m,radius:0.85,type:'asteroid',check3d:true}))
@@ -6377,7 +6941,7 @@ function _templeExtArena(scene){
   const dirL=new THREE.DirectionalLight(0xffe8a0,1.2); dirL.position.set(8,14,6); dirL.castShadow=true; g.add(dirL);
   g.add(new THREE.AmbientLight(0x88aa44,0.7));
   _scatterCoins(g,scene,35,{xMin:-12,xMax:12,zMin:-30,zMax:8,y:0.4,gemChance:0.12});
-  scene.userData.finishZone={x:0,z:-30,radius:5.0};
+  scene.userData.finishZone={x:0,z:-30,radius:2.5};
   scene.userData.obstacles=logObs;
   scene.userData.movers=logMeshes.map((m,i)=>({
     update(t,dt,rs){
@@ -6414,7 +6978,7 @@ function _stoneBridgeArena(scene){
   g.add(new THREE.DirectionalLight(0xddeeff,1.0));
   g.add(new THREE.AmbientLight(0x8899bb,0.8));
   _scatterCoins(g,scene,25,{xMin:-4,xMax:4,zMin:-36,zMax:8,y:0.6,gemChance:0.1});
-  scene.userData.finishZone={x:0,z:-34,radius:5.0};
+  scene.userData.finishZone={x:0,z:-34,radius:2.5};
   scene.userData.obstacles=[];
   scene.userData.movers=[];
   scene.add(g);
@@ -6449,7 +7013,7 @@ function _bossArenaBuilder(scene){
   _addTo(g, new THREE.Mesh(new THREE.CircleGeometry(3.5,16),startMat2),{position:{x:0,y:0.01,z:12},rotation:{x:-Math.PI/2,y:0,z:0}});
   _scatterCoins(g,scene,18,{xMin:-12,xMax:12,zMin:-15,zMax:10,y:0.4,gemChance:0.25});
   const bossObs=[{mesh:boss,radius:2.6,type:'boss'}];
-  scene.userData.finishZone={x:0,z:-18,radius:4.0};
+  scene.userData.finishZone={x:0,z:-18,radius:2.5};
   scene.userData.obstacles=bossObs;
   scene.userData.movers=[{
     update(t,dt,rs){
@@ -6472,123 +7036,10 @@ function _bossArenaBuilder(scene){
   scene.add(g);
 }
 
-function _crystalCaveArena(scene){
-  const g=new THREE.Group(); g.name='arena';
-  scene.background=new THREE.Color(0x02000a);
-  scene.fog=new THREE.Fog(0x02000a,18,48);
-  // Cave floor
-  _addTo(g, new THREE.Mesh(new THREE.PlaneGeometry(44,58),new THREE.MeshStandardMaterial({color:0x0a0818,roughness:0.9,metalness:0.2})),{rotation:{x:-Math.PI/2,y:0,z:0}});
-  // Crystal formations
-  const crystalColors=[0x00ddff,0xaa44ff,0xff44aa,0x44ffaa,0xffaa00];
-  const crystalObs=[];
-  for(let i=0;i<22;i++){
-    const col=crystalColors[i%crystalColors.length];
-    const cMat=new THREE.MeshStandardMaterial({color:col,emissive:col,emissiveIntensity:0.8,metalness:0.7,roughness:0.1,transparent:true,opacity:0.88});
-    const h=1.5+Math.random()*2.5; const r=0.3+Math.random()*0.5;
-    const crystal=new THREE.Mesh(new THREE.ConeGeometry(r,h,6),cMat);
-    const px=(Math.random()-0.5)*18, pz=-4-Math.random()*28;
-    crystal.position.set(px,h/2,pz); crystal.rotation.y=Math.random()*Math.PI*2; crystal.castShadow=true; g.add(crystal);
-    const cpl2=new THREE.PointLight(col,0.6,5); cpl2.position.set(px,1,pz); g.add(cpl2);
-    // Only make outer ring crystals into obstacles
-    if(Math.abs(px)>5) crystalObs.push({mesh:crystal,radius:r+0.4,type:'crystal'});
-  }
-  // Stalactites (decorative)
-  for(let i=0;i<15;i++){ const s=new THREE.Mesh(new THREE.ConeGeometry(0.2+Math.random()*0.3,1.5+Math.random()*2,6),new THREE.MeshStandardMaterial({color:0x1a0a2a,roughness:0.95})); s.rotation.z=Math.PI; s.position.set((Math.random()-0.5)*18,7.5,-5-Math.random()*24); g.add(s); }
-  // Cave walls
-  const caveMat=new THREE.MeshStandardMaterial({color:0x0a0615,roughness:0.97});
-  [-20,20].forEach(wx=>{ const w3=new THREE.Mesh(new THREE.BoxGeometry(6,16,60),caveMat); w3.position.set(wx,8,-15); g.add(w3); });
-  // Exit glow
-  const exitMat=new THREE.MeshStandardMaterial({color:0xaaffaa,emissive:0x44ff44,emissiveIntensity:2.0,transparent:true,opacity:0.8});
-  _addTo(g, new THREE.Mesh(new THREE.CircleGeometry(3.5,16),exitMat),{position:{x:0,y:0.02,z:-34},rotation:{x:-Math.PI/2,y:0,z:0}});
-  _addTo(g, new THREE.PointLight(0x44ff88,4.0,14),{position:{x:0,y:3,z:-34}});
-  g.add(new THREE.AmbientLight(0x0a0518,1.0));
-  _scatterCoins(g,scene,30,{xMin:-8,xMax:8,zMin:-32,zMax:-2,y:0.4,gemChance:0.3});
-  scene.userData.finishZone={x:0,z:-34,radius:4.5};
-  scene.userData.obstacles=crystalObs;
-  scene.userData.movers=crystalObs.map((obs,i)=>({
-    update(t){ obs.mesh.rotation.y+=0.008*(i%2===0?1:-1); obs.mesh.position.y=obs.mesh.position.y+(Math.sin(t*0.9+i)*0.002); }
-  }));
-  scene.add(g);
-}
+function _crystalCaveArena(scene){ buildAdventureArena(scene, 'crystal_cave'); }
 
-function _jungleMazeArena(scene){
-  const g=new THREE.Group(); g.name='arena';
-  scene.background=new THREE.Color(0x0a1808);
-  scene.fog=new THREE.Fog(0x0a1808,18,44);
-  // Floor
-  _addTo(g, new THREE.Mesh(new THREE.PlaneGeometry(50,56),new THREE.MeshStandardMaterial({color:0x1a3010,roughness:0.92})),{rotation:{x:-Math.PI/2,y:0,z:0}});
-  // Maze walls (hedge-like)
-  const hedgeMat=new THREE.MeshStandardMaterial({color:0x1a4a08,roughness:0.98,metalness:0.0});
-  const wallSegments=[
-    [0,-5,14,1.5],[-7,-11,1.5,10],[7,-11,1.5,10],[-3,-15,8,1.5],[4,-19,1.5,8],
-    [-6,-23,12,1.5],[2,-27,1.5,8],[-4,-31,10,1.5],[0,-35,14,1.5],
-  ].map(s=>{ if(!Array.isArray(s)||s[0]===undefined) return null;
-    const w4=new THREE.Mesh(new THREE.BoxGeometry(s[2],4,s[3]),hedgeMat); w4.position.set(s[0],2,s[1]); w4.castShadow=true; g.add(w4); return w4; }).filter(Boolean);
-  // Jungle trees on perimeter
-  const trunkM=new THREE.MeshStandardMaterial({color:0x3a1a08,roughness:0.9});
-  const leafM=new THREE.MeshStandardMaterial({color:0x1a5008,roughness:0.85});
-  for(let i=0;i<24;i++){ const a=(i/24)*Math.PI*2; const r=22+Math.random()*3; const h=5+Math.random()*4; const trunk=new THREE.Mesh(new THREE.CylinderGeometry(0.22,0.3,h,6),trunkM); trunk.position.set(Math.cos(a)*r,h/2,Math.sin(a)*r-12); g.add(trunk); const lh2=3+Math.random()*2; const lv=new THREE.Mesh(new THREE.ConeGeometry(2.2,lh2,8),leafM); lv.position.set(Math.cos(a)*r,h+1.5,Math.sin(a)*r-12); g.add(lv); }
-  // Finish zone
-  const finMat3=new THREE.MeshStandardMaterial({color:0xfbbf24,emissive:0xffaa00,emissiveIntensity:1.5,transparent:true,opacity:0.8});
-  _addTo(g, new THREE.Mesh(new THREE.CircleGeometry(3.5,16),finMat3),{position:{x:0,y:0.02,z:-36},rotation:{x:-Math.PI/2,y:0,z:0}});
-  _addTo(g, new THREE.PointLight(0xffd700,3.5,12),{position:{x:0,y:3,z:-36}});
-  g.add(new THREE.AmbientLight(0x0a1a04,1.2));
-  const mazeObs=wallSegments.slice(0,4).map(w5=>({mesh:w5,radius:Math.max(w5.geometry.parameters.width,w5.geometry.parameters.depth)/2+0.3,type:'wall'}));
-  _scatterCoins(g,scene,25,{xMin:-10,xMax:10,zMin:-34,zMax:-3,y:0.4,gemChance:0.2});
-  scene.userData.finishZone={x:0,z:-36,radius:4.5};
-  scene.userData.obstacles=mazeObs;
-  scene.userData.movers=[];
-  scene.add(g);
-}
-
-function _neonCityArena(scene){
-  const g=new THREE.Group(); g.name='arena';
-  scene.background=new THREE.Color(0x03010a);
-  scene.fog=new THREE.Fog(0x03010a,28,62);
-  // City floor with neon grid
-  _addTo(g, new THREE.Mesh(new THREE.PlaneGeometry(60,68),new THREE.MeshStandardMaterial({color:0x080510,roughness:0.5,metalness:0.6})),{rotation:{x:-Math.PI/2,y:0,z:0}});
-  const gridM=new THREE.LineBasicMaterial({color:0x2211aa});
-  for(let i=-6;i<=6;i+=2){ g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(i*5,0.01,-35),new THREE.Vector3(i*5,0.01,8)]),gridM)); g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-30,0.01,i*5-15),new THREE.Vector3(30,0.01,i*5-15)]),gridM)); }
-  // Buildings
-  const bColors=[0xaa0044,0x004488,0x008844,0x880044,0x0044aa];
-  const buildings=[{x:-14,z:-8,w:7,d:7,h:18},{x:14,z:-8,w:7,d:7,h:14},{x:-14,z:-22,w:7,d:7,h:22},{x:14,z:-22,w:7,d:7,h:16},{x:-10,z:-32,w:6,d:6,h:12},{x:10,z:-32,w:6,d:6,h:20}];
-  const buildObs=[];
-  buildings.forEach((bd,i)=>{
-    const buildMat=new THREE.MeshStandardMaterial({color:0x0a0818,roughness:0.4,metalness:0.8,emissive:bColors[i%bColors.length],emissiveIntensity:0.12});
-    const build2=new THREE.Mesh(new THREE.BoxGeometry(bd.w,bd.h,bd.d),buildMat); build2.position.set(bd.x,bd.h/2,bd.z); build2.castShadow=true; g.add(build2);
-    // Neon sign
-    const neon2=new THREE.Mesh(new THREE.BoxGeometry(bd.w+0.1,0.1,0.1),new THREE.MeshStandardMaterial({color:bColors[i%bColors.length],emissive:bColors[i%bColors.length],emissiveIntensity:4.0})); neon2.position.set(bd.x,bd.h*0.7,bd.z+bd.d/2+0.05); g.add(neon2);
-    const bpl=new THREE.PointLight(bColors[i%bColors.length],0.8,10); bpl.position.set(bd.x,bd.h*0.7,bd.z); g.add(bpl);
-    buildObs.push({mesh:build2,radius:(bd.w+bd.d)/4+0.4,type:'building'});
-  });
-  // Flying vehicle obstacles
-  const vehicleColor=[0x00ffcc,0xff00aa,0xffcc00];
-  const vehicles=vehicleColor.map((col,i)=>{
-    const vm=new THREE.Group();
-    const body2=new THREE.Mesh(new THREE.BoxGeometry(2.5,0.5,1.2),new THREE.MeshStandardMaterial({color:col,emissive:col,emissiveIntensity:0.5,metalness:0.9}));
-    vm.add(body2);
-    const vpl=new THREE.PointLight(col,1.2,6); vm.add(vpl);
-    vm.position.set((i-1)*8,2.5+i,-5-i*6); g.add(vm); return vm;
-  });
-  const vehicleObs=vehicles.map(v=>({mesh:v,radius:1.6,type:'vehicle'}));
-  // Finish (neon portal at end of city)
-  const portalMat=new THREE.MeshStandardMaterial({color:0x00ffcc,emissive:0x00ddaa,emissiveIntensity:3.5,transparent:true,opacity:0.85});
-  _addTo(g, new THREE.Mesh(new THREE.CircleGeometry(3.5,16),portalMat),{position:{x:0,y:0.02,z:-38},rotation:{x:-Math.PI/2,y:0,z:0}});
-  _addTo(g, new THREE.PointLight(0x00ffcc,4.5,14),{position:{x:0,y:3,z:-38}});
-  g.add(new THREE.AmbientLight(0x050310,0.9));
-  _scatterCoins(g,scene,30,{xMin:-10,xMax:10,zMin:-36,zMax:6,y:0.4,gemChance:0.2});
-  const vDefs=vehicles.map((v,i)=>({startX:(i-1)*8,startZ:-5-i*6,speed:2.8+i*0.5,dir:i%2===0?1:-1}));
-  scene.userData.finishZone={x:0,z:-38,radius:4.5};
-  scene.userData.obstacles=[...buildObs,...vehicleObs];
-  scene.userData.movers=vehicles.map((v,i)=>({
-    update(t,dt,rs){
-      v.position.x=vDefs[i].startX+Math.sin(t*vDefs[i].speed*0.3+i)*12*vDefs[i].dir;
-      v.rotation.y=Math.atan2(Math.cos(t*vDefs[i].speed*0.3+i)*vDefs[i].dir,0.1);
-      vehicleObs[i].mesh.position.x=v.position.x;
-    }
-  }));
-  scene.add(g);
-}
+function _jungleMazeArena(scene){ buildAdventureArena(scene, 'jungle_maze'); }
+function _neonCityArena(scene, challenge){ buildAdventureArena(scene, 'neon_city', challenge); }
 
 function _mountainFlyArena(scene){
   const g=new THREE.Group(); g.name='arena';
@@ -6618,7 +7069,7 @@ function _mountainFlyArena(scene){
   _addTo(g, new THREE.DirectionalLight(0x88aaff,0.9),{position:{x:-8,y:16,z:4}});
   g.add(new THREE.AmbientLight(0x1a2a4a,0.8));
   _scatterCoins(g,scene,20,{xMin:-6,xMax:6,zMin:-42,zMax:0,y:4,gemChance:0.25});
-  scene.userData.finishZone={x:0,z:-44,radius:5.5};
+  scene.userData.finishZone={x:0,z:-44,radius:2.5};
   scene.userData.obstacles=peakMeshes.map((m4,i)=>({mesh:m4,radius:peakDefs[i].r+0.3,type:'mountain',check3d:false}));
   scene.userData.movers=[];
   scene.add(g);
@@ -6648,7 +7099,7 @@ function _stormChaseArena(scene){
   g.add(new THREE.AmbientLight(0x040508,0.9));
   const boltObs=boltMeshes.map(b3=>({mesh:b3.mesh,radius:0.4,type:'lightning'}));
   _scatterCoins(g,scene,22,{xMin:-12,xMax:12,zMin:-38,zMax:-2,y:0.5,gemChance:0.35});
-  scene.userData.finishZone={x:0,z:-40,radius:5.0};
+  scene.userData.finishZone={x:0,z:-40,radius:2.5};
   scene.userData.obstacles=boltObs;
   scene.userData.movers=boltMeshes.map((b4,i)=>({
     update(t,dt,rs){
@@ -7309,171 +7760,8 @@ function _armSortArena(scene){
 }
 
 // ── CORAL REEF ────────────────────────────────────────────────────────────────
-function _coralReefArena(scene){
-  const g=new THREE.Group(); g.name='arena';
-  // Shallow tropical ocean — dappled light blue
-  scene.background=_makeSkyTex([[0,'#003d5c'],[0.35,'#005f7a'],[0.65,'#008fa0'],[1,'#00bfbf']]);
-  scene.fog=new THREE.FogExp2(0x004060,0.022);
-
-  // Sandy sea floor
-  const floor=new THREE.Mesh(new THREE.PlaneGeometry(70,75),new THREE.MeshStandardMaterial({color:0xd4b896,roughness:0.98}));
-  floor.rotation.x=-Math.PI/2; floor.position.y=-0.5; floor.receiveShadow=true; g.add(floor);
-
-  // Undulating caustic light ripple overlay
-  const caustic=new THREE.Mesh(new THREE.PlaneGeometry(70,75),new THREE.MeshBasicMaterial({color:0x40aadd,transparent:true,opacity:0.08,depthWrite:false}));
-  caustic.rotation.x=-Math.PI/2; caustic.position.y=0.01; g.add(caustic);
-
-  // Towering coral columns
-  const coralCols=[0xff6b6b,0xff8e53,0xffd93d,0xee82ee,0xff69b4,0x40e0d0];
-  [[-6,0,-5,0.6,5],[-8,0,-11,0.4,3.5],[7,0,-8,0.7,6],[-5,0,-16,0.5,4],[8,0,-14,0.55,5.5],
-   [-7,0,-22,0.65,5],[5,0,-20,0.45,3.5],[-9,0,-28,0.7,6],[7,0,-26,0.5,4.5],
-   [-6,0,-34,0.6,5],[8,0,-32,0.4,3],[-4,0,-38,0.55,5]].forEach(([x,,z,r,h],i)=>{
-    const col=coralCols[i%coralCols.length];
-    const trunk=new THREE.Mesh(new THREE.CylinderGeometry(r*0.4,r,h,8),new THREE.MeshStandardMaterial({color:col,roughness:0.6,emissive:col,emissiveIntensity:0.12}));
-    trunk.position.set(x,h/2-0.5,z); trunk.castShadow=true; g.add(trunk);
-    // Crown branches
-    for(let b=0;b<3;b++){
-      const ang=b/3*Math.PI*2+i; const blen=0.8+Math.random()*0.6;
-      const branch=new THREE.Mesh(new THREE.CylinderGeometry(r*0.15,r*0.25,blen,6),new THREE.MeshStandardMaterial({color:col,roughness:0.5,emissive:col,emissiveIntensity:0.2}));
-      branch.position.set(x+Math.cos(ang)*r*1.2,h-0.3+blen*0.4,z+Math.sin(ang)*r*1.2);
-      branch.rotation.z=0.6+b*0.2; g.add(branch);
-    }
-    _addPl(scene,col,0.4,6,x,h*0.7,z);
-  });
-
-  // Glowing sea anemones
-  const anemoneMat=new THREE.MeshStandardMaterial({color:0xff69b4,emissive:0xff1493,emissiveIntensity:0.5,roughness:0.5});
-  [[-3,-0.3,-4],[4,-0.3,-12],[-5,-0.3,-19],[3,-0.3,-27],[-4,-0.3,-33]].forEach(([x,y,z])=>{
-    const base=new THREE.Mesh(new THREE.CylinderGeometry(0.35,0.45,0.4,10),anemoneMat);
-    base.position.set(x,y,z); g.add(base);
-    for(let t=0;t<8;t++){
-      const tentacle=new THREE.Mesh(new THREE.ConeGeometry(0.06,0.7,5),anemoneMat);
-      const a=t/8*Math.PI*2; tentacle.position.set(x+Math.cos(a)*0.25,y+0.5,z+Math.sin(a)*0.25);
-      tentacle.rotation.z=0.3; g.add(tentacle);
-    }
-    _addPl(scene,0xff69b4,0.4,4,x,y+0.6,z);
-  });
-
-  // Fish school (animated)
-  if(!scene.userData.movers) scene.userData.movers=[];
-  const fishMeshes=[];
-  const fishCols=[0xff6b6b,0xffd700,0x4fc3f7];
-  for(let i=0;i<15;i++){
-    const fc=fishCols[i%3];
-    const fish=new THREE.Mesh(new THREE.ConeGeometry(0.12,0.38,5),new THREE.MeshStandardMaterial({color:fc,emissive:fc,emissiveIntensity:0.2}));
-    fish.rotation.x=Math.PI/2;
-    fish.position.set((Math.random()-0.5)*10, 1.5+Math.random()*3, -5-Math.random()*30);
-    g.add(fish); fishMeshes.push({mesh:fish,phase:Math.random()*Math.PI*2,speed:0.4+Math.random()*0.4,radius:1.5+Math.random()*2});
-  }
-  scene.userData.movers.push(t=>{
-    fishMeshes.forEach(f=>{
-      f.mesh.position.x=Math.sin(t*f.speed+f.phase)*f.radius;
-      f.mesh.position.y=1.5+Math.sin(t*0.8+f.phase)*0.5;
-      f.mesh.rotation.y=Math.cos(t*f.speed+f.phase)>0?0:Math.PI;
-    });
-  });
-
-  // Checkpoint arches — glowing cyan portals
-  [-6,-16,-26,-36].forEach((z,i)=>{
-    const ring=new THREE.Mesh(new THREE.TorusGeometry(3.2,0.2,10,32),new THREE.MeshBasicMaterial({color:0x00ffcc}));
-    ring.rotation.x=Math.PI/2; ring.position.set(0,1.5,z); ring.name='cp'; g.add(ring);
-    _addPl(scene,0x00ffcc,1.0,10,0,2,z);
-  });
-
-  // Caustic ripple animation
-  scene.userData.movers.push(t=>{
-    caustic.material.opacity=0.05+Math.sin(t*1.4)*0.04;
-    caustic.rotation.z=t*0.02;
-  });
-
-  // Dappled light shafts from surface
-  [[-5,8,-10],[3,8,-22],[-4,8,-34]].forEach(([x,y,z])=>{
-    const shaft=new THREE.Mesh(new THREE.CylinderGeometry(0.8,2.5,y+0.5,8,1,true),new THREE.MeshBasicMaterial({color:0x80ffff,transparent:true,opacity:0.06,side:THREE.DoubleSide,depthWrite:false}));
-    shaft.position.set(x,y/2,z); g.add(shaft);
-    _addPl(scene,0x40c0c0,0.4,12,x,y,z);
-  });
-
-  scene.add(new THREE.AmbientLight(0x003355,0.7));
-  _addDl(scene,0x80eeff,0.6,5,20,10,true);
-  _addPl(scene,0x00aacc,0.8,50,0,6,-15);
-  scene.add(g);
-}
-
-// ── DEEP TRENCH ───────────────────────────────────────────────────────────────
-function _deepTrenchArena(scene){
-  const g=new THREE.Group(); g.name='arena';
-  scene.background=_makeSkyTex([[0,'#000511'],[0.4,'#000a1f'],[0.8,'#001228'],[1,'#000511']]);
-  scene.fog=new THREE.FogExp2(0x000814,0.028);
-
-  // Trench floor — dark sediment
-  const floor=new THREE.Mesh(new THREE.PlaneGeometry(60,80),new THREE.MeshStandardMaterial({color:0x0a0e18,roughness:1}));
-  floor.rotation.x=-Math.PI/2; floor.position.y=-1; floor.receiveShadow=true; g.add(floor);
-
-  // Trench walls — tall cliffs on both sides
-  const cliffMat=new THREE.MeshStandardMaterial({color:0x0d1520,roughness:0.95,metalness:0.1});
-  [-14,14].forEach(side=>{
-    for(let i=0;i<10;i++){
-      const h=12+Math.random()*8; const w=5+Math.random()*3;
-      const cliff=new THREE.Mesh(new THREE.BoxGeometry(w,h,8),cliffMat);
-      cliff.position.set(side+(side>0?1:-1)*Math.random()*2,h/2-1,-38+i*8); cliff.castShadow=true; g.add(cliff);
-    }
-  });
-
-  // Ancient shipwreck (goal landmark)
-  const shipMat=new THREE.MeshStandardMaterial({color:0x1a1208,roughness:0.95,metalness:0.2});
-  const hull=new THREE.Mesh(new THREE.BoxGeometry(8,2.5,20),shipMat);
-  hull.position.set(2,-0.2,-32); hull.rotation.y=0.2; hull.castShadow=true; g.add(hull);
-  const deck=new THREE.Mesh(new THREE.BoxGeometry(7,0.4,18),new THREE.MeshStandardMaterial({color:0x241a0a,roughness:1}));
-  deck.position.set(2,1.1,-32); deck.rotation.y=0.2; g.add(deck);
-  const mast=new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.15,6,8),new THREE.MeshStandardMaterial({color:0x1a1208,roughness:0.95}));
-  mast.position.set(2,4,-32); g.add(mast);
-  _addPl(scene,0x00aaff,0.6,15,2,2,-32);
-
-  // Bioluminescent deep-sea creatures & vents
-  const bioMat=new THREE.MeshBasicMaterial({color:0x00ffaa,transparent:true,opacity:0.6});
-  [[-4,0,-6],[5,0,-14],[-3,0,-22],[4,0,-30],[-5,0,-38]].forEach(([x,y,z])=>{
-    // Hydrothermal vent
-    const vent=new THREE.Mesh(new THREE.CylinderGeometry(0.2,0.35,1.2,8),new THREE.MeshStandardMaterial({color:0x1a0e00,roughness:0.9}));
-    vent.position.set(x,y+0.6,z); g.add(vent);
-    // Glow particles rising from vent
-    _addPl(scene,0x00ff88,0.8,6,x,y+1.5,z);
-    // Glowing jellyfish
-    const jellyBody=new THREE.Mesh(new THREE.SphereGeometry(0.4,8,6,0,Math.PI*2,0,Math.PI/2),new THREE.MeshBasicMaterial({color:0x8844ff,transparent:true,opacity:0.5}));
-    jellyBody.position.set(x+2,1.5+Math.random()*3,z+Math.random()*2-1); g.add(jellyBody);
-    _addPl(scene,0x8844ff,0.4,4,x+2,2,z);
-  });
-
-  // Glowing deep-sea lantern fish (animated)
-  if(!scene.userData.movers) scene.userData.movers=[];
-  const lanternFish=[];
-  for(let i=0;i<8;i++){
-    const fish=new THREE.Mesh(new THREE.SphereGeometry(0.22,7,5),new THREE.MeshBasicMaterial({color:0x00ffaa}));
-    fish.position.set((Math.random()-0.5)*16,0.5+Math.random()*5,-5-Math.random()*35); g.add(fish);
-    const light=new THREE.PointLight(0x00ffaa,0.6,4); light.position.copy(fish.position); scene.add(light);
-    lanternFish.push({mesh:fish,light,phase:Math.random()*Math.PI*2,depth:fish.position.z});
-  }
-  scene.userData.movers.push(t=>{
-    lanternFish.forEach(f=>{
-      f.mesh.position.x=Math.sin(t*0.6+f.phase)*5;
-      f.mesh.position.y=2+Math.sin(t*0.4+f.phase*2)*1.5;
-      f.light.position.copy(f.mesh.position);
-      f.light.intensity=0.4+Math.sin(t*3+f.phase)*0.2;
-    });
-  });
-
-  // Checkpoint arches — blue bioluminescent
-  [-6,-16,-26,-36].forEach(z=>{
-    const ring=new THREE.Mesh(new THREE.TorusGeometry(3,0.18,10,32),new THREE.MeshBasicMaterial({color:0x0066ff}));
-    ring.rotation.x=Math.PI/2; ring.position.set(0,1,z); ring.name='cp'; g.add(ring);
-    _addPl(scene,0x0066ff,1.0,10,0,2,z);
-  });
-
-  scene.add(new THREE.AmbientLight(0x000814,0.4));
-  _addPl(scene,0x0033aa,0.5,60,0,8,0);
-  scene.add(g);
-}
-
-// ── JET STUNT ─────────────────────────────────────────────────────────────────
+function _coralReefArena(scene){ buildAdventureArena(scene, 'coral_reef'); }
+function _deepTrenchArena(scene){ buildAdventureArena(scene, 'deep_trench'); }
 function _jetStuntArena(scene){
   const g=new THREE.Group(); g.name='arena';
   // Bright blue sky with dramatic cloud formations for a stunt airshow
@@ -7637,84 +7925,8 @@ function _jetSupersonicArena(scene){
 }
 
 // ── KELP FOREST ARENA ───────────────────────────────────────────────────────
-function _kelpForestArena(scene){
-  scene.background=_makeSkyTex('#001a0a','#003320');
-  scene.fog=new THREE.Fog('#001a0a',30,90);
-  const floorMat=new THREE.MeshStandardMaterial({color:0x1a3a10,roughness:0.9,metalness:0});
-  const floor=new THREE.Mesh(new THREE.PlaneGeometry(120,120),floorMat); floor.rotation.x=-Math.PI/2; floor.receiveShadow=true; scene.add(floor);
-  // Kelp stalks — tall thin cylinders with swaying animation
-  scene.userData.movers=[];
-  const kelpMat=new THREE.MeshStandardMaterial({color:0x22a84a,emissive:0x0a4020,emissiveIntensity:0.2});
-  for(let i=0;i<40;i++){
-    const x=-45+Math.random()*90, z=-45+Math.random()*90;
-    if(Math.abs(x)<4&&Math.abs(z)<10) continue;
-    const h=8+Math.random()*10;
-    const g=new THREE.Group(); g.position.set(x,0,z); scene.add(g);
-    const stalk=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.15,h,6),kelpMat); stalk.position.y=h/2; g.add(stalk);
-    const top=new THREE.Mesh(new THREE.SphereGeometry(0.4,6,4),kelpMat); top.position.y=h; g.add(top);
-    const ph=Math.random()*Math.PI*2;
-    scene.userData.movers.push({update(t){g.rotation.z=Math.sin(t*0.6+ph)*0.12; g.rotation.x=Math.cos(t*0.5+ph)*0.08;}});
-  }
-  // Glowing fish schools
-  const fishMat=new THREE.MeshStandardMaterial({color:0xffaa22,emissive:0xff8800,emissiveIntensity:0.6});
-  for(let f=0;f<3;f++){
-    const group=new THREE.Group(); scene.add(group);
-    const fishes=[]; const r=12+f*6;
-    for(let i=0;i<8;i++){
-      const fish=new THREE.Mesh(new THREE.ConeGeometry(0.2,0.5,4),fishMat); group.add(fish); fishes.push({m:fish,off:i/8*Math.PI*2});
-    }
-    const ph=f*2.1;
-    scene.userData.movers.push({update(t){group.position.set(Math.cos(t*0.3+ph)*r,4+Math.sin(t*0.2)*1,Math.sin(t*0.3+ph)*r); fishes.forEach(({m,off})=>{m.position.set(Math.cos(off+t*0.5)*1.5,Math.sin(off+t*0.7)*0.5,Math.sin(off+t*0.5)*1.5); m.rotation.y=off+t*0.5+Math.PI/2;});}});
-  }
-  // Checkpoint arches — coral gate style
-  for(let i=0;i<5;i++){
-    const z=-20+i*10;
-    const archMat=new THREE.MeshStandardMaterial({color:0xff6699,emissive:0xff3366,emissiveIntensity:0.5});
-    const lp=new THREE.Mesh(new THREE.TorusGeometry(3,0.15,8,20,Math.PI),archMat); lp.position.set(0,3,z); lp.rotation.z=Math.PI; scene.add(lp);
-    _addPl(scene,0xff3366,0.8,8,0,4,z);
-  }
-  scene.add(new THREE.AmbientLight(0x003322,0.8));
-  _addDl(scene,0x80ffaa,0.6,0,20,0,false);
-  _addPl(scene,0x00ff88,0.6,40,0,8,0);
-}
-
-// ── ARCTIC ICE DIVE ARENA ───────────────────────────────────────────────────
-function _arcticDiveArena(scene){
-  scene.background=_makeSkyTex('#001040','#000a20');
-  scene.fog=new THREE.Fog('#001040',25,80);
-  const floorMat=new THREE.MeshStandardMaterial({color:0x8ab4d0,roughness:0.1,metalness:0.7});
-  const floor=new THREE.Mesh(new THREE.PlaneGeometry(120,120),floorMat); floor.rotation.x=-Math.PI/2; floor.position.y=-0.5; floor.receiveShadow=true; scene.add(floor);
-  // Ice ceiling
-  const iceMat=new THREE.MeshStandardMaterial({color:0xb0e0ff,roughness:0.05,metalness:0.4,transparent:true,opacity:0.7});
-  const iceCeil=new THREE.Mesh(new THREE.PlaneGeometry(120,120),iceMat); iceCeil.rotation.x=Math.PI/2; iceCeil.position.y=12; scene.add(iceCeil);
-  // Ice crack light shafts
-  for(let i=0;i<8;i++){
-    const x=-20+Math.random()*40, z=-40+i*10;
-    _addPl(scene,0x80c8ff,0.5,12,x,11,z);
-  }
-  // Underwater ice columns / stalactites
-  const iceColMat=new THREE.MeshStandardMaterial({color:0xc0e8ff,roughness:0.1,metalness:0.5});
-  for(let i=0;i<20;i++){
-    const x=-40+Math.random()*80, z=-40+Math.random()*80;
-    if(Math.abs(x)<5&&Math.abs(z)<8) continue;
-    const h=3+Math.random()*6;
-    const col=new THREE.Mesh(new THREE.ConeGeometry(0.3+Math.random()*0.4,h,6),iceColMat);
-    col.position.set(x,12-h/2,z); col.rotation.x=Math.PI; scene.add(col);
-  }
-  // Checkpoint rings — icy blue
-  scene.userData.movers=[];
-  for(let i=0;i<5;i++){
-    const z=-22+i*10;
-    const ringMat=new THREE.MeshStandardMaterial({color:0x00ccff,emissive:0x0088cc,emissiveIntensity:0.7});
-    const ring=new THREE.Mesh(new THREE.TorusGeometry(3,0.15,8,30),ringMat); ring.position.set(0,5,z); scene.add(ring);
-    scene.userData.movers.push({update(t){ring.rotation.z=Math.sin(t*0.4+i)*0.15;}});
-    _addPl(scene,0x00ccff,0.7,8,0,5,z);
-  }
-  scene.add(new THREE.AmbientLight(0x001840,0.5));
-  _addDl(scene,0x80c8ff,0.8,0,12,0,false);
-}
-
-// ── MEDBOT TRIAGE ARENA ─────────────────────────────────────────────────────
+function _kelpForestArena(scene){ buildAdventureArena(scene, 'kelp_forest'); }
+function _arcticDiveArena(scene){ buildAdventureArena(scene, 'arctic_dive'); }
 function _medbotTriageArena(scene){
   scene.background=_makeSkyTex('#1a0a0a','#2a0808');
   scene.fog=new THREE.Fog('#1a0a0a',40,100);
@@ -7827,745 +8039,102 @@ function _firebotBlazeArena(scene){
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// 20 GROUND ARENAS
+// PREMIUM ADVENTURE ARENAS (AdventureArenaBuilder)
 // ═══════════════════════════════════════════════════════════════════════════════
-function _forestTrailArena(scene){
-  scene.background=new THREE.Color(0x0a1a0a); scene.fog=new THREE.FogExp2(0x0d2a0d,0.04);
-  const gnd=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshStandardMaterial({color:0x1a3a0f,roughness:0.95}));
-  gnd.rotation.x=-Math.PI/2; scene.add(gnd);
-  const tMat=new THREE.MeshStandardMaterial({color:0x2d4a1a});
-  for(let i=0;i<30;i++){const t=new THREE.Mesh(new THREE.CylinderGeometry(0.2,0.4,5+Math.random()*4,7),tMat);t.position.set((Math.random()-0.5)*60,(2.5),(Math.random()-0.5)*60);scene.add(t);}
-  const pMat=new THREE.MeshStandardMaterial({color:0x5a3a1a,roughness:0.9});
-  [-12,0,12,24].forEach((z,i)=>{const p=new THREE.Mesh(new THREE.BoxGeometry(0.6,0.2,12),pMat);p.position.set(i*2-3,0.1,z);scene.add(p);});
-  for(let i=0;i<20;i++){const f=new THREE.Mesh(new THREE.SphereGeometry(0.12),new THREE.MeshBasicMaterial({color:0xffff44}));f.position.set((Math.random()-0.5)*50,0.5+Math.random()*2,(Math.random()-0.5)*50);scene.add(f);_addPl(scene,0xffff44,0.4,3,f.position.x,f.position.y,f.position.z);}
-  scene.add(new THREE.AmbientLight(0x112211,0.5)); _addDl(scene,0x88ff44,0.4,30,8,12,true);
-  [[-15,8],[-5,16],[8,5],[20,14]].forEach(([x,z])=>_addPl(scene,0xff8800,1.2,10,x,2,z));
-}
-function _cityDeliveryArena(scene){
-  scene.background=new THREE.Color(0x050510); scene.fog=new THREE.Fog(0x050510,20,80);
-  const gnd=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshStandardMaterial({color:0x111118,roughness:0.8,metalness:0.3}));
-  gnd.rotation.x=-Math.PI/2; scene.add(gnd);
-  const bMat=new THREE.MeshStandardMaterial({color:0x1a1a2e,roughness:0.6});
-  [[10,0,8,20],[-10,0,6,16],[5,0,12,14],[-15,0,8,18]].forEach(([x,,w,h])=>{const b=new THREE.Mesh(new THREE.BoxGeometry(w,h,w),bMat);b.position.set(x,h/2,Math.random()*30-15);scene.add(b);});
-  const nMat=new THREE.MeshBasicMaterial({color:0x00ffff});
-  for(let i=0;i<8;i++){const s=new THREE.Mesh(new THREE.BoxGeometry(0.2,3,0.2),nMat);s.position.set((Math.random()-0.5)*40,1.5,(Math.random()-0.5)*40);scene.add(s);}
-  scene.add(new THREE.AmbientLight(0x050520,0.6)); _addDl(scene,0x4444ff,0.3,30,0,15,true);
-  [[0,0],[12,10],[-12,-8],[6,-15]].forEach(([x,z])=>{_addPl(scene,0x00ffff,0.8,12,x,3,z);_addPl(scene,0xff00aa,0.5,8,x+3,2,z+3);});
-}
-function _lavaCanyonArena(scene){
-  scene.background=new THREE.Color(0x1a0500); scene.fog=new THREE.FogExp2(0x200800,0.03);
-  const gnd=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshStandardMaterial({color:0x2a0a00,roughness:1}));
-  gnd.rotation.x=-Math.PI/2; scene.add(gnd);
-  const wMat=new THREE.MeshStandardMaterial({color:0x3a1200,roughness:0.9});
-  [[-20,0,6,25],[20,0,6,25],[0,0,60,6]].forEach(([x,y,w,h])=>{const wall=new THREE.Mesh(new THREE.BoxGeometry(w,h,4),wMat);wall.position.set(x,h/2,-10);scene.add(wall);});
-  const lMat=new THREE.MeshBasicMaterial({color:0xff4400});
-  for(let i=0;i<6;i++){const l=new THREE.Mesh(new THREE.BoxGeometry(8,0.15,1.5),lMat);l.position.set((Math.random()-0.5)*30,0.05,i*8-20);scene.add(l);_addPl(scene,0xff4400,0.8,6,l.position.x,0.5,l.position.z);}
-  scene.add(new THREE.AmbientLight(0x200800,0.4)); _addDl(scene,0xff6600,0.6,30,5,12,true);
-  _addPl(scene,0xff2200,1.5,40,0,1,0); _addPl(scene,0xff8800,0.8,20,-15,3,10);
-}
-function _arcticStationArena(scene){
-  scene.background=new THREE.Color(0xaaccff); scene.fog=new THREE.Fog(0xddeeff,15,60);
-  const gnd=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshStandardMaterial({color:0xe8f0ff,roughness:0.3,metalness:0.1}));
-  gnd.rotation.x=-Math.PI/2; scene.add(gnd);
-  const iMat=new THREE.MeshStandardMaterial({color:0xaaccff,roughness:0.1,metalness:0.2,transparent:true,opacity:0.8});
-  for(let i=0;i<12;i++){const h=2+Math.random()*4;const b=new THREE.Mesh(new THREE.CylinderGeometry(0.3,0.8,h,6),iMat);b.position.set((Math.random()-0.5)*50,h/2,(Math.random()-0.5)*50);scene.add(b);}
-  const bMat=new THREE.MeshStandardMaterial({color:0x334455,roughness:0.7});
-  [[0,0,8,4],[12,0,6,3]].forEach(([x,y,w,h])=>{const b=new THREE.Mesh(new THREE.BoxGeometry(w,h,6),bMat);b.position.set(x,h/2,5);scene.add(b);});
-  scene.add(new THREE.AmbientLight(0x8899cc,0.8)); _addDl(scene,0xffffff,0.9,30,10,20,true);
-  _addPl(scene,0x4499ff,0.6,25,0,4,0); _addPl(scene,0xffffff,0.4,15,12,3,5);
-}
-function _templeMazeArena(scene){
-  scene.background=new THREE.Color(0x080608); scene.fog=new THREE.FogExp2(0x100810,0.05);
-  const gnd=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshStandardMaterial({color:0x1a1218,roughness:0.95}));
-  gnd.rotation.x=-Math.PI/2; scene.add(gnd);
-  const wMat=new THREE.MeshStandardMaterial({color:0x2a2030,roughness:0.9});
-  for(let r=0;r<4;r++)for(let c=0;c<4;c++){if(Math.random()>0.4){const w=new THREE.Mesh(new THREE.BoxGeometry(0.8,4,8),wMat);w.position.set(r*12-18,2,c*10-15);scene.add(w);}}
-  const tMat=new THREE.MeshStandardMaterial({color:0xff8800,emissive:0xff4400,emissiveIntensity:0.5});
-  for(let i=0;i<12;i++){const t=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.15,0.8,6),tMat);t.position.set((Math.random()-0.5)*40,0.4,(Math.random()-0.5)*40);scene.add(t);_addPl(scene,0xff6600,0.6,4,t.position.x,1,t.position.z);}
-  scene.add(new THREE.AmbientLight(0x080508,0.3)); _addDl(scene,0x886644,0.5,30,5,10,true);
-}
-function _desertRallyArena(scene){
-  scene.background=new THREE.Color(0x3a2800); scene.fog=new THREE.Fog(0x5a3a10,25,80);
-  const gnd=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshStandardMaterial({color:0xd4a050,roughness:1}));
-  gnd.rotation.x=-Math.PI/2; scene.add(gnd);
-  const dMat=new THREE.MeshStandardMaterial({color:0xc8903a,roughness:1});
-  for(let i=0;i<15;i++){const h=1+Math.random()*3;const d=new THREE.Mesh(new THREE.CylinderGeometry(2+Math.random()*3,3+Math.random()*4,h,8),dMat);d.position.set((Math.random()-0.5)*70,h/2,(Math.random()-0.5)*70);scene.add(d);}
-  const fMat=new THREE.MeshBasicMaterial({color:0xff2200});
-  [-20,-10,0,10,20].forEach((z)=>{const f=new THREE.Mesh(new THREE.BoxGeometry(0.2,3,0.2),fMat);f.position.set(Math.sin(z)*10,1.5,z);scene.add(f);});
-  scene.add(new THREE.AmbientLight(0x4a3010,0.7)); _addDl(scene,0xffaa44,1.0,30,15,20,true);
-  _addPl(scene,0xff8800,0.8,30,0,5,0);
-}
-function _undergroundMineArena(scene){
-  scene.background=new THREE.Color(0x050308); scene.fog=new THREE.FogExp2(0x080510,0.06);
-  const gnd=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshStandardMaterial({color:0x1a1015,roughness:1}));
-  gnd.rotation.x=-Math.PI/2; scene.add(gnd);
-  const cMat=new THREE.MeshStandardMaterial({color:0x2a2030,roughness:0.95});
-  for(let i=0;i<20;i++){const s=new THREE.Mesh(new THREE.SphereGeometry(0.4+Math.random()*0.6),cMat);s.position.set((Math.random()-0.5)*50,0.4,(Math.random()-0.5)*50);scene.add(s);}
-  const xMat=new THREE.MeshBasicMaterial({color:0x8855ff});
-  for(let i=0;i<10;i++){const x=new THREE.Mesh(new THREE.OctahedronGeometry(0.3),xMat);x.position.set((Math.random()-0.5)*40,0.5,(Math.random()-0.5)*40);scene.add(x);_addPl(scene,0x8844ff,0.5,4,x.position.x,1,x.position.z);}
-  scene.add(new THREE.AmbientLight(0x050308,0.2)); _addPl(scene,0xffaa44,1,15,0,3,0);
-  [[-15,5],[10,-10],[5,15]].forEach(([x,z])=>_addPl(scene,0x8844ff,0.7,8,x,2,z));
-}
-function _floodedCityArena(scene){
-  scene.background=new THREE.Color(0x0a1520); scene.fog=new THREE.Fog(0x0a1520,20,70);
-  const gnd=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshStandardMaterial({color:0x0a2030,roughness:0.1,metalness:0.6}));
-  gnd.rotation.x=-Math.PI/2; scene.add(gnd);
-  const bMat=new THREE.MeshStandardMaterial({color:0x1a2a35,roughness:0.7});
-  [[-15,5,8,6],[0,5,6,10],[12,3,10,7],[-5,2,5,5]].forEach(([x,h,w,bh])=>{const b=new THREE.Mesh(new THREE.BoxGeometry(w,bh,w),bMat);b.position.set(x,bh/2-1,h);scene.add(b);});
-  const pMat=new THREE.MeshStandardMaterial({color:0x2a3a45,roughness:0.8});
-  for(let i=0;i<6;i++){const p=new THREE.Mesh(new THREE.BoxGeometry(3,0.3,3),pMat);p.position.set((Math.random()-0.5)*30,1.5+Math.random()*3,(Math.random()-0.5)*30);scene.add(p);}
-  scene.add(new THREE.AmbientLight(0x0a1520,0.5)); _addDl(scene,0x4488aa,0.4,30,0,15,true);
-  _addPl(scene,0x00aaff,0.6,20,0,2,0); _addPl(scene,0x0044ff,0.4,15,-15,3,10);
-}
-function _spaceCorridorArena(scene){
-  scene.background=new THREE.Color(0x020408); scene.fog=new THREE.Fog(0x020408,15,60);
-  const gnd=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshStandardMaterial({color:0x0d0d1a,roughness:0.3,metalness:0.8}));
-  gnd.rotation.x=-Math.PI/2; scene.add(gnd);
-  const wMat=new THREE.MeshStandardMaterial({color:0x1a1a2e,roughness:0.4,metalness:0.7});
-  for(let i=0;i<5;i++){const w=new THREE.Mesh(new THREE.BoxGeometry(12,5,0.5),wMat);w.position.set(0,2.5,i*10-20);scene.add(w);}
-  const lMat=new THREE.MeshBasicMaterial({color:0xff2200});
-  for(let i=0;i<10;i++){const l=new THREE.Mesh(new THREE.BoxGeometry(0.1,0.1,0.1),lMat);l.position.set((Math.random()-0.5)*10,0.1,(Math.random()-0.5)*40);scene.add(l);_addPl(scene,0xff0000,0.4,3,l.position.x,0.5,l.position.z);}
-  scene.add(new THREE.AmbientLight(0x050510,0.4)); _addDl(scene,0x8888ff,0.4,30,0,10,true);
-  [[-5,0],[5,10],[0,-10]].forEach(([x,z])=>_addPl(scene,0x4444ff,0.6,10,x,3,z));
-}
-function _hauntedGraveyardArena(scene){
-  scene.background=new THREE.Color(0x080510); scene.fog=new THREE.FogExp2(0x0d0a15,0.04);
-  const gnd=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshStandardMaterial({color:0x0f1208,roughness:1}));
-  gnd.rotation.x=-Math.PI/2; scene.add(gnd);
-  const sMat=new THREE.MeshStandardMaterial({color:0x555566,roughness:0.9});
-  for(let i=0;i<20;i++){const s=new THREE.Mesh(new THREE.BoxGeometry(0.5+Math.random()*0.5,1+Math.random()*0.8,0.15),sMat);s.position.set((Math.random()-0.5)*50,0.8,(Math.random()-0.5)*50);scene.add(s);}
-  const pMat=new THREE.MeshBasicMaterial({color:0xff8800});
-  for(let i=0;i<8;i++){const p=new THREE.Mesh(new THREE.SphereGeometry(0.4,6,4),pMat);p.position.set((Math.random()-0.5)*40,0.4,(Math.random()-0.5)*40);scene.add(p);_addPl(scene,0xff6600,0.5,5,p.position.x,1,p.position.z);}
-  scene.add(new THREE.AmbientLight(0x050308,0.3)); _addDl(scene,0x8866cc,0.3,30,3,15,true);
-  _addPl(scene,0x8800ff,0.6,25,0,5,0);
-}
-function _racingCircuitArena(scene){
-  scene.background=new THREE.Color(0x050508); scene.fog=new THREE.Fog(0x050508,30,90);
-  const gnd=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshStandardMaterial({color:0x111114,roughness:0.6}));
-  gnd.rotation.x=-Math.PI/2; scene.add(gnd);
-  const lMat=new THREE.MeshBasicMaterial({color:0xffffff});
-  for(let i=0;i<20;i++){const l=new THREE.Mesh(new THREE.BoxGeometry(0.2,8,0.2),lMat);l.position.set((Math.random()-0.5)*60,4,(Math.random()-0.5)*60);scene.add(l);_addPl(scene,0xffffff,0.8,10,l.position.x,5,l.position.z);}
-  const rMat=new THREE.MeshStandardMaterial({color:0xff1100,roughness:0.4});
-  for(let i=0;i<6;i++){const r=new THREE.Mesh(new THREE.TorusGeometry(1,0.15,8,20),rMat);r.rotation.x=Math.PI/2;r.position.set((Math.random()-0.5)*30,1.5,(i-3)*8);scene.add(r);}
-  scene.add(new THREE.AmbientLight(0x080808,0.4)); _addDl(scene,0xffeedd,0.7,30,10,15,true);
-  _addPl(scene,0xff4400,0.8,20,-15,5,0); _addPl(scene,0x4400ff,0.6,15,15,5,10);
-}
-function _farmHarvestArena(scene){
-  scene.background=new THREE.Color(0x87ceeb); scene.fog=new THREE.Fog(0xd4eeff,30,100);
-  const gnd=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshStandardMaterial({color:0x4a7a20,roughness:1}));
-  gnd.rotation.x=-Math.PI/2; scene.add(gnd);
-  const bMat=new THREE.MeshStandardMaterial({color:0xcc2200,roughness:0.9});
-  const barn=new THREE.Mesh(new THREE.BoxGeometry(10,6,8),bMat); barn.position.set(20,3,0); scene.add(barn);
-  const cMat=new THREE.MeshStandardMaterial({color:0xf0c840,roughness:0.9});
-  for(let i=0;i<25;i++){const c=new THREE.Mesh(new THREE.CylinderGeometry(0.15,0.2,2,5),cMat);c.position.set((Math.random()-0.5)*50,1,(Math.random()-0.5)*50);scene.add(c);}
-  scene.add(new THREE.AmbientLight(0x88aabb,0.8)); _addDl(scene,0xffcc66,1.2,30,15,20,true);
-  _addPl(scene,0xffaa00,0.5,20,0,4,0);
-}
-function _pirateDockArena(scene){
-  scene.background=new THREE.Color(0x0a1825); scene.fog=new THREE.Fog(0x0a1825,20,70);
-  const gnd=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshStandardMaterial({color:0x3a2510,roughness:0.9}));
-  gnd.rotation.x=-Math.PI/2; scene.add(gnd);
-  const wMat=new THREE.MeshStandardMaterial({color:0x5a3a18,roughness:0.95});
-  for(let i=0;i<12;i++){const p=new THREE.Mesh(new THREE.BoxGeometry(2,0.2,2),wMat);p.position.set((Math.random()-0.5)*40,0.1,(Math.random()-0.5)*40);scene.add(p);}
-  const mMat=new THREE.MeshStandardMaterial({color:0x6a4020,roughness:0.9});
-  [[-15,10],[10,-5]].forEach(([x,z])=>{const m=new THREE.Mesh(new THREE.CylinderGeometry(0.4,0.5,12,8),mMat);m.position.set(x,6,z);scene.add(m);});
-  const cMat=new THREE.MeshStandardMaterial({color:0x444444,roughness:0.5,metalness:0.6});
-  for(let i=0;i<4;i++){const c=new THREE.Mesh(new THREE.CylinderGeometry(0.4,0.5,1.5,8),cMat);c.rotation.z=Math.PI/2;c.position.set((Math.random()-0.5)*20,0.8,(Math.random()-0.5)*20);scene.add(c);}
-  scene.add(new THREE.AmbientLight(0x0a1020,0.5)); _addDl(scene,0xffaa44,0.6,30,5,10,true);
-  _addPl(scene,0xff8800,0.7,15,0,3,0);
-}
-function _toxicWastelandArena(scene){
-  scene.background=new THREE.Color(0x0a1000); scene.fog=new THREE.FogExp2(0x0d1a00,0.04);
-  const gnd=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshStandardMaterial({color:0x1a2000,roughness:1}));
-  gnd.rotation.x=-Math.PI/2; scene.add(gnd);
-  const gMat=new THREE.MeshBasicMaterial({color:0x44ff00,transparent:true,opacity:0.7});
-  for(let i=0;i<8;i++){const g=new THREE.Mesh(new THREE.CylinderGeometry(1+Math.random()*2,1.5,0.2,8),gMat);g.position.set((Math.random()-0.5)*50,0.1,(Math.random()-0.5)*50);scene.add(g);_addPl(scene,0x44ff00,0.5,6,g.position.x,0.5,g.position.z);}
-  const rMat=new THREE.MeshStandardMaterial({color:0x332211,roughness:0.9,metalness:0.4});
-  for(let i=0;i<6;i++){const v=new THREE.Mesh(new THREE.BoxGeometry(3+Math.random()*4,1.5,2),rMat);v.position.set((Math.random()-0.5)*50,0.75,(Math.random()-0.5)*50);scene.add(v);}
-  scene.add(new THREE.AmbientLight(0x081000,0.3)); _addDl(scene,0x44aa00,0.4,30,0,12,true);
-  _addPl(scene,0x44ff00,0.8,25,0,2,0);
-}
-function _carnivalFunfairArena(scene){
-  scene.background=new THREE.Color(0x0a0020); scene.fog=new THREE.Fog(0x0a0020,25,80);
-  const gnd=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshStandardMaterial({color:0x1a0830,roughness:0.8}));
-  gnd.rotation.x=-Math.PI/2; scene.add(gnd);
-  const fwMat=new THREE.MeshStandardMaterial({color:0x222244,roughness:0.7,metalness:0.5});
-  const fw=new THREE.Mesh(new THREE.TorusGeometry(6,0.3,8,32),fwMat); fw.position.set(-18,7,0); scene.add(fw);
-  const colors=[0xff0044,0xff8800,0x00ff88,0x00aaff,0xff44ff];
-  for(let i=0;i<12;i++){const s=new THREE.Mesh(new THREE.SphereGeometry(0.3),new THREE.MeshBasicMaterial({color:colors[i%5]}));s.position.set((Math.random()-0.5)*40,2+Math.random()*4,(Math.random()-0.5)*40);scene.add(s);_addPl(scene,colors[i%5],0.5,5,s.position.x,s.position.y,s.position.z);}
-  scene.add(new THREE.AmbientLight(0x0a0015,0.3)); _addDl(scene,0xaa44ff,0.4,30,0,12,true);
-  _addPl(scene,0xff0088,0.8,20,0,5,0);
-}
-function _jungleBridgeArena(scene){
-  scene.background=new THREE.Color(0x0a1a0a); scene.fog=new THREE.FogExp2(0x0d2010,0.04);
-  const gnd=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshStandardMaterial({color:0x1a3010,roughness:1}));
-  gnd.rotation.x=-Math.PI/2; scene.add(gnd);
-  const bMat=new THREE.MeshStandardMaterial({color:0x6a4a20,roughness:0.95});
-  for(let i=0;i<5;i++){const b=new THREE.Mesh(new THREE.BoxGeometry(1.5,0.2,2),bMat);b.position.set((i-2)*4,1.5+Math.sin(i)*0.3,0);scene.add(b);}
-  const tMat=new THREE.MeshStandardMaterial({color:0x2a4a1a,roughness:0.9});
-  for(let i=0;i<20;i++){const t=new THREE.Mesh(new THREE.CylinderGeometry(0.3,0.5,7+Math.random()*5,7),tMat);t.position.set((Math.random()-0.5)*60,3.5,(Math.random()-0.5)*60);scene.add(t);}
-  _addPl(scene,0x44ffff,0.8,15,-5,1,-15); _addPl(scene,0x88ffff,0.5,10,-5,3,-8);
-  scene.add(new THREE.AmbientLight(0x112211,0.5)); _addDl(scene,0x88cc44,0.5,30,5,15,true);
-}
-function _museumHeistArena(scene){
-  scene.background=new THREE.Color(0x050508); scene.fog=new THREE.Fog(0x050508,20,70);
-  const gnd=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshStandardMaterial({color:0xccbbaa,roughness:0.2,metalness:0.1}));
-  gnd.rotation.x=-Math.PI/2; scene.add(gnd);
-  const pMat=new THREE.MeshStandardMaterial({color:0xddccbb,roughness:0.2});
-  for(let i=0;i<12;i++){const p=new THREE.Mesh(new THREE.CylinderGeometry(0.4,0.4,5,8),pMat);p.position.set((Math.random()-0.5)*40,2.5,(Math.random()-0.5)*40);scene.add(p);}
-  const lMat=new THREE.MeshBasicMaterial({color:0xff0000});
-  for(let i=0;i<8;i++){const l=new THREE.Mesh(new THREE.BoxGeometry(0.05,0.05,12),lMat);l.position.set((Math.random()-0.5)*20,0.3+Math.random()*2,(Math.random()-0.5)*20);l.rotation.y=Math.random()*Math.PI;scene.add(l);_addPl(scene,0xff0000,0.3,5,l.position.x,l.position.y,l.position.z);}
-  scene.add(new THREE.AmbientLight(0x080808,0.4)); _addDl(scene,0xffeedd,0.8,30,5,15,true);
-}
-function _snowRescueArena(scene){
-  scene.background=new THREE.Color(0x8899cc); scene.fog=new THREE.Fog(0xaabbdd,8,50);
-  const gnd=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshStandardMaterial({color:0xeef0ff,roughness:0.2}));
-  gnd.rotation.x=-Math.PI/2; scene.add(gnd);
-  const mMat=new THREE.MeshStandardMaterial({color:0x778899,roughness:0.9});
-  for(let i=0;i<8;i++){const h=5+Math.random()*8;const m=new THREE.Mesh(new THREE.ConeGeometry(3+Math.random()*3,h,6),mMat);m.position.set((Math.random()-0.5)*60,h/2,(Math.random()-0.5)*60);scene.add(m);}
-  const rMat=new THREE.MeshBasicMaterial({color:0xff2200});
-  for(let i=0;i<5;i++){const r=new THREE.Mesh(new THREE.SphereGeometry(0.4),rMat);r.position.set((Math.random()-0.5)*30,0.4,(Math.random()-0.5)*30);scene.add(r);_addPl(scene,0xff2200,0.8,6,r.position.x,1,r.position.z);}
-  scene.add(new THREE.AmbientLight(0x7788aa,0.8)); _addDl(scene,0xffffff,0.6,30,10,20,true);
-}
-function _cyberCityArena(scene){
-  scene.background=new THREE.Color(0x010110); scene.fog=new THREE.Fog(0x010110,15,60);
-  const gnd=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshStandardMaterial({color:0x050520,roughness:0.2,metalness:0.8}));
-  gnd.rotation.x=-Math.PI/2; scene.add(gnd);
-  const bMat=new THREE.MeshStandardMaterial({color:0x0a0a25,roughness:0.3,metalness:0.8});
-  for(let i=0;i<8;i++){const h=8+Math.random()*15;const b=new THREE.Mesh(new THREE.BoxGeometry(4,h,4),bMat);b.position.set((Math.random()-0.5)*50,h/2,(Math.random()-0.5)*50);scene.add(b);}
-  const dMat=new THREE.MeshBasicMaterial({color:0x00ffff});
-  for(let i=0;i<6;i++){const d=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,8,4),dMat);d.position.set((Math.random()-0.5)*30,4,(Math.random()-0.5)*30);scene.add(d);_addPl(scene,0x00ffff,0.4,6,d.position.x,2,d.position.z);}
-  scene.add(new THREE.AmbientLight(0x010120,0.4)); _addDl(scene,0x4444ff,0.3,30,0,10,true);
-  _addPl(scene,0x00ffff,1.0,20,0,4,0); _addPl(scene,0xff00ff,0.6,15,10,3,-10);
-}
-function _timeTrialGauntletArena(scene){
-  scene.background=new THREE.Color(0x000000); scene.fog=new THREE.Fog(0x000000,20,80);
-  const gnd=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshStandardMaterial({color:0x0d0d1a,roughness:0.1,metalness:0.9}));
-  gnd.rotation.x=-Math.PI/2; scene.add(gnd);
-  const pColors=[0xff0088,0x00ffaa,0xffaa00,0x4488ff];
-  for(let i=0;i<12;i++){const c=pColors[i%4];const p=new THREE.Mesh(new THREE.BoxGeometry(2,0.2,2),new THREE.MeshBasicMaterial({color:c}));p.position.set((Math.random()-0.5)*40,1+Math.random()*3,(Math.random()-0.5)*40);scene.add(p);_addPl(scene,c,0.6,6,p.position.x,p.position.y+1,p.position.z);}
-  const gMat=new THREE.MeshBasicMaterial({color:0xffffff,wireframe:true});
-  for(let i=0;i<5;i++){const g=new THREE.Mesh(new THREE.TorusGeometry(3,0.1,6,20),gMat);g.position.set((i-2)*8,2,0);scene.add(g);}
-  scene.add(new THREE.AmbientLight(0x050510,0.3)); _addPl(scene,0xffffff,0.6,30,0,5,0);
-}
+function _forestTrailArena(scene){ buildAdventureArena(scene,'forest_trail'); }
+function _cityDeliveryArena(scene){ buildAdventureArena(scene,'city_delivery'); }
+function _lavaCanyonArena(scene){ buildAdventureArena(scene,'lava_canyon'); }
+function _arcticStationArena(scene, challenge){ buildAdventureArena(scene,'arctic_station', challenge); }
+function _templeMazeArena(scene, challenge){ buildAdventureArena(scene,'temple_maze', challenge); }
+function _templeMazeCourseArena(scene){ buildAdventureArena(scene,'temple_maze_course'); }
+function _desertRallyArena(scene, challenge){ buildAdventureArena(scene,'desert_rally', challenge); }
+function _undergroundMineArena(scene){ buildAdventureArena(scene,'underground_mine'); }
+function _floodedCityArena(scene){ buildAdventureArena(scene,'flooded_city'); }
+function _spaceCorridorArena(scene){ buildAdventureArena(scene,'space_corridor'); }
+function _hauntedGraveyardArena(scene){ buildAdventureArena(scene,'haunted_graveyard'); }
+function _racingCircuitArena(scene){ buildCircuitSprintArena(scene); }
+function _farmHarvestArena(scene){ buildAdventureArena(scene,'farm_harvest'); }
+function _pirateDockArena(scene){ buildAdventureArena(scene,'pirate_dock'); }
+function _toxicWastelandArena(scene){ buildAdventureArena(scene,'toxic_wasteland'); }
+function _carnivalFunfairArena(scene){ buildAdventureArena(scene,'carnival_funfair'); }
+function _jungleBridgeArena(scene){ buildAdventureArena(scene,'jungle_bridge'); }
+function _museumHeistArena(scene){ buildAdventureArena(scene,'museum_heist'); }
+function _snowRescueArena(scene){ buildAdventureArena(scene,'snow_rescue'); }
+function _cyberCityArena(scene){ buildAdventureArena(scene,'cyber_city'); }
+function _canyonFlightArena(scene){ buildAdventureArena(scene,'canyon_flight'); }
+function _citySkylineArena(scene){ buildAdventureArena(scene,'city_skyline'); }
+function _stormCloudArena(scene){ buildAdventureArena(scene,'storm_cloud'); }
+function _volcanicFlythroughArena(scene){ buildAdventureArena(scene,'volcanic_flythrough'); }
+function _arcticSurveyArena(scene){ buildAdventureArena(scene,'arctic_survey'); }
+function _rooftopDeliveryArena(scene){ buildAdventureArena(scene,'rooftop_delivery'); }
+function _spaceOrbitArena(scene){ buildAdventureArena(scene,'space_orbit'); }
+function _rainforestCanopyArena(scene){ buildAdventureArena(scene,'rainforest_canopy'); }
+function _cloudRaceArena(scene){ buildAdventureArena(scene,'cloud_race'); }
+function _nightPatrolArena(scene){ buildAdventureArena(scene,'night_patrol'); }
+function _desertAirArena(scene){ buildAdventureArena(scene,'desert_air'); }
+function _mountainPassArena(scene){ buildAdventureArena(scene,'mountain_pass'); }
+function _glacierFlyoverArena(scene){ buildAdventureArena(scene,'glacier_flyover'); }
+function _typhoonArena(scene){ buildAdventureArena(scene,'typhoon'); }
+function _alienPlanetArena(scene){ buildAdventureArena(scene,'alien_planet'); }
+function _fireworksArena(scene){ buildAdventureArena(scene,'fireworks'); }
+function _cloudFortressArena(scene){ buildAdventureArena(scene,'cloud_fortress'); }
+function _droneLeagueArena(scene){ buildAdventureArena(scene,'drone_league'); }
+function _coastalRescueArena(scene){ buildAdventureArena(scene,'coastal_rescue'); }
+function _warpGateArena(scene){ buildAdventureArena(scene,'warp_gate'); }
+function _shadowEscapeArena(scene){ buildAdventureArena(scene,'shadow_escape'); }
+function _jumpWorldArena(scene){ buildAdventureArena(scene,'jump_world'); }
+function _deepCaveArena(scene){ buildAdventureArena(scene,'deep_cave'); }
+function _autoFactoryArena(scene){ buildAdventureArena(scene,'auto_factory'); }
+function _pipelineCrawlArena(scene){ buildAdventureArena(scene,'pipeline_crawl'); }
+function _templeClimbArena(scene){ buildAdventureArena(scene,'temple_climb'); }
+function _collapsedBuildingArena(scene){ buildAdventureArena(scene,'collapsed_building'); }
+function _militaryBaseArena(scene){ buildAdventureArena(scene,'military_base'); }
+function _factoryFloorArena(scene){ buildAdventureArena(scene,'factory_floor'); }
+function _spaceEvaArena(scene){ buildAdventureArena(scene,'space_eva'); }
+function _hospitalWalkArena(scene){ buildAdventureArena(scene,'hospital_walk'); }
+function _mineShaftArena(scene){ buildAdventureArena(scene,'mine_shaft'); }
+function _urbanObstacleArena(scene){ buildAdventureArena(scene,'urban_obstacle'); }
+function _colosseumArena(scene){ buildAdventureArena(scene,'colosseum'); }
+function _volcanicClimbArena(scene){ buildAdventureArena(scene,'volcanic_climb'); }
+function _bambooForestArena(scene){ buildAdventureArena(scene,'bamboo_forest'); }
+function _icePalaceArena(scene){ buildAdventureArena(scene,'ice_palace'); }
+function _robotMuseumArena(scene){ buildAdventureArena(scene,'robot_museum'); }
+function _sewersArena(scene){ buildAdventureArena(scene,'sewers'); }
+function _skyGardenArena(scene){ buildAdventureArena(scene,'sky_garden'); }
+function _cargoShipArena(scene){ buildAdventureArena(scene,'cargo_ship'); }
+function _hauntedMansionArena(scene){ buildAdventureArena(scene,'haunted_mansion'); }
+function _caveOfWondersArena(scene){ buildAdventureArena(scene,'cave_of_wonders'); }
+function _cyberDungeonArena(scene){ buildAdventureArena(scene,'cyber_dungeon'); }
+function _coralReefSurveyArena(scene){ buildAdventureArena(scene,'coral_reef_survey'); }
+function _shipwreckArena(scene){ buildAdventureArena(scene,'shipwreck'); }
+function _deepTrenchCourseArena(scene){ buildAdventureArena(scene,'deep_trench_course'); }
+function _hydrothermalArena(scene){ buildAdventureArena(scene,'hydrothermal'); }
+function _subCanyonArena(scene){ buildAdventureArena(scene,'sub_canyon'); }
+function _iceShelfArena(scene){ buildAdventureArena(scene,'ice_shelf'); }
+function _currentMazeArena(scene){ buildAdventureArena(scene,'current_maze'); }
+function _whaleRouteArena(scene){ buildAdventureArena(scene,'whale_route'); }
+function _bioluminescentArena(scene){ buildAdventureArena(scene,'bioluminescent'); }
+function _pirateWreckArena(scene){ buildAdventureArena(scene,'pirate_wreck'); }
+function _underseaVolcanoArena(scene){ buildAdventureArena(scene,'undersea_volcano'); }
+function _seagrassArena(scene){ buildAdventureArena(scene,'seagrass'); }
+function _tidalCaveArena(scene){ buildAdventureArena(scene,'tidal_cave'); }
+function _deepStationArena(scene){ buildAdventureArena(scene,'deep_station'); }
+function _squidChaseArena(scene){ buildAdventureArena(scene,'squid_chase'); }
+function _atlantisArena(scene){ buildAdventureArena(scene,'atlantis'); }
+function _eelCavernArena(scene){ buildAdventureArena(scene,'eel_cavern'); }
+function _tsunamiArena(scene){ buildAdventureArena(scene,'tsunami'); }
+function _marianaArena(scene){ buildAdventureArena(scene,'mariana'); }
+function _timeTrialGauntletArena(scene){ buildTimeTrialArena(scene); }
+function _canyonFlightCourseArena(scene){ buildAdventureArena(scene,'canyon_flight_course'); }
+function _citySkylineRaceArena(scene){ buildAdventureArena(scene,'city_skyline_race'); }
+function _stormCloudChaseArena(scene){ buildAdventureArena(scene,'storm_cloud_chase'); }
+function _arcticSurveyFlightArena(scene){ buildAdventureArena(scene,'arctic_survey_flight'); }
+function _spaceStationOrbitArena(scene){ buildAdventureArena(scene,'space_station_orbit'); }
+function _desertAirRaceArena(scene){ buildAdventureArena(scene,'desert_air_race'); }
+function _mountainPassNavArena(scene){ buildAdventureArena(scene,'mountain_pass_nav'); }
+function _fireworksDisplayArena(scene){ buildAdventureArena(scene,'fireworks_display'); }
+function _droneRacingLeagueArena(scene){ buildAdventureArena(scene,'drone_racing_league'); }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// 20 AERIAL ARENAS
-// ═══════════════════════════════════════════════════════════════════════════════
-function _canyonFlightArena(scene){
-  scene.background=new THREE.Color(0x3a1a05); scene.fog=new THREE.Fog(0x3a1a05,20,80);
-  const gnd=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshStandardMaterial({color:0x8a4020,roughness:1}));
-  gnd.rotation.x=-Math.PI/2; gnd.position.y=-15; scene.add(gnd);
-  const wMat=new THREE.MeshStandardMaterial({color:0xc46030,roughness:0.95});
-  [[-12,20,4,30],[12,20,4,30],[0,20,60,4]].forEach(([x,h,w,d])=>{const w2=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),wMat);w2.position.set(x,0,0);scene.add(w2);});
-  scene.add(new THREE.AmbientLight(0x3a1505,0.5)); _addDl(scene,0xff8844,0.8,30,10,15,true);
-  _addPl(scene,0xff6622,0.6,30,0,5,0);
-}
-function _citySkylineArena(scene){
-  scene.background=new THREE.Color(0x05050f); scene.fog=new THREE.Fog(0x05050f,25,90);
-  const bMat=new THREE.MeshStandardMaterial({color:0x0d0d22,roughness:0.4,metalness:0.7});
-  for(let i=0;i<15;i++){const h=10+Math.random()*20;const b=new THREE.Mesh(new THREE.BoxGeometry(5+Math.random()*4,h,5+Math.random()*4),bMat);b.position.set((Math.random()-0.5)*70,(h/2)-10,(Math.random()-0.5)*70);scene.add(b);}
-  scene.add(new THREE.AmbientLight(0x050510,0.5)); _addDl(scene,0x4466ff,0.4,30,0,15,true);
-  [[0,5,0],[15,8,10],[-15,6,-10],[5,10,15]].forEach(([x,y,z])=>_addPl(scene,0x4488ff,0.6,12,x,y,z));
-}
-function _stormCloudArena(scene){
-  scene.background=new THREE.Color(0x101018); scene.fog=new THREE.FogExp2(0x151520,0.03);
-  for(let i=0;i<20;i++){const c=new THREE.Mesh(new THREE.SphereGeometry(3+Math.random()*5),new THREE.MeshStandardMaterial({color:0x222230,roughness:1,transparent:true,opacity:0.7}));c.position.set((Math.random()-0.5)*60,2+Math.random()*8,(Math.random()-0.5)*60);scene.add(c);}
-  scene.add(new THREE.AmbientLight(0x080812,0.4)); _addDl(scene,0x8888cc,0.4,30,0,10,false);
-  for(let i=0;i<5;i++)_addPl(scene,0xaaaaff,0.8,15,(Math.random()-0.5)*30,5,(Math.random()-0.5)*30);
-}
-function _volcanicFlythroughArena(scene){
-  scene.background=new THREE.Color(0x1a0400); scene.fog=new THREE.FogExp2(0x200600,0.04);
-  const gnd=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshBasicMaterial({color:0xff3300}));
-  gnd.rotation.x=-Math.PI/2; gnd.position.y=-10; scene.add(gnd);
-  _addPl(scene,0xff2200,2.0,60,0,-5,0);
-  for(let i=0;i<8;i++){const h=6+Math.random()*8;const v=new THREE.Mesh(new THREE.CylinderGeometry(1,3,h,7),new THREE.MeshStandardMaterial({color:0x3a1400,roughness:0.9}));v.position.set((Math.random()-0.5)*50,h/2-10,(Math.random()-0.5)*50);scene.add(v);}
-  scene.add(new THREE.AmbientLight(0x200800,0.4)); _addDl(scene,0xff6600,0.6,30,5,12,false);
-}
-function _arcticSurveyArena(scene){
-  scene.background=new THREE.Color(0x99bbdd); scene.fog=new THREE.Fog(0xaaccee,20,80);
-  const gnd=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshStandardMaterial({color:0xddeeff,roughness:0.1}));
-  gnd.rotation.x=-Math.PI/2; gnd.position.y=-5; scene.add(gnd);
-  for(let i=0;i<10;i++){const h=3+Math.random()*6;const ic=new THREE.Mesh(new THREE.ConeGeometry(2+Math.random()*3,h,6),new THREE.MeshStandardMaterial({color:0x99ccff,roughness:0.1,transparent:true,opacity:0.8}));ic.position.set((Math.random()-0.5)*60,h/2-4,(Math.random()-0.5)*60);scene.add(ic);}
-  scene.add(new THREE.AmbientLight(0x8899bb,0.9)); _addDl(scene,0xffffff,0.8,30,10,20,true);
-}
-function _rooftopDeliveryArena(scene){
-  scene.background=new THREE.Color(0x05050f); scene.fog=new THREE.Fog(0x05050f,20,70);
-  const bMat=new THREE.MeshStandardMaterial({color:0x0d0d22,roughness:0.4,metalness:0.6});
-  const roofH=[8,12,10,15,9,11];
-  roofH.forEach((h,i)=>{const b=new THREE.Mesh(new THREE.BoxGeometry(6,h,6),bMat);b.position.set((i-2.5)*10,h/2-2,0);scene.add(b);const pad=new THREE.Mesh(new THREE.CircleGeometry(1.5,8),new THREE.MeshBasicMaterial({color:0x00ff88}));pad.rotation.x=-Math.PI/2;pad.position.set((i-2.5)*10,h-2,0);scene.add(pad);_addPl(scene,0x00ff88,0.6,8,(i-2.5)*10,h,0);});
-  scene.add(new THREE.AmbientLight(0x050510,0.5)); _addDl(scene,0x4466ff,0.4,30,0,15,true);
-}
-function _spaceOrbitArena(scene){
-  scene.background=new THREE.Color(0x000005);
-  for(let i=0;i<200;i++){const s=new THREE.Mesh(new THREE.SphereGeometry(0.05),new THREE.MeshBasicMaterial({color:0xffffff}));s.position.set((Math.random()-0.5)*150,(Math.random()-0.5)*150,(Math.random()-0.5)*150);scene.add(s);}
-  const sMat=new THREE.MeshStandardMaterial({color:0x334455,roughness:0.4,metalness:0.8});
-  const station=new THREE.Mesh(new THREE.CylinderGeometry(0.5,0.5,20,8),sMat); station.rotation.z=Math.PI/2; station.position.set(0,0,0); scene.add(station);
-  scene.add(new THREE.AmbientLight(0x050510,0.5)); _addDl(scene,0xffffff,1.2,30,20,10,true);
-  _addPl(scene,0x4488ff,0.6,20,0,5,0);
-}
-function _rainforestCanopyArena(scene){
-  scene.background=new THREE.Color(0x0a1505); scene.fog=new THREE.FogExp2(0x0d2010,0.05);
-  const tMat=new THREE.MeshStandardMaterial({color:0x1a3a10,roughness:0.9});
-  for(let i=0;i<30;i++){const h=8+Math.random()*6;const t=new THREE.Mesh(new THREE.CylinderGeometry(0.2,0.4,h,6),tMat);t.position.set((Math.random()-0.5)*60,h/2-2,(Math.random()-0.5)*60);scene.add(t);const leaf=new THREE.Mesh(new THREE.SphereGeometry(2+Math.random()*2),new THREE.MeshStandardMaterial({color:0x2a5a15,roughness:0.9}));leaf.position.set(t.position.x,h-2,t.position.z);scene.add(leaf);}
-  scene.add(new THREE.AmbientLight(0x0a1505,0.6)); _addDl(scene,0x88cc44,0.5,30,5,15,true);
-  _addPl(scene,0x44ff22,0.5,20,0,5,0);
-}
-function _cloudRaceArena(scene){
-  scene.background=new THREE.Color(0x88bbff); scene.fog=new THREE.Fog(0xaaddff,20,80);
-  for(let i=0;i<25;i++){const c=new THREE.Mesh(new THREE.SphereGeometry(3+Math.random()*5),new THREE.MeshStandardMaterial({color:0xffffff,roughness:0.9,transparent:true,opacity:0.85}));c.position.set((Math.random()-0.5)*70,Math.random()*10,(Math.random()-0.5)*70);scene.add(c);}
-  const gMat=new THREE.MeshBasicMaterial({color:0xffcc00});
-  for(let i=0;i<8;i++){const g=new THREE.Mesh(new THREE.TorusGeometry(2.5,0.2,8,24),gMat);g.position.set((i-4)*8,2+Math.sin(i)*2,0);scene.add(g);_addPl(scene,0xffcc00,0.6,8,(i-4)*8,2,0);}
-  scene.add(new THREE.AmbientLight(0x8899cc,0.9)); _addDl(scene,0xffffff,1.0,30,10,20,true);
-}
-function _nightPatrolArena(scene){
-  scene.background=new THREE.Color(0x02020a); scene.fog=new THREE.Fog(0x02020a,20,80);
-  const bMat=new THREE.MeshStandardMaterial({color:0x0a0a18,roughness:0.4,metalness:0.7});
-  for(let i=0;i<12;i++){const h=6+Math.random()*14;const b=new THREE.Mesh(new THREE.BoxGeometry(4+Math.random()*4,h,4+Math.random()*4),bMat);b.position.set((Math.random()-0.5)*60,h/2,(Math.random()-0.5)*60);scene.add(b);}
-  for(let i=0;i<8;i++)_addPl(scene,0xffaa44,0.5,8,(Math.random()-0.5)*50,3+Math.random()*5,(Math.random()-0.5)*50);
-  scene.add(new THREE.AmbientLight(0x020208,0.3)); _addDl(scene,0x2244aa,0.3,30,0,15,false);
-}
-function _desertAirArena(scene){
-  scene.background=new THREE.Color(0x5a3010); scene.fog=new THREE.Fog(0x5a3010,25,90);
-  const gnd=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshStandardMaterial({color:0xd49a40,roughness:1}));
-  gnd.rotation.x=-Math.PI/2; gnd.position.y=-8; scene.add(gnd);
-  for(let i=0;i<10;i++){const h=3+Math.random()*5;const p=new THREE.Mesh(new THREE.CylinderGeometry(0.15,0.15,h,4),new THREE.MeshBasicMaterial({color:i%2===0?0xff2200:0xffffff}));p.position.set((i-5)*8,h/2-6,(Math.random()-0.5)*5);scene.add(p);}
-  scene.add(new THREE.AmbientLight(0x4a2808,0.7)); _addDl(scene,0xffcc66,1.0,30,15,20,true);
-  _addPl(scene,0xff8800,0.6,25,0,5,0);
-}
-function _mountainPassArena(scene){
-  scene.background=new THREE.Color(0x99aacc); scene.fog=new THREE.Fog(0x99aacc,15,60);
-  const mMat=new THREE.MeshStandardMaterial({color:0x556677,roughness:0.95});
-  for(let i=0;i<12;i++){const h=10+Math.random()*15;const m=new THREE.Mesh(new THREE.ConeGeometry(4+Math.random()*5,h,7),mMat);m.position.set((Math.random()-0.5)*70,h/2-8,(Math.random()-0.5)*70);scene.add(m);}
-  scene.add(new THREE.AmbientLight(0x8899aa,0.8)); _addDl(scene,0xffffff,0.8,30,10,20,true);
-  _addPl(scene,0x8899cc,0.5,20,0,5,0);
-}
-function _glacierFlyoverArena(scene){
-  scene.background=new THREE.Color(0x99ccff); scene.fog=new THREE.Fog(0xbbddff,20,80);
-  const gMat=new THREE.MeshStandardMaterial({color:0x66aadd,roughness:0.1,metalness:0.2,transparent:true,opacity:0.85});
-  for(let i=0;i<10;i++){const g=new THREE.Mesh(new THREE.BoxGeometry(10+Math.random()*10,4+Math.random()*6,8+Math.random()*8),gMat);g.position.set((Math.random()-0.5)*60,-2+Math.random()*2,(Math.random()-0.5)*60);scene.add(g);}
-  scene.add(new THREE.AmbientLight(0x8899bb,0.9)); _addDl(scene,0xffffff,0.9,30,10,20,true);
-  _addPl(scene,0x4499ff,0.5,20,0,5,0);
-}
-function _typhoonArena(scene){
-  scene.background=new THREE.Color(0x0a0a18); scene.fog=new THREE.FogExp2(0x0d0d20,0.04);
-  for(let i=0;i<30;i++){const c=new THREE.Mesh(new THREE.SphereGeometry(2+Math.random()*4),new THREE.MeshStandardMaterial({color:0x1a1a2e,roughness:0.9,transparent:true,opacity:0.7}));const a=i/30*Math.PI*2;const r=5+i*1.5;c.position.set(Math.cos(a)*r,Math.sin(i*0.5)*2,Math.sin(a)*r);scene.add(c);}
-  scene.add(new THREE.AmbientLight(0x080810,0.4)); _addPl(scene,0x4488ff,1.0,30,0,5,0);
-  for(let i=0;i<5;i++)_addPl(scene,0x2244aa,0.5,10,(Math.random()-0.5)*20,3,(Math.random()-0.5)*20);
-}
-function _alienPlanetArena(scene){
-  scene.background=new THREE.Color(0x180820); scene.fog=new THREE.FogExp2(0x1a0a22,0.03);
-  const gnd=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshStandardMaterial({color:0x2a0a35,roughness:1}));
-  gnd.rotation.x=-Math.PI/2; gnd.position.y=-8; scene.add(gnd);
-  for(let i=0;i<8;i++){const h=5+Math.random()*10;const r=new THREE.Mesh(new THREE.CylinderGeometry(1+Math.random()*2,1,h,5),new THREE.MeshStandardMaterial({color:0x4a1a55,roughness:0.8}));r.position.set((Math.random()-0.5)*60,h/2-7,(Math.random()-0.5)*60);scene.add(r);}
-  for(let i=0;i<15;i++){const s=new THREE.Mesh(new THREE.SphereGeometry(0.3+Math.random()*1),new THREE.MeshBasicMaterial({color:0xaa44ff}));s.position.set((Math.random()-0.5)*50,Math.random()*5-3,(Math.random()-0.5)*50);scene.add(s);_addPl(scene,0xaa44ff,0.3,4,s.position.x,s.position.y,s.position.z);}
-  scene.add(new THREE.AmbientLight(0x100815,0.4)); _addDl(scene,0xaa44ff,0.4,30,5,12,false);
-  _addPl(scene,0xcc44ff,0.8,25,0,5,0);
-}
-function _fireworksArena(scene){
-  scene.background=new THREE.Color(0x020208);
-  for(let i=0;i<200;i++){const s=new THREE.Mesh(new THREE.SphereGeometry(0.04),new THREE.MeshBasicMaterial({color:0xffffff}));s.position.set((Math.random()-0.5)*120,(Math.random()-0.5)*80,(Math.random()-0.5)*120);scene.add(s);}
-  const colors=[0xff0044,0xff8800,0x00ff88,0x00aaff,0xff44ff,0xffff00];
-  for(let i=0;i<12;i++){const c=colors[i%6];_addPl(scene,c,1.0,10,(Math.random()-0.5)*40,3+Math.random()*6,(Math.random()-0.5)*40);}
-  scene.add(new THREE.AmbientLight(0x020205,0.3)); _addDl(scene,0xffeedd,0.4,30,0,10,false);
-}
-function _cloudFortressArena(scene){
-  scene.background=new THREE.Color(0xaaccff); scene.fog=new THREE.Fog(0xbbddff,15,60);
-  for(let i=0;i<20;i++){const c=new THREE.Mesh(new THREE.SphereGeometry(4+Math.random()*6),new THREE.MeshStandardMaterial({color:0xffffff,roughness:0.9}));c.position.set((Math.random()-0.5)*60,Math.random()*5,(Math.random()-0.5)*60);scene.add(c);}
-  const fMat=new THREE.MeshStandardMaterial({color:0xddccaa,roughness:0.7});
-  const fort=new THREE.Mesh(new THREE.BoxGeometry(12,8,12),fMat); fort.position.set(0,4,0); scene.add(fort);
-  for(let i=0;i<4;i++){const t=new THREE.Mesh(new THREE.CylinderGeometry(1.5,1.5,12,8),fMat);const a=i*Math.PI/2;t.position.set(Math.cos(a)*7,6,Math.sin(a)*7);scene.add(t);}
-  scene.add(new THREE.AmbientLight(0x8899cc,0.9)); _addDl(scene,0xffffff,0.9,30,10,20,true);
-}
-function _droneLeagueArena(scene){
-  scene.background=new THREE.Color(0x050510); scene.fog=new THREE.Fog(0x050510,20,80);
-  const colors=[0xff0088,0x00ffaa,0xffaa00,0x4488ff];
-  for(let i=0;i<12;i++){const c=colors[i%4];const g=new THREE.Mesh(new THREE.TorusGeometry(2.5,0.2,8,24),new THREE.MeshBasicMaterial({color:c}));g.position.set((Math.random()-0.5)*40,1+Math.random()*4,(i-6)*5);scene.add(g);_addPl(scene,c,0.6,8,g.position.x,g.position.y,g.position.z);}
-  scene.add(new THREE.AmbientLight(0x050510,0.3)); _addDl(scene,0xffeedd,0.5,30,0,10,false);
-  _addPl(scene,0xffffff,0.5,20,0,5,0);
-}
-function _coastalRescueArena(scene){
-  scene.background=new THREE.Color(0x1a3050); scene.fog=new THREE.Fog(0x1a3050,20,80);
-  const wMat=new THREE.MeshStandardMaterial({color:0x1a4060,roughness:0.1,metalness:0.3});
-  const water=new THREE.Mesh(new THREE.PlaneGeometry(80,80),wMat); water.rotation.x=-Math.PI/2; water.position.y=-5; scene.add(water);
-  const rMat=new THREE.MeshBasicMaterial({color:0xff2200});
-  for(let i=0;i<6;i++){const r=new THREE.Mesh(new THREE.SphereGeometry(0.4),rMat);r.position.set((Math.random()-0.5)*40,0+Math.random()*2,(Math.random()-0.5)*40);scene.add(r);_addPl(scene,0xff2200,0.8,6,r.position.x,r.position.y+1,r.position.z);}
-  scene.add(new THREE.AmbientLight(0x1a2030,0.6)); _addDl(scene,0x88aacc,0.5,30,5,15,true);
-  _addPl(scene,0x4488cc,0.5,20,0,5,0);
-}
-function _warpGateArena(scene){
-  scene.background=new THREE.Color(0x000000);
-  for(let i=0;i<150;i++){const s=new THREE.Mesh(new THREE.SphereGeometry(0.06),new THREE.MeshBasicMaterial({color:0xffffff}));s.position.set((Math.random()-0.5)*120,(Math.random()-0.5)*80,(Math.random()-0.5)*120);scene.add(s);}
-  const colors=[0xff00ff,0x00ffff,0xff8800,0x44ff44];
-  for(let i=0;i<12;i++){const c=colors[i%4];const g=new THREE.Mesh(new THREE.TorusGeometry(3,0.3,8,32),new THREE.MeshBasicMaterial({color:c}));g.position.set(0,0,(i-6)*8);g.rotation.y=Math.PI/2;scene.add(g);_addPl(scene,c,0.8,8,0,0,(i-6)*8);}
-  scene.add(new THREE.AmbientLight(0x050510,0.3));
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// 20 WALKER ARENAS
-// ═══════════════════════════════════════════════════════════════════════════════
-function _pipelineCrawlArena(scene){
-  scene.background=new THREE.Color(0x0a0810); scene.fog=new THREE.FogExp2(0x0d0a12,0.05);
-  const gnd=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshStandardMaterial({color:0x1a1520,roughness:0.6,metalness:0.5}));
-  gnd.rotation.x=-Math.PI/2; scene.add(gnd);
-  const pMat=new THREE.MeshStandardMaterial({color:0x335566,roughness:0.4,metalness:0.8});
-  [[-20,3,-5],[0,5,10],[15,2,-8],[-8,7,5]].forEach(([x,y,z])=>{const p=new THREE.Mesh(new THREE.CylinderGeometry(1.5,1.5,30,12),pMat);p.rotation.z=Math.PI/4;p.position.set(x,y,z);scene.add(p);});
-  scene.add(new THREE.AmbientLight(0x050408,0.3)); _addDl(scene,0x4466aa,0.4,30,0,10,true);
-  [[-10,4,0],[8,6,8]].forEach(([x,y,z])=>_addPl(scene,0xffaa44,0.6,8,x,y,z));
-}
-function _templeClimbArena(scene){
-  scene.background=new THREE.Color(0x080608); scene.fog=new THREE.FogExp2(0x100810,0.04);
-  const gnd=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshStandardMaterial({color:0x1a1218,roughness:0.95}));
-  gnd.rotation.x=-Math.PI/2; scene.add(gnd);
-  const sMat=new THREE.MeshStandardMaterial({color:0x2a2235,roughness:0.9});
-  for(let i=0;i<8;i++){const h=2+i*0.8;const s=new THREE.Mesh(new THREE.BoxGeometry(8-i*0.5,1,8-i*0.5),sMat);s.position.set(0,h,0);scene.add(s);}
-  const tMat=new THREE.MeshBasicMaterial({color:0xff8800});
-  for(let i=0;i<8;i++){const t=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.15,0.8,6),tMat);t.position.set((Math.random()-0.5)*30,0.4,(Math.random()-0.5)*30);scene.add(t);_addPl(scene,0xff6600,0.6,4,t.position.x,1,t.position.z);}
-  scene.add(new THREE.AmbientLight(0x080508,0.3)); _addDl(scene,0x886644,0.5,30,5,10,true);
-}
-function _collapsedBuildingArena(scene){
-  scene.background=new THREE.Color(0x080808); scene.fog=new THREE.FogExp2(0x0d0d0d,0.04);
-  const gnd=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshStandardMaterial({color:0x1a1a1a,roughness:1}));
-  gnd.rotation.x=-Math.PI/2; scene.add(gnd);
-  const dMat=new THREE.MeshStandardMaterial({color:0x333333,roughness:0.9});
-  for(let i=0;i<20;i++){const s=new THREE.Mesh(new THREE.BoxGeometry(1+Math.random()*4,0.5+Math.random()*2,1+Math.random()*4),dMat);s.position.set((Math.random()-0.5)*50,Math.random()*3,(Math.random()-0.5)*50);s.rotation.y=Math.random()*Math.PI;scene.add(s);}
-  const rMat=new THREE.MeshBasicMaterial({color:0xff2200});
-  for(let i=0;i<5;i++){const r=new THREE.Mesh(new THREE.SphereGeometry(0.3),rMat);r.position.set((Math.random()-0.5)*30,1,(Math.random()-0.5)*30);scene.add(r);_addPl(scene,0xff2200,0.8,5,r.position.x,1.5,r.position.z);}
-  scene.add(new THREE.AmbientLight(0x080808,0.3)); _addDl(scene,0x8888aa,0.3,30,5,10,true);
-  for(let i=0;i<3;i++)_addPl(scene,0xffaa44,0.5,8,(Math.random()-0.5)*20,2,(Math.random()-0.5)*20);
-}
-function _militaryBaseArena(scene){
-  scene.background=new THREE.Color(0x0a1005); scene.fog=new THREE.FogExp2(0x0d1508,0.04);
-  const gnd=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshStandardMaterial({color:0x1a2510,roughness:1}));
-  gnd.rotation.x=-Math.PI/2; scene.add(gnd);
-  const fMat=new THREE.MeshStandardMaterial({color:0x3a5520,roughness:0.9});
-  for(let i=0;i<8;i++){const w=new THREE.Mesh(new THREE.BoxGeometry(12,3,0.5),fMat);w.position.set((Math.random()-0.5)*30,1.5,(Math.random()-0.5)*30);w.rotation.y=Math.random()*Math.PI;scene.add(w);}
-  const lMat=new THREE.MeshBasicMaterial({color:0xff2200});
-  for(let i=0;i<6;i++){const l=new THREE.Mesh(new THREE.BoxGeometry(0.05,0.05,15),lMat);l.position.set((Math.random()-0.5)*15,0.3+Math.random()*1.5,(Math.random()-0.5)*15);l.rotation.y=Math.random()*Math.PI;scene.add(l);}
-  scene.add(new THREE.AmbientLight(0x0a1005,0.4)); _addDl(scene,0x44aa22,0.5,30,5,12,true);
-}
-function _factoryFloorArena(scene){
-  scene.background=new THREE.Color(0x050508); scene.fog=new THREE.Fog(0x050508,20,70);
-  const gnd=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshStandardMaterial({color:0x1a1a22,roughness:0.4,metalness:0.6}));
-  gnd.rotation.x=-Math.PI/2; scene.add(gnd);
-  const mMat=new THREE.MeshStandardMaterial({color:0x334455,roughness:0.4,metalness:0.7});
-  for(let i=0;i<4;i++){const arm=new THREE.Mesh(new THREE.BoxGeometry(0.4,4,0.4),mMat);arm.position.set((i-1.5)*10,2,0);scene.add(arm);}
-  for(let i=0;i<3;i++){const belt=new THREE.Mesh(new THREE.BoxGeometry(20,0.3,2),new THREE.MeshStandardMaterial({color:0x222233,roughness:0.5,metalness:0.4}));belt.position.set(0,0.15,(i-1)*8);scene.add(belt);}
-  scene.add(new THREE.AmbientLight(0x050508,0.5)); _addDl(scene,0xffeecc,0.7,30,0,10,true);
-  [[-10,4,0],[10,4,8],[0,4,-8]].forEach(([x,y,z])=>_addPl(scene,0xffcc44,0.6,10,x,y,z));
-}
-function _spaceEvaArena(scene){
-  scene.background=new THREE.Color(0x000005);
-  for(let i=0;i<200;i++){const s=new THREE.Mesh(new THREE.SphereGeometry(0.05),new THREE.MeshBasicMaterial({color:0xffffff}));s.position.set((Math.random()-0.5)*150,(Math.random()-0.5)*80,(Math.random()-0.5)*150);scene.add(s);}
-  const hMat=new THREE.MeshStandardMaterial({color:0x334455,roughness:0.4,metalness:0.8});
-  const hull=new THREE.Mesh(new THREE.CylinderGeometry(4,4,30,12),hMat); hull.rotation.z=Math.PI/2; hull.position.set(0,0,0); scene.add(hull);
-  scene.add(new THREE.AmbientLight(0x050510,0.4)); _addDl(scene,0xffffff,1.2,30,20,10,true);
-  _addPl(scene,0x4488ff,0.5,20,0,5,0);
-}
-function _hospitalWalkArena(scene){
-  scene.background=new THREE.Color(0x050508); scene.fog=new THREE.Fog(0x050508,20,70);
-  const gnd=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshStandardMaterial({color:0xf0f0f5,roughness:0.2}));
-  gnd.rotation.x=-Math.PI/2; scene.add(gnd);
-  const wMat=new THREE.MeshStandardMaterial({color:0xe8e8f0,roughness:0.2});
-  for(let i=0;i<6;i++){const w=new THREE.Mesh(new THREE.BoxGeometry(0.3,4,15),wMat);w.position.set((i-2.5)*8,2,0);scene.add(w);}
-  const bMat=new THREE.MeshStandardMaterial({color:0x88aacc,roughness:0.6});
-  for(let i=0;i<4;i++){const b=new THREE.Mesh(new THREE.BoxGeometry(2,0.8,3.5),bMat);b.position.set((i-1.5)*12,0.4,5);scene.add(b);}
-  scene.add(new THREE.AmbientLight(0x888899,0.9)); _addDl(scene,0xffffff,0.8,30,0,10,true);
-  _addPl(scene,0xff2200,0.6,12,8,3,8);
-}
-function _mineShaftArena(scene){
-  scene.background=new THREE.Color(0x050308); scene.fog=new THREE.FogExp2(0x080510,0.06);
-  const gnd=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshStandardMaterial({color:0x1a1015,roughness:1}));
-  gnd.rotation.x=-Math.PI/2; scene.add(gnd);
-  const sMat=new THREE.MeshStandardMaterial({color:0x2a2030,roughness:0.95});
-  for(let i=0;i<5;i++){const col=new THREE.Mesh(new THREE.BoxGeometry(0.3,6,0.3),sMat);col.position.set((i-2)*4,3,0);scene.add(col);const beam=new THREE.Mesh(new THREE.BoxGeometry(4,0.3,0.3),sMat);beam.position.set(0,6,i*5-10);scene.add(beam);}
-  for(let i=0;i<8;i++){const l=new THREE.Mesh(new THREE.SphereGeometry(0.2),new THREE.MeshBasicMaterial({color:0xffaa44}));l.position.set((Math.random()-0.5)*20,0.3,(Math.random()-0.5)*30);scene.add(l);_addPl(scene,0xffaa44,0.5,4,l.position.x,1,l.position.z);}
-  scene.add(new THREE.AmbientLight(0x050308,0.2)); _addPl(scene,0xffaa44,0.8,15,0,3,0);
-}
-function _urbanObstacleArena(scene){
-  scene.background=new THREE.Color(0x0a0a12); scene.fog=new THREE.Fog(0x0a0a12,20,70);
-  const gnd=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshStandardMaterial({color:0x151520,roughness:0.6}));
-  gnd.rotation.x=-Math.PI/2; scene.add(gnd);
-  const bMat=new THREE.MeshStandardMaterial({color:0x222235,roughness:0.6,metalness:0.3});
-  for(let i=0;i<10;i++){const h=2+Math.random()*5;const b=new THREE.Mesh(new THREE.BoxGeometry(2+Math.random()*3,h,2+Math.random()*3),bMat);b.position.set((Math.random()-0.5)*40,h/2,(Math.random()-0.5)*40);scene.add(b);}
-  for(let i=0;i<3;i++){const sc=new THREE.Mesh(new THREE.BoxGeometry(4,0.2,1),new THREE.MeshStandardMaterial({color:0x445566,metalness:0.7}));sc.position.set((i-1)*8,3+i*0.5,5);scene.add(sc);}
-  scene.add(new THREE.AmbientLight(0x080810,0.4)); _addDl(scene,0x4466aa,0.4,30,0,12,true);
-  [[-10,4,0],[10,4,8]].forEach(([x,y,z])=>_addPl(scene,0xffcc44,0.5,8,x,y,z));
-}
-function _colosseumArena(scene){
-  scene.background=new THREE.Color(0x1a0a04); scene.fog=new THREE.Fog(0x1a0a04,20,70);
-  const gnd=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshStandardMaterial({color:0x8a6a40,roughness:0.9}));
-  gnd.rotation.x=-Math.PI/2; scene.add(gnd);
-  const pMat=new THREE.MeshStandardMaterial({color:0xc8a870,roughness:0.8});
-  for(let i=0;i<16;i++){const a=i/16*Math.PI*2;const p=new THREE.Mesh(new THREE.CylinderGeometry(0.6,0.6,8,8),pMat);p.position.set(Math.cos(a)*18,4,Math.sin(a)*18);scene.add(p);}
-  for(let i=0;i<6;i++){const p=new THREE.Mesh(new THREE.CylinderGeometry(0.5,0.5,6,8),pMat);p.position.set((Math.random()-0.5)*15,3,(Math.random()-0.5)*15);scene.add(p);}
-  scene.add(new THREE.AmbientLight(0x2a1504,0.5)); _addDl(scene,0xffcc88,0.8,30,10,15,true);
-  _addPl(scene,0xff8800,0.6,20,0,5,0);
-}
-function _volcanicClimbArena(scene){
-  scene.background=new THREE.Color(0x1a0500); scene.fog=new THREE.FogExp2(0x200800,0.04);
-  const gnd=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshBasicMaterial({color:0xff3300}));
-  gnd.rotation.x=-Math.PI/2; gnd.position.y=-3; scene.add(gnd);
-  const rMat=new THREE.MeshStandardMaterial({color:0x2a1000,roughness:1});
-  for(let i=0;i<10;i++){const h=3+i*0.8;const r=new THREE.Mesh(new THREE.CylinderGeometry(0.8+i*0.15,1.5,h,7),rMat);r.position.set((Math.random()-0.5)*20,h/2-2,(Math.random()-0.5)*20);scene.add(r);}
-  scene.add(new THREE.AmbientLight(0x200800,0.4)); _addDl(scene,0xff6600,0.6,30,5,12,true);
-  _addPl(scene,0xff2200,1.5,40,0,1,0);
-}
-function _bambooForestArena(scene){
-  scene.background=new THREE.Color(0x0a1505); scene.fog=new THREE.FogExp2(0x0d1a08,0.04);
-  const gnd=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshStandardMaterial({color:0x1a3010,roughness:1}));
-  gnd.rotation.x=-Math.PI/2; scene.add(gnd);
-  const bMat=new THREE.MeshStandardMaterial({color:0x5a8a20,roughness:0.8});
-  for(let i=0;i<40;i++){const h=6+Math.random()*5;const b=new THREE.Mesh(new THREE.CylinderGeometry(0.15,0.2,h,6),bMat);b.position.set((Math.random()-0.5)*50,h/2,(Math.random()-0.5)*50);scene.add(b);}
-  scene.add(new THREE.AmbientLight(0x0a1505,0.6)); _addDl(scene,0x88cc44,0.5,30,5,15,true);
-  _addPl(scene,0x44ff22,0.4,15,0,4,0);
-}
-function _icePalaceArena(scene){
-  scene.background=new THREE.Color(0x88aacc); scene.fog=new THREE.Fog(0xaaccee,15,60);
-  const gnd=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshStandardMaterial({color:0x99ccff,roughness:0.05,metalness:0.2}));
-  gnd.rotation.x=-Math.PI/2; scene.add(gnd);
-  const iMat=new THREE.MeshStandardMaterial({color:0xaaddff,roughness:0.05,metalness:0.2,transparent:true,opacity:0.8});
-  for(let i=0;i<8;i++){const h=3+i*0.5;const c=new THREE.Mesh(new THREE.BoxGeometry(3-i*0.2,h,3-i*0.2),iMat);c.position.set(0,h/2,0);scene.add(c);}
-  for(let i=0;i<12;i++){const p=new THREE.Mesh(new THREE.CylinderGeometry(0.4,0.4,8,8),iMat);p.position.set((Math.random()-0.5)*40,4,(Math.random()-0.5)*40);scene.add(p);}
-  scene.add(new THREE.AmbientLight(0x8899bb,0.9)); _addDl(scene,0xffffff,0.9,30,10,20,true);
-  _addPl(scene,0x4499ff,0.5,20,0,5,0);
-}
-function _robotMuseumArena(scene){
-  scene.background=new THREE.Color(0x050508); scene.fog=new THREE.Fog(0x050508,20,70);
-  const gnd=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshStandardMaterial({color:0xddccaa,roughness:0.2}));
-  gnd.rotation.x=-Math.PI/2; scene.add(gnd);
-  const sMat=new THREE.MeshStandardMaterial({color:0x335577,roughness:0.4,metalness:0.7});
-  for(let i=0;i<6;i++){const h=4+Math.random()*6;const s=new THREE.Mesh(new THREE.BoxGeometry(2,h,2),sMat);s.position.set((i-2.5)*10,h/2,0);scene.add(s);const head=new THREE.Mesh(new THREE.SphereGeometry(1),sMat);head.position.set((i-2.5)*10,h,0);scene.add(head);_addPl(scene,0x4488ff,0.5,8,(i-2.5)*10,h+1,0);}
-  scene.add(new THREE.AmbientLight(0x080810,0.5)); _addDl(scene,0xffeedd,0.8,30,5,15,true);
-}
-function _sewersArena(scene){
-  scene.background=new THREE.Color(0x050308); scene.fog=new THREE.FogExp2(0x080510,0.06);
-  const gnd=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshStandardMaterial({color:0x1a1520,roughness:0.6,metalness:0.3}));
-  gnd.rotation.x=-Math.PI/2; scene.add(gnd);
-  const wMat=new THREE.MeshStandardMaterial({color:0x2a2535,roughness:0.7,metalness:0.3});
-  for(let i=0;i<8;i++){const w=new THREE.Mesh(new THREE.BoxGeometry(8,4,0.4),wMat);w.position.set((Math.random()-0.5)*30,2,(Math.random()-0.5)*30);w.rotation.y=Math.random()*Math.PI;scene.add(w);}
-  const wMat2=new THREE.MeshBasicMaterial({color:0x336633,transparent:true,opacity:0.6});
-  const water=new THREE.Mesh(new THREE.PlaneGeometry(80,80),wMat2); water.rotation.x=-Math.PI/2; water.position.y=0.05; scene.add(water);
-  scene.add(new THREE.AmbientLight(0x050308,0.3)); _addPl(scene,0xffaa44,0.6,10,0,2,0);
-  [[-10,2,5],[8,2,-8]].forEach(([x,y,z])=>_addPl(scene,0x44ff66,0.4,6,x,y,z));
-}
-function _skyGardenArena(scene){
-  scene.background=new THREE.Color(0x88aacc); scene.fog=new THREE.Fog(0xaaccee,20,80);
-  const fMat=new THREE.MeshStandardMaterial({color:0x228833,roughness:0.9});
-  for(let i=0;i<12;i++){const p=new THREE.Mesh(new THREE.BoxGeometry(3+Math.random()*3,0.3,3+Math.random()*3),fMat);p.position.set((Math.random()-0.5)*40,Math.random()*5,(Math.random()-0.5)*40);scene.add(p);
-  const f=new THREE.Mesh(new THREE.CylinderGeometry(0.2,0.3,1.5+Math.random()*2,5),new THREE.MeshStandardMaterial({color:0xf472b6}));f.position.set(p.position.x,p.position.y+1,p.position.z);scene.add(f);}
-  scene.add(new THREE.AmbientLight(0x8899cc,0.9)); _addDl(scene,0xffffff,0.9,30,10,20,true);
-  _addPl(scene,0x88ff88,0.4,15,0,5,0);
-}
-function _cargoShipArena(scene){
-  scene.background=new THREE.Color(0x0a1520); scene.fog=new THREE.Fog(0x0a1520,20,70);
-  const gnd=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshStandardMaterial({color:0x0a1a28,roughness:0.1,metalness:0.4}));
-  gnd.rotation.x=-Math.PI/2; gnd.position.y=-3; scene.add(gnd);
-  const hMat=new THREE.MeshStandardMaterial({color:0x334455,roughness:0.4,metalness:0.7});
-  const hull=new THREE.Mesh(new THREE.BoxGeometry(12,2,40),hMat); hull.position.set(0,-1,0); scene.add(hull);
-  const cMat=new THREE.MeshStandardMaterial({color:0x883322,roughness:0.8});
-  for(let i=0;i<6;i++){const c=new THREE.Mesh(new THREE.BoxGeometry(3,3,3),cMat);c.position.set((Math.random()-0.5)*8,1.5+Math.random()*1,(i-2.5)*6);scene.add(c);}
-  scene.add(new THREE.AmbientLight(0x0a1520,0.5)); _addDl(scene,0x4488cc,0.4,30,5,12,true);
-  _addPl(scene,0xffaa44,0.5,12,0,4,0);
-}
-function _hauntedMansionArena(scene){
-  scene.background=new THREE.Color(0x050308); scene.fog=new THREE.FogExp2(0x0a0510,0.04);
-  const gnd=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshStandardMaterial({color:0x0f0d10,roughness:1}));
-  gnd.rotation.x=-Math.PI/2; scene.add(gnd);
-  const wMat=new THREE.MeshStandardMaterial({color:0x1a1520,roughness:0.9});
-  for(let i=0;i<8;i++){const w=new THREE.Mesh(new THREE.BoxGeometry(8,5,0.4),wMat);w.position.set((Math.random()-0.5)*25,2.5,(Math.random()-0.5)*25);w.rotation.y=Math.floor(Math.random()*4)*Math.PI/2;scene.add(w);}
-  for(let i=0;i<6;i++){const c=new THREE.Mesh(new THREE.SphereGeometry(0.15),new THREE.MeshBasicMaterial({color:0xffcc44}));c.position.set((Math.random()-0.5)*30,1.5+Math.random(),(Math.random()-0.5)*30);scene.add(c);_addPl(scene,0xffcc44,0.4,4,c.position.x,c.position.y,c.position.z);}
-  scene.add(new THREE.AmbientLight(0x050308,0.3)); _addDl(scene,0x6655aa,0.3,30,3,10,true);
-  _addPl(scene,0x8800ff,0.5,20,0,4,0);
-}
-function _caveOfWondersArena(scene){
-  scene.background=new THREE.Color(0x050308); scene.fog=new THREE.FogExp2(0x080510,0.05);
-  const gnd=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshStandardMaterial({color:0x1a1020,roughness:1}));
-  gnd.rotation.x=-Math.PI/2; scene.add(gnd);
-  const colors=[0xffd700,0xaa44ff,0x44ffaa,0xff4488];
-  for(let i=0;i<20;i++){const c=colors[i%4];const g=new THREE.Mesh(new THREE.OctahedronGeometry(0.3+Math.random()*0.5),new THREE.MeshBasicMaterial({color:c}));g.position.set((Math.random()-0.5)*40,0.5+Math.random()*2,(Math.random()-0.5)*40);scene.add(g);_addPl(scene,c,0.4,4,g.position.x,g.position.y+0.5,g.position.z);}
-  for(let i=0;i<4;i++){const b=new THREE.Mesh(new THREE.BoxGeometry(3,0.2,3),new THREE.MeshStandardMaterial({color:0x2a2030}));b.position.set((Math.random()-0.5)*20,0.5+Math.random()*2,(Math.random()-0.5)*20);scene.add(b);}
-  scene.add(new THREE.AmbientLight(0x050308,0.3)); _addPl(scene,0xffd700,0.8,20,0,4,0);
-}
-function _cyberDungeonArena(scene){
-  scene.background=new THREE.Color(0x000010); scene.fog=new THREE.FogExp2(0x000015,0.05);
-  const gnd=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshStandardMaterial({color:0x050520,roughness:0.1,metalness:0.9}));
-  gnd.rotation.x=-Math.PI/2; scene.add(gnd);
-  const wMat=new THREE.MeshStandardMaterial({color:0x0a0a30,roughness:0.2,metalness:0.8});
-  for(let i=0;i<10;i++){const h=3+Math.random()*4;const w=new THREE.Mesh(new THREE.BoxGeometry(6,h,0.4),wMat);w.position.set((Math.random()-0.5)*30,h/2,(Math.random()-0.5)*30);w.rotation.y=Math.floor(Math.random()*4)*Math.PI/2;scene.add(w);}
-  const gMat=new THREE.MeshBasicMaterial({color:0x00ffcc});
-  for(let i=0;i<8;i++){const l=new THREE.Mesh(new THREE.BoxGeometry(0.05,0.05,8),gMat);l.position.set((Math.random()-0.5)*20,0.2+Math.random()*1.5,(Math.random()-0.5)*20);l.rotation.y=Math.random()*Math.PI;scene.add(l);}
-  scene.add(new THREE.AmbientLight(0x000010,0.3)); _addDl(scene,0x4444ff,0.3,30,0,10,false);
-  _addPl(scene,0x00ffcc,0.8,20,0,3,0); _addPl(scene,0xff00cc,0.5,12,10,2,-10);
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// 20 UNDERWATER ARENAS
-// ═══════════════════════════════════════════════════════════════════════════════
-function _coralReefSurveyArena(scene){ _coralReefArena(scene); }
-function _shipwreckArena(scene){
-  scene.background=new THREE.Color(0x051015); scene.fog=new THREE.FogExp2(0x061218,0.04);
-  const gnd=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshStandardMaterial({color:0x1a2810,roughness:1}));
-  gnd.rotation.x=-Math.PI/2; scene.add(gnd);
-  const hMat=new THREE.MeshStandardMaterial({color:0x3a2a10,roughness:0.9,metalness:0.3});
-  const hull=new THREE.Mesh(new THREE.BoxGeometry(10,4,30),hMat); hull.position.set(0,2,-5); hull.rotation.z=0.2; scene.add(hull);
-  const mMat=new THREE.MeshStandardMaterial({color:0x4a3820,roughness:0.9});
-  const mast=new THREE.Mesh(new THREE.CylinderGeometry(0.3,0.5,12,8),mMat); mast.position.set(0,8,-5); scene.add(mast);
-  for(let i=0;i<8;i++){const c=new THREE.Mesh(new THREE.SphereGeometry(0.3),new THREE.MeshBasicMaterial({color:0x00ffcc}));c.position.set((Math.random()-0.5)*30,0.5,(Math.random()-0.5)*30);scene.add(c);_addPl(scene,0x00aacc,0.3,4,c.position.x,1,c.position.z);}
-  scene.add(new THREE.AmbientLight(0x051015,0.4)); _addDl(scene,0x0088aa,0.4,30,5,10,true);
-  _addPl(scene,0x0066aa,0.5,25,0,5,0);
-}
-function _deepTrenchCourseArena(scene){ _deepTrenchArena(scene); }
-function _hydrothermalArena(scene){
-  scene.background=new THREE.Color(0x0a0800); scene.fog=new THREE.FogExp2(0x0d0a00,0.04);
-  const gnd=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshStandardMaterial({color:0x2a1a00,roughness:1}));
-  gnd.rotation.x=-Math.PI/2; scene.add(gnd);
-  for(let i=0;i<10;i++){const h=2+Math.random()*5;const v=new THREE.Mesh(new THREE.CylinderGeometry(0.4,0.8,h,8),new THREE.MeshStandardMaterial({color:0x2a1a00,roughness:0.8}));v.position.set((Math.random()-0.5)*50,h/2,(Math.random()-0.5)*50);scene.add(v);_addPl(scene,0xff8800,0.8,6,v.position.x,h+0.5,v.position.z);}
-  scene.add(new THREE.AmbientLight(0x0a0800,0.3)); _addDl(scene,0xff6600,0.4,30,0,10,true);
-  _addPl(scene,0xff4400,1.0,30,0,2,0);
-}
-function _subCanyonArena(scene){
-  scene.background=new THREE.Color(0x051520); scene.fog=new THREE.FogExp2(0x061820,0.03);
-  const gnd=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshStandardMaterial({color:0x0a2030,roughness:1}));
-  gnd.rotation.x=-Math.PI/2; gnd.position.y=-5; scene.add(gnd);
-  const wMat=new THREE.MeshStandardMaterial({color:0x1a3040,roughness:0.9});
-  [[-15,10,4,25],[15,10,4,25]].forEach(([x,y,w,h])=>{const wall=new THREE.Mesh(new THREE.BoxGeometry(w,h,30),wMat);wall.position.set(x,0,0);scene.add(wall);});
-  scene.add(new THREE.AmbientLight(0x051520,0.4)); _addDl(scene,0x0088cc,0.4,30,0,10,true);
-  _addPl(scene,0x00aaff,0.6,25,0,5,0);
-}
-function _iceShelfArena(scene){
-  scene.background=new THREE.Color(0x88aacc); scene.fog=new THREE.Fog(0xaaccee,15,60);
-  const gnd=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshStandardMaterial({color:0x0a1a2a,roughness:0.1,metalness:0.3}));
-  gnd.rotation.x=-Math.PI/2; gnd.position.y=-3; scene.add(gnd);
-  const iMat=new THREE.MeshStandardMaterial({color:0xaaddff,roughness:0.05,transparent:true,opacity:0.85});
-  const ceil=new THREE.Mesh(new THREE.PlaneGeometry(80,80),iMat); ceil.rotation.x=Math.PI/2; ceil.position.y=6; scene.add(ceil);
-  for(let i=0;i<15;i++){const l=1+Math.random()*3;const s=new THREE.Mesh(new THREE.ConeGeometry(0.3,l,6),iMat);s.rotation.x=Math.PI;s.position.set((Math.random()-0.5)*50,6-l/2,(Math.random()-0.5)*50);scene.add(s);}
-  scene.add(new THREE.AmbientLight(0x8899bb,0.7)); _addDl(scene,0xaaccff,0.5,30,5,10,true);
-  _addPl(scene,0x4499ff,0.5,20,0,3,0);
-}
-function _currentMazeArena(scene){
-  scene.background=new THREE.Color(0x051015); scene.fog=new THREE.FogExp2(0x061218,0.04);
-  const gnd=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshStandardMaterial({color:0x0a2030,roughness:1}));
-  gnd.rotation.x=-Math.PI/2; scene.add(gnd);
-  const wMat=new THREE.MeshStandardMaterial({color:0x1a3040,roughness:0.9});
-  for(let i=0;i<6;i++){const w=new THREE.Mesh(new THREE.BoxGeometry(0.5,5,12),wMat);w.position.set((Math.random()-0.5)*25,2.5,(Math.random()-0.5)*25);scene.add(w);}
-  for(let i=0;i<8;i++){const b=new THREE.Mesh(new THREE.SphereGeometry(0.2),new THREE.MeshBasicMaterial({color:0x00ffcc}));b.position.set((Math.random()-0.5)*30,1+Math.random()*3,(Math.random()-0.5)*30);scene.add(b);_addPl(scene,0x00aacc,0.3,4,b.position.x,b.position.y,b.position.z);}
-  scene.add(new THREE.AmbientLight(0x051015,0.4)); _addDl(scene,0x0088cc,0.4,30,0,10,true);
-  _addPl(scene,0x00aaff,0.5,20,0,3,0);
-}
-function _whaleRouteArena(scene){
-  scene.background=new THREE.Color(0x051a28); scene.fog=new THREE.Fog(0x071e2c,20,80);
-  const gnd=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshStandardMaterial({color:0x0a2a3a,roughness:1}));
-  gnd.rotation.x=-Math.PI/2; gnd.position.y=-8; scene.add(gnd);
-  const wMat=new THREE.MeshStandardMaterial({color:0x334466,roughness:0.4,metalness:0.1});
-  const whale=new THREE.Mesh(new THREE.SphereGeometry(4,8,6),wMat); whale.scale.set(2.5,1,1); whale.position.set(-15,2,5); scene.add(whale);
-  scene.add(new THREE.AmbientLight(0x051a28,0.5)); _addDl(scene,0x0088cc,0.4,30,5,10,true);
-  _addPl(scene,0x00aaff,0.5,25,0,3,0);
-}
-function _bioluminescentArena(scene){
-  scene.background=new THREE.Color(0x020510); scene.fog=new THREE.FogExp2(0x030612,0.04);
-  const gnd=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshStandardMaterial({color:0x0a0820,roughness:1}));
-  gnd.rotation.x=-Math.PI/2; scene.add(gnd);
-  const colors=[0x4488ff,0x44ffcc,0xaa44ff,0x44ff88];
-  for(let i=0;i<30;i++){const c=colors[i%4];const s=new THREE.Mesh(new THREE.SphereGeometry(0.2+Math.random()*0.4),new THREE.MeshBasicMaterial({color:c}));s.position.set((Math.random()-0.5)*50,0.3+Math.random()*3,(Math.random()-0.5)*50);scene.add(s);_addPl(scene,c,0.3,4,s.position.x,s.position.y,s.position.z);}
-  scene.add(new THREE.AmbientLight(0x020510,0.2));
-}
-function _pirateWreckArena(scene){
-  scene.background=new THREE.Color(0x051015); scene.fog=new THREE.FogExp2(0x061218,0.04);
-  const gnd=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshStandardMaterial({color:0x1a2810,roughness:1}));
-  gnd.rotation.x=-Math.PI/2; scene.add(gnd);
-  for(let i=0;i<3;i++){const hMat=new THREE.MeshStandardMaterial({color:0x3a2a10,roughness:0.9});const hull=new THREE.Mesh(new THREE.BoxGeometry(6,3,18),hMat);hull.position.set((i-1)*15,1.5,(Math.random()-0.5)*20);hull.rotation.y=Math.random()*0.5;scene.add(hull);}
-  for(let i=0;i<6;i++){const c=new THREE.Mesh(new THREE.BoxGeometry(1,1,1),new THREE.MeshStandardMaterial({color:0xcc9900,roughness:0.5,metalness:0.6}));c.position.set((Math.random()-0.5)*40,0.5,(Math.random()-0.5)*40);scene.add(c);_addPl(scene,0xffcc00,0.5,5,c.position.x,1,c.position.z);}
-  scene.add(new THREE.AmbientLight(0x051015,0.4)); _addDl(scene,0x0088aa,0.4,30,5,10,true);
-}
-function _underseaVolcanoArena(scene){
-  scene.background=new THREE.Color(0x0a0800); scene.fog=new THREE.FogExp2(0x0d0a00,0.03);
-  const gnd=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshStandardMaterial({color:0x1a0a00,roughness:1}));
-  gnd.rotation.x=-Math.PI/2; scene.add(gnd);
-  const vMat=new THREE.MeshStandardMaterial({color:0x2a1000,roughness:0.9});
-  const vol=new THREE.Mesh(new THREE.ConeGeometry(12,10,8),vMat); vol.position.set(0,5,0); scene.add(vol);
-  const lMat=new THREE.MeshBasicMaterial({color:0xff3300});
-  for(let i=0;i<5;i++){const l=new THREE.Mesh(new THREE.BoxGeometry(3,0.15,3),lMat);l.position.set((Math.random()-0.5)*20,0.05,(Math.random()-0.5)*20);scene.add(l);_addPl(scene,0xff4400,0.8,6,l.position.x,0.5,l.position.z);}
-  scene.add(new THREE.AmbientLight(0x0a0800,0.3)); _addDl(scene,0xff6600,0.6,30,5,12,true);
-  _addPl(scene,0xff2200,1.5,40,0,6,0);
-}
-function _seagrassArena(scene){
-  scene.background=new THREE.Color(0x0a2010); scene.fog=new THREE.FogExp2(0x0d2512,0.04);
-  const gnd=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshStandardMaterial({color:0x1a3015,roughness:1}));
-  gnd.rotation.x=-Math.PI/2; scene.add(gnd);
-  const gMat=new THREE.MeshStandardMaterial({color:0x1a6a20,roughness:0.8});
-  for(let i=0;i<60;i++){const h=1+Math.random()*3;const g=new THREE.Mesh(new THREE.BoxGeometry(0.1,h,0.1),gMat);g.position.set((Math.random()-0.5)*60,h/2,(Math.random()-0.5)*60);scene.add(g);}
-  scene.add(new THREE.AmbientLight(0x0a2010,0.6)); _addDl(scene,0x44cc44,0.5,30,0,10,true);
-  _addPl(scene,0x44ff22,0.5,20,0,4,0);
-}
-function _tidalCaveArena(scene){
-  scene.background=new THREE.Color(0x051015); scene.fog=new THREE.FogExp2(0x061218,0.05);
-  const gnd=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshStandardMaterial({color:0x1a2820,roughness:1}));
-  gnd.rotation.x=-Math.PI/2; scene.add(gnd);
-  const rMat=new THREE.MeshStandardMaterial({color:0x1a2830,roughness:0.9});
-  for(let i=0;i<10;i++){const s=new THREE.Mesh(new THREE.CylinderGeometry(0.5,1,2+Math.random()*3,7),rMat);s.position.set((Math.random()-0.5)*40,0.5,(Math.random()-0.5)*40);scene.add(s);}
-  const wMat2=new THREE.MeshStandardMaterial({color:0x0a2030,roughness:0.1,transparent:true,opacity:0.5});
-  const water=new THREE.Mesh(new THREE.PlaneGeometry(80,80),wMat2); water.rotation.x=-Math.PI/2; water.position.y=1.5; scene.add(water);
-  scene.add(new THREE.AmbientLight(0x051015,0.4)); _addDl(scene,0x0088cc,0.4,30,0,10,true);
-  _addPl(scene,0x00aaff,0.5,15,0,3,0);
-}
-function _deepStationArena(scene){
-  scene.background=new THREE.Color(0x010510); scene.fog=new THREE.FogExp2(0x020612,0.04);
-  const gnd=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshStandardMaterial({color:0x0a1020,roughness:0.6,metalness:0.4}));
-  gnd.rotation.x=-Math.PI/2; scene.add(gnd);
-  const sMat=new THREE.MeshStandardMaterial({color:0x1a2a3a,roughness:0.4,metalness:0.7});
-  for(let i=0;i<4;i++){const mod=new THREE.Mesh(new THREE.CylinderGeometry(3,3,5,10),sMat);mod.rotation.z=Math.PI/2;mod.position.set((i-1.5)*12,2,0);scene.add(mod);_addPl(scene,0x00aaff,0.5,8,(i-1.5)*12,4,0);}
-  scene.add(new THREE.AmbientLight(0x020510,0.4)); _addDl(scene,0x4488cc,0.4,30,0,10,true);
-  _addPl(scene,0x0066ff,0.6,20,0,5,0);
-}
-function _squidChaseArena(scene){
-  scene.background=new THREE.Color(0x051015); scene.fog=new THREE.FogExp2(0x061218,0.04);
-  const gnd=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshStandardMaterial({color:0x0a2030,roughness:1}));
-  gnd.rotation.x=-Math.PI/2; scene.add(gnd);
-  const kMat=new THREE.MeshStandardMaterial({color:0x1a5020,roughness:0.8});
-  for(let i=0;i<20;i++){const h=4+Math.random()*6;const k=new THREE.Mesh(new THREE.CylinderGeometry(0.2,0.4,h,6),kMat);k.position.set((Math.random()-0.5)*50,h/2,(Math.random()-0.5)*50);scene.add(k);}
-  const sqMat=new THREE.MeshStandardMaterial({color:0xff4488,roughness:0.5});
-  const sq=new THREE.Mesh(new THREE.SphereGeometry(3,8,6),sqMat); sq.scale.set(1,1.5,2); sq.position.set(15,4,5); scene.add(sq);
-  scene.add(new THREE.AmbientLight(0x051015,0.4)); _addDl(scene,0x0088cc,0.4,30,0,10,true);
-  _addPl(scene,0xff4488,0.6,15,15,4,5);
-}
-function _atlantisArena(scene){
-  scene.background=new THREE.Color(0x051520); scene.fog=new THREE.FogExp2(0x061820,0.03);
-  const gnd=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshStandardMaterial({color:0x1a2830,roughness:0.4}));
-  gnd.rotation.x=-Math.PI/2; scene.add(gnd);
-  const pMat=new THREE.MeshStandardMaterial({color:0x4488aa,roughness:0.3,metalness:0.2});
-  for(let i=0;i<16;i++){const h=3+Math.random()*5;const p=new THREE.Mesh(new THREE.CylinderGeometry(0.5,0.5,h,8),pMat);p.position.set((Math.random()-0.5)*40,h/2,(Math.random()-0.5)*40);scene.add(p);}
-  const aMat=new THREE.MeshStandardMaterial({color:0x6aaa88,roughness:0.5});
-  for(let i=0;i<5;i++){const a=new THREE.Mesh(new THREE.TorusGeometry(3,0.3,6,16),aMat);a.rotation.x=Math.PI/2;a.position.set((i-2)*10,1,(Math.random()-0.5)*10);scene.add(a);}
-  scene.add(new THREE.AmbientLight(0x051520,0.5)); _addDl(scene,0x0088cc,0.4,30,5,10,true);
-  _addPl(scene,0x00aaff,0.6,25,0,4,0);
-}
-function _eelCavernArena(scene){
-  scene.background=new THREE.Color(0x030508); scene.fog=new THREE.FogExp2(0x040608,0.05);
-  const gnd=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshStandardMaterial({color:0x0a1020,roughness:1}));
-  gnd.rotation.x=-Math.PI/2; scene.add(gnd);
-  const eMat=new THREE.MeshStandardMaterial({color:0x226622,roughness:0.7});
-  for(let i=0;i<8;i++){const e=new THREE.Mesh(new THREE.CylinderGeometry(0.3,0.3,5+Math.random()*5,6),eMat);e.position.set((Math.random()-0.5)*30,2.5,(Math.random()-0.5)*30);e.rotation.z=0.3+Math.random()*0.4;scene.add(e);_addPl(scene,0xffff00,0.6,5,e.position.x,e.position.y,e.position.z);}
-  scene.add(new THREE.AmbientLight(0x030508,0.3)); _addDl(scene,0x004488,0.3,30,0,10,true);
-  _addPl(scene,0xffff00,0.4,15,0,3,0);
-}
-function _tsunamiArena(scene){
-  scene.background=new THREE.Color(0x051520); scene.fog=new THREE.FogExp2(0x061820,0.03);
-  const gnd=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshStandardMaterial({color:0x0a2030,roughness:0.1,metalness:0.3}));
-  gnd.rotation.x=-Math.PI/2; gnd.position.y=-2; scene.add(gnd);
-  const wMat=new THREE.MeshStandardMaterial({color:0x1a4060,roughness:0.05,metalness:0.3,transparent:true,opacity:0.85});
-  const wave=new THREE.Mesh(new THREE.BoxGeometry(80,15,8),wMat); wave.position.set(0,5,-25); scene.add(wave);
-  scene.add(new THREE.AmbientLight(0x051520,0.5)); _addDl(scene,0x4488cc,0.5,30,0,15,true);
-  _addPl(scene,0x0044ff,1.0,30,0,5,-25);
-}
-function _marianaArena(scene){
-  scene.background=new THREE.Color(0x000005); scene.fog=new THREE.FogExp2(0x000008,0.06);
-  const gnd=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshStandardMaterial({color:0x05050a,roughness:1}));
-  gnd.rotation.x=-Math.PI/2; scene.add(gnd);
-  for(let i=0;i<15;i++){const s=new THREE.Mesh(new THREE.SphereGeometry(0.15+Math.random()*0.2),new THREE.MeshBasicMaterial({color:0x0044ff}));s.position.set((Math.random()-0.5)*50,0.3+Math.random()*2,(Math.random()-0.5)*50);scene.add(s);_addPl(scene,0x0044ff,0.2,3,s.position.x,s.position.y,s.position.z);}
-  for(let i=0;i<8;i++){const r=new THREE.Mesh(new THREE.CylinderGeometry(0.3,0.8,3+Math.random()*4,7),new THREE.MeshStandardMaterial({color:0x0a0810,roughness:1}));r.position.set((Math.random()-0.5)*40,1.5,(Math.random()-0.5)*40);scene.add(r);}
-  scene.add(new THREE.AmbientLight(0x000005,0.15)); _addPl(scene,0x0033ff,0.5,15,0,3,0);
-}
 
 /* ════════════════════════════════════════════════════════════════════════════
    PIXAR-QUALITY STORY WORLDS
@@ -8754,125 +8323,7 @@ function _crystalCavernsArena(scene){
    Story: Pollution is breaking the reef's colour coding system. Restore it!
    Palette: #00c8a0 water · #ff7040 coral · #0044aa deep water · #00ffcc glow
    ─────────────────────────────────────────────────────────────────────────── */
-function _robotReefArena(scene){
-  scene.background=new THREE.Color(0x003855);
-  scene.fog=new THREE.FogExp2(0x003060,0.028);
-
-  // Sandy floor
-  const gnd=new THREE.Mesh(new THREE.PlaneGeometry(110,110,12,12),
-    new THREE.MeshStandardMaterial({color:0x2a4818,roughness:0.88}));
-  gnd.rotation.x=-Math.PI/2; gnd.receiveShadow=true; scene.add(gnd);
-
-  // ── GIANT CORAL FORMATIONS (hero) ──
-  const coralData=[
-    [-20,0,-35,0xff6040],[25,0,-44,0xff8020],[-10,0,-55,0xff4080],
-    [32,0,-38,0xffaa40],[-28,0,-50,0xff5060],[20,0,-62,0xcc4088]
-  ];
-  coralData.forEach(([x,_y,z,col])=>{
-    const grp=new THREE.Group(); grp.position.set(x,0,z);
-    // Main trunk
-    const trunk=new THREE.Mesh(new THREE.CylinderGeometry(0.35,0.6,3,9),
-      new THREE.MeshStandardMaterial({color:col,roughness:0.65}));
-    trunk.position.y=1.5; trunk.castShadow=true; grp.add(trunk);
-    // Branch fingers (6–9 branching spikes)
-    const branches=5+Math.floor(Math.random()*4);
-    for(let b=0;b<branches;b++){
-      const bh=2+Math.random()*3.5;
-      const ang=(b/branches)*Math.PI*2+Math.random()*0.5;
-      const bran=new THREE.Mesh(new THREE.CylinderGeometry(0.10,0.22,bh,7),
-        new THREE.MeshStandardMaterial({color:col,roughness:0.6,emissive:col,emissiveIntensity:0.12}));
-      bran.position.set(Math.cos(ang)*1.0,3+bh/2,Math.sin(ang)*1.0);
-      bran.rotation.z=Math.cos(ang)*0.4; bran.rotation.x=Math.sin(ang)*0.3;
-      bran.castShadow=true; grp.add(bran);
-    }
-    // Sway animation
-    scene.userData.movers=scene.userData.movers||[];
-    const phase=Math.random()*Math.PI*2;
-    scene.userData.movers.push(t=>{ grp.rotation.z=Math.sin(t*0.5+phase)*0.04; grp.rotation.x=Math.sin(t*0.38+phase)*0.025; });
-    _addPl(scene,col,0.6,8,x,4,z);
-    scene.add(grp);
-  });
-
-  // ── Sea anemones (large round tentacle clusters) ──
-  [[-5,-18],[8,-28],[-12,-38],[6,-48]].forEach(([x,z])=>{
-    const base=new THREE.Mesh(new THREE.SphereGeometry(0.55,12,8),
-      new THREE.MeshStandardMaterial({color:0xff4080,roughness:0.7}));
-    base.position.set(x,0.4,z); scene.add(base);
-    for(let t2=0;t2<8;t2++){
-      const ang=(t2/8)*Math.PI*2;
-      const ten=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.12,1.1,6),
-        new THREE.MeshStandardMaterial({color:0xff88aa,roughness:0.6,emissive:0xff4080,emissiveIntensity:0.15}));
-      ten.position.set(x+Math.cos(ang)*0.5,1.1,z+Math.sin(ang)*0.5);
-      ten.rotation.z=Math.cos(ang)*0.4; scene.add(ten);
-    }
-  });
-
-  // ── Glowing jellyfish floating above ──
-  [[2,-12,3],[-8,-25,4],[12,-38,3.5],[-5,-50,5]].forEach(([x,z,ht])=>{
-    const jbell=new THREE.Mesh(new THREE.SphereGeometry(0.55,12,7,0,Math.PI*2,0,Math.PI*0.5),
-      new THREE.MeshStandardMaterial({color:0x88eeff,emissive:0x00ccff,emissiveIntensity:0.8,transparent:true,opacity:0.55,side:THREE.DoubleSide}));
-    jbell.position.set(x,ht,z); scene.add(jbell);
-    for(let i=0;i<6;i++){
-      const ten=new THREE.Mesh(new THREE.CylinderGeometry(0.025,0.015,1.2+Math.random(),4),
-        new THREE.MeshStandardMaterial({color:0xaaffee,transparent:true,opacity:0.4}));
-      ten.position.set(x+(Math.random()-0.5)*0.7,ht-0.6-Math.random()*0.4,z+(Math.random()-0.5)*0.7);
-      scene.add(ten);
-    }
-    _addPl(scene,0x00d9ff,0.5,5,x,ht,z);
-    scene.userData.movers=scene.userData.movers||[];
-    const ph=Math.random()*Math.PI*2;
-    scene.userData.movers.push(t=>{ jbell.position.y=ht+Math.sin(t*0.9+ph)*0.35; jbell.rotation.y=t*0.4; });
-  });
-
-  // ── Caustic light shafts from above ──
-  for(let i=0;i<6;i++){
-    const shaft=new THREE.Mesh(new THREE.CylinderGeometry(0.4+Math.random()*0.6,0.15,22,8,1,true),
-      new THREE.MeshBasicMaterial({color:0x00ffcc,transparent:true,opacity:0.032,side:THREE.DoubleSide}));
-    shaft.position.set((Math.random()-0.5)*40,11,-10-Math.random()*50); scene.add(shaft);
-  }
-
-  // ── Fish school (animated point cloud) ──
-  const fishCount=80;
-  const fishGeo=new THREE.BufferGeometry();
-  const fpos=new Float32Array(fishCount*3);
-  for(let i=0;i<fishCount;i++){fpos[i*3]=(Math.random()-0.5)*18;fpos[i*3+1]=2+Math.random()*5;fpos[i*3+2]=-8-Math.random()*40;}
-  fishGeo.setAttribute('position',new THREE.BufferAttribute(fpos,3));
-  const fishPts=new THREE.Points(fishGeo,new THREE.PointsMaterial({color:0xffdd88,size:0.18,transparent:true,opacity:0.8}));
-  scene.add(fishPts);
-  scene.userData.movers=scene.userData.movers||[];
-  scene.userData.movers.push(t=>{
-    const pa=fishGeo.attributes.position; const farr=pa.array;
-    for(let i=0;i<fishCount;i++){farr[i*3]+=Math.sin(t*0.8+i)*0.008;farr[i*3+1]+=Math.sin(t*1.1+i*0.5)*0.005;}
-    pa.needsUpdate=true;
-  });
-
-  // ── Bubble particles ──
-  const bubCount=120; const bubGeo=new THREE.BufferGeometry();
-  const bpos=new Float32Array(bubCount*3);
-  for(let i=0;i<bubCount;i++){bpos[i*3]=(Math.random()-0.5)*60;bpos[i*3+1]=Math.random()*14;bpos[i*3+2]=-5-Math.random()*65;}
-  bubGeo.setAttribute('position',new THREE.BufferAttribute(bpos,3));
-  const bubPts=new THREE.Points(bubGeo,new THREE.PointsMaterial({color:0xaaeeff,size:0.12,transparent:true,opacity:0.55}));
-  scene.add(bubPts);
-  scene.userData.movers=scene.userData.movers||[];
-  scene.userData.movers.push(t=>{
-    const ba=bubGeo.attributes.position; const barr=ba.array;
-    for(let i=0;i<bubCount;i++){barr[i*3+1]+=0.012;if(barr[i*3+1]>15)barr[i*3+1]=0;}
-    ba.needsUpdate=true;
-  });
-
-  // ── Lighting ──
-  scene.add(new THREE.AmbientLight(0x002844,0.55));
-  _addDl(scene,0x00c8a0,0.35,-5,16,-15,true);
-  _addPl(scene,0x00d9ff,0.8,20,0,4,0);
-  _addPl(scene,0xff6040,0.5,14,18,3,-28);
-  _addPl(scene,0x00ccff,0.4,12,-16,3,-22);
-}
-
-/* ── WORLD 4: SKY ISLAND DELIVERY ───────────────────────────────────────────
-   Identity: Warm orange + sky blue. Floating islands connected by bridges.
-   Story: Islands depend on drone deliveries. A storm cut the routes — restore them!
-   Palette: #ff8c20 sunset · #4ac8ff sky · #88cc44 island grass · #fff5e0 clouds
-   ─────────────────────────────────────────────────────────────────────────── */
+function _robotReefArena(scene, challenge){ buildAdventureArena(scene, 'robot_reef', challenge); }
 function _skyIslandArena(scene){
   scene.background=new THREE.Color(0xff9a3c);
   scene.fog=new THREE.Fog(0xffbb66,60,110);
@@ -8973,7 +8424,44 @@ function _skyIslandArena(scene){
   _addPl(scene,0xff8833,0.55,16,8,5,-40);         // mid-island glow
 }
 
-function buildSmartArena(scene,arenaType,challenge){
+const RACE_ARENA_TYPES = new Set([
+  'rainbow_road', 'rainbow_road_master', 'street_grand_prix', 'circuit_sprint',
+  'sunny_circuit', 'dragon_skyway', 'volcano_drift',
+  ...MK_ARENA_TYPES,
+]);
+const RACE_COURSE_IDS = new Set([
+  'street_grand_prix', 'sunny_circuit', 'dragon_skyway', 'rainbow_road', 'volcano_drift',
+  'luigi_circuit', 'moo_moo_meadows', 'mario_circuit', 'peach_castle',
+  'dry_dry_desert', 'mushroom_canyon', 'bowser_castle', 'bone_dry_desert',
+  'piranha_plant_slide', 'grumble_volcano', 'cheese_land', 'rainbow_road_master',
+  'sunset_cove_01', 'candy_carnival_01', 'neon_metro_01', 'cloud_citadel_01',
+  'jungle_ruins_01', 'frost_peak_01', 'lava_foundry_01', 'star_station_01',
+  'fairy_glen_01', 'thunder_ridge_01',
+]);
+
+function _isRaceArena(arenaType, challenge) {
+  return RACE_ARENA_TYPES.has(arenaType)
+    || RACE_COURSE_IDS.has(challenge?.id)
+    || isRaceCourse(challenge?.linkedRaceCourse || challenge?.id, arenaType || challenge?.arenaType);
+}
+
+/** Rainbow Road uses the long straight grid cam; MK ovals use fixed chase preset. */
+function _sampleRaceLaunchCamera(rs, scene) {
+  const isRainbow = scene?.userData?.isRainbowRoad || scene?.userData?.raceSpaceEnv;
+  if (isRainbow) return sampleGridLaunchCamera(rs.x, rs.y, rs.z, rs.angle);
+  const preset = scene?.userData?.raceCameraPreset || { camBack: 8.5, camUp: 3.2, lookAhead: 6, lookHeight: 0.7 };
+  return sampleFixedChaseCamera(rs.x, rs.y, rs.z, rs.angle, preset);
+}
+
+function _streetGrandPrixArena(scene) { buildCircuitSprintArena(scene); }
+function _sunnyCircuitArena(scene) { buildSunnyCircuitArena(scene); }
+function _dragonSkywayArena(scene) { buildDragonSkywayArena(scene); }
+function _rainbowRoadArena(scene) { buildCircuitSprintArena(scene); }
+function _volcanoDriftArena(scene) { buildVolcanoDriftArena(scene); }
+
+function buildSmartArena(scene,arenaType,challenge,robotConfig=null){
+  scene.userData.missionChallenge = challenge?.isRobotMission ? challenge : null;
+  scene.userData.chassisModeChallenge = challenge?.isChassisMode ? challenge : null;
   switch(arenaType){
     case 'sky':             _skyArena(scene); break;
     case 'terrain':         _terrainArena(scene); break;
@@ -9009,7 +8497,7 @@ function buildSmartArena(scene,arenaType,challenge){
     case 'boss_arena':      _bossArenaBuilder(scene); break;
     case 'crystal_cave':    _crystalCaveArena(scene); break;
     case 'jungle_maze':     _jungleMazeArena(scene); break;
-    case 'neon_city':       _neonCityArena(scene); break;
+    case 'neon_city':       _neonCityArena(scene, challenge); break;
     case 'mountain_fly':    _mountainFlyArena(scene); break;
     case 'storm_chase':     _stormChaseArena(scene); break;
     case 'combat_zone':     _combatZoneArena(scene); break;
@@ -9019,7 +8507,6 @@ function buildSmartArena(scene,arenaType,challenge){
     case 'jungle_expedition':
     case 'disaster_zone':
     case 'soccer_arena':
-    case 'temple_maze':
     case 'hospital_corridor':
       buildFlagshipArena(scene, arenaType, challenge);
       break;
@@ -9056,20 +8543,60 @@ function buildSmartArena(scene,arenaType,challenge){
     case 'forest_trail':         _forestTrailArena(scene); break;
     case 'city_delivery':        _cityDeliveryArena(scene); break;
     case 'lava_canyon':          _lavaCanyonArena(scene); break;
-    case 'arctic_station':       _arcticStationArena(scene); break;
-    case 'temple_maze':          _templeMazeArena(scene); break;
-    case 'desert_rally':         _desertRallyArena(scene); break;
+    case 'arctic_station':       _arcticStationArena(scene, challenge); break;
+    case 'temple_maze':
+      if (challenge?.isFlagship) buildFlagshipArena(scene, arenaType, challenge);
+      else _templeMazeArena(scene, challenge);
+      break;
+    case 'desert_rally':         _desertRallyArena(scene, challenge); break;
     case 'underground_mine':     _undergroundMineArena(scene); break;
     case 'flooded_city':         _floodedCityArena(scene); break;
     case 'space_corridor':       _spaceCorridorArena(scene); break;
     case 'haunted_graveyard':    _hauntedGraveyardArena(scene); break;
     case 'racing_circuit':       _racingCircuitArena(scene); break;
+    case 'street_grand_prix':
+    case 'circuit_sprint':
+    case 'rainbow_road':         _streetGrandPrixArena(scene); break;
+    case 'sunny_circuit':        _sunnyCircuitArena(scene); break;
+    case 'dragon_skyway':        _dragonSkywayArena(scene); break;
+    case 'volcano_drift':        _volcanoDriftArena(scene); break;
+    case 'luigi_circuit':
+    case 'moo_moo_meadows':
+    case 'mario_circuit':
+    case 'peach_castle':
+    case 'dry_dry_desert':
+    case 'mushroom_canyon':
+    case 'bowser_castle':
+    case 'bone_dry_desert':
+    case 'piranha_plant_slide':
+    case 'grumble_volcano':
+    case 'cheese_land':
+    case 'rainbow_road_master':
+    case 'sunset_cove_01':
+    case 'candy_carnival_01':
+    case 'neon_metro_01':
+    case 'cloud_citadel_01':
+    case 'jungle_ruins_01':
+    case 'frost_peak_01':
+    case 'lava_foundry_01':
+    case 'star_station_01':
+    case 'fairy_glen_01':
+    case 'thunder_ridge_01':
+      buildMKTrackArena(scene, arenaType);
+      break;
+    case 'flappy_bird':          buildFlappyBirdArena(scene); break;
+    case 'robot_fight':          buildFightingArena(scene, challenge, getFightingArchetype(detectRobotType(robotConfig||{}), robotConfig?.chassisId)); break;
+    case 'robot_football':       buildFootballArena(scene, challenge, robotConfig); break;
     case 'farm_harvest':         _farmHarvestArena(scene); break;
     case 'pirate_dock':          _pirateDockArena(scene); break;
     case 'toxic_wasteland':      _toxicWastelandArena(scene); break;
     case 'carnival_funfair':     _carnivalFunfairArena(scene); break;
     case 'jungle_bridge':        _jungleBridgeArena(scene); break;
     case 'museum_heist':         _museumHeistArena(scene); break;
+    case 'shadow_escape':        _shadowEscapeArena(scene); break;
+    case 'jump_world':           _jumpWorldArena(scene); break;
+    case 'deep_cave':            _deepCaveArena(scene); break;
+    case 'auto_factory':         _autoFactoryArena(scene); break;
     case 'snow_rescue':          _snowRescueArena(scene); break;
     case 'cyber_city':           _cyberCityArena(scene); break;
     case 'time_trial_gauntlet':  _timeTrialGauntletArena(scene); break;
@@ -9138,28 +8665,187 @@ function buildSmartArena(scene,arenaType,challenge){
     // ── Pixar Story Worlds ───────────────────────────────────────────────────
     case 'power_garden':         _powerGardenArena(scene); break;
     case 'crystal_caverns':      _crystalCavernsArena(scene); break;
-    case 'robot_reef':           _robotReefArena(scene); break;
+    case 'robot_reef':           _robotReefArena(scene, challenge); break;
     case 'sky_island':           _skyIslandArena(scene); break;
-    default:                 _groundArena(scene,challenge); break;
+    // ── Chassis mode fallbacks (never drop to generic forest) ───────────────
+    case 'seafloor_scan':        _bioluminescentArena(scene); break;
+    case 'checkpoint':           _autoFactoryArena(scene); break;
+    case 'targets':              _urbanObstacleArena(scene); break;
+    case 'delivery':             _cityDeliveryArena(scene); break;
+    case 'dodge_easy':           _dodgeBallsArena(scene); break;
+    case 'open':
+    case 'speedrun':
+    case 'square':
+    case 'obstacle':
+      _autoFactoryArena(scene); break;
+    default:
+      if (challenge?.isChassisMode) _autoFactoryArena(scene);
+      else _groundArena(scene, challenge);
+      break;
   }
-  applyArenaAtmosphere(scene, arenaType, challenge);
+  if (!scene.userData.customSky && !scene.userData.biomeAAA && !BIOME_ARENA_TYPES.has(arenaType)) {
+    applyArenaAtmosphere(scene, arenaType, challenge);
+  } else if (!scene.userData.arenaTheme) {
+    scene.userData.arenaTheme = resolveArenaTheme(arenaType, challenge);
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // BLOCK PHYSICS HELPERS
 // ─────────────────────────────────────────────────────────────────────────────
+// ── Movement Preview Path ─────────────────────────────────────────────────────
+// Simulates block program geometrically (no physics) to show the robot's path
+// BEFORE simulation runs. Updates live as the child edits blocks.
+// Uses the same formulas as applyBlock so the preview is accurate.
+function computePreviewPath(blocks, startX, startZ, startAngle) {
+  if (!blocks || blocks.length === 0) return { points: [], segmentEnds: [] };
+  const STEP = MOVE_STEP_SIZE; // matches applyBlock
+  let x = startX, z = startZ, a = startAngle;
+  const points = [{ x, z }];
+  const segmentEnds = [];
+  const MAX_POINTS = 120;
+
+  for (const block of blocks) {
+    if (points.length >= MAX_POINTS) break;
+    const p = block.paramValues || {};
+    switch (block.id) {
+      case 'move_forward': {
+        const d = (p.steps || 3) * STEP;
+        x += Math.sin(a) * d; z += Math.cos(a) * d;
+        points.push({ x, z }); segmentEnds.push({ x, z }); break;
+      }
+      case 'move_backward': {
+        const d = (p.steps || 1) * STEP;
+        x -= Math.sin(a) * d; z -= Math.cos(a) * d;
+        points.push({ x, z }); segmentEnds.push({ x, z }); break;
+      }
+      case 'turn_left':   a += (p.degrees || 90) * Math.PI / 180; break;
+      case 'turn_right':  a -= (p.degrees || 90) * Math.PI / 180; break;
+      case 'turn_corner_left': {
+        // Arc: approximate 90° arc with 8 sub-steps
+        const arcDist = 2.2 * STEP, steps = 8;
+        for (let i = 0; i < steps; i++) {
+          a += (Math.PI/2) / steps;
+          x += Math.sin(a) * (arcDist/steps); z += Math.cos(a) * (arcDist/steps);
+          if (points.length < MAX_POINTS) points.push({ x, z });
+        }
+        segmentEnds.push({ x, z }); break;
+      }
+      case 'turn_corner_right': {
+        const arcDist = 2.2 * STEP, steps = 8;
+        for (let i = 0; i < steps; i++) {
+          a -= (Math.PI/2) / steps;
+          x += Math.sin(a) * (arcDist/steps); z += Math.cos(a) * (arcDist/steps);
+          if (points.length < MAX_POINTS) points.push({ x, z });
+        }
+        segmentEnds.push({ x, z }); break;
+      }
+      case 'u_turn': {
+        const arcDist = 3 * STEP, steps = 12;
+        for (let i = 0; i < steps; i++) {
+          a += Math.PI / steps;
+          x += Math.sin(a) * (arcDist/steps); z += Math.cos(a) * (arcDist/steps);
+          if (points.length < MAX_POINTS) points.push({ x, z });
+        }
+        segmentEnds.push({ x, z }); break;
+      }
+      case 'curve_left': {
+        const deg = p.degrees || 45, st = p.steps || 3;
+        const dist = st * STEP, rot = deg * Math.PI / 180, sub = 8;
+        for (let i = 0; i < sub; i++) {
+          a += rot / sub;
+          x += Math.sin(a) * (dist/sub); z += Math.cos(a) * (dist/sub);
+          if (points.length < MAX_POINTS) points.push({ x, z });
+        }
+        segmentEnds.push({ x, z }); break;
+      }
+      case 'curve_right': {
+        const deg = p.degrees || 45, st = p.steps || 3;
+        const dist = st * STEP, rot = deg * Math.PI / 180, sub = 8;
+        for (let i = 0; i < sub; i++) {
+          a -= rot / sub;
+          x += Math.sin(a) * (dist/sub); z += Math.cos(a) * (dist/sub);
+          if (points.length < MAX_POINTS) points.push({ x, z });
+        }
+        segmentEnds.push({ x, z }); break;
+      }
+      case 'move_forward_units': {
+        const u = p.units || 6;
+        x += Math.sin(a) * u; z += Math.cos(a) * u;
+        points.push({ x, z }); segmentEnds.push({ x, z }); break;
+      }
+      case 'rotate_to_heading':
+      case 'turn_until_facing': break;
+      case 'move_forward_continuous':
+      case 'move_forward_until': break;
+      case 'zigzag': {
+        const times = p.times || 4;
+        const width = p.width || 2;
+        const segLen = width * STEP;
+        for (let i = 0; i < times; i++) {
+          const sa = a + (i % 2 === 0 ? 1 : -1) * Math.PI / 4;
+          x += Math.sin(sa) * segLen; z += Math.cos(sa) * segLen;
+          if (points.length < MAX_POINTS) points.push({ x, z });
+        }
+        segmentEnds.push({ x, z }); break;
+      }
+      case 'circle': {
+        const rSteps = p.radius || 3;
+        const dirSign = (p.direction === 'right' || p.dir === 'right') ? -1 : 1;
+        const circleSteps = 16;
+        for (let i = 0; i < circleSteps; i++) {
+          a += dirSign * (Math.PI * 2) / circleSteps;
+          x += Math.sin(a) * rSteps * STEP * 0.35;
+          z += Math.cos(a) * rSteps * STEP * 0.35;
+          if (points.length < MAX_POINTS) points.push({ x, z });
+        }
+        segmentEnds.push({ x, z }); break;
+      }
+      // Control blocks: don't preview movement (just recurse into children)
+      case 'repeat': {
+        const times = p.times || 3;
+        // preview inner once (don't repeat visually — just give the idea)
+        break;
+      }
+      default: break;
+    }
+  }
+  return { points, segmentEnds };
+}
+
 function getBlockDuration(block){
   const p=block.paramValues||{};
   switch(block.id){
-    case 'move_forward':  return Math.max(0.4,(p.steps||3)*0.7);
-    case 'move_backward': return Math.max(0.4,(p.steps||1)*0.7);
+    // Durations reduced so each block executes faster — the robot covers more
+    // ground per block, matching the larger distance values in applyBlock.
+    case 'move_forward':  return Math.max(0.22,(p.steps||3)*0.28);
+    case 'move_backward': return Math.max(0.22,(p.steps||1)*0.28);
     case 'turn_left':
-    case 'turn_right':    return Math.max(0.25,(p.degrees||90)/90*0.6);
-    case 'spin':          return 1.0;
-    case 'stop':          return 0.5;
-    case 'set_speed':     return 0.3;
+    case 'turn_right':    return Math.max(0.18,(p.degrees||90)/90*0.32);
+    case 'turn_corner_left':
+    case 'turn_corner_right': return 0.65;
+    case 'curve_left':
+    case 'curve_right':   return Math.max(0.55, ((p.steps||8)*0.34) + ((p.degrees||45)/90)*0.45);
+    case 'u_turn':        return 0.85;
+    case 'move_forward_until': return 8.0;
+    case 'turn_until_facing': return 4.0;
+    case 'move_forward_continuous': return 0.05;
+    case 'rotate_to_heading': return Math.max(0.2, ((p.degrees||90)/90)*0.32);
+    case 'move_forward_units': return Math.max(0.22, (p.units||6) * 0.12);
+    case 'zigzag':        return Math.max(1.0,(p.times||4)*0.55);
+    case 'circle':        return Math.max(1.8, (p.radius||3)*0.55);
+    case 'boost':         return 0.05;
+    case 'brake':         return 0.55;
+    case 'orbit':         return Math.max(1.2,(p.times||3)*0.85);
+    case 'spin':          return Math.max(0.5,(p.degrees||360)/360*0.7);
+    case 'stop':          return 0.3;
+    case 'set_speed':     return 0.05; // instant — just sets a value
+    case 'when_start':    return 0.05;
+    case 'follow_track_on':
+    case 'follow_track_off': return 0.3;
     case 'patrol_area':   return (p.laps||2)*1.8;
     case 'wait':          return Math.max(0.2,p.seconds||1);
+    case 'flap':          return 0.12;
     case 'fly_up':
     case 'fly_down':      return 0.9;
     case 'hover_hold':    return Math.max(0.5,p.seconds||1);
@@ -9172,8 +8858,8 @@ function getBlockDuration(block){
     case 'battery_low':   return 0.5;
     case 'look':          return 1.3;
     case 'avoid_obstacle':return 1.5;
-    case 'follow_line':   return (p.steps||4)*0.6;
-    case 'follow_target': return (p.steps||3)*0.8;
+    case 'follow_line':   return (p.steps||4)*0.35;
+    case 'follow_target': return (p.steps||3)*0.45;
     case 'return_home':   return 2.0;
     case 'search_area':   return 1.8;
     case 'grab':
@@ -9211,7 +8897,7 @@ function getBlockDuration(block){
     case 'climb_mode':    return 0.4;
     case 'power_mode':    return 0.4;
     // spider
-    case 'step_forward':  return Math.max(0.5,(p.steps||3)*0.55);
+    case 'step_forward':  return Math.max(0.3,(p.steps||3)*0.35);
     case 'climb_wall':    return 1.5;
     case 'stabilize_legs':return 0.8;
     case 'crouch':        return 0.5;
@@ -9235,36 +8921,508 @@ function getBlockDuration(block){
     case 'accelerate':    return 0.6;
     case 'decelerate':    return 0.8;
     case 'anti_grav':     return 0.7;
-    case 'hover_hold':    return p.seconds||1;
     case 'led_color':     return 0.2;
     case 'random_move':   return 1.5;
     case 'wave':          return 1.2;
     case 'dive':
     case 'float_up':      return 1.0;
+    case 'set_flap_strength':
+    case 'set_gravity_strength':
+    case 'show_score':
+    case 'restart_game':  return 0.08;
+    case 'pause':         return p.seconds || 1;
+    case 'distance_to_pipe':
+    case 'bird_height':
+    case 'gap_center_height':
+    case 'is_falling':
+    case 'read_score':
+    case 'read_high_score': return 0.05;
+    case 'race_speed':
+    case 'race_dist_left_rail':
+    case 'race_dist_right_rail':
+    case 'race_on_track':
+    case 'race_current_lap': return 0.05;
+    case 'set_var':
+    case 'create_var':
+    case 'change_var':    return 0.05;
+    case 'bank_left':
+    case 'bank_right':    return Math.max(0.25, ((p.degrees || 30) / 90) * 0.35);
+    case 'roll':            return Math.max(0.5, (p.degrees || 360) / 360 * 0.8);
+    case 'climb':           return 1.5;
+    case 'dive_deep':       return Math.max(0.6, (p.depth || 10) * 0.08);
+    case 'surface':         return 1.0;
+    case 'sonar_ping':      return 0.8;
+    case 'read_altitude':
+    case 'wind_speed':
+    case 'depth_sensor':
+    case 'pressure':        return 0.4;
+    case 'led_on':
+    case 'led_off':         return 0.3;
+    case 'led_blink':       return Math.max(0.5, (p.times || 3) * 0.25);
+    case 'alarm_sound':     return 0.8;
+    case 'repeat':          return 0.05;
+    case 'forever':         return 0.05;
     default:              return 0.5;
   }
 }
 
-function applyBlock(block,rs,dt,movId){
+// Universal step distance: 1 step always = MOVE_STEP_SIZE world units, regardless of robot type.
+const MOVE_STEP_SIZE = 2.4;
+// Race courses: scale block + cruise distances to the spline (~420u/lap).
+const RACE_SPEED_BOOST = 2.0;
+
+function raceStepMult(scene, speedMult, spd, rs) {
+  const base = scene?.userData?.raceMode ? speedMult * spd * RACE_SPEED_BOOST : 1.0;
+  return base * (rs?._offTrackMul ?? 1);
+}
+
+function shouldUseRaceSpline(rs, scene) {
+  if (!scene?.userData?.raceMode || !scene?.userData?.raceCurve) return false;
+  const controlMode = scene.userData.racingConfig?.raceControlMode ?? 'rail';
+  if (controlMode === 'coded') return !!rs.raceAutoSteer;
+  return true;
+}
+
+/** Coded mode: track proximity for checkpoints/minimap — slow kart when off road edge. */
+function applyCodedRaceOffTrack(rs, scene) {
+  if (!scene?.userData?.raceMode || shouldUseRaceSpline(rs, scene)) {
+    rs.raceOffTrack = false;
+    rs._offTrackMul = 1;
+    return;
+  }
+  const curve = scene.userData.raceCurve;
+  if (!curve) return;
+  const hw = (scene.userData.racingConfig?.trackWidth ?? 8) / 2;
+  const hint = rs._raceTrackTHint ?? rs.raceTrackT ?? 0;
+  const { t, dist } = closestTrackT(curve, rs.x, rs.z, 40, hint, 0.08);
+  rs._raceTrackTHint = t;
+  const off = dist > hw * 1.25;
+  rs.raceOffTrack = off;
+  rs._offTrackMul = off ? 0.35 : 1;
+}
+
+function normalizeAngleDiff(diff) {
+  while (diff > Math.PI) diff -= Math.PI * 2;
+  while (diff < -Math.PI) diff += Math.PI * 2;
+  return diff;
+}
+
+function calcTargetHeading(direction, rs, scene) {
+  const dir = direction || 'goal';
+  const fz = scene?.userData?.finishZone;
+  if (dir === 'goal' || dir === 'toward goal') {
+    if (!fz) return rs.angle;
+    return Math.atan2(fz.x - rs.x, fz.z - rs.z);
+  }
+  if (dir === 'away' || dir === 'away from goal') {
+    if (!fz) return rs.angle + Math.PI;
+    return Math.atan2(rs.x - fz.x, rs.z - fz.z);
+  }
+  if (dir === 'item' || dir === 'toward nearest item') {
+    let best = null, bestD = Infinity;
+    for (const c of scene?.userData?.collectibles || []) {
+      if (!c) continue;
+      const cx = c.x ?? c.mesh?.position?.x ?? 0;
+      const cz = c.z ?? c.mesh?.position?.z ?? 0;
+      const d = (rs.x - cx) ** 2 + (rs.z - cz) ** 2;
+      if (d < bestD) { bestD = d; best = { x: cx, z: cz }; }
+    }
+    if (best) return Math.atan2(best.x - rs.x, best.z - rs.z);
+    return rs.angle;
+  }
+  if (dir === 'north') return 0;
+  if (dir === 'south') return Math.PI;
+  if (dir === 'east') return Math.PI / 2;
+  if (dir === 'west') return -Math.PI / 2;
+  return rs.angle;
+}
+
+function evaluateMoveUntilCondition(cond, rs, scene) {
+  const c = cond || 'wall';
+  if (c === 'goal') {
+    const fz = scene?.userData?.finishZone;
+    if (!fz) return false;
+    return Math.sqrt((rs.x - fz.x) ** 2 + (rs.z - fz.z) ** 2) < (fz.radius || 2) * 0.85;
+  }
+  if (c === 'battery') return (rs.battery ?? 100) < 25;
+  if (c === 'checkpoint') return (rs.raceCheckpoint ?? 0) > (rs._moveUntilCpStart ?? 0);
+  if (c === 'item') {
+    for (const col of scene?.userData?.collectibles || []) {
+      if (col?.collected) continue;
+      const cx = col.x ?? col.mesh?.position?.x ?? 0;
+      const cz = col.z ?? col.mesh?.position?.z ?? 0;
+      if (Math.sqrt((rs.x - cx) ** 2 + (rs.z - cz) ** 2) < 1.8) return true;
+    }
+    return false;
+  }
+  if (c === 'collision') return (rs.collisions ?? 0) > (rs._moveUntilCollStart ?? 0);
+  const lookX = rs.x + Math.sin(rs.angle) * 1.0;
+  const lookZ = rs.z + Math.cos(rs.angle) * 1.0;
+  for (const obs of scene?.userData?.obstacles || []) {
+    if (!obs?.mesh) continue;
+    const dx = lookX - obs.mesh.position.x, dz = lookZ - obs.mesh.position.z;
+    if (Math.sqrt(dx * dx + dz * dz) < (obs.radius || 1) + 0.55) return true;
+  }
+  return false;
+}
+
+function cornerArcDist(rs) {
+  const speedPct = (rs._speedMult ?? 0.6) * 100;
+  const radius = speedPct <= 30 ? 1.5 : speedPct <= 70 ? 3.0 : 5.0;
+  return radius * MOVE_STEP_SIZE * 0.85;
+}
+
+/** Blocks that already apply their own displacement — skip cruise gas to avoid double-speed. */
+const SELF_DRIVING_BLOCKS = new Set([
+  'move_forward', 'move_backward', 'turn_left', 'turn_right',
+  'turn_corner_left', 'turn_corner_right', 'curve_left', 'curve_right',
+  'u_turn', 'zigzag', 'circle', 'orbit', 'move_forward_units',
+  'move_forward_until', 'bank_left', 'bank_right', 'patrol_area',
+  'follow_line', 'avoid_obstacle', 'random_move',
+]);
+
+/** Config / instant blocks — never add cruise gas on top (especially on lap loop restarts). */
+const CRUISE_PAUSE_BLOCKS = new Set(['set_speed', 'boost', 'brake', 'stop']);
+
+/** On race lap loops, skip setup blocks — speed/boost/continuous are already active. */
+const RACE_LOOP_SKIP_BLOCKS = new Set([
+  'when_start', 'set_speed', 'boost', 'move_forward_continuous',
+  'follow_track_on', 'follow_track_off',
+]);
+
+function raceLoopRestartStep(blocks) {
+  let driving = 0;
+  for (let i = 0; i < (blocks || []).length; i++) {
+    const b = blocks[i];
+    if (!b || RACE_LOOP_SKIP_BLOCKS.has(b.id)) continue;
+    if (driving >= 1) return i;
+    driving++;
+  }
+  const idx = (blocks || []).findIndex((b) => b && !RACE_LOOP_SKIP_BLOCKS.has(b.id));
+  return idx >= 0 ? idx : 0;
+}
+
+function raceHazardMul(scene, rs) {
+  const arena = scene?.userData?.biomeWorldBuilt || scene?.userData?.arenaType;
+  const t = rs?._raceTrackTHint ?? rs?.raceTrackT;
+  if (!arena || t == null || !Number.isFinite(t)) return 1;
+  return getHazardSpeedMultiplier(arena, t);
+}
+
+/** Advance along the race spline for one block's duration (rail / follow-track helper only). */
+function applyRaceTrackMotion(rs, dt, scene, totalDist, dur) {
+  if (!shouldUseRaceSpline(rs, scene)) return false;
+  const fwdSpd = (totalDist / Math.max(0.05, dur)) * raceHazardMul(scene, rs);
+  if (advanceAlongRaceTrack(rs, dt, scene, fwdSpd)) {
+    rs.totalDist += fwdSpd * dt;
+    rs.bobPhase += dt * 8;
+    return true;
+  }
+  return false;
+}
+
+/** Seed kart drive state at the start of each Simulate press (race courses). */
+function seedRaceDriveState(rs) {
+  rs.step = 0;
+  rs.stepTime = 0;
+  rs.currentDur = 0;
+  rs.done = false;
+  rs.raceCountdown = 0;
+  rs._moveContinuous = false;
+  rs._brakeFactor = 1;
+  rs._speedMult = rs._speedMult ?? 0.65;
+  rs._boostMul = rs._boostMul ?? 1;
+  rs.raceFalling = false;
+  rs.raceWon = false;
+  rs.raceOffTrack = false;
+  rs._offTrackMul = 1;
+  rs.raceCodeHint = '';
+}
+
+/** Belt-and-suspenders spline cruise when blocks are missing (legacy rail tracks only). */
+function applyRaceSplineCruise(rs, dt, movId, scene) {
+  if (!shouldUseRaceSpline(rs, scene)) return;
+  if (!scene?.userData?.raceMode || !scene?.userData?.raceCurve || rs.done || rs.raceFalling) return;
+  if ((rs.stopTimer || 0) > 0) return;
+  const brakeF = rs._brakeFactor ?? 1;
+  if (brakeF <= 0.01) return;
+  const ROBOT_SPD = { jets:2.0,flying:1.6,hover:1.4,wheels:1.2,wheels6:1.1,tracks:0.85,legs:1.0,fins:1.1,arm:0.6 };
+  const spd = ROBOT_SPD[movId] || 1.0;
+  const sm = rs._speedMult ?? 1.0;
+  const boostM = rs._boostMul ?? 1;
+  const hazardM = raceHazardMul(scene, rs);
+  const fwdSpd = MOVE_STEP_SIZE * 1.4 * sm * boostM * brakeF * spd * RACE_SPEED_BOOST * hazardM;
+  if (advanceAlongRaceTrack(rs, dt, scene, fwdSpd)) {
+    rs.totalDist += fwdSpd * dt;
+    rs.bobPhase += dt * 8;
+  }
+}
+
+function applyContinuousMotion(rs, dt, movId, scene, currentBlockId = null) {
+  if (!rs._moveContinuous || (rs.stopTimer || 0) > 0 || rs.done) return;
+  if (currentBlockId && (SELF_DRIVING_BLOCKS.has(currentBlockId) || CRUISE_PAUSE_BLOCKS.has(currentBlockId))) return;
+  const brakeF = rs._brakeFactor ?? 1;
+  if (brakeF <= 0.01) { rs._moveContinuous = false; return; }
+  const ROBOT_SPD = { jets:2.0,flying:1.6,hover:1.4,wheels:1.2,wheels6:1.1,tracks:0.85,legs:1.0,fins:1.1,arm:0.6 };
+  const spd = ROBOT_SPD[movId] || 1.0;
+  const isRace = scene?.userData?.raceMode;
+  const sm = rs._speedMult ?? (isRace ? 1.0 : 0.6);
+  const boostM = rs._boostMul ?? 1;
+  const fwdSpd = MOVE_STEP_SIZE * 1.4 * sm * boostM * brakeF * (isRace ? spd * RACE_SPEED_BOOST * raceHazardMul(scene, rs) : 1);
+  // Rail mode: cruise gas follows the spline. Coded mode: drive in current heading.
+  if (isRace && scene?.userData?.raceCurve && shouldUseRaceSpline(rs, scene)) {
+    if (advanceAlongRaceTrack(rs, dt, scene, fwdSpd)) {
+      rs.totalDist += fwdSpd * dt;
+      rs.bobPhase += dt * 8;
+      return;
+    }
+  }
+  rs.x += Math.sin(rs.angle) * fwdSpd * dt;
+  rs.z += Math.cos(rs.angle) * fwdSpd * dt;
+  rs.totalDist += fwdSpd * dt;
+  rs.bobPhase += dt * 8;
+}
+
+function tickBoostTimer(rs, dt) {
+  if ((rs._boostTimer ?? 0) <= 0) return;
+  rs._boostTimer -= dt;
+  if (rs._boostTimer <= 0) {
+    rs._boostTimer = 0;
+    rs._boostMul = 1;
+    rs.raceBoostActive = false;
+  } else {
+    rs._boostMul = 1.8;
+    rs.raceBoostActive = true;
+  }
+}
+
+function applyBlock(block,rs,dt,movId,scene=null){
   const p=block.paramValues||{};
   const dur=rs.currentDur||1;
-  // Per-robot physics multipliers — each robot FEELS different
-  const ROBOT_SPD={jets:2.6,flying:1.8,hover:1.5,wheels:1.35,wheels6:1.25,tracks:0.9,legs:1.0,fins:1.3,arm:0.55};
+  // set_speed block maps player label → speed multiplier (affects animation speed on race courses).
+  const isRaceBlock = scene?.userData?.raceMode;
+  const speedMult = rs._speedMult ?? (isRaceBlock ? 1.0 : 0.6);
+  // Per-robot multiplier retained ONLY for race-course speed feel (does NOT affect step distance).
+  const ROBOT_SPD={jets:2.0,flying:1.6,hover:1.4,wheels:1.2,wheels6:1.1,tracks:0.85,legs:1.0,fins:1.1,arm:0.6};
   const spd=ROBOT_SPD[movId]||1.0;
-  const turnMult=movId==='jets'?2.2:movId==='legs'?1.6:movId==='tracks'?0.65:movId==='hover'?1.4:1.0;
   switch(block.id){
-    case 'move_forward':  {const d=(p.steps||3)*1.9*spd; rs.x+=Math.sin(rs.angle)*(d/dur)*dt; rs.z+=Math.cos(rs.angle)*(d/dur)*dt; rs.totalDist+=(d/dur)*dt; rs.bobPhase+=dt*8; break;}
-    case 'move_backward': {const d=(p.steps||1)*1.9*spd; rs.x-=Math.sin(rs.angle)*(d/dur)*dt; rs.z-=Math.cos(rs.angle)*(d/dur)*dt; rs.totalDist+=(d/dur)*dt*0.5; rs.bobPhase+=dt*6; break;}
-    case 'turn_left':     rs.angle+=((p.degrees||90)*Math.PI/180*turnMult)/dur*dt; break;
-    case 'turn_right':    rs.angle-=((p.degrees||90)*Math.PI/180*turnMult)/dur*dt; break;
+    case 'set_speed': {
+      const sp = p.speed;
+      if (typeof sp === 'number' && Number.isFinite(sp)) {
+        rs._speedMult = Math.max(0.1, Math.min(1.8, sp / 100));
+      } else if (typeof sp === 'string' && sp !== '' && !Number.isNaN(+sp)) {
+        rs._speedMult = Math.max(0.1, Math.min(1.8, (+sp) / 100));
+      } else {
+        const sm = { slow:0.4, medium:0.8, fast:1.2, turbo:1.8 };
+        rs._speedMult = sm[p.speed || 'fast'] ?? 1.2;
+      }
+      break;
+    }
+    case 'boost': {
+      if (rs.stepTime < 0.06) {
+        rs._boostTimer = p.seconds || 2;
+        rs._boostMul = 1.8;
+        rs.raceBoostActive = true;
+        if (scene?.userData?.raceMode) rs._raceSpeedMul = 1.8;
+      }
+      break;
+    }
+    case 'stop': {
+      rs._moveContinuous = false;
+      rs._brakeFactor = 0;
+      rs._boostTimer = 0;
+      rs._boostMul = 1;
+      rs.raceBoostActive = false;
+      break;
+    }
+    case 'brake': {
+      rs._moveContinuous = false;
+      const progress = Math.min(1, rs.stepTime / Math.max(0.01, dur));
+      rs._brakeFactor = Math.max(0, 1 - progress * 2.8);
+      break;
+    }
+    case 'orbit': {
+      const laps = p.times || 3;
+      const totalAngle = Math.PI * 2 * laps;
+      const arcSpd = MOVE_STEP_SIZE * 1.1;
+      rs.angle += (totalAngle / dur) * dt;
+      rs.x += Math.sin(rs.angle) * arcSpd * dt;
+      rs.z += Math.cos(rs.angle) * arcSpd * dt;
+      rs.totalDist += arcSpd * dt;
+      rs.bobPhase += dt * 8;
+      break;
+    }
+    case 'move_forward_continuous': {
+      if (rs.stepTime < 0.06) {
+        rs._moveContinuous = true;
+        rs._brakeFactor = 1;
+      }
+      break;
+    }
+    // MOVE_FORWARD: exact distance = steps × MOVE_STEP_SIZE. No robot-type scaling.
+    // speedMult only applies on race courses where blocks control a racing vehicle.
+    case 'move_forward': {
+      const d = (p.steps||3) * MOVE_STEP_SIZE * raceStepMult(scene, speedMult, spd, rs);
+      if (applyRaceTrackMotion(rs, dt, scene, d, dur)) break;
+      rs.x+=Math.sin(rs.angle)*(d/dur)*dt; rs.z+=Math.cos(rs.angle)*(d/dur)*dt;
+      rs.totalDist+=(d/dur)*dt; rs.bobPhase+=dt*8; break;
+    }
+    case 'move_backward': {
+      const d = (p.steps||1) * MOVE_STEP_SIZE * raceStepMult(scene, speedMult, spd, rs);
+      rs.x-=Math.sin(rs.angle)*(d/dur)*dt; rs.z-=Math.cos(rs.angle)*(d/dur)*dt;
+      rs.totalDist+=(d/dur)*dt*0.5; rs.bobPhase+=dt*6; break;
+    }
+    // TURN_LEFT / TURN_RIGHT: exact degrees. No turnMult — 90° always turns exactly 90°.
+    case 'turn_left':  rs.angle+=((p.degrees||90)*Math.PI/180)/dur*dt; break;
+    case 'turn_right': rs.angle-=((p.degrees||90)*Math.PI/180)/dur*dt; break;
+    // ARC TURNS: smooth 90° corner while moving forward (arc radius scales with speed)
+    case 'turn_corner_left': {
+      const arcDist = cornerArcDist(rs);
+      rs.angle += (Math.PI / 2) / dur * dt;
+      rs.x += Math.sin(rs.angle) * (arcDist / dur) * dt;
+      rs.z += Math.cos(rs.angle) * (arcDist / dur) * dt;
+      rs.totalDist += (arcDist / dur) * dt;
+      rs.bobPhase += dt * 8;
+      break;
+    }
+    case 'turn_corner_right': {
+      const arcDist = cornerArcDist(rs);
+      rs.angle -= (Math.PI / 2) / dur * dt;
+      rs.x += Math.sin(rs.angle) * (arcDist / dur) * dt;
+      rs.z += Math.cos(rs.angle) * (arcDist / dur) * dt;
+      rs.totalDist += (arcDist / dur) * dt;
+      rs.bobPhase += dt * 8;
+      break;
+    }
+    case 'curve_left': {
+      const degrees = p.degrees || 45;
+      const steps = Math.max(1, p.steps || 3);
+      const totalDist = steps * MOVE_STEP_SIZE * raceStepMult(scene, speedMult, spd, rs);
+      if (applyRaceTrackMotion(rs, dt, scene, totalDist, dur)) break;
+      const totalRot = degrees * Math.PI / 180;
+      rs.angle += (totalRot / dur) * dt;
+      rs.x += Math.sin(rs.angle) * (totalDist / dur) * dt;
+      rs.z += Math.cos(rs.angle) * (totalDist / dur) * dt;
+      rs.totalDist += (totalDist / dur) * dt;
+      rs.bobPhase += dt * 8;
+      break;
+    }
+    case 'curve_right': {
+      const degrees = p.degrees || 45;
+      const steps = Math.max(1, p.steps || 3);
+      const totalDist = steps * MOVE_STEP_SIZE * raceStepMult(scene, speedMult, spd, rs);
+      if (applyRaceTrackMotion(rs, dt, scene, totalDist, dur)) break;
+      const totalRot = degrees * Math.PI / 180;
+      rs.angle -= (totalRot / dur) * dt;
+      rs.x += Math.sin(rs.angle) * (totalDist / dur) * dt;
+      rs.z += Math.cos(rs.angle) * (totalDist / dur) * dt;
+      rs.totalDist += (totalDist / dur) * dt;
+      rs.bobPhase += dt * 8;
+      break;
+    }
+    // U-TURN: smooth 180° arc while moving forward (3 steps default arc)
+    case 'u_turn': {
+      const arcDist = 3 * MOVE_STEP_SIZE;
+      rs.angle += Math.PI / dur * dt;
+      rs.x += Math.sin(rs.angle) * (arcDist / dur) * dt;
+      rs.z += Math.cos(rs.angle) * (arcDist / dur) * dt;
+      rs.totalDist += (arcDist / dur) * dt;
+      rs.bobPhase += dt * 8;
+      break;
+    }
+    // MOVE FORWARD UNTIL condition
+    case 'move_forward_until': {
+      if (rs.stepTime < 0.06) {
+        rs._moveUntilCpStart = rs.raceCheckpoint ?? 0;
+        rs._moveUntilCollStart = rs.collisions ?? 0;
+      }
+      const cond = p.condition || p.cond || 'wall';
+      if (evaluateMoveUntilCondition(cond, rs, scene)) {
+        rs.stepTime = rs.currentDur;
+      } else {
+        const spd2 = MOVE_STEP_SIZE * 1.2 * (rs._speedMult ?? 0.6);
+        rs.x += Math.sin(rs.angle) * spd2 * dt;
+        rs.z += Math.cos(rs.angle) * spd2 * dt;
+        rs.totalDist += spd2 * dt;
+        rs.bobPhase += dt * 8;
+      }
+      break;
+    }
+    case 'turn_until_facing': {
+      const target = calcTargetHeading(p.direction || p.dir || 'goal', rs, scene);
+      const diff = normalizeAngleDiff(target - rs.angle);
+      if (Math.abs(diff) < 0.015) {
+        rs.angle = target;
+        rs.stepTime = rs.currentDur;
+      } else {
+        const turnRate = (Math.PI / 2) / 0.32;
+        rs.angle += Math.sign(diff) * Math.min(Math.abs(diff), turnRate * dt);
+      }
+      break;
+    }
+    case 'rotate_to_heading': {
+      const target = ((p.degrees ?? p.heading ?? 0) % 360) * Math.PI / 180;
+      const diff = normalizeAngleDiff(target - rs.angle);
+      if (Math.abs(diff) < 0.009) {
+        rs.angle = target;
+        rs.stepTime = rs.currentDur;
+      } else {
+        const turnRate = (Math.PI / 2) / Math.max(0.2, dur);
+        rs.angle += Math.sign(diff) * Math.min(Math.abs(diff), turnRate * dt);
+      }
+      break;
+    }
+    case 'move_forward_units': {
+      const units = Math.max(0.1, p.units || 6);
+      rs.x += Math.sin(rs.angle) * (units / dur) * dt;
+      rs.z += Math.cos(rs.angle) * (units / dur) * dt;
+      rs.totalDist += (units / dur) * dt;
+      rs.bobPhase += dt * 8;
+      break;
+    }
+    // ZIGZAG: alternating left-right weave pattern
+    case 'zigzag': {
+      const times = Math.max(2, p.times || 4);
+      const width = Math.max(1, p.width || 2);
+      const segDur = dur / times;
+      const segIdx = Math.min(times - 1, Math.floor(rs.stepTime / Math.max(0.01, segDur)));
+      const zigAngle = (segIdx % 2 === 0 ? 1 : -1) * (Math.PI / 4);
+      const dist = width * MOVE_STEP_SIZE;
+      rs.x += Math.sin(rs.angle + zigAngle) * (dist / segDur) * dt;
+      rs.z += Math.cos(rs.angle + zigAngle) * (dist / segDur) * dt;
+      rs.totalDist += (dist / segDur) * dt;
+      rs.bobPhase += dt * 10;
+      break;
+    }
+    // CIRCLE: complete circle — radius in steps, direction left/right
+    case 'circle': {
+      const radiusSteps = Math.max(1, p.radius || 3);
+      const dirSign = (p.direction === 'right' || p.dir === 'right' || p.dir === 'cw') ? -1 : 1;
+      const circumference = 2 * Math.PI * radiusSteps * MOVE_STEP_SIZE;
+      const omega = (dirSign * Math.PI * 2) / dur;
+      const arcSpd = circumference / dur;
+      rs.angle += omega * dt;
+      rs.x += Math.sin(rs.angle) * arcSpd * dt;
+      rs.z += Math.cos(rs.angle) * arcSpd * dt;
+      rs.totalDist += arcSpd * dt;
+      rs.bobPhase += dt * 8;
+      break;
+    }
     case 'spin':          rs.angle+=(Math.PI*2)/dur*dt; break;
-    case 'fly_up':        rs.y=Math.min(6,(rs.y||0)+2.5/dur*dt); break;
+    case 'follow_track_on':  rs.raceAutoSteer = true; rs.raceCodeHint = ''; break;
+    case 'follow_track_off': rs.raceAutoSteer = false; break;
+    case 'fly_up':        {
+      if (scene?.userData?.flappyMode) {
+        if (rs.stepTime < 0.06) scene.userData.flap?.(1.0);
+      } else rs.y=Math.min(6,(rs.y||0)+2.5/dur*dt);
+      break;
+    }
     case 'fly_down':      rs.y=Math.max(0,(rs.y||0)-2.5/dur*dt); break;
     case 'jump':          {const phase=rs.stepTime/dur; rs.y=Math.max(0,Math.sin(phase*Math.PI)*1.8); break;}
     case 'avoid_obstacle':{rs.angle-=(Math.PI/2)/dur*dt; rs.x+=Math.sin(rs.angle)*spd*dt; rs.z+=Math.cos(rs.angle)*spd*dt; rs.totalDist+=spd*dt*0.6; break;}
-    case 'follow_line':   {const d=(p.steps||4)*1.5*spd; rs.x+=Math.sin(rs.angle)*(d/dur)*dt; rs.z+=Math.cos(rs.angle)*(d/dur)*dt; rs.totalDist+=(d/dur)*dt; rs.bobPhase+=dt*7; break;}
-    case 'patrol_area':   {rs.x+=Math.sin(rs.angle)*spd*dt; rs.z+=Math.cos(rs.angle)*spd*dt; rs.totalDist+=spd*dt; rs.angle+=dt*0.5; break;}
-    case 'follow_target': {const d=(p.steps||3)*1.6*spd; rs.x+=Math.sin(rs.angle)*(d/dur)*dt; rs.z+=Math.cos(rs.angle)*(d/dur)*dt; rs.totalDist+=(d/dur)*dt; break;}
+    case 'follow_line':   {const d=(p.steps||4)*MOVE_STEP_SIZE; rs.x+=Math.sin(rs.angle)*(d/dur)*dt; rs.z+=Math.cos(rs.angle)*(d/dur)*dt; rs.totalDist+=(d/dur)*dt; rs.bobPhase+=dt*7; break;}
+    case 'patrol_area':   {const ps=spd*speedMult*0.8; rs.x+=Math.sin(rs.angle)*ps*dt; rs.z+=Math.cos(rs.angle)*ps*dt; rs.totalDist+=ps*dt; rs.angle+=dt*0.5; break;}
+    case 'follow_target': {const d=(p.steps||3)*2.2*spd*speedMult; rs.x+=Math.sin(rs.angle)*(d/dur)*dt; rs.z+=Math.cos(rs.angle)*(d/dur)*dt; rs.totalDist+=(d/dur)*dt; break;}
     case 'return_home':   {const dx=-rs.x,dz=5-rs.z; const len=Math.sqrt(dx*dx+dz*dz)||1; rs.x+=dx/len*3*dt; rs.z+=dz/len*3*dt; rs.totalDist+=3*dt*0.4; break;}
     case 'search_area':    rs.angle+=(Math.PI*2)/dur*dt; break;
     // drone
@@ -9290,7 +9448,8 @@ function applyBlock(block,rs,dt,movId){
     case 'climb_mode':     /* mode change, no movement */ break;
     case 'power_mode':     /* mode change */ break;
     // spider — stepping gait
-    case 'step_forward':   {const d=(p.steps||3)*1.3*spd; rs.x+=Math.sin(rs.angle)*(d/dur)*dt; rs.z+=Math.cos(rs.angle)*(d/dur)*dt; rs.totalDist+=(d/dur)*dt; rs.bobPhase+=dt*12; break;}
+    case 'step_forward':   {const d=(p.steps||3)*2.0*spd*speedMult; rs.x+=Math.sin(rs.angle)*(d/dur)*dt; rs.z+=Math.cos(rs.angle)*(d/dur)*dt; rs.totalDist+=(d/dur)*dt; rs.bobPhase+=dt*12; break;}
+    case 'climb':
     case 'climb_wall':     rs.y=Math.min(4,rs.y+3/dur*dt); rs.totalDist+=3/dur*dt; break;
     case 'stabilize_legs': rs.bobPhase=0; break;
     case 'crouch':         rs.y=Math.max(0,rs.y-0.3); break;
@@ -9327,7 +9486,79 @@ function applyBlock(block,rs,dt,movId){
     case 'wave':           {rs.bobPhase+=dt*15; break;}
     // NEW — dive / float
     case 'dive':           rs.y=Math.max(-2,(rs.y||0)-2/dur*dt); break;
-    case 'float_up':       rs.y=Math.min(2,(rs.y||0)+1.5/dur*dt); break;
+    case 'float_up':       {
+      if (scene?.userData?.flappyMode) {
+        if (rs.stepTime < 0.06) scene.userData.flap?.(0.9);
+      } else rs.y=Math.min(2,(rs.y||0)+1.5/dur*dt);
+      break;
+    }
+    case 'flap':
+      if (scene?.userData?.flappyMode && rs.stepTime < 0.06) scene.userData.flap?.(1.0);
+      break;
+    case 'set_flap_strength':
+      if (rs.stepTime < 0.06) scene?.userData?.setFlapStrength?.(Math.max(1, Math.min(10, p.strength || 5)));
+      break;
+    case 'set_gravity_strength':
+      if (rs.stepTime < 0.06) scene?.userData?.setGravityStrength?.(Math.max(1, Math.min(10, p.strength || 5)));
+      break;
+    case 'show_score':
+      if (rs.stepTime < 0.06) scene?.userData?.setShowScoreHud?.(true);
+      break;
+    case 'restart_game':
+      if (rs.stepTime < 0.06) {
+        scene?.userData?.restartFlappyGame?.();
+        rs.flappyCrashed = false;
+        rs.flappyAwaitingRestart = false;
+        rs.flappyScore = 0;
+      }
+      break;
+    case 'pause':
+      rs.pauseTimer = Math.max(0, p.seconds || 1);
+      break;
+    case 'distance_to_pipe':
+    case 'bird_height':
+    case 'gap_center_height':
+    case 'is_falling':
+    case 'read_score':
+    case 'read_high_score': {
+      const sens = scene?.userData?.getFlappySensors?.() || {};
+      rs.lastSensor = {
+        distance_to_pipe: sens.distanceToPipe,
+        bird_height: sens.birdHeight,
+        gap_center_height: sens.gapCenterHeight,
+        is_falling: sens.isFalling,
+        read_score: sens.score,
+        read_high_score: sens.highScore,
+      }[block.id];
+      break;
+    }
+    case 'race_speed':
+    case 'race_dist_left_rail':
+    case 'race_dist_right_rail':
+    case 'race_on_track':
+    case 'race_current_lap': {
+      const sens = scene?.userData?.getRaceSensors?.() || {};
+      rs.lastSensor = {
+        race_speed: sens.speed,
+        race_dist_left_rail: sens.distanceToLeftRail,
+        race_dist_right_rail: sens.distanceToRightRail,
+        race_on_track: sens.isOnTrack ? 1 : 0,
+        race_current_lap: sens.currentLap,
+      }[block.id];
+      break;
+    }
+    case 'set_var':
+      rs.vars = rs.vars || {};
+      rs.vars[p.name || 'myVar'] = p.value ?? 0;
+      break;
+    case 'create_var':
+      rs.vars = rs.vars || {};
+      if (rs.vars[p.name || 'myVar'] == null) rs.vars[p.name || 'myVar'] = 0;
+      break;
+    case 'change_var':
+      rs.vars = rs.vars || {};
+      rs.vars[p.name || 'myVar'] = (rs.vars[p.name || 'myVar'] || 0) + (p.value ?? 1);
+      break;
 
     // ── GRIPPER SYSTEM BLOCKS ────────────────────────────────────────────────
     // These set triggers on rs that the tick loop reads on block-start only
@@ -9390,6 +9621,74 @@ function applyBlock(block,rs,dt,movId){
       rs.gripSensitivity=Math.max(1,Math.min(5,p.level||3));
       break;
 
+    case 'wait':
+      break;
+    case 'repeat':
+    case 'forever':
+      break;
+    case 'led_on':
+    case 'lights_on':
+      if (rs.stepTime < 0.05) rs.ledOn = true;
+      break;
+    case 'led_off':
+    case 'lights_off':
+      if (rs.stepTime < 0.05) rs.ledOn = false;
+      break;
+    case 'led_blink':
+    case 'flash':
+      rs.bobPhase += dt * 12 * (p.times || 3);
+      break;
+    case 'play_sound':
+      if (rs.stepTime < 0.05) rs.playSound = p.sound || 'beep';
+      break;
+    case 'alarm_sound':
+      if (rs.stepTime < 0.05) rs.playSound = 'alarm';
+      break;
+    case 'bank_left':
+      rs.angle += ((p.degrees || 30) * Math.PI / 180) / dur * dt;
+      rs.x += Math.sin(rs.angle) * spd * 0.9 * dt;
+      rs.z += Math.cos(rs.angle) * spd * 0.9 * dt;
+      rs.totalDist += spd * 0.9 * dt;
+      break;
+    case 'bank_right':
+      rs.angle -= ((p.degrees || 30) * Math.PI / 180) / dur * dt;
+      rs.x += Math.sin(rs.angle) * spd * 0.9 * dt;
+      rs.z += Math.cos(rs.angle) * spd * 0.9 * dt;
+      rs.totalDist += spd * 0.9 * dt;
+      break;
+    case 'roll':
+      rs.angle += ((p.degrees || 360) * Math.PI / 180) / dur * dt;
+      break;
+    case 'dive_deep':
+      rs.y = Math.max(-(p.depth || 10), (rs.y || 0) - 2.5 / dur * dt);
+      break;
+    case 'surface':
+      rs.y = Math.min(0, (rs.y || 0) + 2.5 / dur * dt);
+      break;
+    case 'sonar_ping':
+    case 'sonar':
+      if (rs.stepTime < 0.05) rs.scanTrigger = true;
+      break;
+    case 'scan':
+      if (rs.stepTime < 0.05) rs.scanTrigger = true;
+      break;
+    case 'read_altitude':
+      rs.lastSensor = rs.y || 0;
+      break;
+    case 'wind_speed':
+      rs.lastSensor = scene?.userData?.windSpeed ?? 0;
+      break;
+    case 'depth_sensor':
+      rs.lastSensor = Math.abs(rs.y || 0);
+      break;
+    case 'pressure':
+      rs.lastSensor = Math.min(100, Math.abs(rs.y || 0) * 4);
+      break;
+    case 'if_color':
+    case 'if_distance':
+    case 'detect_item':
+      break;
+
     default: break;
   }
 }
@@ -9413,18 +9712,30 @@ function alignRobotToGround(model){
   model.traverse(o=>{ if(o.isMesh) o.frustumCulled=false; });
 }
 
+/** Plant kart on the built road mesh (raycast) for MK / race courses. */
+function plantRaceKartOnRoad(robot, scene, rs, { x, z, trackT, splineY = 0 } = {}) {
+  const planted = plantKartOnRoad(robot, scene, { x, z, trackT, splineY, rs });
+  return planted;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // AAA VISUAL HELPERS — block labels, colours, path prediction
 // ─────────────────────────────────────────────────────────────────────────────
 const BLOCK_EXEC_LABELS = {
   move_forward:'▶ Move Forward', move_backward:'◀ Move Back',
   turn_left:'↩ Turn Left', turn_right:'↪ Turn Right',
-  spin:'🔄 Spin', stop:'⏹ Stop',
+  turn_corner_left:'↰ Corner Left', turn_corner_right:'↱ Corner Right',
+  curve_left:'〰 Curve Left', curve_right:'〰 Curve Right',
+  zigzag:'〽 Zigzag', circle:'⭕ Circle', u_turn:'↩ U-Turn',
+  move_forward_continuous:'▶ Move Continuously', move_forward_until:'⏭ Move Until',
+  turn_until_facing:'🔄 Turn Until Facing', rotate_to_heading:'📐 Rotate To Heading',
+  move_forward_units:'📏 Move Units', brake:'🛑 Brake', boost:'🚀 Boost',
+  spin:'🔄 Spin', stop:'⏹ Stop', orbit:'🔄 Orbit',
   fly_forward:'▶ Fly Forward', fly_backward:'◀ Fly Back',
   fly_left:'← Fly Left', fly_right:'→ Fly Right',
   fly_up:'↑ Fly Up', fly_down:'↓ Fly Down',
   takeoff:'🚀 Takeoff', land:'🛬 Land',
-  jump:'🦘 Jump', leap:'🦘 Leap',
+  jump:'🦘 Jump', leap:'🦘 Leap', flap:'🐦 Flap!',
   grab:'✊ Grab', release:'🤚 Release',
   scan:'📡 Scan', aerial_scan:'📡 Aerial Scan',
   obstacle_ahead:'👁 Obstacle Check', avoid_obstacle:'↩ Avoid!',
@@ -9433,7 +9744,6 @@ const BLOCK_EXEC_LABELS = {
   patrol_area:'🔍 Patrol', return_home:'🏠 Return Home',
   follow_line:'📏 Follow Line', follow_target:'🎯 Follow Target',
   hover:'🛸 Hover', altitude_hold:'🛸 Hold Alt',
-  grab:'✊ Grab', release:'🤚 Release',
   lift_object:'⬆ Lift', drop_object:'⬇ Drop',
   fire_laser:'⚡ Fire Laser', scan_object:'📷 Scan Object',
   wait:'⏱ Wait', repeat:'🔁 Repeat', forever:'♾ Forever',
@@ -9455,7 +9765,7 @@ const BLOCK_EXEC_COLORS = {
   fly_up:'#22d3ee', fly_down:'#67e8f9', fly_forward:'#22c55e',
   fly_left:'#60a5fa', fly_right:'#60a5fa', fly_backward:'#86efac',
   takeoff:'#22d3ee', land:'#67e8f9',
-  jump:'#a78bfa', leap:'#a78bfa', climb_wall:'#d946ef',
+  jump:'#a78bfa', leap:'#a78bfa', flap:'#f97316', climb_wall:'#d946ef',
   grab:'#f59e0b', release:'#fbbf24', lift_object:'#f59e0b', drop_object:'#fbbf24',
   thrust:'#ef4444', jet_boost:'#ef4444', roll_left:'#f97316', roll_right:'#f97316',
   scan:'#8b5cf6', aerial_scan:'#8b5cf6', obstacle_ahead:'#7c3aed', scan_object:'#7c3aed',
@@ -9474,10 +9784,38 @@ const BLOCK_EXEC_COLORS = {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
+// FLAPPY BIRD — instant action runner (spacebar + arena events)
+// ─────────────────────────────────────────────────────────────────────────────
+function runFlappyInstantActions(actions, rs, scene, movId, onBlockActive) {
+  if (!actions?.length || !scene?.userData?.flappyMode) return;
+  actions.forEach((act, idx) => {
+    rs.stepTime = 0;
+    rs.currentDur = getBlockDuration(act);
+    rs._blockFired = false;
+    applyBlock(act, rs, 0.05, movId, scene);
+    onBlockActive?.(idx, act.label || act.id, act.blockUid || act.blocklyId);
+  });
+}
+
+const AERIAL_ARENA_TYPES = new Set([
+  'sky', 'hover', 'jet', 'flight_rings', 'flight_acro', 'flight_slalom', 'dodge_asteroids',
+  'flappy_bird', 'jet_stunt', 'sky_island', 'storm_cloud', 'cloud_race', 'mountain_pass',
+  'coastal_rescue', 'glacier_flyover', 'typhoon_escape', 'desert_air', 'neon_race',
+  'canyon_flight', 'warp_gate', 'volcanic_flythrough',
+]);
+
+function isAerialSim(arenaType, movId, ab) {
+  if (ab?.flappySideCam) return true;
+  if (AERIAL_ARENA_TYPES.has(arenaType)) return true;
+  return ['flying', 'hover', 'jets'].includes(movId);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // 3D SIMULATOR CANVAS
 // ─────────────────────────────────────────────────────────────────────────────
-function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsUpdate,arenaType,challenge,onBlockActive,introKey,onZoneChange}){
+function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsUpdate,arenaType,challenge,onBlockActive,introKey,onZoneChange,flappyHandlersRef,flappyProgramRef,flappySpacebarRef,flappyStartRunRef,fightingHandlersRef,fightingProgramRef,fightingCombatRef,footballHandlersRef,footballProgramsRef,eventHandlersRef}){
   const wrapRef=useRef(null);
+  const [simError,setSimError]=useState(null);
   const modeRef=useRef('idle');
   const rafRef=useRef(null);
   const fpsRef=useRef({frames:0,last:0});
@@ -9488,47 +9826,215 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
   const challengeKey = challenge?.id || 'default';
 
   const introKeyRef=useRef(introKey||0);
+  const sceneHandleRef=useRef(null);
+  const lastRunModeRef=useRef('idle');
   useEffect(()=>{modeRef.current=runMode;},[runMode]);
   useEffect(()=>{blocksRef.current=codeBlocks||[];},[codeBlocks]);
   useEffect(()=>{ if(introKey>introKeyRef.current){ introKeyRef.current=introKey; } },[introKey]);
+  // Keep block program in sync when Simulate fires (React state can lag one frame).
+  useEffect(() => {
+    const start = eventHandlersRef?.current?.start;
+    if (start?.length) blocksRef.current = start;
+  }, [introKey, codeBlocks, eventHandlersRef]);
+  // When GO fires, guarantee race karts have blocks + cruise gas even if React state lags one frame.
+  useEffect(() => {
+    const prev = lastRunModeRef.current;
+    lastRunModeRef.current = runMode;
+    if (runMode !== 'running' && runMode !== 'step') return;
+    if (prev === 'running' || prev === 'step' || prev === 'paused') return;
+    const scene = sceneHandleRef.current?.scene;
+    if (!scene?.userData?.raceMode) return;
+    if ((blocksRef.current?.length ?? 0) === 0 && eventHandlersRef?.current?.start?.length) {
+      blocksRef.current = eventHandlersRef.current.start;
+    }
+    seedRaceDriveState(rsRef.current);
+  }, [runMode, eventHandlersRef]);
+
+  // Refresh football/fight block runtimes when a new run starts — without rebuilding the whole arena.
+  useEffect(() => {
+    const handle = sceneHandleRef.current;
+    if (!handle?.scene) return;
+    if (handle.scene.userData.footballMode && footballHandlersRef) {
+      const progs = footballProgramsRef?.current || {};
+      footballHandlersRef.current = createFootballRuntimes(
+        progs, handle.scene, (uid, op) => onBlockActive?.(-1, op, uid),
+      );
+      if (flappyStartRunRef) {
+        flappyStartRunRef.current = () => tickFootballRuntimes(footballHandlersRef.current, 1 / 60);
+      }
+    }
+    if (handle.scene.userData.combatMode && fightingHandlersRef) {
+      const prog = fightingProgramRef?.current || { handlers: {}, tickLoops: [] };
+      fightingHandlersRef.current = new FightingBlockRuntime(
+        prog, handle.scene, (uid, op) => onBlockActive?.(-1, op, uid),
+      );
+      if (flappyStartRunRef) flappyStartRunRef.current = () => fightingHandlersRef.current?.tick?.();
+    }
+  }, [introKey, onBlockActive, footballHandlersRef, fightingHandlersRef, footballProgramsRef, fightingProgramRef, flappyStartRunRef]);
 
   useEffect(()=>{
     const el=wrapRef.current; if(!el) return;
+    setSimError(null);
+    let renderer=null;
+    let composer=null;
+    let ro=null;
+    let onVis=null;
+    let _sizeTimer=null;
+    let execTrail=null;
+    let previewPath=null;
+    try {
     const W=Math.max(el.clientWidth,1),H=Math.max(el.clientHeight,1);
+    const isRaceCourse=_isRaceArena(arenaType,challenge);
+    const _isBiomeTrackEarly = BIOME_ARENA_TYPES.has(arenaType)
+      || BIOME_ARENA_TYPES.has(challenge?.arenaType)
+      || BIOME_ARENA_TYPES.has(challenge?.id);
     const scene=new THREE.Scene();
-    const camera=new THREE.PerspectiveCamera(54,W/H,0.1,120);
-    const renderer=new THREE.WebGLRenderer({antialias:false,powerPreference:'high-performance'});
-    renderer.setSize(W,H); renderer.setPixelRatio(Math.min(window.devicePixelRatio,1.5));
-    renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+    const camera=new THREE.PerspectiveCamera(54,W/H,0.1,isRaceCourse?600:120);
+    // ── Quality tier — school devices default low; user can bump via 🔄 button ──
+    const _biomeRaceEarly = _isBiomeTrackEarly && _isRaceArena(arenaType, challenge);
+    let _qTier = detectQualityTier();
+    try {
+      const savedTier = localStorage.getItem('bb_quality_tier');
+      if (savedTier === 'low' || savedTier === 'medium' || savedTier === 'high') _qTier = savedTier;
+    } catch { /* ignore */ }
+    const _q     = QUALITY_PRESETS[_qTier];
+    // Rainbow Road needs bloom for the MK neon glass look; other races stay direct-render for FPS.
+    const _rainbowArenaIds = new Set(['rainbow_road', 'street_grand_prix', 'circuit_sprint', 'racing_circuit']);
+    const _nightMkArenas = new Set([
+      'mario_circuit', 'bowser_castle', 'piranha_plant_slide', 'grumble_volcano',
+      'cyber_boulevard_01', 'moonlight_cavern_01', 'crystal_palace_01',
+    ]);
+    const _isBiomeTrack = _isBiomeTrackEarly;
+    const _biomeRace = _isBiomeTrack && isRaceCourse;
+    const _isRainbowRoad = _rainbowArenaIds.has(arenaType)
+      || _rainbowArenaIds.has(challenge?.id)
+      || _rainbowArenaIds.has(challenge?.arenaType);
+    const _isNightMk = _nightMkArenas.has(arenaType) || _nightMkArenas.has(challenge?.arenaType);
+    // Biome tracks: bloom only on high tier; tablets/MacBooks skip post-process for FPS
+    const _usePostProcessing = _isBiomeTrack
+      ? _q.postProcessing
+      : (isRaceCourse ? false : _q.postProcessing);
+    // Native-resolution cup tracks — blur was from 0.7–0.85 PR + CSS upscale
+    const _racePixelRatio = isRaceCourse
+      ? Math.min(
+        window.devicePixelRatio,
+        _biomeRace
+          ? (_qTier === 'high' ? 2.0 : 1.5)
+          : (_isBiomeTrack ? _q.pixelRatio : (_qTier === 'high' ? 1.5 : 1.0)),
+      )
+      : Math.min(window.devicePixelRatio, _q.pixelRatio);
+
+    renderer=createSimWebGLRenderer({
+      antialias: isRaceCourse || _q.shadowEnabled,
+      lowPower: _qTier === 'low',
+      canvas: (() => {
+        const c = document.createElement('canvas');
+        c.className = 'll-sim-canvas';
+        c.style.display = 'block';
+        c.style.width = '100%';
+        c.style.height = '100%';
+        c.style.pointerEvents = 'none';
+        el.appendChild(c);
+        return c;
+      })(),
+    });
+    if(!renderer.getContext()){
+      setSimError('WebGL is not available in your browser. Try updating Chrome or enabling hardware acceleration in Settings.');
+      renderer.dispose();
+      return ()=>{};
+    }
+    renderer.setSize(W,H,false);
+    renderer.setPixelRatio(_racePixelRatio);
+    renderer.shadowMap.enabled = _isBiomeTrack
+      ? false
+      : (isRaceCourse ? false : _q.shadowEnabled);
+    // PCFShadowMap is ~30% cheaper than PCFSoftShadowMap with minimal quality diff
+    renderer.shadowMap.type = THREE.PCFShadowMap;
     if (THREE.SRGBColorSpace) renderer.outputColorSpace = THREE.SRGBColorSpace;
+    scene.userData._renderer = renderer;
     const canvas=renderer.domElement;
-    canvas.className='ll-sim-canvas';
-    canvas.style.display='block';
-    canvas.style.width='100%';
-    canvas.style.height='100%';
-    el.appendChild(canvas);
+    if (!canvas.className) canvas.className = 'll-sim-canvas';
+    if (_isBiomeTrack) {
+      el.classList.add('ll-sim-biome');
+      const biomeArena = arenaType || challenge?.arenaType || challenge?.id || '';
+      el.dataset.arena = biomeArena;
+      el.dataset.buildStamp = window.__BYTEBUDDIES_BUILD || 'dev';
+      // CSS filter on WebGL canvas softens pixels — grade in shader instead for races
+      if (!isRaceCourse) {
+        canvas.classList.add('ll-sim-biome-grade');
+        canvas.style.filter = getBiomeCssGrade(biomeArena);
+      }
+    }
 
     const isForestCourse=arenaType==='jungle'||arenaType==='forest_trail'||challenge?.isFoxChase||challenge?.id==='fox_battery_chase';
 
     // Per-arena colour grade (saturation + warm/cool gain tint)
-    const _AG={sky:{s:1.05,g:[1.02,1.02,1.05],b:0.9,t:0.55},space:{s:1.10,g:[0.95,0.98,1.12],b:1.6,t:0.30},cavern:{s:1.20,g:[1.00,0.96,1.10],b:1.7,t:0.25},neon_race:{s:1.25,g:[1.05,0.98,1.10],b:1.8,t:0.22},underwater:{s:1.15,g:[0.92,1.02,1.10],b:1.4,t:0.30},jungle:{s:1.30,g:[1.05,1.05,0.92],b:1.0,t:0.45},factory:{s:1.00,g:[0.96,1.00,1.05],b:1.5,t:0.30},temple:{s:1.18,g:[1.06,1.00,0.90],b:1.2,t:0.38},combat:{s:1.15,g:[1.08,0.95,0.92],b:1.6,t:0.28},jet:{s:1.10,g:[1.03,1.02,0.98],b:1.0,t:0.50},zero_g:{s:1.10,g:[0.97,0.99,1.10],b:1.5,t:0.30},lego:{s:1.20,g:[1.04,1.02,1.00],b:0.9,t:0.55},terrain:{s:1.15,g:[1.05,1.02,0.94],b:1.0,t:0.48},ground:{s:1.30,g:[1.05,1.05,0.92],b:1.2,t:0.42},default:{s:1.10,g:[1.02,1.01,1.00],b:1.2,t:0.40}};
+    // b = initial bloom strength, t = initial bloom threshold.
+    // configureLabRenderer overrides these; raceVisual overrides again for race courses.
+    // Keep seeds conservative — only truly emissive objects should bloom.
+    const _AG={sky:{s:1.05,g:[1.02,1.02,1.05],b:0.20,t:0.70},space:{s:1.10,g:[0.95,0.98,1.12],b:0.22,t:0.65},cavern:{s:1.20,g:[1.00,0.96,1.10],b:0.22,t:0.62},neon_race:{s:1.25,g:[1.05,0.98,1.10],b:0.25,t:0.60},rainbow_road:{s:1.12,g:[1.02,1.0,1.06],b:0.22,t:0.68},street_grand_prix:{s:1.12,g:[1.02,1.0,1.06],b:0.20,t:0.70},circuit_sprint:{s:1.12,g:[1.02,1.0,1.06],b:0.20,t:0.70},sunny_circuit:{s:1.18,g:[1.05,1.02,1.0],b:0.18,t:0.72},dragon_skyway:{s:1.15,g:[1.04,1.02,1.02],b:0.20,t:0.70},volcano_drift:{s:1.20,g:[1.10,0.98,0.88],b:0.22,t:0.68},mario_circuit:{s:1.15,g:[1.05,1.02,1.0],b:0.32,t:0.72},luigi_circuit:{s:1.12,g:[1.04,1.02,0.98],b:0.14,t:0.88},moo_moo_meadows:{s:1.10,g:[1.02,1.0,0.96],b:0.10,t:0.90},underwater:{s:1.15,g:[0.92,1.02,1.10],b:0.20,t:0.68},jungle:{s:1.30,g:[1.05,1.05,0.92],b:0.18,t:0.72},factory:{s:1.00,g:[0.96,1.00,1.05],b:0.20,t:0.70},temple:{s:1.18,g:[1.06,1.00,0.90],b:0.20,t:0.70},combat:{s:1.15,g:[1.08,0.95,0.92],b:0.22,t:0.68},jet:{s:1.10,g:[1.03,1.02,0.98],b:0.20,t:0.70},zero_g:{s:1.10,g:[0.97,0.99,1.10],b:0.22,t:0.68},lego:{s:1.20,g:[1.04,1.02,1.00],b:0.20,t:0.72},terrain:{s:1.15,g:[1.05,1.02,0.94],b:0.18,t:0.72},ground:{s:1.30,g:[1.05,1.05,0.92],b:0.20,t:0.70},default:{s:1.10,g:[1.02,1.01,1.00],b:0.20,t:0.70}};
     const _g=_AG[arenaType]||_AG.default;
     const ColorGradeShader={uniforms:{tDiffuse:{value:null},sat:{value:_g.s},gain:{value:new THREE.Vector3(..._g.g)}},vertexShader:`varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,fragmentShader:`uniform sampler2D tDiffuse;uniform float sat;uniform vec3 gain;varying vec2 vUv;void main(){vec4 t=texture2D(tDiffuse,vUv);vec3 c=t.rgb;float l=dot(c,vec3(0.2126,0.7152,0.0722));c=mix(vec3(l),c,sat)*gain;gl_FragColor=vec4(clamp(c,0.0,1.0),t.a);}`};
 
-    const composer=new EffectComposer(renderer);
-    composer.addPass(new RenderPass(scene,camera));
-    const bloomPass=new UnrealBloomPass(new THREE.Vector2(W,H),_g.b,0.5,_g.t);
-    composer.addPass(bloomPass);
-    composer.addPass(new ShaderPass(ColorGradeShader));
-    const fxaaPass=new ShaderPass(FXAAShader);
-    const _setFxaa=(w,h)=>{const pr=Math.min(window.devicePixelRatio,2);fxaaPass.material.uniforms.resolution.value.set(1/(w*pr),1/(h*pr));};
-    _setFxaa(W,H);
-    composer.addPass(fxaaPass);
-    composer.addPass(new OutputPass());
-    configureLabRenderer(renderer, bloomPass, { isForest: isForestCourse });
-    const renderFrame=()=>composer.render();
+    let bloomPass = null;
+    let fxaaPass = null;
+    const _setFxaa = (w, h) => {
+      if (!fxaaPass) return;
+      const pr = renderer.getPixelRatio();
+      fxaaPass.material.uniforms.resolution.value.set(1 / (w * pr), 1 / (h * pr));
+    };
 
-    const { amb, hemi, sun, fill } = setupSimLighting(scene, { isForest: isForestCourse });
+    // Bloom runs at tier-scaled resolution — cup races keep full bloom scale for neon glow
+    const bloomScale = (_q.bloomScale || 0.65) * (isRaceCourse && !_biomeRace ? 0.85 : 1);
+    const bloomW = Math.round(W * bloomScale);
+    const bloomH = Math.round(H * bloomScale);
+    if (_usePostProcessing) {
+      composer=new EffectComposer(renderer);
+      composer.addPass(new RenderPass(scene,camera));
+      bloomPass=new UnrealBloomPass(new THREE.Vector2(bloomW,bloomH),_g.b,0.5,_g.t);
+      composer.addPass(bloomPass);
+      composer.addPass(new ShaderPass(ColorGradeShader));
+      // FXAA softens cup tracks at native resolution — skip for biome CodeRacer
+      if (!_biomeRace) {
+        fxaaPass=new ShaderPass(FXAAShader);
+        _setFxaa(W,H);
+        composer.addPass(fxaaPass);
+      }
+      composer.addPass(new OutputPass());
+      configureLabRenderer(renderer, bloomPass, { isForest: isForestCourse, isRace: isRaceCourse });
+      if (bloomPass && !_isRainbowRoad) bloomPass.strength *= _q.bloomStrength;
+    } else {
+      configureLabRenderer(renderer, null, { isForest: isForestCourse, isRace: isRaceCourse });
+    }
+    if (_isBiomeTrack) {
+      if (THREE.ACESFilmicToneMapping) renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.1;
+    }
+    // Low-quality tier / race direct render: skip post-processing (saves ~4–8ms/frame).
+    let _aqPostEnabled = _usePostProcessing;
+    let renderFrame = _aqPostEnabled
+      ? ()=>composer.render()
+      : ()=>renderer.render(scene,camera);
+
+    scene.userData.qualityTier = _qTier;
+    scene.userData.qualityPreset = _q;
+
+    const { amb, hemi, sun, fill } = setupSimLighting(scene, {
+      isForest: isForestCourse,
+      shadowEnabled: _q.shadowEnabled,
+      shadowMapSize: _q.shadowMapSize,
+    });
+    sun.castShadow = (_isBiomeTrack && _q.shadowEnabled) || (!isRaceCourse && _q.shadowEnabled);
+    if(isRaceCourse){
+      // Tighter frustum — shadows only cover the area directly around the robot.
+      // ±80 was covering 160 units of track at once, wasting shadow resolution.
+      sun.shadow.camera.far=160;
+      sun.shadow.camera.left=-45;
+      sun.shadow.camera.right=45;
+      sun.shadow.camera.top=45;
+      sun.shadow.camera.bottom=-45;
+      sun.shadow.camera.updateProjectionMatrix();
+    }
 
     if(isForestCourse){
       const spawnWarm=new THREE.PointLight(0xffe8b0,0.22,12);
@@ -9542,8 +10048,80 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
       scene.add(spawnPL);
     }
 
-    buildSmartArena(scene,arenaType,challenge);
-    stylizeMeshMaterials(scene, { keepEmissive: true });
+    if (_isBiomeTrack) {
+      scene.userData.skipArenaAtmosphere = true;
+    }
+
+    buildSmartArena(scene, arenaType, challenge, robotConfig);
+    // Apply biome cinematic bloom after arena sets raceVisual
+    if (_isBiomeTrack && bloomPass && scene.userData.raceVisual) {
+      const rv = scene.userData.raceVisual;
+      bloomPass.strength = rv.bloom ?? 0.4;
+      bloomPass.threshold = rv.threshold ?? 0.9;
+      bloomPass.radius = rv.radius ?? 0.35;
+    }
+    if (scene.userData.biomeAAA && bloomPass) {
+      bloomPass.threshold = 0.85;
+      bloomPass.strength = Math.max(bloomPass.strength ?? 0.35, 0.35);
+    }
+    console.log('[DEBUG] SimCanvas arenaType:', arenaType, 'course:', challenge?.id, 'biomeBuilt:', scene.userData.biomeWorldBuilt, 'mode: 3d-realgame');
+
+    // Underground biomes: kill default daylight so cave emissives read correctly
+    if (scene.userData.suppressSimDaylight) {
+      amb.intensity = 0.12;
+      hemi.intensity = 0.15;
+      sun.intensity = 0;
+      fill.intensity = 0.08;
+      if (spawnPL) spawnPL.intensity = 0.25;
+    }
+
+    if (scene.userData.raceCameraFov) {
+      camera.fov = scene.userData.raceCameraFov;
+      camera.updateProjectionMatrix();
+    }
+    const chassisEnv = getChassisEnvironment(robotConfig?.chassisId);
+    scene.userData.physicsMode = challenge?.physics || chassisEnv.physics;
+    scene.userData.cameraMode = challenge?.camera || chassisEnv.camera;
+    scene.userData.environmentId = challenge?.environmentId || chassisEnv.id;
+    scene.userData.environmentName = challenge?.environmentName || chassisEnv.name;
+    const isFootballArena = arenaType === 'robot_football' || !!scene.userData.footballMode;
+    const isCombatArena = !isFootballArena && (arenaType === 'robot_fight' || !!scene.userData.combatMode);
+    if (isCombatArena) scene.userData.combatMode = true;
+    if (challenge?.isRobotMission && !isFootballArena) {
+      buildMissionArena(scene, challenge);
+    }
+    const _flappyMovId = robotConfig.movementId || 'flying';
+    if (scene.userData.flappyMode && flappyHandlersRef) {
+      const prog = flappyProgramRef?.current || { handlers: {}, tickLoops: [] };
+      flappyHandlersRef.current = new FlappyBlockRuntime(
+        prog, scene,
+        (idx, label, uid) => onBlockActive?.(idx, label, uid),
+      );
+      const runHandler = (key) => {
+        flappyHandlersRef.current?.runEvent?.(key);
+      };
+      scene.userData._flappyEventCb = (type) => {
+        if (type === 'gap_passed') runHandler('gap_passed');
+        else if (type === 'collision') runHandler('collision');
+        else if (type === 'game_over') runHandler('game_over');
+      };
+      if (flappyStartRunRef) flappyStartRunRef.current = () => runHandler('start');
+    }
+    if (scene.userData.combatMode && fightingHandlersRef) {
+      const prog = fightingProgramRef?.current || { handlers: {}, tickLoops: [] };
+      fightingHandlersRef.current = new FightingBlockRuntime(prog, scene, (uid, op) => onBlockActive?.(-1, op, uid));
+      if (flappyStartRunRef) flappyStartRunRef.current = () => fightingHandlersRef.current?.tick?.();
+    }
+    if (scene.userData.footballMode && footballHandlersRef) {
+      const progs = footballProgramsRef?.current || {};
+      footballHandlersRef.current = createFootballRuntimes(
+        progs, scene, (uid, op) => onBlockActive?.(-1, op, uid),
+      );
+      if (flappyStartRunRef) {
+        flappyStartRunRef.current = () => tickFootballRuntimes(footballHandlersRef.current, 1 / 60);
+      }
+    }
+    if(!scene.userData.skipSceneStylize) stylizeMeshMaterials(scene, { keepEmissive: true });
     // Per-course lighting mood (set by arena builder): [amb×, hemi×, sun×, sunColor?]
     const lightMood=scene.userData.lightMood;
     if(lightMood){
@@ -9562,15 +10140,104 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
       if(lightTint.hemiGround) hemi.groundColor.setHex(lightTint.hemiGround);
     }
     if(scene.userData.expMood) renderer.toneMappingExposure*=scene.userData.expMood;
-    setupSoftEnvironment(scene);
+    const raceVisual=scene.userData.raceVisual;
+    if(raceVisual && bloomPass){
+      bloomPass.strength=raceVisual.bloom??bloomPass.strength;
+      bloomPass.threshold=raceVisual.threshold??bloomPass.threshold;
+      if(raceVisual.radius!=null) bloomPass.radius=raceVisual.radius;
+      if(raceVisual.grade){
+        ColorGradeShader.uniforms.sat.value=raceVisual.grade.s;
+        ColorGradeShader.uniforms.gain.value.set(...raceVisual.grade.g);
+      }
+    }
+    const combatVisual=scene.userData.combatVisual;
+    if(combatVisual && bloomPass){
+      bloomPass.strength=combatVisual.bloom??bloomPass.strength;
+      bloomPass.threshold=combatVisual.threshold??bloomPass.threshold;
+    }
+    const footballVisual=scene.userData.footballVisual;
+    if(footballVisual && bloomPass){
+      bloomPass.strength=footballVisual.bloom??bloomPass.strength;
+      bloomPass.threshold=footballVisual.threshold??bloomPass.threshold;
+    }
+    if(scene.userData.skipSoftEnvironment){
+      if(scene.userData.combatMode){
+        setupCombatEnvironment(scene);
+      } else if (scene.userData.footballMode) {
+        setupFootballEnvironment(scene);
+        renderer.toneMappingExposure = Math.max(renderer.toneMappingExposure, 1.35);
+      } else if (scene.userData.mkThemedTrack) {
+        const nightMk = new Set([
+          'mario_circuit', 'bowser_castle', 'piranha_plant_slide', 'grumble_volcano',
+        ]);
+        const mkArena = arenaType || scene.userData.raceHudTheme;
+        const isBiomeArena = BIOME_ARENA_TYPES.has(mkArena);
+        if (!isBiomeArena && nightMk.has(mkArena)) setupStadiumNightEnvironment(scene);
+        else if (!isBiomeArena && !scene.userData.customSky) setupMKDayEnvironment(scene);
+      } else if (scene.userData.customSky) {
+        if (scene.userData.biomeAAA || _isBiomeTrack) {
+          const underground = scene.userData.biomeAAASpec?.underground
+            || arenaType === 'neon_metro_01'
+            || arenaType === 'lava_foundry_01'
+            || arenaType === 'star_station_01';
+          const cosmic = arenaType === 'star_station_01';
+          if (cosmic || underground) setupRaceEnvironment(scene, { space: cosmic });
+          else if (arenaType === 'neon_metro_01') setupStadiumNightEnvironment(scene);
+          else setupMKDayEnvironment(scene);
+        }
+      } else {
+        setupRaceEnvironment(scene, { space: !!scene.userData.raceSpaceEnv });
+      }
+    } else if (!_isBiomeTrack) {
+      setupSoftEnvironment(scene);
+    }
+    if(scene.userData.raceMode){
+      const nightMkArenas = new Set([
+        'mario_circuit', 'bowser_castle', 'piranha_plant_slide', 'grumble_volcano',
+        'neon_metro_01', 'star_station_01', 'lava_foundry_01',
+      ]);
+      const mkArena = arenaType || scene.userData.raceHudTheme;
+      const isBiomeRace = _isBiomeTrack || scene.userData.biomeAAA;
+      if (isBiomeRace) {
+        const underground = scene.userData.biomeAAASpec?.underground
+          || arenaType === 'neon_metro_01'
+          || arenaType === 'lava_foundry_01'
+          || arenaType === 'star_station_01';
+        renderer.toneMappingExposure = underground ? 1.1 : 1.08;
+      } else {
+        const expCap = nightMkArenas.has(mkArena) ? 1.32 : (scene.userData.mkThemedTrack ? 1.48 : 1.25);
+        renderer.toneMappingExposure = Math.min(renderer.toneMappingExposure, expCap);
+        renderer.toneMappingExposure = Math.max(renderer.toneMappingExposure, scene.userData.mkThemedTrack ? 1.22 : 1.0);
+      }
+      if (!scene.userData.mkThemedTrack) scene.fog = null;
+    }
+    if(scene.userData.raceMode&&onProgress){
+      onProgress({
+        raceMode:true,
+        raceHudTheme:scene.userData.raceHudTheme,
+        raceWorldName:scene.userData.raceWorldName,
+        raceLap:1,
+        raceTotalLaps:scene.userData.raceTotalLaps,
+        raceCheckpoint:0,
+        raceCheckpointsTotal:scene.userData.racingConfig?.checkpointTs?.length??4,
+        raceSpeedKmh:0,
+        racePosition:1,
+        raceTotalRacers:1,
+        raceCountdown:0,
+        raceMinimap:scene.userData.raceMinimap??null,
+        time:0,dist:0,battery:100,avoided:0,progress:0,collisions:0,
+      });
+    }
     if(scene.userData.forestZones?.[0]){
       const z0=scene.userData.forestZones[0];
       lastZoneRef.current=z0.num;
       onZoneChange?.({ num:z0.num, name:z0.name, color:z0.col });
     }
 
-    // ── Sim particle system ──────────────────────────────────────────────
-    const SIM_MAX_P=60;
+    // ── Sim particle system — minimal particles on race courses ──────────
+    const SIM_MAX_P=isRaceCourse
+      ? Math.min(_q.simParticles||60, _isBiomeTrack ? (_q.simParticles||8) : 12)
+      :(_q.simParticles||60);
     const simPPos=new Float32Array(SIM_MAX_P*3);
     const simPGeo=new THREE.BufferGeometry();
     simPGeo.setAttribute('position',new THREE.BufferAttribute(simPPos,3));
@@ -9606,36 +10273,142 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
     };
     let simPTimer=0;
 
-    const robot=buildSimRobot(robotConfig);
+    const flappyRobotCfg = scene.userData.flappyMode
+      ? { ...robotConfig, chassisId: 'birdbot', movementId: 'flying' }
+      : scene.userData.footballMode
+        ? {
+          ...robotConfig,
+          footballFighter: true,
+          teamColor: robotConfig?.teamColor || 'green',
+          jerseyNumber: robotConfig?.jerseyNumber ?? 10,
+          bootType: robotConfig?.bootType || 'standard',
+          playstyle: robotConfig?.playstyle || 'striker',
+        }
+        : isCombatArena
+          ? {
+            ...robotConfig,
+            combatFighter: true,
+            combatArchetype: getFightingArchetype(detectRobotType(robotConfig), robotConfig?.chassisId),
+          }
+          : robotConfig;
+    const robot=buildSimRobot({ ...flappyRobotCfg, raceMode: !!scene.userData.raceMode });
     robot.castShadow=true;
-    robot.scale.setScalar(1.75);
+    robot.scale.setScalar(
+      scene.userData.flappyMode ? 1.55
+        : (isCombatArena || scene.userData.footballMode) ? 1.0
+          : scene.userData.raceMode ? 1.0 : 1.75,
+    );
     const robotState=createRobotStateController(robot);
-    const execTrail=createExecutionTrail(scene);
+    execTrail=createExecutionTrail(scene);
+    if (scene.userData.arenaType === 'sunset_cove_01') {
+      execTrail.mesh.material.color.set('#ffcc88');
+      execTrail.mesh.material.opacity = 0.35;
+    }
+    previewPath=(!scene.userData.flappyMode && !scene.userData.raceMode && !scene.userData.combatMode && !scene.userData.footballMode)
+      ? createPreviewPath(scene)
+      : null;
     const rs=rsRef.current;
-    const spawnZ=5;
-    Object.assign(rs,{x:0,z:spawnZ,y:0,angle:Math.PI,step:0,stepTime:0,currentDur:0,totalDist:0,done:false,t:0,bobPhase:0,battery:100,avoided:0,collisions:0,stopTimer:0});
+    const raceSpawn=scene.userData.raceSpawn;
+    const combatSpawn=(scene.userData.combatMode || scene.userData.footballMode)
+      ? {
+        x: scene.userData.spawnX ?? -1.5,
+        z: scene.userData.spawnZ ?? 0,
+        y: scene.userData.spawnY ?? scene.userData.groundY ?? 0,
+        angle: scene.userData.footballMode ? 0 : Math.PI / 2,
+      }
+      : null;
+    const spawnPt=combatSpawn||raceSpawn;
+    const spawnZ=spawnPt?.z??5;
+    const groundY=scene.userData.groundY??0;
+    const spawnY=spawnPt?.y??groundY;
+    Object.assign(rs,{
+      x:spawnPt?.x??0,z:spawnZ,y:spawnY,angle:spawnPt?.angle??Math.PI,
+      step:0,stepTime:0,currentDur:0,totalDist:0,done:false,t:0,bobPhase:0,
+      battery:100,avoided:0,collisions:0,stopTimer:0,collectedItems:0,collectedValue:0,
+      raceLap:1,raceLapTime:0,raceBestLap:null,raceSpeedKmh:0,
+      raceCountdown:0,
+      _moveContinuous:false,_brakeFactor:1,_boostTimer:0,_boostMul:1,_speedMult:scene.userData.raceMode?0.65:0.6,
+      raceAutoSteer:false,raceOffTrack:false,_offTrackMul:1,raceCodeHint:'',
+    });
+    if (scene.userData.raceMode && raceSpawn) {
+      rs.raceTrackT = raceSpawn.trackT ?? rs.raceTrackT ?? 0;
+      rs._raceTrackTHint = rs.raceTrackT;
+    }
     lastActiveRef.current=-1;
-    robot.position.set(rs.x,0,rs.z); robot.rotation.y=rs.angle;
-    alignRobotToGround(robot);
-    rs.y=robot.position.y;
-    attachRobotAccentGlow(robot);
+    robot.position.set(rs.x, spawnY, rs.z);
+    robot.rotation.y=rs.angle;
+    if (!scene.userData.combatMode && !scene.userData.footballMode) attachRobotAccentGlow(robot);
     scene.add(robot);
+    const raceSpawnPt = scene.userData.raceSpawn;
+    if ((scene.userData.raceMode || isRaceCourse) && scene.userData.raceCurve) {
+      const spawnT = raceSpawnPt?.trackT ?? rs.raceTrackT ?? 0;
+      const spawnSplineY = scene.userData.track3D
+        ? scene.userData.raceCurve.getPointAt(spawnT).y
+        : 0;
+      const planted = plantRaceKartOnRoad(robot, scene, rs, {
+        x: rs.x,
+        z: rs.z,
+        trackT: spawnT,
+        splineY: spawnSplineY,
+      });
+      rs.y = planted.y;
+      robot.position.y = rs.y;
+    } else if (scene.userData.combatMode || scene.userData.footballMode) {
+      alignFighterToRingSurface(robot, scene.userData.combatRingY ?? scene.userData.groundY ?? groundY);
+      rs.y = robot.position.y;
+    } else {
+      alignRobotToGround(robot);
+      rs.y = robot.position.y;
+    }
+    const aerialSim=isAerialSim(arenaType,_flappyMovId,scene.userData.arenaBounds);
+    if(aerialSim&&!scene.userData.flappyMode&&!scene.userData.raceMode){
+      const hoverY=scene.userData.spawnAltitude??4;
+      rs.y=Math.max(rs.y,hoverY);
+      robot.position.y=rs.y;
+    }
+
+    let fightVfx = null;
+    if (scene.userData.combatMode) {
+      fightVfx = createFightingVfx(scene);
+      wireFightingVfx(scene, fightVfx);
+      scene.userData.combat?.setPlayerMesh?.(robot);
+      if (fightingCombatRef) fightingCombatRef.current = scene.userData.combat;
+      robot.rotation.y = Math.PI / 2;
+    }
+    if (scene.userData.footballMode) {
+      scene.userData.football?.setPlayerMesh?.(robot);
+      robot.rotation.y = 0;
+      robot.scale.setScalar(Math.min(robot.scale.x || 1, 0.92));
+      const hasRing = robot.children?.some((c) => c.geometry?.type === 'RingGeometry');
+      if (!hasRing) {
+        const ring = new THREE.Mesh(
+          new THREE.RingGeometry(0.55, 0.72, 24),
+          new THREE.MeshBasicMaterial({ color: 0x22c55e, transparent: true, opacity: 0.55, side: THREE.DoubleSide }),
+        );
+        ring.rotation.x = -Math.PI / 2;
+        ring.position.y = 0.04;
+        robot.add(ring);
+      }
+    }
 
     // Blob shadow under robot
     const blobShadow=new THREE.Mesh(new THREE.CircleGeometry(0.8,16),new THREE.MeshBasicMaterial({color:0x000000,transparent:true,opacity:0.35,depthWrite:false}));
     blobShadow.rotation.x=-Math.PI/2; blobShadow.position.y=0.02; scene.add(blobShadow);
 
-    // Soft spawn ring — goal-oriented starting marker
+    // Soft spawn ring — skip in combat (boxing ring has its own look)
+    let spawnRing=null, spawnDot=null;
+    if (!scene.userData.hideSpawnMarkers) {
     const spawnRingGeo=new THREE.RingGeometry(1.1,1.55,32);
     const spawnRingMat=new THREE.MeshBasicMaterial({color:WORLD_COLORS.pathGlow,transparent:true,opacity:0.35,side:THREE.DoubleSide,depthWrite:false});
-    const spawnRing=new THREE.Mesh(spawnRingGeo,spawnRingMat);
-    spawnRing.rotation.x=-Math.PI/2; spawnRing.position.set(0,0.025,spawnZ); spawnRing.renderOrder=1;
+    spawnRing=new THREE.Mesh(spawnRingGeo,spawnRingMat);
+    spawnRing.rotation.x=-Math.PI/2; spawnRing.position.set(rs.x, (scene.userData.track3D?rs.y:0)+0.025, rs.z); spawnRing.renderOrder=1;
     scene.add(spawnRing);
     const spawnDotGeo=new THREE.CircleGeometry(0.45,24);
     const spawnDotMat=new THREE.MeshBasicMaterial({color:WORLD_COLORS.pathGlow,transparent:true,opacity:0.18,side:THREE.DoubleSide,depthWrite:false});
-    const spawnDot=new THREE.Mesh(spawnDotGeo,spawnDotMat);
-    spawnDot.rotation.x=-Math.PI/2; spawnDot.position.set(0,0.02,spawnZ); spawnDot.renderOrder=1;
+    spawnDot=new THREE.Mesh(spawnDotGeo,spawnDotMat);
+    spawnDot.rotation.x=-Math.PI/2; spawnDot.position.set(rs.x,(scene.userData.track3D?rs.y:0)+0.02,rs.z); spawnDot.renderOrder=1;
     scene.add(spawnDot);
+    }
 
     const beamGroup=new THREE.Group(); beamGroup.name='beams'; scene.add(beamGroup);
     let beamTimer=0;
@@ -9646,12 +10419,31 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
       beamGroup.add(bm); beamTimer=0.9;
     }
 
-    // ── Action flash lights ──────────────────────────────────────────────────
-    const actionLights=[];
+    // ── Action flash lights — pre-allocated pool (no runtime PointLight creation) ──
+    // Creating a new PointLight on every block execution causes GC pauses and
+    // unbounded light count. Pre-allocate 8 lights and reuse them via LRU.
+    const _AL_POOL_SIZE = 8;
+    const actionLightPool = Array.from({length:_AL_POOL_SIZE},()=>{
+      const pl=new THREE.PointLight(0xffffff,0,7);
+      pl.castShadow=false; // action lights NEVER cast shadows — too expensive
+      pl.visible=false;
+      scene.add(pl);
+      return {pl,timer:0,duration:0.5,intensity:1,active:false};
+    });
+    let _alIdx=0; // round-robin slot selector
+    const actionLights=actionLightPool; // kept for decay loop below
     function flashActionLight(x,y,z,hexColor,intensity,duration){
-      const pl=new THREE.PointLight(hexColor,intensity,7);
-      pl.position.set(x,y+0.6,z); scene.add(pl);
-      actionLights.push({pl,timer:duration,duration,intensity});
+      // Grab next pool slot (round-robin — oldest active light gets recycled)
+      const slot=actionLightPool[_alIdx%_AL_POOL_SIZE];
+      _alIdx++;
+      slot.pl.color.setHex(hexColor);
+      slot.pl.intensity=intensity;
+      slot.pl.position.set(x,y+0.6,z);
+      slot.pl.visible=true;
+      slot.timer=duration;
+      slot.duration=duration;
+      slot.intensity=intensity;
+      slot.active=true;
     }
 
     // ── Camera shake / intro / victory ─────────────────────────────────────
@@ -9661,36 +10453,126 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
     let lastIntroKey=introKeyRef.current;
 
     // Initial camera: close and low to frame the robot prominently
-    const camPos=new THREE.Vector3(rs.x,3.5,Math.min(rs.z+6,10));
-    const camLook=new THREE.Vector3(rs.x,rs.y+0.7,rs.z);
+    const initCamBack=isRaceCourse?10.5:(aerialSim?9:6);
+    const initCamH=isRaceCourse?Math.max(rs.y+3.5,3):(aerialSim?Math.max(rs.y+2.8,5.5):3.5);
+    const initLookY=aerialSim?Math.max(rs.y+1.2,3.5):(isRaceCourse?0.9:0.7);
+    // Combat: side-view camera framing both fighters
+    const combatCamPreset=scene.userData.combatCamPreset;
+    const footballCamPreset=scene.userData.footballCamPreset;
+    const isFootballInit=!!scene.userData.footballMode || arenaType === 'robot_football';
+    const camPos=isCombatArena
+      ? new THREE.Vector3(0, 3, -8)
+      : isFootballInit
+        ? (footballCamPreset?.position?.clone?.() ?? new THREE.Vector3(0, 22, 34))
+        : (isRaceCourse && scene.userData.raceCurve && raceSpawn?.trackT != null)
+          ? (() => {
+              const rc = _sampleRaceLaunchCamera(rs, scene);
+              return new THREE.Vector3(rc.camX, rc.camY, rc.camZ);
+            })()
+          : new THREE.Vector3(
+              rs.x+Math.sin(rs.angle+Math.PI)*initCamBack,
+              initCamH,
+              rs.z+Math.cos(rs.angle+Math.PI)*initCamBack,
+            );
+    const camLook=isCombatArena
+      ? new THREE.Vector3(0, 1, 0)
+      : isFootballInit
+        ? (footballCamPreset?.lookAt?.clone?.() ?? new THREE.Vector3(0, 0, 0))
+        : (isRaceCourse && scene.userData.raceCurve && raceSpawn?.trackT != null)
+          ? (() => {
+              const rc = _sampleRaceLaunchCamera(rs, scene);
+              return new THREE.Vector3(rc.lookX, rc.lookY, rc.lookZ);
+            })()
+          : aerialSim
+            ? new THREE.Vector3(rs.x+Math.sin(rs.angle)*14, initLookY, rs.z+Math.cos(rs.angle)*14)
+            : new THREE.Vector3(rs.x,rs.y+initLookY,rs.z);
+    // Smoothed angle used ONLY for computing the camera behind-position.
+    // rs.angle is the true heading; this lags behind to absorb rapid turn oscillation.
+    let camSmoothAngle=rs.angle;
+    // Pre-allocated scratch vectors for camera lerp — reused every frame.
+    // Avoids 2× new THREE.Vector3() per frame (~120 GC allocations/second at 60fps).
+    const _camTargetScratch=new THREE.Vector3();
+    const _lookTargetScratch=new THREE.Vector3();
+    // Smoothed display position — lerped toward rs.x/z each frame so block-step
+    // jerks don't snap the robot mesh instantly.
+    let dispX=rs.x, dispZ=rs.z, dispY=rs.y;
+    // Smoothed heading angle for the robot mesh — prevents snap-turns on sharp
+    // directional changes and eliminates the most common source of visual jitter.
+    let dispAngle=rs.angle;
     camera.position.copy(camPos); camera.lookAt(camLook);
+    if (isCombatArena && combatCamPreset?.fov) {
+      camera.fov = combatCamPreset.fov;
+      camera.updateProjectionMatrix();
+    }
+    if (isFootballInit && footballCamPreset?.fov) {
+      camera.fov = footballCamPreset.fov;
+      camera.updateProjectionMatrix();
+    }
     // Robust canvas size fix — try immediately, then fallback with rAF chain
     const _forceSize=()=>{
       const nW=el.clientWidth,nH=el.clientHeight;
-      if(nW>4&&nH>4){renderer.setSize(nW,nH);composer.setSize(nW,nH);_setFxaa(nW,nH);camera.aspect=nW/nH;camera.updateProjectionMatrix();}
+      if(nW>4&&nH>4){
+        renderer.setSize(nW,nH,false);
+        if(composer) composer.setSize(nW,nH);
+        _setFxaa(nW,nH);
+        camera.aspect=nW/nH;
+        camera.updateProjectionMatrix();
+      }
     };
     _forceSize();
-    renderFrame();
+    try { renderFrame(); } catch (frameErr) {
+      console.error('[SimCanvas] first frame failed', frameErr);
+      setSimError(formatSimStartupError(frameErr));
+    }
     // Second pass on next paint — catches flex/tabs that need a layout tick
     requestAnimationFrame(()=>{ _forceSize(); renderFrame(); });
     // Third pass after 200ms — catches any tab-switch or animation-based layout delays
-    const _sizeTimer=setTimeout(()=>{ _forceSize(); renderFrame(); }, 200);
+    _sizeTimer=setTimeout(()=>{ _forceSize(); renderFrame(); }, 200);
     const movId=robotConfig.movementId||'wheels';
     const blocks=codeBlocks||[];
     let lastTime=performance.now()/1000;
     let trailTimer=0;
+    const eventState={
+      checkpoint:0, lap:1, raceWon:false, collected:0, zone:0,
+      timersFired:new Set(), batteriesFired:new Set(), lapsFired:new Set(),
+      gameOver:false,
+    };
+    const fireEvent=(key,tag)=>{
+      if(scene.userData.flappyMode||!eventHandlersRef?.current) return;
+      const actions=eventHandlersRef.current[key];
+      if(actions?.length) runInstantEventActions(actions,rs,scene,movId,onBlockActive,tag||key);
+    };
+    const fireTriggerList=(list,keyField,matchVal,tag,firedSet)=>{
+      if(scene.userData.flappyMode||!eventHandlersRef?.current||!list?.length) return;
+      for(const entry of list){
+        const id=`${tag}:${entry[keyField]}`;
+        if(firedSet.has(id)) continue;
+        if(entry[keyField]===matchVal){
+          firedSet.add(id);
+          runInstantEventActions(entry.actions,rs,scene,movId,onBlockActive,tag);
+        }
+      }
+    };
 
-    const ro=new ResizeObserver(()=>{
+    ro=new ResizeObserver(()=>{
       if(!el) return;
       const nW=Math.max(el.clientWidth,1),nH=Math.max(el.clientHeight,1);
-      renderer.setSize(nW,nH); composer.setSize(nW,nH); camera.aspect=nW/nH; camera.updateProjectionMatrix();
+      renderer.setSize(nW,nH,false);
+      if(composer) composer.setSize(nW,nH);
+      camera.aspect=nW/nH;
+      camera.updateProjectionMatrix();
     });
     ro.observe(el);
 
     let firstTick=true;
     let pageVisible=true;
-    const onVis=()=>{ pageVisible=document.visibilityState!=='hidden'; };
+    onVis=()=>{ pageVisible=document.visibilityState!=='hidden'; };
     document.addEventListener('visibilitychange',onVis);
+    // Adaptive quality state — evaluated once per second in the FPS counter block
+    const _aqFpsHistory=[];
+    let _aqLastAdjust=0;
+    // Dev FPS logger window
+    const _devFpsWindow=[];
     const tick=()=>{
       rafRef.current=requestAnimationFrame(tick);
       if(!pageVisible) return;
@@ -9699,37 +10581,183 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
       if(firstTick){
         firstTick=false;
         const nW=el.clientWidth,nH=el.clientHeight;
-        if(nW>4&&nH>4){renderer.setSize(nW,nH);composer.setSize(nW,nH);_setFxaa(nW,nH);camera.aspect=nW/nH;camera.updateProjectionMatrix();}
+        if(nW>4&&nH>4){
+          renderer.setSize(nW,nH,false);
+          if(composer) composer.setSize(nW,nH);
+          camera.aspect=nW/nH;
+          camera.updateProjectionMatrix();
+        }
       }
       const now=performance.now()/1000;
       const dt=Math.min(now-lastTime,0.05); lastTime=now;
       rs.t+=dt;
-      // Pulse the spawn ring
-      spawnRing.material.opacity=0.35+Math.sin(rs.t*2.5)*0.35;
-      spawnRing.position.set(rs.x,0.025,rs.z);
-      spawnDot.position.set(rs.x,0.02,rs.z);
+      // Pulse the spawn ring (absent in combat mode)
+      if(spawnRing){
+        spawnRing.material.opacity=0.35+Math.sin(rs.t*2.5)*0.35;
+        const spawnMarkerY=(scene.userData.track3D?rs.y:0)+0.025;
+        spawnRing.position.set(rs.x,spawnMarkerY,rs.z);
+      }
+      if(spawnDot){
+        const spawnMarkerY=(scene.userData.track3D?rs.y:0)+0.02;
+        spawnDot.position.set(rs.x,spawnMarkerY,rs.z);
+      }
       if(beamTimer>0){beamTimer-=dt; if(beamTimer<=0) beamGroup.clear();}
       fpsRef.current.frames++;
-      if(now-fpsRef.current.last>=1){onFpsUpdate?.(fpsRef.current.frames); fpsRef.current.frames=0; fpsRef.current.last=now;}
+      if(now-fpsRef.current.last>=1){
+        const fps=fpsRef.current.frames;
+        onFpsUpdate?.(fps);
+        fpsRef.current.frames=0; fpsRef.current.last=now;
+        // ── Adaptive quality (dynamic resolution + optional bloom off) ─────
+        _aqFpsHistory.push(fps);
+        if(_aqFpsHistory.length>3) _aqFpsHistory.shift(); // 3-second window
+        if(_aqFpsHistory.length===3){
+          const avg=_aqFpsHistory.reduce((a,b)=>a+b,0)/3;
+          const nowMs=performance.now();
+          if(nowMs-_aqLastAdjust>1500){
+            const curPR=renderer.getPixelRatio();
+            const maxPR=_racePixelRatio;
+            const minPR=_biomeRace
+              ? Math.max(1.0, maxPR * 0.9)
+              : (_qTier==='low'?0.6:(_qTier==='medium'?0.85:1.0));
+            if(avg<38&&_aqPostEnabled&&composer&&!scene.userData.forceBloom&&!scene.userData.isRainbowRoad){
+              _aqPostEnabled=false;
+              renderFrame=()=>renderer.render(scene,camera);
+              _aqLastAdjust=nowMs;
+              if(import.meta.env.DEV) console.log(`[BB perf] FPS avg ${avg.toFixed(0)} → bloom disabled`);
+            } else if(avg<28&&!scene.userData.trackPerfDowngraded){
+              scene.userData.trackPerfDowngraded=true;
+              scene.userData.trackPerfBudget=downgradeTrackPerfBudget(scene.userData.trackPerfBudget||{});
+              scene.userData.raceOptimizeHint='Optimizing…';
+              _aqLastAdjust=nowMs;
+              if(import.meta.env.DEV) console.log(`[BB perf] FPS avg ${avg.toFixed(0)} → track perf downgraded`);
+            } else if(avg<50&&curPR>minPR){
+              const next=Math.max(curPR-0.12,minPR);
+              renderer.setPixelRatio(next);
+              _aqLastAdjust=nowMs;
+              if(import.meta.env.DEV) console.log(`[BB perf] FPS avg ${avg.toFixed(0)} → quality reduced to ${next.toFixed(2)}×`);
+            } else if(avg>56&&curPR<maxPR){
+              const next=Math.min(curPR+0.08,maxPR);
+              renderer.setPixelRatio(next);
+              _aqLastAdjust=nowMs;
+              if(import.meta.env.DEV) console.log(`[BB perf] FPS avg ${avg.toFixed(0)} → quality restored to ${next.toFixed(2)}×`);
+            }
+          }
+        }
+        // ── FPS console logger (dev only, every 10 seconds) ─────────────
+        if(import.meta.env.DEV){
+          _devFpsWindow.push(fps);
+          if(_devFpsWindow.length>10) _devFpsWindow.shift();
+          if(_devFpsWindow.length===10){
+            const avg=_devFpsWindow.reduce((a,b)=>a+b,0)/10;
+            const min=Math.min(..._devFpsWindow);
+            const max=Math.max(..._devFpsWindow);
+            const ri=renderer.info.render;
+            console.log(`[ByteBuddies FPS] avg:${avg.toFixed(1)} min:${min} max:${max} | drawCalls:${ri.calls} triangles:${ri.triangles} | tier:${_qTier}`);
+          }
+        }
+      }
 
-      // ── Action flash lights decay ─────────────────────────────────────────
-      for(let ai=actionLights.length-1;ai>=0;ai--){
-        const al=actionLights[ai];
+      // ── Action flash lights decay (pool — no scene.remove, no allocation) ──
+      for(let ai=0;ai<actionLightPool.length;ai++){
+        const al=actionLightPool[ai];
+        if(!al.active) continue;
         al.timer-=dt;
-        al.pl.intensity=al.intensity*(al.timer/al.duration);
-        if(al.timer<=0){scene.remove(al.pl);actionLights.splice(ai,1);}
+        if(al.timer<=0){
+          al.pl.intensity=0; al.pl.visible=false; al.active=false;
+        } else {
+          al.pl.intensity=al.intensity*(al.timer/al.duration);
+        }
       }
 
       // ── Camera shake ──────────────────────────────────────────────────────
+      if (fightVfx) {
+        const vfxOut = fightVfx.tick(dt, camera);
+        if (vfxOut?.shake > camShake) camShake = vfxOut.shake;
+        if (vfxOut?.flash > 0.05 && scene.userData.combatMode) {
+          renderer.toneMappingExposure = 1.15 + vfxOut.flash * 1.8;
+        } else if (scene.userData.combatMode) {
+          renderer.toneMappingExposure = scene.userData.expMood ?? 1.15;
+        }
+      }
       if(camShake>0.005){
         camShake*=0.78;
         camera.position.x+=(Math.random()-0.5)*camShake;
         camera.position.y+=Math.random()*camShake*0.4;
       } else { camShake=0; }
 
-      // Always call robot's own animation (propellers, legs, lights, etc.)
-      if(robot.userData.animate) robot.userData.animate(rs.t);
-      if(introKeyRef.current!==lastIntroKey){ lastIntroKey=introKeyRef.current; scene.userData.introTimer=3.2; scene.userData.victoryT=0; rs.done=false; }
+      // Hit-stop — briefly slow gameplay dt (not vfx/camera dt above) on impact
+      // so a landed punch reads as a real hit instead of two meshes overlapping.
+      const fxTimeScale=(scene.userData.combatMode&&fightVfx)?fightVfx.getTimeScale(dt):1;
+      const combatDt=dt*fxTimeScale;
+
+      // Always call robot's own animation (propellers, legs, lights, combat poses, etc.)
+      if(robot.userData.animate) robot.userData.animate(rs.t, scene.userData.combatMode?combatDt:dt);
+      if(introKeyRef.current!==lastIntroKey){
+        lastIntroKey=introKeyRef.current;
+        scene.userData.introTimer=(scene.userData.arenaBounds?.flappyNoIntro||isRaceCourse)?0:3.2;
+        scene.userData.victoryT=0;
+        rs.done=false;
+        rs.combatWon=false; rs.combatLost=false;
+        rs.footballWon=false; rs.footballLost=false;
+        eventState.checkpoint=0; eventState.lap=1; eventState.raceWon=false;
+        eventState.collected=0; eventState.zone=0;
+        eventState.timersFired.clear(); eventState.batteriesFired.clear(); eventState.lapsFired.clear();
+        eventState.gameOver=false;
+        if (scene.userData.raceMode) {
+          rs.raceAutoSteer = false;
+          seedRaceDriveState(rs);
+          if ((blocksRef.current?.length ?? 0) === 0 && eventHandlersRef?.current?.start?.length) {
+            blocksRef.current = eventHandlersRef.current.start;
+          }
+        }
+        // Seed spline progress + snap chase cam to the grid so the first frame
+        // doesn't lerp in from a stale idle angle.
+        if (scene.userData.raceMode && scene.userData.raceCurve) {
+          const spawnT = scene.userData.raceSpawn?.trackT;
+          if (spawnT != null && Number.isFinite(spawnT)) {
+            rs.raceTrackT = spawnT;
+            rs._raceTrackTHint = spawnT;
+          }
+          const sp = scene.userData.raceSpawn;
+          if (sp) {
+            rs.x = sp.x;
+            rs.z = sp.z;
+            rs.angle = sp.angle ?? rs.angle;
+            const spawnT = sp.trackT ?? rs.raceTrackT ?? 0;
+            const spawnSplineY = scene.userData.track3D
+              ? scene.userData.raceCurve.getPointAt(spawnT).y
+              : 0;
+            const planted = plantRaceKartOnRoad(robot, scene, rs, {
+              x: rs.x,
+              z: rs.z,
+              trackT: spawnT,
+              splineY: spawnSplineY,
+            });
+            rs.y = planted.y;
+            robot.position.set(rs.x, rs.y, rs.z);
+            robot.rotation.y = rs.angle;
+            dispX = rs.x;
+            dispY = rs.y;
+            dispZ = rs.z;
+            dispAngle = rs.angle;
+          }
+          if (Number.isFinite(rs.raceTrackT)) {
+            const rc = _sampleRaceLaunchCamera(rs, scene);
+            camPos.set(rc.camX, rc.camY, rc.camZ);
+            camLook.set(rc.lookX, rc.lookY, rc.lookZ);
+            camSmoothAngle = rs.angle;
+          }
+        }
+        // Fresh fight on every Simulate/Restart — otherwise state.over stays true and blocks do nothing
+        if(scene.userData.combatMode){
+          scene.userData.combat?.reset?.();
+          fightingHandlersRef?.current?.reset?.();
+        }
+        if(scene.userData.footballMode){
+          scene.userData.football?.reset?.();
+          resetFootballRuntimes(footballHandlersRef?.current);
+        }
+      }
       if(scene.userData.introTimer>0) scene.userData.introTimer-=dt;
       if(scene.userData.atmo?.update) scene.userData.atmo.update(rs.t, dt, { x: rs.x, z: rs.z });
       if(scene.userData.pollen?.update) scene.userData.pollen.update(rs.t, dt);
@@ -9747,14 +10775,107 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
         if(zd&&zd.num!==lastZoneRef.current){
           lastZoneRef.current=zd.num;
           onZoneChange?.({ num:zd.num, name:zd.name, color:zd.col });
+          if(zd.num!==eventState.zone){
+            eventState.zone=zd.num;
+            fireEvent('zone');
+          }
         }
       }
 
       const mode=modeRef.current;
 
+      scene.userData.setFlappySimActive?.(mode==='running'||mode==='step');
+      scene.userData.setFootballSimActive?.(mode==='running'||mode==='step');
+
+      if (scene.userData.flappyMode && flappySpacebarRef?.current && (mode==='running'||mode==='step')) {
+        flappySpacebarRef.current = false;
+        flappyHandlersRef?.current?.runEvent?.('spacebar');
+        if (!flappyHandlersRef?.current?.handlers?.spacebar?.length) {
+          scene.userData.flap?.(1);
+        }
+      }
+
+      if (scene.userData.flappyMode && (mode==='running'||mode==='step')) {
+        flappyHandlersRef?.current?.tick?.();
+      }
+
+      if (scene.userData.combatMode && (mode==='running'||mode==='step')) {
+        fightingHandlersRef?.current?.tick?.(dt);
+        const cState = scene.userData.getCombatState?.();
+        // Player robot glides toward its combat-engine position so advances
+        // and retreats are physical steps, not the opponent sliding around.
+        // Lunges push into punches; circling drifts both fighters around the ring.
+        if (cState && typeof cState.playerX === 'number') {
+          // playerMeshX is the visually-compressed position (fighters stand
+          // close enough for punches to actually connect on screen)
+          const targetX = cState.playerMeshX != null
+            ? cState.playerMeshX
+            : cState.playerX + (cState.playerLunge || 0);
+          rs.x += (targetX - rs.x) * Math.min(1, dt * 4);
+          rs.z += ((cState.playerZ || 0) - rs.z) * Math.min(1, dt * 3);
+          // Fixed side-view facing — no wobble from oscillating opponent Z
+          rs.angle = typeof cState.playerFaceAngle === 'number'
+            ? cState.playerFaceAngle
+            : Math.PI / 2;
+        }
+        if (cState?.over && !rs.done) {
+          rs.done = true;
+          rs.combatWon = !!cState.won;
+          if (!cState.won) rs.combatLost = true;
+          // The main run block below is gated on !rs.done, so it will never fire
+          // again — deliver the final HUD/progress update (fresh hit counts,
+          // victory feedback, done flag) right here.
+          onProgress?.({
+            time: rs.t, dist: rs.totalDist, battery: rs.battery, avoided: rs.avoided,
+            progress: 100, done: !!cState.won, collisions: rs.collisions||0,
+            ...cState, combatWon: !!rs.combatWon, combatLost: !!rs.combatLost,
+          });
+          modeRef.current = 'idle';
+          if (cState.won) robotState.onSuccess?.();
+        }
+      }
+
+      if (scene.userData.footballMode && (mode==='running'||mode==='step')) {
+        tickFootballRuntimes(footballHandlersRef?.current, dt);
+        const fState = scene.userData.getFootballState?.();
+        if (fState && typeof fState.playerX === 'number') {
+          const follow = Math.min(1, dt * 16);
+          rs.x += (fState.playerX - rs.x) * follow;
+          rs.z += ((fState.playerZ || 0) - rs.z) * follow;
+          rs.angle = fState.playerFacing ?? rs.angle;
+        }
+        if (fState?.over && !rs.done) {
+          rs.done = true;
+          rs.footballWon = !!fState.won;
+          if (!fState.won) rs.footballLost = true;
+          onProgress?.({
+            time: rs.t, dist: rs.totalDist, battery: rs.battery, avoided: rs.avoided,
+            progress: 100, done: !!fState.won, collisions: rs.collisions||0,
+            ...fState, footballWon: !!rs.footballWon, footballLost: !!rs.footballLost,
+            combatWon: !!rs.footballWon, combatLost: !!rs.footballLost,
+          });
+          modeRef.current = 'idle';
+          if (fState.won) robotState.onSuccess?.();
+        }
+      }
+
       if((mode==='running'||mode==='step')&&!rs.done){
+        const blocks=blocksRef.current||[];
+        if(scene.userData.raceMode && rs.raceCountdown > 0){
+          rs.raceCountdown = Math.max(0, rs.raceCountdown - dt);
+        }
         if(blocks.length>0){
-          if(rs.step>=blocks.length){rs.done=true;}
+          if(rs.step>=blocks.length){
+            if(scene.userData.flappyMode && !rs.flappyCrashed){
+              rs.step=0; rs.stepTime=0; rs.currentDur=0;
+            } else if(scene.userData.raceMode && !rs.raceFalling){
+              // Keep driving until the race is won or the kart falls — block scripts
+              // are meant to loop (like a forever loop) for the whole 3-lap run.
+              // Skip setup blocks on repeat laps (speed/boost/gas already configured).
+              rs.step = raceLoopRestartStep(blocks);
+              rs.stepTime=0; rs.currentDur=0;
+            } else if(!rs.flappyCrashed) rs.done=true;
+          }
           else{
             if(rs.stepTime===0) rs.currentDur=getBlockDuration(blocks[rs.step]);
             rs.stepTime+=dt;
@@ -9764,9 +10885,12 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
               rs.stopTimer-=dt;
             } else {
               const prevX=rs.x, prevZ=rs.z, prevY=rs.y;
-              applyBlock(bk,rs,dt,movId);
-              // Check collisions against dynamic arena obstacles
-              if(scene.userData.obstacles){
+              applyBlock(bk,rs,dt,movId,scene);
+              applyContinuousMotion(rs, dt, movId, scene, bk?.id);
+              if (scene.userData.raceMode) applyCodedRaceOffTrack(rs, scene);
+              tickBoostTimer(rs, dt);
+              // Check collisions against dynamic arena obstacles (not on race tracks)
+              if(scene.userData.obstacles && !scene.userData.raceMode){
                 for(const obs of scene.userData.obstacles){
                   if(!obs||!obs.mesh) continue;
                   const mx=obs.mesh.position.x||0, mz=obs.mesh.position.z||0, my=obs.mesh.position.y||0;
@@ -9778,6 +10902,7 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
                     rs.collisions=(rs.collisions||0)+1;
                     rs.hitFlash=true;
                     robotState.onCollision();
+                    fireEvent('collision');
                     // Big collision burst + camera shake + flash light
                     simEmit(prevX,prevY+0.3,prevZ,35,0.28);
                     for(let si=0;si<6;si++) simEmit(prevX+(Math.random()-0.5)*0.9,prevY+0.6,prevZ+(Math.random()-0.5)*0.9,5,0.2);
@@ -9799,7 +10924,7 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
                 flashActionLight(rs.x,rs.y,rs.z,hexCol,2.8,0.7);
                 // Action-specific extra particles
                 if(['grab','lift_object'].includes(execBk.id)) simEmit(rs.x,rs.y+0.5,rs.z,8,0.18);
-                else if(['jump','leap','fly_up','takeoff'].includes(execBk.id)) for(let q=0;q<6;q++) simEmit(rs.x+(Math.random()-0.5)*0.8,rs.y,rs.z+(Math.random()-0.5)*0.8,3,-0.08);
+                else if(['jump','leap','fly_up','takeoff','flap'].includes(execBk.id)) for(let q=0;q<6;q++) simEmit(rs.x+(Math.random()-0.5)*0.8,rs.y,rs.z+(Math.random()-0.5)*0.8,3,-0.08);
                 else if(['fire_laser','thrust','jet_boost'].includes(execBk.id)) simEmit(rs.x,rs.y+0.2,rs.z,12,0.24);
               }
             }
@@ -9813,22 +10938,129 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
             if(mode==='step'){if(rs.stepTime>=rs.currentDur){rs.step++;rs.stepTime=0;rs.currentDur=0;modeRef.current='paused';}}
             else{if(rs.stepTime>=rs.currentDur){rs.step++;rs.stepTime=0;rs.currentDur=0;}}
           }
+        } else if (scene.userData.raceMode && scene.userData.raceCurve) {
+          const coded = scene.userData.racingConfig?.raceControlMode === 'coded';
+          if (!coded || shouldUseRaceSpline(rs, scene)) {
+            applyRaceSplineCruise(rs, dt, movId, scene);
+            tickBoostTimer(rs, dt);
+          } else {
+            rs.raceCodeHint = 'Add blocks to drive!';
+            rs.bobPhase += dt * 2;
+          }
         } else {
-          rs.x+=Math.sin(rs.angle)*1.2*dt; rs.z+=Math.cos(rs.angle)*1.2*dt;
-          rs.totalDist+=1.2*dt; rs.bobPhase+=dt*6;
-          if(rs.z<-22) rs.angle+=Math.PI+0.3;
+          // Non-race coding missions: robot stays still until blocks drive it.
+          const isTrackPreview = !scene.userData.raceMode && (scene.userData.track3D || scene.userData.raceTrackCurve);
+          if (isTrackPreview) {
+            const idleSpd = 4.0;
+            rs.x+=Math.sin(rs.angle)*idleSpd*dt; rs.z+=Math.cos(rs.angle)*idleSpd*dt;
+            rs.totalDist+=idleSpd*dt; rs.bobPhase+=dt*6;
+            if(rs.z<-22) rs.angle+=Math.PI+0.3;
+          } else {
+            rs.bobPhase+=dt*3;
+          }
         }
         const targetDist=challenge?.totalDist||22;
         const pathProg=scene.userData.coursePath?.length?calcPathProgress(rs,scene.userData.coursePath):null;
-        const prog=blocks.length>0
+        const prog=scene.userData.flappyMode
+          ? Math.min(100, ((rs.flappyScore||0)/10)*100)
+          : blocks.length>0
           ?Math.min(100,(rs.step/Math.max(1,blocks.length))*100)
           :pathProg!=null?pathProg:Math.min(100,(rs.totalDist/targetDist)*100);
         if(pathProg!=null) rs.totalDist=(pathProg/100)*targetDist;
-        rs.battery=Math.max(0,100-rs.totalDist*(100/targetDist)*0.08);
+        // Race courses: battery stays full — the fail condition is falling off /
+        // missing checkpoints, not running out of power mid-lap.
+        rs.battery=scene.userData.raceMode
+          ? 100
+          : Math.max(0,100-rs.totalDist*(100/targetDist)*0.08);
         rs.avoided=Math.floor(rs.totalDist/4);
+        if(!scene.userData.flappyMode&&eventHandlersRef?.current&&(mode==='running'||mode==='step')){
+          for(const t of eventHandlersRef.current.timers||[]){
+            const id=`t:${t.seconds}`;
+            if(!eventState.timersFired.has(id)&&rs.t>=t.seconds){
+              eventState.timersFired.add(id);
+              runInstantEventActions(t.actions,rs,scene,movId,onBlockActive,'timer');
+            }
+          }
+          for(const b of eventHandlersRef.current.batteries||[]){
+            const id=`b:${b.percent}`;
+            if(!eventState.batteriesFired.has(id)&&rs.battery<=b.percent){
+              eventState.batteriesFired.add(id);
+              runInstantEventActions(b.actions,rs,scene,movId,onBlockActive,'battery');
+            }
+          }
+        }
         const hf=rs.hitFlash||false; rs.hitFlash=false;
-        onProgress?.({time:rs.t,dist:rs.totalDist,battery:rs.battery,avoided:rs.avoided,progress:prog,done:rs.done,collisions:rs.collisions||0,hitFlash:hf,collected:rs.collectedItems||0,collectedValue:rs.collectedValue||0});
-        if(rs.done){onProgress?.({time:rs.t,dist:rs.totalDist,battery:rs.battery,avoided:rs.avoided,progress:100,done:true,collisions:rs.collisions||0}); modeRef.current='idle'; robotState.onSuccess();}
+        if(scene.userData.raceMode){
+          const prevCp=rs._celebrationCp??0;
+          const prevLap=rs._celebrationLap??1;
+          if((rs.raceCheckpoint??0)>prevCp){
+            rs._celebrationCp=rs.raceCheckpoint;
+            for(let ci=0;ci<20;ci++) simEmit(rs.x+(Math.random()-0.5)*2.2,rs.y+1+Math.random()*2,rs.z+(Math.random()-0.5)*2.2,8,0.14);
+          }
+          if((rs.raceLap??1)>prevLap){
+            rs._celebrationLap=rs.raceLap;
+            for(let ci=0;ci<28;ci++) simEmit(rs.x+(Math.random()-0.5)*3,rs.y+1.5+Math.random()*2,rs.z+(Math.random()-0.5)*3,12,0.18);
+          }
+        }
+        const racePayload=scene.userData.raceMode?{
+          raceMode:true,
+          raceHudTheme:scene.userData.raceHudTheme,
+          raceWorldName:scene.userData.raceWorldName,
+          raceLap:rs.raceLap,
+          raceTotalLaps:rs.raceTotalLaps??scene.userData.raceTotalLaps,
+          raceLapTime:rs.raceLapTime,
+          raceBestLap:rs.raceBestLap,
+          raceSpeedKmh:rs.raceSpeedKmh,
+          raceCheckpoint:rs.raceCheckpoint,
+          raceCheckpointsTotal:rs.raceCheckpointsTotal,
+          raceWrongWay:rs.raceWrongWay,
+          raceOffTrack:rs.raceOffTrack,
+          raceCodeHint:rs.raceCodeHint||'',
+          raceOptimizeHint:scene.userData.raceOptimizeHint||'',
+          trackLoading:(scene.userData.trackLoading??false)&&!scene.userData.sceneryPopulated,
+          sceneryPopulated:scene.userData.sceneryPopulated??false,
+          raceLapTimeStr:rs.raceLapTimeStr,
+          raceBestLapStr:rs.raceBestLapStr,
+          raceBoostActive:rs.raceBoostActive,
+          raceFalling:rs.raceFalling,
+          raceWon:rs.raceWon,
+          raceTotalTime:rs.raceTotalTime,
+          racePowerups:rs.racePowerups,
+          raceStarsCollected:rs.raceStarsCollected,
+          raceShieldCount:rs.raceShieldCount,
+          raceMagnetActive:rs.raceMagnetActive,
+          raceBoostPadsHit:rs.raceBoostPadsHit||0,
+          raceTotalCheckpoints:rs.raceTotalCheckpoints||0,
+          racePosition:1,
+          raceTotalRacers:1,
+          raceCountdown:rs.raceCountdown??0,
+          raceMinimap:scene.userData.raceMinimap??null,
+          raceRobotX:rs.x,
+          raceRobotZ:rs.z,
+          raceRobotAngle:rs.angle,
+          raceTrackT:rs._raceTrackTHint ?? rs.raceTrackT ?? 0,
+          worldStory:scene.userData.worldStory??null,
+          codeRacerMode:!!scene.userData.codeRacerMode,
+          raceAccentColor:scene.userData.raceAccentColor??null,
+          raceObjectives:scene.userData.raceObjectives??null,
+        }:{};
+        const flappyPayload=scene.userData.flappyMode?{
+          flappyCrashed:!!rs.flappyCrashed,
+          flappyScore:rs.flappyScore||0,
+          flappyBest:rs.flappyBest||0,
+          flappyHighScore:rs.flappyBest||0,
+          flappyStarted:!!rs.flappyStarted,
+          flappyAwaitingRestart:!!rs.flappyAwaitingRestart,
+        }:{};
+        const combatPayload = scene.userData.combatMode ? (scene.userData.getCombatState?.() || {}) : {};
+        const footballPayload = scene.userData.footballMode ? (scene.userData.getFootballState?.() || {}) : {};
+        onProgress?.({time:rs.t,dist:rs.totalDist,battery:rs.battery,avoided:rs.avoided,progress:prog,done:rs.done&&!rs.flappyCrashed,collisions:rs.collisions||0,hitFlash:hf,collected:rs.collectedItems||0,collectedValue:rs.collectedValue||0,...racePayload,...flappyPayload,...combatPayload,...footballPayload,combatWon:!!rs.combatWon||!!rs.footballWon,combatLost:!!rs.combatLost||!!rs.footballLost,footballWon:!!rs.footballWon,footballLost:!!rs.footballLost});
+        if(rs.flappyCrashed && !rs.flappyAwaitingRestart){ modeRef.current='idle'; }
+        if(rs.done && !rs.flappyCrashed){
+          onProgress?.({time:rs.t,dist:rs.totalDist,battery:rs.battery,avoided:rs.avoided,progress:100,done:true,collisions:rs.collisions||0,...racePayload,...flappyPayload,...combatPayload,combatWon:!!rs.combatWon,combatLost:!!rs.combatLost});
+          modeRef.current='idle';
+          if(!scene.userData.raceMode || rs.raceWon) robotState.onSuccess();
+        }
       } else if(mode==='idle'){
         // LED heartbeat — stateFx.rotY handles look-around
         animateRobotIdle(robot, rs.t, mode);
@@ -9853,58 +11085,291 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
       }
       updateSimP(dt);
 
-      const {yOff,rollZ}=getGroundEffect(movId,rs.bobPhase||0,rs.t);
-      robot.position.set(rs.x,rs.y+yOff,rs.z);
-      blobShadow.position.x=rs.x; blobShadow.position.z=rs.z;
+      // Arena physics movers (flappy bird, race logic) — before robot mesh position
+      // combatDt === dt outside combat mode, so this is a no-op for other arenas.
+      if(scene.userData.movers){
+        for(const mv of scene.userData.movers){
+          if(mv&&mv.update) mv.update(rs.t,combatDt,rs);
+        }
+      }
+      if(scene.userData.raceMode){
+        const cp=rs.raceCheckpoint??0;
+        if(cp>eventState.checkpoint){
+          eventState.checkpoint=cp;
+          fireEvent('checkpoint');
+        }
+        const lap=rs.raceLap??1;
+        if(lap>eventState.lap){
+          eventState.lap=lap;
+          fireEvent('lap');
+          fireTriggerList(eventHandlersRef?.current?.laps,'lap',lap-1,'lap',eventState.lapsFired);
+        }
+        if(rs.raceWon&&!eventState.raceWon){
+          eventState.raceWon=true;
+          fireEvent('race_won');
+        }
+      }
+
+      const _ge=(scene.userData.raceMode||isRaceCourse)?{yOff:0,rollZ:0}:getGroundEffect(movId,rs.bobPhase||0,rs.t);
+      // In combat/fighting mode keep the robot planted on the ring canvas — no hover bounce.
+      const {yOff,rollZ}=(scene.userData.combatMode||scene.userData.footballMode)?{yOff:0,rollZ:0}:_ge;
+      // Smooth display position — applied to ALL courses (not just race).
+      // Non-race uses a slightly faster lerp rate (dt*14) so blocks don't snap
+      // but the robot still tracks target position tightly enough to feel precise.
+      // Race uses dt*18 for slightly tighter tracking at high speeds.
+      const posLerp=scene.userData.footballMode?Math.min(1,dt*18):isRaceCourse?Math.min(1,dt*18):Math.min(1,dt*14);
+      dispX+=(rs.x-dispX)*posLerp;
+      dispZ+=(rs.z-dispZ)*posLerp;
+      if (scene.userData.raceMode || isRaceCourse) {
+        const trackT = rs._raceTrackTHint ?? rs.raceTrackT ?? 0;
+        const splineY = scene.userData.track3D && scene.userData.raceCurve
+          ? scene.userData.raceCurve.getPointAt(trackT).y
+          : 0;
+        const splineRoad = roadSurfaceYAt(scene.userData.track3D, splineY, scene, trackT);
+        const targetRoad = scene.userData.track3D
+          ? raycastRoadSurfaceY(scene, rs.x, rs.z, splineRoad)
+          : splineRoad;
+        const drop = measureKartWheelDrop(robot);
+        let clearance = drop + KART_VISUAL_LIFT;
+        rs._kartRoadClearance = clearance;
+        robot.userData._kartRoadClearance = clearance;
+        rs.y = targetRoad + clearance;
+        // Keep chassis skirt above deck on bumpy meshes.
+        robot.position.y = rs.y;
+        robot.updateMatrixWorld(true);
+        const _hull = new THREE.Box3().setFromObject(robot);
+        if (!_hull.isEmpty() && _hull.min.y < targetRoad + KART_CHASSIS_ROAD_GAP) {
+          rs.y += (targetRoad + KART_CHASSIS_ROAD_GAP) - _hull.min.y;
+          clearance = rs.y - targetRoad;
+          rs._kartRoadClearance = clearance;
+          robot.userData._kartRoadClearance = clearance;
+        }
+        dispY = rs.y;
+        robot.userData._lastRoadY = targetRoad;
+      } else {
+        dispY+=(rs.y-dispY)*posLerp;
+      }
+      // Smooth heading angle for the robot mesh to eliminate snap-turn jitter.
+      // Wrap-safe lerp: always take the shorter arc around the circle.
+      {
+        let dA=rs.angle-dispAngle;
+        if(dA>Math.PI) dA-=Math.PI*2;
+        if(dA<-Math.PI) dA+=Math.PI*2;
+        const anglePosLerp=isRaceCourse?Math.min(1,dt*8):Math.min(1,dt*12);
+        dispAngle+=dA*anglePosLerp;
+      }
+      robot.position.set(dispX,dispY+yOff,dispZ);
+      blobShadow.position.x=dispX; blobShadow.position.z=dispZ;
+      if (scene.userData.raceMode || isRaceCourse) {
+        const shadowRoad = scene.userData.track3D
+          ? dispY
+          : (robot.userData._lastRoadY ?? FLAT_ROAD_SURFACE_Y);
+        blobShadow.position.y = shadowRoad + 0.02;
+      } else if (scene.userData.track3D) {
+        blobShadow.position.y = dispY + 0.02;
+      }
       const stateFx=robotState.apply(rs.t,dt,mode);
-      robot.position.y+=stateFx.yOff;
-      robot.rotation.y=rs.angle+(stateFx.rotY||0);
+      if (scene.userData.raceMode || isRaceCourse) {
+        robot.position.y = dispY + yOff;
+        if (typeof window !== 'undefined' && Math.floor(rs.t * 2) % 15 === 0) {
+          const _bb = new THREE.Box3().setFromObject(robot);
+          let _wheelBottom = null;
+          robot.traverse((o) => {
+            if (!o.userData?.isWheel || !o.isMesh) return;
+            const wb = new THREE.Box3().setFromObject(o);
+            if (!wb.isEmpty()) _wheelBottom = _wheelBottom == null ? wb.min.y : Math.min(_wheelBottom, wb.min.y);
+          });
+          window.__bbRaceDebug = {
+            scene, robot, rs,
+            bboxMinY: _bb.isEmpty() ? null : _bb.min.y,
+            bboxMaxY: _bb.isEmpty() ? null : _bb.max.y,
+            wheelBottomY: _wheelBottom,
+            roadY: robot.userData._lastRoadY,
+            kartClearance: robot.userData._kartRoadClearance ?? rs._kartRoadClearance,
+          };
+        }
+      } else {
+        robot.position.y += stateFx.yOff;
+      }
+      // Use smoothed dispAngle instead of raw rs.angle — eliminates rotation jitter
+      robot.rotation.y=dispAngle+(stateFx.rotY||0);
       robot.rotation.z=rollZ+(stateFx.rotZ||0);
       robot.rotation.x=(stateFx.rotX||0);
+      if(scene.userData.flappyMode){
+        if(!robot.userData._flappyInit){
+          robot.userData._flappyInit=true;
+          (robot.userData.flappyHideParts||[]).forEach(c=>{ if(c) c.visible=false; });
+          robot.traverse(c=>{ if(c.userData?.isWheel) c.visible=false; });
+        }
+        if(robot.userData.wingL&&robot.userData.wingR){
+          const wingT=rs.flappyWingFlapT||0;
+          let flap=0;
+          if(wingT>0) flap=Math.sin((1-Math.min(1,wingT/0.3))*Math.PI)*0.78;
+          else if(!rs.flappyDead) flap=Math.sin(rs.t*3.5)*0.06;
+          robot.userData.wingL.rotation.z=-0.22-flap;
+          robot.userData.wingR.rotation.z=0.22+flap;
+        }
+        if(typeof rs.flappyTilt==='number') robot.rotation.z=rs.flappyTilt;
+      }
       if((mode==='running'||mode==='step')&&!rs.done){
         trailTimer+=dt;
-        if(trailTimer>0.22){ trailTimer=0; execTrail.addPoint(rs.x,rs.y+yOff,rs.z); }
-      } else if(mode==='idle'){ execTrail.clear(); trailTimer=0; }
+        const sandRaceTrail = scene.userData.raceMode && scene.userData.arenaType === 'sunset_cove_01';
+        const trailInterval = sandRaceTrail ? 0.1 : 0.22;
+        if ((!scene.userData.raceMode || sandRaceTrail) && trailTimer > trailInterval) {
+          trailTimer = 0;
+          execTrail.addPoint(rs.x, rs.y + yOff, rs.z);
+        }
+        // Hide preview path during simulation — execution trail takes over
+        if(previewPath) previewPath.clear();
+      } else if(mode==='idle'){
+        execTrail.clear(); trailTimer=0;
+        // Show preview path in idle — update every frame so it tracks block edits live
+        if(previewPath){
+          const currentBlocks=blocksRef.current||[];
+          if(currentBlocks.length>0){
+            const preview=computePreviewPath(currentBlocks,rs.x,rs.z,rs.angle);
+            if(preview.points.length>1) previewPath.update(preview.points,preview.segmentEnds);
+            else previewPath.clear();
+          } else {
+            previewPath.clear();
+          }
+        }
+      }
       beamGroup.position.copy(robot.position); beamGroup.rotation.y=rs.angle;
       const largeArenas=['escape_swarm','collect_hard','flight_slalom','dodge_asteroids','flight_acro'];
       const wideArenas=['escape_wall','escape_hunters','flight_rings'];
       const ab=scene.userData.arenaBounds;
-      const camMaxX=ab?.camMaxX??(largeArenas.includes(arenaType)?48:22);
-      const camMinZ=ab?.camMinZ??(largeArenas.includes(arenaType)?-80:wideArenas.includes(arenaType)?-48:-38);
-      const camMaxZ=ab?.camMaxZ??15;
-      const isAerial=arenaType==='sky'||arenaType==='hover'||arenaType==='jet'||arenaType==='flight_rings'||arenaType==='flight_acro'||arenaType==='flight_slalom'||arenaType==='dodge_asteroids';
-      const camDist=arenaType==='jet'?8:7.5;
-      let bx=rs.x+Math.sin(rs.angle+Math.PI)*camDist;
-      let bz=rs.z+Math.cos(rs.angle+Math.PI)*camDist;
-      let camH=isAerial?Math.max(rs.y+3,4):4.0;
+      const isRaceCam=!!ab?.raceCam||!!scene.userData.raceMode;
+      const camMaxX=ab?.camMaxX??(isRaceCam?120:(largeArenas.includes(arenaType)?48:22));
+      const camMinZ=ab?.camMinZ??(isRaceCam?-200:(largeArenas.includes(arenaType)?-80:wideArenas.includes(arenaType)?-48:-38));
+      const camMaxZ=ab?.camMaxZ??(isRaceCam?200:15);
+      const isFlappyCam=!!ab?.flappySideCam;
+      const skipFlappyIntro=!!ab?.flappyNoIntro;
+      const isAerial=aerialSim;
+      const isCombatCam=!!scene.userData.combatMode;
+      const isFootballCam=!!scene.userData.footballMode || arenaType === 'robot_football';
+      // Race: fixed behind-kart chase — offset rotates with robot, no spline swing
+      let camDist=isFlappyCam?0:(isRaceCam?8:(isAerial?9:(arenaType==='jet'?8:7.5)));
+      const raceCurve=scene.userData.raceCurve;
+      const raceTrackT=rs.raceTrackT;
+      const camAngleForPos=rs.angle;
+      // Combat: fixed side-view camera (SF6 / Tekken style)
+      const combatState=isCombatCam?scene.userData.getCombatState?.():null;
+      const enemyX=combatState?.enemyMeshX??combatState?.enemyX??1.5;
+      const midX=isCombatCam?(rs.x+enemyX)*0.5:0;
+      // Combat camera - side view framing both fighters
+      let bx=isFlappyCam?rs.x:isCombatCam?0:isFootballCam?(scene.userData.footballCamPreset?.position?.x??0):(dispX+Math.sin(camAngleForPos+Math.PI)*camDist);
+      let bz=isFlappyCam?(rs.z+12):isCombatCam?-8:isFootballCam?(scene.userData.footballCamPreset?.position?.z??34):(dispZ+Math.cos(camAngleForPos+Math.PI)*camDist);
+      // Race: sit behind & above the kart — never top-down
+      let camH=isFlappyCam?rs.y+0.55:isCombatCam?3:isFootballCam?(scene.userData.footballCamPreset?.position?.y??12):(isRaceCam?(dispY+3):(isAerial?Math.max(rs.y+2.8,5.5):4.0));
+      if (isRaceCam) {
+        const camPreset = scene.userData.raceCameraPreset || {};
+        const biomeCam = scene.userData.biomeAAASpec?.camera || {};
+        const rc = sampleFixedChaseCamera(dispX, dispY, dispZ, dispAngle, camPreset);
+        bx = rc.camX;
+        bz = rc.camZ;
+        camH = rc.camY;
+        if (biomeCam.shake) {
+          camH += Math.sin(rs.t * 14 + dispX * 0.3) * biomeCam.shake * 0.12;
+          bx += Math.sin(rs.t * 18) * biomeCam.shake * 0.06;
+        }
+        if (biomeCam.float) {
+          camH += Math.sin(rs.t * 0.9) * biomeCam.float * 0.2;
+        }
+        if (biomeCam.compression) {
+          const comp = biomeCam.compression * 0.08;
+          bx += Math.sin(rs.t * 6) * comp;
+          bz += Math.cos(rs.t * 5) * comp;
+        }
+      }
       const introT=scene.userData.introTimer||0;
-      if(introT>0){
-        const sweep=1-introT/3.2;
-        bx=rs.x+Math.sin(sweep*Math.PI*1.4+0.8)*14;
-        bz=rs.z+Math.cos(sweep*Math.PI*1.4+0.8)*10+4;
-        camH=6+sweep*3;
+
+      if(introT>0&&!skipFlappyIntro&&!isFootballCam&&!isRaceCam){
+        const introDur=ab?.raceCam?1.2:isCombatCam?1.5:3.2;
+        const sweep=1-introT/introDur;
+        if(ab?.introSweep&&ab?.introCenter){
+          const c=ab.introCenter;
+          bx=c.x+Math.sin(sweep*Math.PI*1.2)*18;
+          bz=c.z+Math.cos(sweep*Math.PI*1.2)*14;
+          camH=c.y+4+sweep*2;
+        } else {
+          bx=rs.x+Math.sin(sweep*Math.PI*1.4+0.8)*14;
+          bz=rs.z+Math.cos(sweep*Math.PI*1.4+0.8)*10+4;
+          camH=6+sweep*3;
+        }
         if(spawnPL) spawnPL.intensity=0.55+Math.sin(rs.t*8)*0.15;
-      } else if(rs.done){
+      } else if(rs.done&&!isFlappyCam&&!isFootballCam){
         scene.userData.victoryT=(scene.userData.victoryT||0)+dt;
         const orbit=scene.userData.victoryT*0.55;
-        bx=rs.x+Math.sin(orbit)*7;
-        bz=rs.z+Math.cos(orbit)*7;
-        camH=rs.y+4.5+Math.sin(orbit*2)*0.6;
+        // Combat: orbit the ring midpoint so both fighters stay framed
+        const ocx=isCombatCam?midX:rs.x, ocz=isCombatCam?0:rs.z, orad=isCombatCam?8.5:7;
+        bx=ocx+Math.sin(orbit)*orad;
+        bz=ocz+Math.cos(orbit)*orad;
+        camH=(isCombatCam?2.5:rs.y)+4.5+Math.sin(orbit*2)*0.6;
       }
-      const camLerp=rs.done?0.035:introT>0?0.07:0.045;
-      camPos.lerp(new THREE.Vector3(Math.max(-camMaxX,Math.min(camMaxX,bx)),camH,Math.max(camMinZ,Math.min(camMaxZ,bz))),camLerp);
-      camLook.lerp(new THREE.Vector3(rs.x,rs.y+0.7,rs.z),rs.done?0.05:0.065);
-      camera.position.copy(camPos); camera.lookAt(camLook);
-      scene.traverse(c=>{
-        if(c.name==='cp'){c.rotation.z+=dt*0.9; if(c.material) c.material.emissiveIntensity=0.7+Math.sin(rs.t*3)*0.3;}
-        if(c.name&&c.name.startsWith('mover')&&!scene.userData.movers){const idx=parseInt(c.name.slice(5))||0; c.position.x=Math.sin(rs.t*(0.8+idx*0.2))*(4+idx);}
-        if(c.name==='beltstripe'){c.position.z=-2+(rs.t*0.8)%12-6;}
-      });
-      // Update custom obstacle movers for new arena types
-      if(scene.userData.movers){
-        for(const mv of scene.userData.movers){
-          if(mv&&mv.update) mv.update(rs.t,dt,rs);
+      const camLerp=rs.done?0.035:introT>0&&!skipFlappyIntro&&!isFootballCam&&!isRaceCam?0.07:(isFootballCam?1:(isFlappyCam?0.14:(isCombatCam?0.14:(isRaceCam?0.12:0.045))));
+      const lookY=isFlappyCam?rs.y+0.35:(isRaceCam?dispY+1.0:(isAerial?Math.max(rs.y+1.2,3.5):rs.y+0.7));
+      // Race cam: never clamp — clamping was yanking the chase cam into a top-down view mid-lap
+      _camTargetScratch.set(
+        (isFlappyCam || isCombatCam || isFootballCam || isRaceCam) ? bx : Math.max(-camMaxX, Math.min(camMaxX, bx)),
+        camH,
+        (isFlappyCam || isCombatCam || isFootballCam || isRaceCam) ? bz : Math.max(camMinZ, Math.min(camMaxZ, bz)),
+      );
+      camPos.lerp(_camTargetScratch,camLerp);
+      if(isCombatCam){
+        _lookTargetScratch.set(0, 1.0, 0);
+      } else if(isFootballCam){
+        const look = scene.userData.footballCamPreset?.lookAt;
+        _lookTargetScratch.set(look?.x ?? 0, look?.y ?? 1, look?.z ?? 0);
+      } else if(isAerial&&!isFlappyCam&&!isRaceCam){
+        const ahead=14;
+        _lookTargetScratch.set(
+          rs.x+Math.sin(rs.angle)*ahead,
+          lookY,
+          rs.z+Math.cos(rs.angle)*ahead,
+        );
+      } else if(isRaceCam){
+        const camPreset = scene.userData.raceCameraPreset || {};
+        const rc = sampleFixedChaseCamera(dispX, dispY, dispZ, dispAngle, camPreset);
+        _lookTargetScratch.set(rc.lookX, rc.lookY, rc.lookZ);
+      } else {
+        _lookTargetScratch.set(rs.x,lookY,rs.z);
+      }
+      camLook.lerp(_lookTargetScratch, isFootballCam ? 1 : (isRaceCam ? 0.1 : (rs.done&&!isFlappyCam?0.05:0.065)));
+      if (isFootballCam) {
+        const preset = scene.userData.footballCamPreset;
+        if (preset?.position && preset?.lookAt) {
+          camPos.copy(preset.position);
+          camLook.copy(preset.lookAt);
         }
+      }
+      camera.position.copy(camPos);
+      camera.up.set(0, 1, 0);
+      camera.lookAt(camLook);
+      if(isCombatCam){
+        const targetFov=scene.userData.combatCamPreset?.fov??50;
+        camera.fov+=(targetFov-camera.fov)*Math.min(1,dt*6);
+        camera.updateProjectionMatrix();
+      }
+      if(isFootballCam){
+        const targetFov=scene.userData.footballCamPreset?.fov??55;
+        camera.fov+=(targetFov-camera.fov)*Math.min(1,dt*6);
+        camera.updateProjectionMatrix();
+      }
+      if(isFlappyCam){
+        camera.rotation.x=-0.1;
+        if(rs.flappyCamShake>0){
+          const sh=rs.flappyCamShake*2.4;
+          camera.position.x+=(Math.random()-0.5)*sh;
+          camera.position.y+=(Math.random()-0.5)*sh*0.45;
+        }
+      }
+      if (!scene.userData.raceMode) {
+        scene.traverse(c=>{
+          if(c.name==='cp'){c.rotation.z+=dt*0.9; if(c.material) c.material.emissiveIntensity=0.7+Math.sin(rs.t*3)*0.3;}
+          if(c.name&&c.name.startsWith('mover')&&!scene.userData.movers){const idx=parseInt(c.name.slice(5))||0; c.position.x=Math.sin(rs.t*(0.8+idx*0.2))*(4+idx);}
+          if(c.name==='beltstripe'){c.position.z=-2+(rs.t*0.8)%12-6;}
+        });
       }
       // ── Collectibles check ────────────────────────────────────────────────
       if(scene.userData.collectibles){
@@ -9917,6 +11382,10 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
             rs.collectedItems=(rs.collectedItems||0)+1;
             rs.collectedValue=(rs.collectedValue||0)+(col.value||5);
             simEmit(col.pos.x,(col.pos.y||0.4)+0.4,col.pos.z,6,0.14);
+            if(rs.collectedItems>eventState.collected){
+              eventState.collected=rs.collectedItems;
+              fireEvent('collect');
+            }
           }
         }
       }
@@ -9929,42 +11398,153 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
           rs.done=true;
           scene.userData.victoryT=0;
           robotState.onSuccess();
+          fireEvent('goal');
           for(let fi=0;fi<8;fi++) simEmit(rs.x+(Math.random()-0.5)*2,rs.y+0.8+Math.random(),rs.z+(Math.random()-0.5)*2,12,0.28);
         }
       }
+      // ── Dynamic FOV on race courses — widens with speed to sell velocity ──
+      // At rest: 54°. At max racing speed (~20 units/s): 74°.
+      // Camera.updateProjectionMatrix is cheap (no GPU work); lerped so no pop.
+      if(isRaceCourse){
+        const spEstimate=rs._raceSpeedEstimate||0;
+        const speedNorm=Math.min(1,spEstimate/18);
+        const targetFOV=54+speedNorm*20;
+        camera.fov+=(targetFOV-camera.fov)*Math.min(1,dt*4);
+        camera.updateProjectionMatrix();
+      }
       renderFrame();
+      if (scene.userData.biomeAAA || _isBiomeTrack) {
+        const underground = arenaType === 'crystal_palace_01'
+          || arenaType === 'cyber_boulevard_01'
+          || scene.userData.biomeAAASpec?.underground;
+        renderer.toneMappingExposure = underground ? 1.1 : 1.08;
+      }
       } catch(err){ console.warn('[SimCanvas tick]',err); }
     };
     rafRef.current=requestAnimationFrame(tick);
+    sceneHandleRef.current = { scene, robot };
+    if (typeof window !== 'undefined') {
+      const _bb = new THREE.Box3().setFromObject(robot);
+      let _wheelBottom = null;
+      robot.traverse((o) => {
+        if (!o.userData?.isWheel || !o.isMesh) return;
+        const wb = new THREE.Box3().setFromObject(o);
+        if (!wb.isEmpty()) _wheelBottom = _wheelBottom == null ? wb.min.y : Math.min(_wheelBottom, wb.min.y);
+      });
+      window.__bbRaceDebug = {
+        scene,
+        robot,
+        rs: rsRef.current,
+        bboxMinY: _bb.isEmpty() ? null : _bb.min.y,
+        bboxMaxY: _bb.isEmpty() ? null : _bb.max.y,
+        wheelBottomY: _wheelBottom,
+        roadY: robot.userData._lastRoadY,
+        kartClearance: robot.userData._kartRoadClearance ?? rsRef.current?._kartRoadClearance,
+      };
+    }
+    } catch (err) {
+      console.error('[SimCanvas init]', err);
+      setSimError(formatSimStartupError(err));
+    }
     return ()=>{
-      document.removeEventListener('visibilitychange',onVis);
-      clearTimeout(_sizeTimer);
+      if(onVis) document.removeEventListener('visibilitychange',onVis);
+      if(_sizeTimer) clearTimeout(_sizeTimer);
       cancelAnimationFrame(rafRef.current);
-      ro.disconnect();
-      execTrail.dispose?.();
-      composer.dispose?.();
-      if(el&&renderer.domElement.parentNode===el) el.removeChild(renderer.domElement);
-      renderer.dispose();
+      ro?.disconnect();
+      execTrail?.dispose?.();
+      previewPath?.dispose?.();
+      composer?.dispose?.();
+      sceneHandleRef.current = null;
+      if(el&&renderer?.domElement?.parentNode===el) el.removeChild(renderer.domElement);
+      el?.classList?.remove('ll-sim-biome');
+      el?.classList?.remove('ll-sim-crystal-cavern');
+      if (el?.dataset) {
+        delete el.dataset.arena;
+        delete el.dataset.buildStamp;
+      }
+      renderer?.dispose();
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[robotConfig,arenaType,challengeKey,challenge?.totalDist,challenge?.obstacles,introKey]);
-  return <div ref={wrapRef} className="ll-sim-wrap" style={{width:'100%',height:'100%',minHeight:0}}/>;
+  },[robotConfig,arenaType,challengeKey,challenge?.totalDist,challenge?.obstacles]);
+  if (simError) {
+    return (
+      <div className="ll-sim-wrap ll-sim-error" style={{
+        width:'100%', height:'100%', minHeight:0, display:'flex', flexDirection:'column',
+        alignItems:'center', justifyContent:'center', gap:10, padding:24, textAlign:'center',
+        background:'#050810', color:'#94a3b8', fontFamily:'system-ui,sans-serif',
+      }}>
+        <div style={{ fontSize:36 }}>🎮</div>
+        <div style={{ fontSize:15, fontWeight:700, color:'#e2e8f0' }}>Simulator couldn&apos;t start</div>
+        <div style={{ fontSize:12, maxWidth:320, lineHeight:1.5 }}>{simError}</div>
+        <div style={{ fontSize:11, maxWidth:340, lineHeight:1.45, color:'#64748b' }}>
+          {isEmbeddedPreviewBrowser()
+            ? 'The Cursor preview panel cannot run WebGL 3D. Use Chrome, Safari, or Edge at bytebuddies.technology for the full illustrated tracks.'
+            : 'Works in Chrome or Edge with hardware acceleration on. Press F12 → Console and send a screenshot if it still fails.'}
+        </div>
+        {isEmbeddedPreviewBrowser() && (
+          <a
+            href="https://bytebuddies.technology/#studio?course=rover_rover_obstacle_course"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              marginTop: 4, padding: '8px 16px', borderRadius: 8, border: 'none',
+              background: '#22c55e', color: '#0a0a12', fontWeight: 700, textDecoration: 'none',
+            }}
+          >
+            Open in Chrome / Safari
+          </a>
+        )}
+        <button type="button" onClick={()=>{ localStorage.setItem('bb_quality_tier','low'); window.location.reload(); }} style={{
+          marginTop:4, padding:'8px 16px', borderRadius:8, border:'1px solid #334155',
+          background:'#1e293b', color:'#e2e8f0', fontWeight:600, cursor:'pointer',
+        }}>Run in low graphics mode</button>
+        <button type="button" onClick={()=>setSimError(null)} style={{
+          marginTop:4, padding:'8px 16px', borderRadius:8, border:'none',
+          background:'#6366f1', color:'#fff', fontWeight:700, cursor:'pointer',
+        }}>Try again</button>
+      </div>
+    );
+  }
+  return (
+    <div className="ll-sim-wrap" style={{ width: '100%', height: '100%', minHeight: 0, position: 'relative' }}>
+      <div ref={wrapRef} style={{ width: '100%', height: '100%' }} />
+    </div>
+  );
 }
 
 function RunCountdown({ onDone }) {
-  const [phase, setPhase] = useState(3);
+  const [count, setCount] = useState(3);
   useEffect(() => {
-    if (phase < 0) { onDone(); return undefined; }
-    const delay = phase === 0 ? 650 : 780;
-    const t = setTimeout(() => setPhase((p) => p - 1), delay);
-    return () => clearTimeout(t);
-  }, [phase, onDone]);
-  const label = phase > 0 ? String(phase) : phase === 0 ? 'GO!' : null;
-  if (label == null) return null;
+    if (count > 0) {
+      const t = setTimeout(() => setCount(c => c - 1), 800);
+      return () => clearTimeout(t);
+    } else {
+      const t = setTimeout(onDone, 600);
+      return () => clearTimeout(t);
+    }
+  }, [count, onDone]);
   return (
-    <div className="ll-countdown-overlay" aria-live="polite">
-      <div className={`ll-countdown-num ${phase === 0 ? 'll-countdown-go' : ''}`} key={label}>{label}</div>
-      <div className="ll-countdown-sub">Get ready!</div>
+    <div style={{
+      position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+      pointerEvents: 'none', zIndex: 100,
+    }}>
+      <div style={{
+        fontSize: count > 0 ? '8rem' : '5rem',
+        fontWeight: 900,
+        color: count > 0 ? '#fff' : '#22c55e',
+        textShadow: '0 0 40px rgba(0,0,0,0.8), 0 4px 20px rgba(0,0,0,0.5)',
+        animation: 'countPop 0.5s ease-out',
+        fontFamily: 'system-ui, sans-serif',
+      }} key={count}>
+        {count > 0 ? count : 'GO!'}
+      </div>
+      <style>{`
+        @keyframes countPop {
+          0% { transform: scale(2); opacity: 0; }
+          50% { transform: scale(1.1); }
+          100% { transform: scale(1); opacity: 1; }
+        }
+      `}</style>
     </div>
   );
 }
@@ -9992,147 +11572,6 @@ function VictoryCelebration({ xp, medal, onDone }) {
       {pieces.map((p) => (
         <span key={p.id} className="ll-confetti" style={{ left: p.left, animationDelay: p.delay, background: p.color, '--rot': p.rot }} />
       ))}
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// REAL BLOCKLY WORKSPACE
-// ─────────────────────────────────────────────────────────────────────────────
-const BB_CATS = [
-  { name:'⚡ Events',    icon:'⚡', color:'#e11d48' },
-  { name:'🚀 Move',     icon:'🚀', color:'#3b82f6' },
-  { name:'🔁 Control',  icon:'🔁', color:'#f97316' },
-  { name:'👁 Sensors',  icon:'👁', color:'#22c55e' },
-  { name:'🧠 AI',       icon:'🧠', color:'#a855f7' },
-  { name:'⚙️ Tools',   icon:'⚙️', color:'#ec4899' },
-  { name:'💡 Lights',  icon:'💡', color:'#06b6d4' },
-  { name:'📦 Variables',icon:'📦', color:'#f59e0b' },
-];
-
-function BlocklyWorkspace({robotConfig,wsRef,highlightId,onBlocksChange}){
-  const divRef   = useRef(null);
-  const prevHlId = useRef(null);
-  const [activeCat, setActiveCat] = useState(BB_CATS[0].name);
-
-  useEffect(()=>{
-    const div=divRef.current; if(!div) return;
-    registerRobotBlocks();
-    const theme  =makeBBTheme();
-    const toolbox=buildToolbox(robotConfig);
-
-    const ws=Blockly.inject(div,{
-      toolbox, theme,
-      grid:{spacing:22,length:4,colour:'#ffffff10',snap:true},
-      move:{scrollbars:{horizontal:true,vertical:true},drag:true,wheel:true},
-      zoom:{controls:true,wheel:true,startScale:0.72,maxScale:2.4,minScale:0.22,scaleSpeed:1.2},
-      trashcan:true,
-      sounds:false,
-      renderer:'zelos',
-    });
-    wsRef.current=ws;
-
-    // Type-specific starter program
-    const rtype = detectRobotType(robotConfig);
-    const STARTERS = {
-      rover:   '<xml><block type="robot_when_start" x="30" y="30"><next><block type="robot_move_forward"><field name="STEPS">3</field><next><block type="robot_turn_right"><field name="ANGLE">90</field></block></next></block></next></block></xml>',
-      tank:    '<xml><block type="robot_when_start" x="30" y="30"><next><block type="robot_power_mode"><next><block type="robot_move_forward"><field name="STEPS">3</field></block></next></block></next></block></xml>',
-      drone:   '<xml><block type="robot_when_start" x="30" y="30"><next><block type="robot_takeoff"><next><block type="robot_fly_up"><field name="HEIGHT">3</field><next><block type="robot_hover"><field name="SECS">1</field></block></next></block></next></block></next></block></xml>',
-      jet:     '<xml><block type="robot_when_start" x="30" y="30"><next><block type="robot_thrust"><next><block type="robot_roll_left"><next><block type="robot_loop_maneuver"></block></next></block></next></block></next></block></xml>',
-      spider:  '<xml><block type="robot_when_start" x="30" y="30"><next><block type="robot_step_forward"><field name="STEPS">3</field><next><block type="robot_leap"></block></next></block></next></block></xml>',
-      factory: '<xml><block type="robot_when_start" x="30" y="30"><next><block type="robot_grab"><next><block type="robot_rotate_arm"><field name="ANGLE">90</field><next><block type="robot_stack_obj"></block></next></block></next></block></next></block></xml>',
-      hover:   '<xml><block type="robot_when_start" x="30" y="30"><next><block type="robot_hover_stabilize"><next><block type="robot_fly_up"><field name="HEIGHT">2</field><next><block type="robot_side_drift"><field name="DIR">left</field></block></next></block></next></block></next></block></xml>',
-    };
-    try{
-      const xmlStr = STARTERS[rtype] || STARTERS.rover;
-      const dom=new DOMParser().parseFromString(xmlStr,'text/xml').documentElement;
-      Blockly.Xml.domToWorkspace(dom, ws);
-    }catch(e){/* ignore */}
-
-    // Resize (ws.isDisposed is a property getter in Blockly v10, not a method)
-    const ro=new ResizeObserver(()=>{ if(!ws.isDisposed) Blockly.svgResize(ws); });
-    ro.observe(div);
-
-    // Change listener
-    const onChange=()=>onBlocksChange?.(ws.getAllBlocks(false).length);
-    ws.addChangeListener(onChange);
-
-    // Force toolbox to icon-only width via MutationObserver (Blockly sets width via JS inline style)
-    const enforceTbNarrow=()=>{
-      const tbDiv=div.querySelector('.blocklyToolboxDiv');
-      if(!tbDiv) return;
-      tbDiv.style.setProperty('width','52px','important');
-      tbDiv.style.setProperty('min-width','52px','important');
-      tbDiv.style.setProperty('max-width','52px','important');
-      tbDiv.style.setProperty('overflow','hidden','important');
-      tbDiv.querySelectorAll('.blocklyToolboxCategoryLabel').forEach(el=>{
-        el.style.setProperty('display','none','important');
-      });
-    };
-    const tbMo=new MutationObserver(enforceTbNarrow);
-    tbMo.observe(div,{childList:true,subtree:true,attributes:true,attributeFilter:['style']});
-    setTimeout(enforceTbNarrow,30);
-    setTimeout(enforceTbNarrow,200);
-
-    const openFirstCategory=()=>{
-      try {
-        const tb=ws.getToolbox?.();
-        const items=tb?.getToolboxItems?.()||[];
-        if(items.length>0) tb.selectItem(items[0]);
-      } catch { /* ignore */ }
-      Blockly.svgResize(ws);
-    };
-    requestAnimationFrame(openFirstCategory);
-    const catTimer=setTimeout(openFirstCategory,150);
-
-    return ()=>{
-      clearTimeout(catTimer);
-      tbMo.disconnect();
-      ws.removeChangeListener(onChange);
-      ro.disconnect();
-      ws.dispose();
-      wsRef.current=null;
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[robotConfig.movementId, robotConfig.armId,
-     JSON.stringify((robotConfig.sensors||[]).slice().sort()),
-     JSON.stringify((robotConfig.tools||[]).slice().sort())]);
-
-  // Highlight executing block
-  useEffect(()=>{
-    const ws=wsRef.current;
-    if(!ws||ws.isDisposed) return;
-    if(prevHlId.current){
-      const prev=ws.getBlockById(prevHlId.current);
-      if(prev){ try{prev.getSvgRoot().classList.remove('bb-exec-block');}catch(e){} }
-    }
-    if(highlightId){
-      const blk=ws.getBlockById(highlightId);
-      if(blk){
-        try{
-          blk.getSvgRoot().classList.add('bb-exec-block');
-          ws.centerOnBlock(blk.id);
-        }catch(e){}
-      }
-    }
-    prevHlId.current=highlightId;
-  },[highlightId]);
-
-  const selectCat=(catName)=>{
-    const ws=wsRef.current; if(!ws) return;
-    try{
-      const tb=ws.getToolbox?.();
-      const items=tb?.getToolboxItems?.()||[];
-      const item=items.find(it=>it.getName?.()===catName);
-      if(item) tb.selectItem(item);
-      else tb?.selectCategoryByName?.(catName);
-    }catch(e){}
-    setActiveCat(catName);
-  };
-
-  return (
-    <div style={{width:'100%',height:'100%',position:'relative'}}>
-      <div ref={divRef} style={{width:'100%',height:'100%'}}/>
     </div>
   );
 }
@@ -10212,12 +11651,13 @@ function SystemsPanel({robotConfig,stats,challenge,profile,isRunning,fps,zoneInf
       </div>
       {/* Mission Objectives from COURSE_STORIES */}
       {(()=>{
-        const story = COURSE_STORIES[challenge.id];
-        if (!story || !story.objectives) return null;
+        const story = COURSE_STORIES[challenge.arenaType] || COURSE_STORIES[challenge.id] || {};
+        const objectives = resolveCourseObjectives(challenge, story);
+        if (!objectives.length) return null;
         return (
           <div style={{padding:'10px 12px',borderTop:'1px solid #21262d',flexShrink:0}}>
             <div style={{fontSize:8,fontWeight:700,color:'#4b5563',textTransform:'uppercase',letterSpacing:0.7,marginBottom:7}}>Mission Objectives</div>
-            {story.objectives.map((obj,i)=>(
+            {objectives.map((obj,i)=>(
               <div key={i} style={{display:'flex',alignItems:'flex-start',gap:6,marginBottom:5}}>
                 <div style={{width:14,height:14,borderRadius:3,border:`1.5px solid ${challenge.color}88`,flexShrink:0,marginTop:1,display:'flex',alignItems:'center',justifyContent:'center'}}>
                   {stats.progress>=100&&<span style={{fontSize:8,color:challenge.color}}>✓</span>}
@@ -10225,9 +11665,9 @@ function SystemsPanel({robotConfig,stats,challenge,profile,isRunning,fps,zoneInf
                 <span style={{fontSize:9,color:'#9ca3af',lineHeight:1.4}}>{obj}</span>
               </div>
             ))}
-            {story.tip && (
+            {(story.tip || challenge.codeHint) && (
               <div style={{marginTop:6,padding:'5px 7px',background:'rgba(251,191,36,.07)',borderRadius:6,border:'1px solid rgba(251,191,36,.18)'}}>
-                <span style={{fontSize:8,color:'#fbbf24'}}>💡 {story.tip}</span>
+                <span style={{fontSize:8,color:'#fbbf24'}}>💡 {story.tip || challenge.codeHint}</span>
               </div>
             )}
           </div>
@@ -10462,7 +11902,13 @@ function DiffSection({title,diffKey,courses,robotName,robotType,onSelect,current
 // ─────────────────────────────────────────────────────────────────────────────
 // ── Course Intro Modal — story + objectives before launching ─────────────────
 function CourseIntroModal({ course, courseType, onConfirm, onBack }) {
-  const story = COURSE_STORIES[course.id] || {};
+  const baseStory = COURSE_STORIES[course.id] || {};
+  const logic = getGameLogicForCourse(course.id);
+  const objectives = resolveCourseObjectives(course, baseStory);
+  const storyText = baseStory.story || course.story || course.desc;
+  const tip = baseStory.tip || course.codeHint || logic?.codeHint;
+  const collectibles = baseStory.collectibles;
+  const winCondition = course.winCondition || logic?.winCondition;
   const diff  = DIFF_MAP[course.id] || 'easy';
   const dc    = { easy:'#22c55e', medium:'#f59e0b', hard:'#ef4444' }[diff];
   const xpReward = courseType?.xp?.[diff] || 100;
@@ -10485,7 +11931,7 @@ function CourseIntroModal({ course, courseType, onConfirm, onBack }) {
           padding:'24px 28px 20px',
           position:'relative',
         }}>
-          <div style={{fontSize:48,marginBottom:10,lineHeight:1}}>{story.emoji || course.icon}</div>
+          <div style={{fontSize:48,marginBottom:10,lineHeight:1}}>{baseStory.emoji || course.icon}</div>
           <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:6}}>
             <h2 style={{margin:0,fontSize:20,fontWeight:900,color:'#f0f6ff'}}>{course.name}</h2>
             <span style={{fontSize:9,color:dc,background:dc+'22',borderRadius:5,padding:'2px 8px',fontWeight:800,textTransform:'uppercase'}}>{diff}</span>
@@ -10499,7 +11945,7 @@ function CourseIntroModal({ course, courseType, onConfirm, onBack }) {
 
         <div style={{padding:'20px 28px',display:'flex',flexDirection:'column',gap:16}}>
           {/* Story */}
-          {story.story && (
+          {storyText && (
             <div style={{
               padding:'14px 16px',
               background:'rgba(255,255,255,.03)',
@@ -10507,16 +11953,20 @@ function CourseIntroModal({ course, courseType, onConfirm, onBack }) {
               borderLeft:`3px solid ${course.color}88`,
             }}>
               <div style={{fontSize:8,fontWeight:700,color:'#4b5563',textTransform:'uppercase',letterSpacing:.7,marginBottom:6}}>Mission Briefing</div>
-              <p style={{margin:0,fontSize:12,color:'#c9d1d9',lineHeight:1.65}}>{story.story}</p>
+              <p style={{margin:0,fontSize:12,color:'#c9d1d9',lineHeight:1.65}}>{storyText}</p>
+              {winCondition && winCondition !== storyText && (
+                <p style={{margin:'10px 0 0',fontSize:11,color:'#94a3b8',lineHeight:1.5}}>
+                  <strong style={{color:course.color}}>Win condition:</strong> {winCondition}
+                </p>
+              )}
             </div>
           )}
 
-          {/* Objectives */}
-          {story.objectives?.length > 0 && (
+          {objectives.length > 0 && (
             <div>
               <div style={{fontSize:8,fontWeight:700,color:'#4b5563',textTransform:'uppercase',letterSpacing:.7,marginBottom:8}}>🎯 Objectives</div>
               <div style={{display:'flex',flexDirection:'column',gap:7}}>
-                {story.objectives.map((obj,i)=>(
+                {objectives.map((obj,i)=>(
                   <div key={i} style={{display:'flex',alignItems:'center',gap:10}}>
                     <div style={{
                       width:20,height:20,borderRadius:5,flexShrink:0,
@@ -10531,8 +11981,7 @@ function CourseIntroModal({ course, courseType, onConfirm, onBack }) {
             </div>
           )}
 
-          {/* Tip */}
-          {story.tip && (
+          {tip && (
             <div style={{
               display:'flex',gap:10,padding:'11px 14px',
               background:'rgba(251,191,36,.07)',borderRadius:10,
@@ -10541,13 +11990,13 @@ function CourseIntroModal({ course, courseType, onConfirm, onBack }) {
               <span style={{fontSize:18,flexShrink:0}}>💡</span>
               <div>
                 <div style={{fontSize:8,fontWeight:700,color:'#fbbf24',textTransform:'uppercase',letterSpacing:.7,marginBottom:3}}>Pro Tip</div>
-                <span style={{fontSize:11,color:'#fde68a',lineHeight:1.5}}>{story.tip}</span>
+                <span style={{fontSize:11,color:'#fde68a',lineHeight:1.5}}>{tip}</span>
               </div>
             </div>
           )}
 
           {/* Collectibles */}
-          {story.collectibles && (
+          {collectibles && (
             <div style={{
               display:'flex',gap:8,padding:'9px 12px',
               background:'rgba(96,165,250,.07)',borderRadius:8,
@@ -10555,7 +12004,7 @@ function CourseIntroModal({ course, courseType, onConfirm, onBack }) {
               alignItems:'center',
             }}>
               <span style={{fontSize:14}}>🪙</span>
-              <span style={{fontSize:10,color:'#93c5fd'}}>{story.collectibles}</span>
+              <span style={{fontSize:10,color:'#93c5fd'}}>{collectibles}</span>
             </div>
           )}
 
@@ -10746,14 +12195,15 @@ function WorldPicker({ onSelect, onClose, currentId, robotType, robotName }) {
   const isRec=(course)=>course.rec&&course.rec.some(r=>pd.recKeys.includes(r));
   const cats = ['all', ...Object.keys(CAT_META)];
   const shown = cat==='all' ? ALL_COURSES : ALL_COURSES.filter(c=>c.cat===cat);
-  const TABS=[{id:'types',label:'🎮 Course Types'},{id:'tracks',label:'🏁 STEM Tracks'},{id:'mine',label:'🎖 My 20 Courses'},{id:'all',label:'🌍 Classic Worlds'}];
+  const TABS=[{id:'types',label:'🎮 Course Types'},{id:'tracks',label:'🏁 STEM Tracks'},{id:'mine',label:'🎖 Mission Campaign'},{id:'all',label:'🌍 Classic Worlds'}];
   // XP progress bar
   const nextLvlXp = GameProgress.nextXp(lvl);
   const prevLvlXp = LVL_THRESH[lvl-1]||0;
   const lvlPct    = nextLvlXp===Infinity?100:Math.min(100,((xp-prevLvlXp)/(nextLvlXp-prevLvlXp))*100);
-  // Catalog courses for this robot
+  // Campaign missions for this robot (replaces generic catalog)
   const catalogId  = ROBOT_TYPE_TO_CATALOG[robotType]||'humanoid';
   const robotCatalogCourses = ROBOT_COURSES[catalogId]||[];
+  const campaignSections = getCampaignSectionsForRobot(robotType);
   const tierGroups = [1,2,3,4].map(tier=>({
     tier, ...TIERS[tier],
     courses: robotCatalogCourses.filter(c=>c.tier===tier),
@@ -10846,6 +12296,60 @@ function WorldPicker({ onSelect, onClose, currentId, robotType, robotName }) {
           </div>
         ) : tab==='mine' ? (
           <div>
+            {campaignSections.length > 0 ? campaignSections.map((section) => {
+              const zoneStars = RobotMissionProgress.getZoneStars(
+                robotName || 'Robot',
+                section.missions.map((m) => m.id),
+              );
+              return (
+                <div key={section.zone.id} style={{ marginBottom: 28 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                    <span style={{ fontSize: 24 }}>{section.zone.icon}</span>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 14, fontWeight: 900, color: section.zone.color }}>{section.zone.name}</div>
+                      <div style={{ fontSize: 9, color: '#6b7280', marginTop: 2 }}>{section.zone.subtitle} · {section.missions.length} missions</div>
+                      <div style={{ marginTop: 6, height: 4, background: '#21262d', borderRadius: 2, overflow: 'hidden', maxWidth: 220 }}>
+                        <div style={{ height: '100%', width: zoneStars.pct + '%', background: section.zone.color, borderRadius: 2 }} />
+                      </div>
+                    </div>
+                    <span style={{ fontSize: 10, color: '#9ca3af' }}>{'★'.repeat(Math.min(3, Math.floor(zoneStars.total / section.missions.length)))} {zoneStars.pct}%</span>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(230px,1fr))', gap: 10 }}>
+                    {section.missions.map((mission) => {
+                      const course = ROBOT_MISSION_COURSES.find((c) => c.id === mission.id) || mission;
+                      const sel = course.id === currentId;
+                      const prog = RobotMissionProgress.getMission(robotName || 'Robot', mission.id);
+                      const diffStars = '⭐'.repeat(mission.difficulty || 1);
+                      return (
+                        <button key={mission.id} onClick={() => { onSelect(course); onClose(); }}
+                          style={{ padding: '14px', borderRadius: 12, border: `2px solid ${sel ? section.zone.color : section.zone.color + '44'}`, background: sel ? `linear-gradient(135deg,${section.zone.color}30,${section.zone.color}18)` : `linear-gradient(135deg,${section.zone.color}12,#0d1117)`, cursor: 'pointer', textAlign: 'left', transition: 'all .15s', position: 'relative' }}
+                          onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = `0 6px 22px ${section.zone.color}44`; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = ''; }}>
+                          {sel && <span style={{ position: 'absolute', top: 8, right: 8, fontSize: 8, background: '#22c55e20', color: '#22c55e', borderRadius: 4, padding: '2px 6px', fontWeight: 800 }}>✓ ON</span>}
+                          {prog.completed && <span style={{ position: 'absolute', top: 8, left: 8, fontSize: 8, background: '#fbbf2420', color: '#fbbf24', borderRadius: 4, padding: '2px 6px', fontWeight: 800 }}>{'★'.repeat(prog.stars)}{'☆'.repeat(3 - prog.stars)}</span>}
+                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 9, marginBottom: 7 }}>
+                            <div style={{ width: 38, height: 38, borderRadius: 10, background: `linear-gradient(135deg,${section.zone.color}44,${section.zone.color}22)`, border: `1.5px solid ${section.zone.color}55`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>{mission.icon}</div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: 10, fontWeight: 800, color: section.zone.color, marginBottom: 2 }}>{mission.code} · {diffStars}</div>
+                              <div style={{ fontSize: 11, fontWeight: 800, color: '#f0f6ff', lineHeight: 1.3 }}>{mission.name}</div>
+                              <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap', marginTop: 4 }}>
+                                <span style={{ fontSize: 7, color: '#a78bfa', background: '#a78bfa20', borderRadius: 3, padding: '1px 5px', fontWeight: 700 }}>{mission.missionType === 'MG' ? '🎮 Mini-Game' : mission.missionType === 'SV' ? '🛡️ Survival' : '📦 Collect & Deliver'}</span>
+                                <span style={{ fontSize: 7, color: '#fbbf24', background: '#fbbf2420', borderRadius: 3, padding: '1px 5px', fontWeight: 700 }}>+{mission.xpBase} XP</span>
+                              </div>
+                            </div>
+                          </div>
+                          <div style={{ fontSize: 9, color: '#8b949e', lineHeight: 1.5, marginBottom: 8, WebkitLineClamp: 3, overflow: 'hidden', display: '-webkit-box', WebkitBoxOrient: 'vertical' }}>{mission.story}</div>
+                          <div style={{ marginTop: 8, background: `linear-gradient(135deg,${section.zone.color},${section.zone.color}cc)`, borderRadius: 7, padding: '6px', textAlign: 'center', fontSize: 10, fontWeight: 900, color: '#fff', letterSpacing: 0.5 }}>
+                            ▶ START MISSION
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            }) : (
+          <div>
             {tierGroups.map(tg=>(
               <div key={tg.tier} style={{marginBottom:28}}>
                 {/* Tier header */}
@@ -10910,6 +12414,8 @@ function WorldPicker({ onSelect, onClose, currentId, robotType, robotName }) {
               </div>
             ))}
           </div>
+            )}
+          </div>
         ):(
           <div>
             {/* Category filter pills */}
@@ -10967,7 +12473,114 @@ function WorldPicker({ onSelect, onClose, currentId, robotType, robotName }) {
 // ─────────────────────────────────────────────────────────────────────────────
 // LIVE LAB PAGE
 // ─────────────────────────────────────────────────────────────────────────────
-export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,initialChallenge,onChallengeConsumed}){
+const LAB_COURSE_LS_KEY = 'bb-lab-active-course';
+
+function readStoredRobotConfig() {
+  try {
+    const stored = localStorage.getItem('bb-studio-robot');
+    const raw = stored ? JSON.parse(stored) : {};
+    return normalizeRobotBuildConfig(raw);
+  } catch {
+    return normalizeRobotBuildConfig({});
+  }
+}
+
+function lookupCourseById(id) {
+  if (!id) return null;
+  const direct = ALL_COURSES.find((c) => c.id === id);
+  if (direct) return direct;
+  return resolveChassisModeCourse(CHASSIS_GAME_MODE_BY_ID[id], ALL_COURSES);
+}
+
+function defaultLabCourseForRobot(robotConfig) {
+  const rc = robotConfig || readStoredRobotConfig();
+  const chassisId = rc?.chassisId || 'rover';
+  const chassisDefault = getDefaultChassisCourse(chassisId, ALL_COURSES);
+  if (chassisDefault) return enrichCourseWithGameLogic(chassisDefault);
+
+  const robotType = detectRobotType(rc);
+  const pd = PROFILE_DATA[robotType] || PROFILE_DATA.rover;
+  const robotCourses = filterCoursesForRobot(ALL_COURSES, robotType, pd.recKeys);
+  const enrich = (c) => (c ? enrichCourseWithGameLogic(c) : null);
+
+  // Fighter robots always open on Training Arena first — but not football bots.
+  if (isFootballRobot(rc)) {
+    const footballCourse = robotCourses.find((c) => c.id === 'football_fifa')
+      || robotCourses.find((c) => c.arenaType === 'robot_football');
+    if (footballCourse) return enrich(footballCourse);
+  }
+
+  if (isFighterRobot(rc)) {
+    const fightCourse = robotCourses.find((c) => c.id === 'fight_training')
+      || robotCourses.find((c) => c.arenaType === 'robot_fight');
+    if (fightCourse) return enrich(fightCourse);
+  }
+
+  const preferredId = pd.arenaType;
+  const byArena = robotCourses.find((c) => c.arenaType === preferredId);
+  if (byArena) return enrich(byArena);
+
+  const sorted = getDefaultCourseForRobot(ALL_COURSES, robotType, pd.recKeys);
+  if (sorted) return sorted;
+
+  const campaignMissions = getMissionsForRobotType(robotType);
+  if (campaignMissions.length > 0) {
+    const first = ROBOT_MISSION_COURSES.find((c) => c.id === campaignMissions[0].id);
+    if (first) return enrich(first);
+  }
+
+  return enrich(ALL_COURSES.find((c) => c.id === 'street_grand_prix')) || enrich(robotCourses[0]);
+}
+
+function resolveLabCourse(initialCourseId, robotConfig) {
+  const rc = robotConfig || readStoredRobotConfig();
+  const chassisId = rc?.chassisId || 'rover';
+  const chassisModes = getCoursesForChassis(chassisId, ALL_COURSES);
+  const pick = (id) => {
+    const c = lookupCourseById(id);
+    return c ? enrichCourseWithGameLogic(c) : null;
+  };
+  const fitsChassis = (course) => course && (
+    isCourseForChassis(course.id, chassisId)
+    || chassisModes.some((c) => c.id === course.id)
+  );
+
+  // Football robots must never inherit a stale forest/racing world from localStorage.
+  if (isFootballRobot(rc)) {
+    if (initialCourseId) {
+      const fromUrl = pick(initialCourseId);
+      if (fromUrl && fitsChassis) return fromUrl;
+    }
+    const footballDefault = chassisModes.find((c) => c.arenaType === 'robot_football') || chassisModes[0];
+    if (footballDefault) return pick(footballDefault.id);
+    return defaultLabCourseForRobot(rc);
+  }
+
+  if (initialCourseId) {
+    const fromUrl = pick(initialCourseId);
+    if (fitsChassis(fromUrl)) return fromUrl;
+    if (BIOME_ARENA_TYPES.has(initialCourseId)) {
+      const biomeCourse = pick(initialCourseId);
+      if (biomeCourse) return biomeCourse;
+    }
+  }
+  try {
+    const saved = localStorage.getItem(LAB_COURSE_LS_KEY);
+    if (saved === 'flappy_bird' && resolveChassisKey(chassisId) !== 'birdbot') {
+      localStorage.removeItem(LAB_COURSE_LS_KEY);
+    } else if (saved) {
+      const fromStorage = pick(saved);
+      if (fitsChassis(fromStorage)) return fromStorage;
+    }
+  } catch { /* ignore */ }
+  return defaultLabCourseForRobot(rc);
+}
+
+function hasFootballGameplayScript(custom = []) {
+  return custom.some((b) => b.id && b.id !== 'when_start');
+}
+
+export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,initialChallenge,onChallengeConsumed,initialCourseId,eventsFocusKey=0,footballLaunchKey=0}){
   const rc=useMemo(()=>{
     try {
       const stored = localStorage.getItem('bb-studio-robot');
@@ -10976,16 +12589,30 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
     } catch {
       return normalizeRobotBuildConfig({});
     }
-  },[robotConfigProp]);
+  },[robotConfigProp, footballLaunchKey]);
 
   const workspaceRef    =useRef(null);
-  const customScriptRef =useRef([]);   // custom block palette script
-  const clearScriptRef  =useRef(null); // fn to clear custom script
+  const customScriptRef =useRef([]);
+  const clearScriptRef  =useRef(null);
+  const flappyHandlersRef = useRef(null);
+  const eventHandlersRef = useRef(null);
+  const flappyProgramRef = useRef({ handlers: {}, tickLoops: [] });
+  const fightingHandlersRef = useRef(null);
+  const fightingCombatRef = useRef(null);
+  const fightingProgramRef = useRef({ handlers: {}, tickLoops: [] });
+  const footballHandlersRef = useRef(null);
+  const footballProgramsRef = useRef({});
+  const footballScriptsRef = useRef({ defender: [], striker: [], midfielder: [] });
+  const footballActiveRoleRef = useRef('striker');
+  const flappySpacebarRef = useRef(false);
+  const flappyStartRunRef = useRef(null);
   const gameRootRef     =useRef(null);
   const codeBlocksRef   =useRef([]);
   const simKeyRef       =useRef(0);
+  const appliedUrlCourseRef = useRef(initialCourseId || null);
   const xpAwardedRef    =useRef(false);
   const failShownRef    =useRef(false);
+  const fightResultsTimerRef = useRef(null);
 
   const [runMode,      setRunMode]      =useState('idle');
   const [stepTrig,     setStepTrig]     =useState(0);
@@ -10994,20 +12621,28 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
   const [blockCount,   setBlockCount]   =useState(0);
   const blockCountRef = useRef(0);
   const [stats,        setStats]        =useState({time:0,dist:0,battery:100,avoided:0,progress:0,collisions:0});
+  const [combatStats,  setCombatStats]  =useState(null);
+  const [showFightHub, setShowFightHub] = useState(false);
+  const [showFootballHub, setShowFootballHub] = useState(false);
+  const [fightResults, setFightResults] = useState(null);
+  const [fightCareer,  setFightCareer]  = useState(() => getFightCareer());
   const [activity,     setActivity]     =useState(['🤖 Build your program in the workspace on the left, then press  ▶ Run!']);
   const [fps,          setFps]          =useState(null);
   const [challengeI,   setChallengeI]   =useState(0);
   const [simKey,       setSimKey]       =useState(0);
   const [showWorlds,   setShowWorlds]   =useState(false);
-  const [activeCourse, setActiveCourse] =useState(null);
+  const [activeCourse, setActiveCourse] =useState(() => resolveLabCourse(initialCourseId, robotConfigProp || readStoredRobotConfig()));
   const [robotXp,      setRobotXp]      =useState(()=>GameProgress.get(rc?.name||'Robot').xp||0);
   const [hitFlash,     setHitFlash]     =useState(false);
   const [execLabel,    setExecLabel]    =useState(null);  // {text,color} while running
   const [activeStepIndex, setActiveStepIndex] = useState(-1);
   const [showCountdown,setShowCountdown]=useState(false);
   const [introKey,     setIntroKey]     =useState(0);
+  const [qualityOverride, setQualityOverride] = useState(() => localStorage.getItem('bb_quality_tier') || 'auto');
   const [victory,      setVictory]      =useState(null);  // {xp, medal, coins}
   const [failure,      setFailure]      =useState(null);  // {message, hint}
+  const [showCodingTip,setShowCodingTip]=useState(false);
+  const [missionVictory,setMissionVictory]=useState(null); // {winText, xp, stars}
   const [zoneInfo,     setZoneInfo]     =useState({ num:1, name:'FOREST ENTRANCE', color:'#22c55e' });
   const [drawerOpen,   setDrawerOpen]   =useState(false);
   const [missionOpen,  setMissionOpen]  =useState(true);
@@ -11017,29 +12652,171 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
   const lastMissionZoneRef = useRef(0);
   const [activeCat,    setActiveCat]    =useState('events');
   const [isFullscreen, setIsFullscreen] =useState(false);
+  const [codeRacerCodeOpen, setCodeRacerCodeOpen] = useState(true);
+  const [codeRacerMissionOpen, setCodeRacerMissionOpen] = useState(false);
 
   useEffect(()=>{codeBlocksRef.current=codeBlocks;},[codeBlocks]);
   useEffect(()=>{blockCountRef.current=blockCount;},[blockCount]);
 
+  useEffect(() => {
+    setShowWorlds(false);
+  }, [eventsFocusKey]);
+
   useEffect(()=>{
     if (!initialChallenge) return;
-    const course = trackLevelToCourse(initialChallenge);
+    const isDirectCourse = initialChallenge.arenaType
+      || initialChallenge.isRobotMission
+      || initialChallenge.matchMode
+      || initialChallenge.isGameMission;
+    const course = enrichCourseWithGameLogic(
+      resolveFootballLabCourse(
+        isDirectCourse ? initialChallenge : trackLevelToCourse(initialChallenge),
+        rc,
+      ),
+    );
     if (!course) return;
+    try { localStorage.setItem(LAB_COURSE_LS_KEY, course.id); } catch { /* ignore */ }
+    const launchingFootball = isFootballCourse(course.id, course.arenaType);
+    if (!launchingFootball) {
+      if (clearScriptRef.current) clearScriptRef.current();
+      customScriptRef.current = [];
+      setBlockCount(0);
+    }
+    setCodeBlocks([]);
     setActiveCourse(course);
     xpAwardedRef.current = false;
     simKeyRef.current++; setSimKey(simKeyRef.current);
     setRunMode('idle');
     setStats({ time:0, dist:0, battery:100, avoided:0, progress:0, collisions:0 });
-    setActivity([`🏁 Track: ${initialChallenge.trackName || course.name} — Level ${initialChallenge.level}`, course.desc, course.codeHint ? `💡 ${course.codeHint}` : 'Build your program and press ▶ Run!']);
+    const isFootball = isFootballCourse(course.id, course.arenaType);
+    setActivity(isFootball
+      ? [`⚽ ${course.name}`, course.desc, course.codeHint ? `💡 ${course.codeHint}` : 'Use Football blocks — Chase ball → Shoot!']
+      : [`🏁 Track: ${initialChallenge.trackName || course.name}${initialChallenge.level ? ` — Level ${initialChallenge.level}` : ''}`, course.desc, course.codeHint ? `💡 ${course.codeHint}` : 'Build your program and press ▶ Run!']);
     onChallengeConsumed?.();
-  }, [initialChallenge, onChallengeConsumed]);
+  }, [initialChallenge, onChallengeConsumed, rc?.chassisId]);
+
+  useEffect(() => {
+    if (!footballLaunchKey) return;
+    const modes = getCoursesForChassis(rc?.chassisId || 'footballbot', ALL_COURSES);
+    const football = modes.find((c) => c.arenaType === 'robot_football') || modes[0];
+    if (!football) return;
+    const enriched = enrichCourseWithGameLogic(resolveFootballLabCourse(football, rc));
+    setCodeBlocks([]);
+    failShownRef.current = false;
+    setFightResults(null);
+    setActiveCourse(enriched);
+    try { localStorage.setItem(LAB_COURSE_LS_KEY, enriched.id); } catch { /* ignore */ }
+    simKeyRef.current += 1;
+    setSimKey(simKeyRef.current);
+    setActivity([
+      '⚽ FIFA 3v3 Match loaded!',
+      enriched.name,
+      'Press ▶ Simulate — chase, pass & score against the blue team!',
+    ]);
+  }, [footballLaunchKey, rc?.chassisId]);
+
+  // FootballBot chassis: always land on football pitch (not jump world / forest from old saves)
+  useEffect(() => {
+    if (!isFootballRobot(rc)) return;
+    if (isFootballCourse(activeCourse?.id, activeCourse?.arenaType)) return;
+    const modes = getCoursesForChassis(rc?.chassisId || 'footballbot', ALL_COURSES);
+    const football = modes.find((c) => c.arenaType === 'robot_football') || modes[0];
+    if (!football) return;
+    const enriched = enrichCourseWithGameLogic(football);
+    setActiveCourse(enriched);
+    try { localStorage.setItem(LAB_COURSE_LS_KEY, enriched.id); } catch { /* ignore */ }
+    simKeyRef.current += 1;
+    setSimKey(simKeyRef.current);
+    setActivity([
+      '⚽ Robot Football Arena loaded!',
+      enriched.name,
+      'Press ▶ Simulate — use Football blocks to chase, pass & score!',
+    ]);
+  }, [rc?.chassisId, activeCourse?.id]);
 
   const profile  =useMemo(()=>getSmartProfile(rc),[rc]);
+
+  // Fighter chassis: always land on a combat course — never override football.
+  useEffect(() => {
+    if (isFootballRobot(rc)) return;
+    if (isFootballCourse(activeCourse?.id, activeCourse?.arenaType)) return;
+    if (!isFighterRobot(rc)) return;
+    if (isFightingCourse(activeCourse?.id, activeCourse?.arenaType)) return;
+    const modes = getCoursesForChassis(rc?.chassisId || 'striker', ALL_COURSES);
+    const fight = modes.find((c) => c.arenaType === 'robot_fight') || modes[0];
+    if (!fight) return;
+    const enriched = enrichCourseWithGameLogic(fight);
+    setActiveCourse(enriched);
+    try { localStorage.setItem(LAB_COURSE_LS_KEY, enriched.id); } catch { /* ignore */ }
+    setActivity([
+      '🥊 Combat Arena loaded!',
+      enriched.name,
+      'Press ▶ Run — fight with keyboard (J/K/B) or Blockly blocks!',
+    ]);
+  }, [rc?.chassisId, activeCourse?.id]);
+
+  // On chassis change, always snap to mode 1 for that robot's 10 exclusive modes.
+  // Never steal a CodeRacer cup track back to rover mode 1 (Sunset Cove).
+  const prevChassisIdRef = useRef(null);
+  useEffect(() => {
+    if (isFootballCourse(activeCourse?.id, activeCourse?.arenaType)) return;
+    if (BIOME_ARENA_TYPES.has(activeCourse?.arenaType) || BIOME_ARENA_TYPES.has(activeCourse?.id)) return;
+    const chassisId = rc?.chassisId || 'rover';
+    const chassisChanged = prevChassisIdRef.current !== null && prevChassisIdRef.current !== chassisId;
+    prevChassisIdRef.current = chassisId;
+    const courseId = activeCourse?.id;
+    if (!chassisChanged && courseId && isCourseForChassis(courseId, chassisId)) return;
+    const next = enrichCourseWithGameLogic(getDefaultChassisCourse(chassisId, ALL_COURSES));
+    if (!next || next.id === activeCourse?.id) return;
+    setActiveCourse(next);
+    try { localStorage.setItem(LAB_COURSE_LS_KEY, next.id); } catch { /* ignore */ }
+    simKeyRef.current += 1;
+    setSimKey(simKeyRef.current);
+  }, [rc?.chassisId, activeCourse?.id]);
+
+  // Rebuild 3D arena whenever the selected world OR arena type changes
+  useEffect(() => {
+    if (!activeCourse?.id) return;
+    simKeyRef.current += 1;
+    setSimKey(simKeyRef.current);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeCourse?.id, activeCourse?.arenaType, activeCourse?.linkedRaceCourse, activeCourse?.modeIndex]);
+
   // If user picked a world via WorldPicker, use that; else use the profile's recommended default
   const challenge=useMemo(()=>{
-    if (activeCourse) return activeCourse;
-    return profile.challenges[Math.min(challengeI,profile.challenges.length-1)];
-  },[activeCourse,profile,challengeI]);
+    const raw = activeCourse
+      ? (lookupCourseById(activeCourse.id) || activeCourse)
+      : profile.challenges[Math.min(challengeI, profile.challenges.length - 1)];
+    const resolved = resolveFootballLabCourse(raw, rc);
+    return resolved ? enrichCourseWithGameLogic(resolved) : resolved;
+  },[activeCourse, profile, challengeI, rc?.chassisId]);
+
+  const arenaType = useMemo(() => {
+    if (isFootballCourse(challenge?.id, challenge?.arenaType) || isFootballRobot(rc)) {
+      return 'robot_football';
+    }
+    // Cup tracks must keep their own biome id. Chassis-mode remapping
+    // (modeIndex default 1 → Sunset Cove) was forcing every cup tab to look like Cove.
+    if (BIOME_ARENA_TYPES.has(challenge?.arenaType)) return challenge.arenaType;
+    if (BIOME_ARENA_TYPES.has(challenge?.id)) return challenge.id;
+    if (challenge?.linkedRaceCourse && BIOME_ARENA_TYPES.has(challenge.linkedRaceCourse)) {
+      return challenge.linkedRaceCourse;
+    }
+    // Rover/scout racing modes always use the biome/MK track registry (not stale static arenaType).
+    if (challenge?.isChassisMode && isCarChassis(rc?.chassisId || challenge?.chassisId)) {
+      const track = getCarRacingTrack(
+        rc?.chassisId || challenge?.chassisId || 'rover',
+        challenge?.modeIndex ?? 1,
+      );
+      if (track?.isClassicRainbow) return 'rainbow_road';
+      if (track?.arenaType) return track.arenaType;
+    }
+    const direct = challenge?.arenaType;
+    if (direct && direct !== 'ground' && direct !== 'racing_circuit') return direct;
+    const linked = getMKTrack(challenge?.linkedRaceCourse)?.arenaType;
+    if (linked) return linked;
+    return direct || profile?.arenaType || 'ground';
+  }, [challenge?.id, challenge?.arenaType, challenge?.linkedRaceCourse, challenge?.modeIndex, challenge?.isChassisMode, challenge?.chassisId, rc?.chassisId, profile?.arenaType]);
 
   useEffect(()=>{
     if(!challenge?.isGameMission) return;
@@ -11055,38 +12832,156 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
   const isPaused =runMode==='paused';
   const isIdle   =runMode==='idle';
 
-  // Use custom palette script; fall back to Blockly workspace if it has blocks
   const extractBlocks=useCallback(()=>{
     const custom=customScriptRef.current||[];
-    if(custom.length>0) return custom;
-    return extractActions(workspaceRef.current);
+    const isFlappy=isFlappyBirdCourse(challengeRef.current?.id)||challengeRef.current?.arenaType==='flappy_bird';
+    const isFight=isFightingCourse(challengeRef.current?.id, challengeRef.current?.arenaType);
+    const isFootball=isFootballCourse(challengeRef.current?.id, challengeRef.current?.arenaType);
+    const opts={ foreverReps:6 };
+    if (isFlappy) {
+      flappyProgramRef.current=compileFlappyScratchScript(custom);
+      eventHandlersRef.current=null;
+      return [];
+    }
+    if (isFight) {
+      const src = (custom?.length > 0) ? custom : FIGHTING_STARTER_SCRIPT;
+      fightingProgramRef.current = compileFightingScratchScript(src);
+      eventHandlersRef.current = null;
+      return [];
+    }
+    if (isFootball) {
+      const teamSize = challengeRef.current?.teamSize ?? 1;
+      const scripts = footballScriptsRef.current || {};
+      if (teamSize >= 3) {
+        const activeRole = footballActiveRoleRef.current || 'striker';
+        scripts[activeRole] = custom;
+        footballScriptsRef.current = scripts;
+        footballProgramsRef.current = {};
+        for (const role of FOOTBALL_TEAM_ROLES) {
+          const roleScript = scripts[role.id] || [];
+          const src = hasFootballGameplayScript(roleScript) ? roleScript : FOOTBALL_ROLE_STARTERS[role.id];
+          footballProgramsRef.current[role.botId] = compileFootballScratchScript(src);
+        }
+      } else {
+        const src = hasFootballGameplayScript(custom) ? custom : FOOTBALL_STARTER_SCRIPT;
+        footballProgramsRef.current = { p0: compileFootballScratchScript(src) };
+      }
+      eventHandlersRef.current = null;
+      return [];
+    }
+    const isRace = isRaceCourse(
+      challengeRef.current?.linkedRaceCourse || challengeRef.current?.id,
+      challengeRef.current?.arenaType,
+    ) || challengeRef.current?.physics === 'racing_spline'
+      || challengeRef.current?.genre === 'racing';
+    if (isRace) {
+      const arena = challengeRef.current?.arenaType
+        || challengeRef.current?.linkedRaceCourse
+        || challengeRef.current?.id;
+      const courseKey = challengeRef.current?.linkedRaceCourse || challengeRef.current?.id;
+      const starter = getRaceStarterScript(arena, courseKey);
+      const src = custom.length > 0 ? custom : starter;
+      if (custom.length === 0 && starter.length > 0) {
+        customScriptRef.current = starter.filter((b) => b.id !== 'when_start');
+      }
+      eventHandlersRef.current = compileEventHandlers(src, opts);
+      let start = eventHandlersRef.current.start || [];
+      if (!start.length && starter.length > 0) {
+        eventHandlersRef.current = compileEventHandlers(starter, opts);
+        start = eventHandlersRef.current.start || [];
+      }
+      return start;
+    }
+    if(custom.length>0){
+      eventHandlersRef.current=compileEventHandlers(custom,opts);
+      return eventHandlersRef.current.start||[];
+    }
+    eventHandlersRef.current={ start: [] };
+    return [];
   },[]);
 
+  const countRunnableActions=useCallback((handlers)=>{
+    if(!handlers) return 0;
+    const nonAction=new Set(['wait','wait_until','led_on','led_off','led_blink','play_sound','alarm_sound','set_var','change_var','define_func','call_func']);
+    const countList=(list)=> (list||[]).filter((a)=>a?.id&&!nonAction.has(a.id)).length;
+    let n=0;
+    for(const key of ['start','spacebar','key','zone','collect','collision','sensor','gap_passed','game_over','checkpoint','lap','race_won','goal']){
+      n+=countList(handlers[key]);
+    }
+    for(const group of ['timers','batteries','laps','keys']){
+      for(const entry of handlers[group]||[]) n+=countList(entry.actions);
+    }
+    return n;
+  },[]);
+
+  const hasRunnableProgram=useCallback(()=>{
+    const isFlappy=isFlappyBirdCourse(challengeRef.current?.id)||challengeRef.current?.arenaType==='flappy_bird';
+    const isFight=isFightingCourse(challengeRef.current?.id, challengeRef.current?.arenaType);
+    const isFootball=isFootballCourse(challengeRef.current?.id, challengeRef.current?.arenaType);
+    const isRace=isRaceCourse(
+      challengeRef.current?.linkedRaceCourse || challengeRef.current?.id,
+      challengeRef.current?.arenaType,
+    ) || challengeRef.current?.physics === 'racing_spline'
+      || challengeRef.current?.genre === 'racing';
+    if (isFlappy || isFight || isFootball || isRace) return true;
+    extractBlocks();
+    return countRunnableActions(eventHandlersRef.current)>0;
+  },[extractBlocks,countRunnableActions]);
+
   const doRun=useCallback(()=>{
-    const acts=extractBlocks();
-    if(acts.length===0){
-      setActivity(['⚠️ Click blocks in the palette on the left to build your program, then press Run!']);
+    const isFlappy=isFlappyBirdCourse(challengeRef.current?.id)||challengeRef.current?.arenaType==='flappy_bird';
+    const isFight=isFightingCourse(challengeRef.current?.id, challengeRef.current?.arenaType);
+    const isFootball=isFootballCourse(challengeRef.current?.id, challengeRef.current?.arenaType);
+    const isRace=isRaceCourse(
+      challengeRef.current?.linkedRaceCourse || challengeRef.current?.id,
+      challengeRef.current?.arenaType,
+    ) || challengeRef.current?.physics === 'racing_spline'
+      || challengeRef.current?.genre === 'racing';
+    if(!hasRunnableProgram()){
+      setActivity(['⚠️ Click blocks in the palette on the left to build your program, then press Simulate!']);
       return;
     }
+    const acts=extractBlocks();
+    const keepArena = isFlappy || isFight || isFootball || isRace;
     xpAwardedRef.current=false;
     failShownRef.current=false;
+    if (fightResultsTimerRef.current) {
+      clearTimeout(fightResultsTimerRef.current);
+      fightResultsTimerRef.current = null;
+    }
+    setFightResults(null);
     setVictory(null);
     setFailure(null);
+    setCombatStats(null); // clear stale VICTORY banner from the previous fight
     setCodeBlocks(acts);
-    simKeyRef.current++; setSimKey(simKeyRef.current);
+    codeBlocksRef.current = acts;
+    if (!keepArena) {
+      simKeyRef.current++; setSimKey(simKeyRef.current);
+    }
     setStats({time:0,dist:0,battery:100,avoided:0,progress:0,collisions:0});
     setHighlightId(null);
     setActiveStepIndex(-1);
     setIntroKey((k) => k + 1);
-    setShowCountdown(true);
-    setActivity([`⏱ ${rc.name} powering up…`, `Challenge: ${challenge.name}`, `${acts.length} blocks loaded`]);
-  },[extractBlocks,rc,challenge]);
+    const customLen=(customScriptRef.current||[]).length;
+    if (isRace) {
+      // Race: skip 3-2-1 overlay — drive immediately on Simulate.
+      setShowCountdown(false);
+      setRunMode('running');
+      setActivity([`🏁 ${rc.name} racing!`, `Track: ${challenge.name}`, `${customLen || 14} blocks loaded`]);
+    } else {
+      setShowCountdown(true);
+      setActivity([`⏱ ${rc.name} powering up…`, `Challenge: ${challenge.name}`, `${customLen || (isFootball ? 5 : 0)} blocks loaded`]);
+    }
+  },[extractBlocks,hasRunnableProgram,rc,challenge]);
 
   const onCountdownDone=useCallback(()=>{
+    const acts=extractBlocks();
+    setCodeBlocks(acts);
     setShowCountdown(false);
     setRunMode('running');
     setActivity((a)=>[...a, `${rc.name} GO! 🚀`]);
-  },[rc]);
+    flappyStartRunRef.current?.();
+  },[extractBlocks, rc]);
 
   const doPause=useCallback(()=>setRunMode(m=>m==='paused'?'running':'paused'),[]);
 
@@ -11105,36 +13000,41 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
   const doReset=useCallback(()=>{
     xpAwardedRef.current=false;
     failShownRef.current=false;
-    simKeyRef.current++; setSimKey(simKeyRef.current);
-    setRunMode('idle'); setHighlightId(null); setCodeBlocks([]); setExecLabel(null); setActiveStepIndex(-1);
+    const isRace=isRaceCourse(
+      challengeRef.current?.linkedRaceCourse || challengeRef.current?.id,
+      challengeRef.current?.arenaType,
+    ) || challengeRef.current?.physics === 'racing_spline'
+      || challengeRef.current?.genre === 'racing';
+    if (!isRace) {
+      simKeyRef.current++; setSimKey(simKeyRef.current);
+    }
+    setRunMode('idle'); setHighlightId(null); setExecLabel(null); setActiveStepIndex(-1);
     setShowCountdown(false); setVictory(null); setFailure(null);
     setStats({time:0,dist:0,battery:100,avoided:0,progress:0,collisions:0});
-    setActivity(['🔄 Reset! Build your program and press  ▶ Run']);
+    if (isRace) {
+      const acts = extractBlocks();
+      setCodeBlocks(acts);
+      setActivity(['🔄 Race reset — press ▶ Simulate to drive again!']);
+    } else {
+      setCodeBlocks([]); setExecLabel(null);
+      setActivity(['🔄 Reset! Build your program and press  ▶ Run']);
+    }
     const ws=workspaceRef.current;
     if(ws&&!ws.isDisposed) ws.getAllBlocks(false).forEach(b=>{try{b.getSvgRoot().classList.remove('bb-exec-block');}catch(e){}});
-  },[]);
+  },[extractBlocks]);
 
   const doClear=useCallback(()=>{
-    // Clear custom palette script
     if(clearScriptRef.current) clearScriptRef.current();
     customScriptRef.current=[];
+    flappyHandlersRef.current=null;
     setBlockCount(0);
-    // Also clear Blockly workspace if present
-    const ws=workspaceRef.current;
-    if(ws&&!ws.isDisposed){
-      ws.clear();
-      try{
-        const dom=new DOMParser().parseFromString('<xml><block type="robot_when_start" x="30" y="30"></block></xml>','text/xml').documentElement;
-        Blockly.Xml.domToWorkspace(dom,ws);
-      }catch(e){}
-    }
-    setActivity(['🗑 Script cleared — build your program and press ▶ Run!']);
+    setActivity(['🗑 Script cleared — build your program and press ▶ Simulate!']);
   },[]);
 
-  const handleBlockActive=useCallback((idx,rawLabel)=>{
+  const handleBlockActive=useCallback((idx,rawLabel,blockUid)=>{
     const b=codeBlocksRef.current[idx];
     setActiveStepIndex(idx);
-    setHighlightId(b?.blocklyId??null);
+    setHighlightId(blockUid||b?.blocklyId||b?.blockUid||null);
     const bid=b?.id||'';
     const text=BLOCK_EXEC_LABELS[bid]||(rawLabel||bid)||'Running…';
     const color=BLOCK_EXEC_COLORS[bid]||'#a78bfa';
@@ -11144,51 +13044,187 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
   const challengeRef=useRef(challenge);
   useEffect(()=>{challengeRef.current=challenge;},[challenge]);
 
+  const runModeRef=useRef(runMode);
+  useEffect(()=>{runModeRef.current=runMode;},[runMode]);
+
   const handleProgress=useCallback((data)=>{
-    setStats({time:data.time,dist:data.dist,battery:data.battery,avoided:data.avoided,progress:data.progress,collisions:data.collisions||0,collected:data.collected||0,collectedValue:data.collectedValue||0});
+    const ch = challengeRef.current;
+    setStats((prev) => ({
+      time:data.time,dist:data.dist,battery:data.battery,avoided:data.avoided,progress:data.progress,
+      collisions:data.collisions||0,collected:data.collected||0,collectedValue:data.collectedValue||0,
+      flappyScore:data.flappyScore,collectedItems:data.collected,
+      flappyBest:data.flappyBest??data.flappyHighScore,
+      flappyHighScore:data.flappyHighScore??data.flappyBest,
+      flappyCrashed:data.flappyCrashed,
+      raceMode:data.raceMode??prev.raceMode,raceHudTheme:data.raceHudTheme??prev.raceHudTheme,
+      raceWorldName:data.raceWorldName??prev.raceWorldName,
+      raceLap:data.raceLap,raceTotalLaps:data.raceTotalLaps,raceLapTime:data.raceLapTime,
+      raceBestLap:data.raceBestLap,raceSpeedKmh:data.raceSpeedKmh,raceCheckpoint:data.raceCheckpoint,
+      raceCheckpointsTotal:data.raceCheckpointsTotal,raceWrongWay:data.raceWrongWay,
+      raceLapTimeStr:data.raceLapTimeStr,raceBestLapStr:data.raceBestLapStr,
+      raceBoostActive:data.raceBoostActive,raceFalling:data.raceFalling,raceWon:data.raceWon,
+      raceTotalTime:data.raceTotalTime,racePowerups:data.racePowerups,
+      raceStarsCollected:data.raceStarsCollected,raceShieldCount:data.raceShieldCount,
+      raceMagnetActive:data.raceMagnetActive,
+      raceBoostPadsHit:data.raceBoostPadsHit||0,
+      raceTotalCheckpoints:data.raceTotalCheckpoints||0,
+      racePosition:data.racePosition??1,
+      raceTotalRacers:data.raceTotalRacers??1,
+      raceCountdown:data.raceCountdown??0,
+      raceMinimap:data.raceMinimap??prev.raceMinimap??null,
+      raceRobotX:data.raceRobotX??prev.raceRobotX,
+      raceRobotZ:data.raceRobotZ??prev.raceRobotZ,
+      raceRobotAngle:data.raceRobotAngle??prev.raceRobotAngle,
+      raceTrackT:data.raceTrackT??prev.raceTrackT??0,
+      worldStory:data.worldStory??prev.worldStory,
+      codeRacerMode:data.codeRacerMode??prev.codeRacerMode,
+      raceAccentColor:data.raceAccentColor??prev.raceAccentColor,
+      raceObjectives:data.raceObjectives??prev.raceObjectives,
+      trackLoading:data.trackLoading??prev.trackLoading??false,
+      sceneryPopulated:data.sceneryPopulated??prev.sceneryPopulated??false,
+      raceOffTrack:data.raceOffTrack,
+      raceCodeHint:data.raceCodeHint,
+      raceOptimizeHint:data.raceOptimizeHint,
+      trainingHits:data.trainingHits,
+      trainingGoal:data.trainingGoal,
+    }));
+    if (data.active) setCombatStats(data);
+    if (data.combatLost && !failShownRef.current && (runModeRef.current === 'running' || runModeRef.current === 'step')) {
+      failShownRef.current = true;
+      setRunMode('idle');
+      const rewards = recordFightResult(ch?.id, { won: false });
+      setFightCareer(getFightCareer());
+      setFightResults({
+        won: false,
+        course: ch,
+        stats: data,
+        rewards,
+      });
+      setFailure(null);
+    }
+    if (data.combatWon && data.done && !xpAwardedRef.current) {
+      xpAwardedRef.current = true;
+      failShownRef.current = true;
+      setRunMode('idle');
+      setHighlightId(null);
+      setExecLabel(null);
+      setActiveStepIndex(-1);
+      const rName = rc.name || 'Robot';
+      const xpEarned = ch?.xpReward || 200;
+      const rewards = recordFightResult(ch?.id, {
+        won: true,
+        playerScore: data.playerScore,
+        playerCombo: data.bestCombo || data.playerCombo,
+        xpReward: xpEarned,
+      });
+      setFightCareer(getFightCareer());
+      const newXp = GameProgress.addXp(rName, xpEarned);
+      setRobotXp(newXp);
+      const resultPayload = {
+        won: true,
+        course: ch,
+        stats: data,
+        rewards: { ...rewards, xp: xpEarned },
+      };
+      setActivity((a) => [...a, `🏆 ${ch?.name || 'Combat'} won! +${xpEarned} XP · +${rewards.coins || 0} coins`]);
+      if (fightResultsTimerRef.current) clearTimeout(fightResultsTimerRef.current);
+      fightResultsTimerRef.current = setTimeout(() => {
+        fightResultsTimerRef.current = null;
+        setFightResults(resultPayload);
+      }, 1800);
+      return;
+    }
     if(data.hitFlash){ setHitFlash(true); setTimeout(()=>setHitFlash(false),280); }
-    if (!data.done && data.battery <= 0 && !failShownRef.current && !xpAwardedRef.current) {
+    // Don't fail racing courses on battery — laps / checkpoints are the goal.
+    if (!data.done && data.battery <= 0 && !data.raceMode && !failShownRef.current && !xpAwardedRef.current) {
       failShownRef.current = true;
       setRunMode('idle');
       setExecLabel(null);
       setActiveStepIndex(-1);
+      const ch = challengeRef.current;
+      const rm = getRobotMission(ch);
       setFailure({
-        message: 'Battery empty! Your robot needs more power to finish the mission.',
-        hint: challengeRef.current?.codeHint || 'Try adding fewer moves, or collect battery pickups along the way!',
+        message: 'Battery empty! Your robot ran out of power before finishing the mission.',
+        hint: rm ? getMissionFailTip(rm, 'battery') : (ch?.codeHint || 'Try adding fewer moves, or collect battery pickups along the way!'),
       });
+    }
+    if (!data.done && (data.collisions || 0) >= 3 && ch?.isRobotMission && !failShownRef.current && !xpAwardedRef.current) {
+      failShownRef.current = true;
+      setRunMode('idle');
+      setExecLabel(null);
+      setActiveStepIndex(-1);
+      const rm = getRobotMission(ch);
+      setFailure({
+        message: 'Too many collisions! The mission failed.',
+        hint: getMissionFailTip(rm, 'collision'),
+      });
+    }
+    if (data.raceMode && data.done && !data.raceWon && !failShownRef.current && !xpAwardedRef.current) {
+      failShownRef.current = true;
+      setRunMode('idle');
+      setExecLabel(null);
+      setActiveStepIndex(-1);
+      const rm = getRobotMission(ch);
+      setFailure({
+        message: 'You fell off Rainbow Road!',
+        hint: rm ? getMissionFailTip(rm, 'fall') : 'Add "Follow track automatically" and slow down before sharp corners.',
+      });
+      return;
     }
     if(data.done && !xpAwardedRef.current){
       xpAwardedRef.current=true;
       setRunMode('idle'); setHighlightId(null); setExecLabel(null); setActiveStepIndex(-1);
-      const ch=challengeRef.current;
+      const ch = challengeRef.current;
       const rName=rc.name||'Robot';
-      const trackDef = (ch.isTrackLevel || ch.isBonus)
-        ? (getTrackLevel(ch.trackId, ch.trackLevel) || getTrackLevelById(ch.id) || { xpReward: ch.xpReward, basePoints: ch.basePoints, totalDist: ch.totalDist, timeLimit: ch.timeLimit })
-        : null;
-      const score = trackDef ? calcTrackScore(trackDef, data) : calcScore(data, ch);
-      const xpEarned = trackDef ? calcTrackXp(trackDef, data) : calcXpEarned(ch, data.collisions||0);
-      let isNewBest = false;
-      if (ch.isTrackLevel || ch.isBonus) {
-        const tr = GameProgress.completeTrackLevel(rName, ch.trackId || 'bonus', ch.trackLevel || 1, score, ch.id, { totalDist: ch.totalDist });
-        isNewBest = tr.isNewBest;
-        if (!data.collisions) GameProgress.addBadge(rName, 'perfect_run');
+      const robotMission = getRobotMission(ch);
+      let xpEarned;
+      if (robotMission && ch.isRobotMission) {
+        const subCompleted = {};
+        let bonusXp = 0;
+        (robotMission.subObjectives || []).forEach((sub) => {
+          let done = false;
+          if (sub.type === 'time_limit' && data.time <= (sub.limitSeconds || ch.timeLimit)) done = true;
+          else if (sub.type === 'collect_count' && (data.collected || 0) >= (sub.target || 0)) done = true;
+          else if (sub.id === 'no_collision' || sub.id === 'no_hit' || sub.id === 'no_spikes') done = (data.collisions || 0) === 0;
+          else if (!sub.type) done = data.collisions === 0;
+          if (done) { subCompleted[sub.id] = true; bonusXp += sub.bonusXP || 0; }
+        });
+        xpEarned = (robotMission.xpBase || 100) + bonusXp;
+        const stars = calcMissionStars(robotMission, { completed: true, subCompleted });
+        RobotMissionProgress.saveMission(rName, robotMission.id, { stars, xpEarned, subCompleted });
+        setMissionVictory({ winText: robotMission.winText, xp: xpEarned, stars });
+        setTimeout(() => setMissionVictory(null), 5000);
       } else {
-        isNewBest = GameProgress.setBest(rName, ch.id, score);
+        const trackDef = (ch.isTrackLevel || ch.isBonus)
+          ? (getTrackLevel(ch.trackId, ch.trackLevel) || getTrackLevelById(ch.id) || { xpReward: ch.xpReward, basePoints: ch.basePoints, totalDist: ch.totalDist, timeLimit: ch.timeLimit })
+          : null;
+        const score = trackDef ? calcTrackScore(trackDef, data) : calcScore(data, ch);
+        xpEarned = trackDef ? calcTrackXp(trackDef, data) : calcXpEarned(ch, data.collisions||0);
+        let isNewBest = false;
+        if (ch.isTrackLevel || ch.isBonus) {
+          const tr = GameProgress.completeTrackLevel(rName, ch.trackId || 'bonus', ch.trackLevel || 1, score, ch.id, { totalDist: ch.totalDist });
+          isNewBest = tr.isNewBest;
+          if (!data.collisions) GameProgress.addBadge(rName, 'perfect_run');
+        } else {
+          isNewBest = GameProgress.setBest(rName, ch.id, score);
+        }
+        const msg = (ch.isTrackLevel || ch.isBonus)
+          ? `✅ ${ch.name} complete! ${score} pts · +${xpEarned} XP${isNewBest ? ' · NEW BEST!' : ''}`
+          : (isNewBest ? `🏆 NEW BEST: ${score} pts! +${xpEarned} XP` : data.collisions===0 ? `🏆 Perfect run! ${score} pts! +${xpEarned} XP` : `✅ Score: ${score} pts! +${xpEarned} XP`);
+        setActivity(a=>[...a, msg]);
       }
-      const newXp=GameProgress.addXp(rName,xpEarned);
+      const newXp=GameProgress.addXp(rName, xpEarned);
       setRobotXp(newXp);
       const mission = getGameMission(ch);
-      let designerBonus = null;
       if (mission) {
-        designerBonus = DesignerProgress.addDesignerXp(rName, 50 + (zoneInfo?.num || 1) * 10, 'Mission complete');
+        const designerBonus = DesignerProgress.addDesignerXp(rName, 50 + (zoneInfo?.num || 1) * 10, 'Mission complete');
         setDesignerXp(designerBonus.xp);
       }
-      const msg = (ch.isTrackLevel || ch.isBonus)
-        ? `✅ ${ch.name} complete! ${score} pts · +${xpEarned} XP${isNewBest ? ' · NEW BEST!' : ''}`
-        : (isNewBest ? `🏆 NEW BEST: ${score} pts! +${xpEarned} XP` : data.collisions===0 ? `🏆 Perfect run! ${score} pts! +${xpEarned} XP` : `✅ Score: ${score} pts! +${xpEarned} XP`);
-      setActivity(a=>[...a, msg]);
+      if (robotMission && ch.isRobotMission) {
+        setActivity((a) => [...a, `✅ ${robotMission.winText || robotMission.name} · +${xpEarned} XP`]);
+      }
     }
-  },[rc]);
+  },[rc, zoneInfo?.num]);
 
   const toggleFullscreen=useCallback(()=>{
     const el=gameRootRef.current;
@@ -11207,21 +13243,32 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
   },[]);
 
   useEffect(()=>{
+    let cancelled=false;
+    let rafId=0;
     const resizeWs=()=>{
+      if (cancelled) return;
       const ws=workspaceRef.current;
       if(!ws||ws.isDisposed) return;
       Blockly.svgResize(ws);
+      const isFlappy=isFlappyBirdCourse(challengeRef.current?.id)||challengeRef.current?.arenaType==='flappy_bird';
+      if (isFlappy) return;
       try {
         const tb=ws.getToolbox?.();
         const items=tb?.getToolboxItems?.()||[];
         const sel=tb?.getSelectedItem?.();
-        if(!sel&&items.length>0) tb.selectItem(items[0]);
+        const first=pickSelectableToolboxItem(items);
+        if(!sel && first) safeSelectToolboxItem(ws, first);
       } catch { /* ignore */ }
     };
-    requestAnimationFrame(resizeWs);
+    rafId=requestAnimationFrame(resizeWs);
     const t=setTimeout(resizeWs,120);
     const t2=setTimeout(resizeWs,350);
-    return ()=>{ clearTimeout(t); clearTimeout(t2); };
+    return ()=>{
+      cancelled=true;
+      cancelAnimationFrame(rafId);
+      clearTimeout(t);
+      clearTimeout(t2);
+    };
   },[]);
 
   useEffect(()=>{
@@ -11255,46 +13302,81 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
   const selectCat = useCallback((catId) => { setActiveCat(catId); }, []);
 
   const robotType = detectRobotType(rc);
-  const arenaType = challenge?.arenaType || profile?.arenaType || 'ground';
 
   const arenaThemeLabel = useMemo(() => resolveArenaTheme(arenaType, challenge).label, [arenaType, challenge]);
   const worldLabel = challenge?.isFoxChase ? 'Fox Battery Chase' : arenaThemeLabel;
   const mood = robotMood(stats, isRunning);
   const coins = stats.collectedValue || stats.collected || 0;
   const courseStory = useMemo(() => {
+    const robotMission = getRobotMission(challenge);
+    if (robotMission && challenge?.isRobotMission) return getRobotMissionStory(robotMission);
     const mission = getGameMission(challenge);
     if (mission) return getMissionStory(mission, zoneInfo?.num || 1);
-    const base = COURSE_STORIES[challenge?.id] || {};
+    const base = COURSE_STORIES[challenge?.arenaType] || COURSE_STORIES[challenge?.id] || {};
+    const objectives = resolveCourseObjectives(challenge, base);
     const logic = getGameLogicForCourse(challenge?.id);
-    if (logic || challenge?.gameObjectives) {
-      return {
-        ...base,
-        objectives: challenge?.gameObjectives || logic?.objectives || base.objectives,
-        tip: challenge?.codeHint || logic?.codeHint || base.tip,
-        story: base.story || challenge?.winCondition || challenge?.desc,
-        winCondition: challenge?.winCondition || logic?.winCondition,
-        gameType: challenge?.gameType || logic?.gameType,
-      };
-    }
-    return base;
+    return {
+      ...base,
+      objectives,
+      tip: challenge?.codeHint || logic?.codeHint || base.tip,
+      story: base.story || challenge?.winCondition || challenge?.desc,
+      winCondition: challenge?.winCondition || logic?.winCondition,
+      gameType: challenge?.gameType || logic?.gameType,
+    };
   }, [challenge, zoneInfo?.num]);
 
   const activeMission = useMemo(() => getGameMission(challenge), [challenge]);
+  const activeRobotMission = useMemo(() => getRobotMission(challenge), [challenge]);
 
   const selectCourse = useCallback((c) => {
-    const enriched = enrichCourseWithGameLogic(c);
+    const base = lookupCourseById(c?.id) || c;
+    const resolved = resolveFootballLabCourse(base, rc);
+    const enriched = enrichCourseWithGameLogic(resolved);
+    try { localStorage.setItem(LAB_COURSE_LS_KEY, enriched.id); } catch { /* ignore */ }
+    if (clearScriptRef.current) clearScriptRef.current();
+    customScriptRef.current = [];
+    if (isRaceCourse(enriched.id, enriched.arenaType)) {
+      const raceArena = enriched.arenaType || enriched.linkedRaceCourse || enriched.id;
+      const starter = getRaceStarterScript(raceArena, enriched.id);
+      const blocks = starter.filter((b) => b.id !== 'when_start');
+      customScriptRef.current = blocks;
+      setBlockCount(blocks.length);
+    } else {
+      setBlockCount(0);
+    }
+    setCodeBlocks([]);
     setActiveCourse(enriched);
     setShowWorlds(false);
+    const trackId = enriched?.arenaType || enriched?.id;
+    if (typeof window !== 'undefined' && BIOME_ARENA_TYPES.has(trackId)) {
+      appliedUrlCourseRef.current = trackId;
+      const next = `#studio?track=${trackId}`;
+      if (window.location.hash !== next) {
+        window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}${next}`);
+      }
+    }
     simKeyRef.current++;
     setSimKey(simKeyRef.current);
     setRunMode('idle');
     xpAwardedRef.current = false;
+    failShownRef.current = false;
     setVictory(null);
     setFailure(null);
+    setMissionVictory(null);
     setStats({ time: 0, dist: 0, battery: 100, avoided: 0, progress: 0, collisions: 0 });
+    setShowZoneIntro(false);
+    setZoneInfo(null);
     lastMissionZoneRef.current = 0;
     setStudioMode('edit');
-    if (enriched?.isGameMission) {
+    if (enriched?.isRobotMission) {
+      setShowCodingTip(true);
+      const rm = getRobotMission(enriched);
+      setActivity([
+        `${rm?.icon || '🎮'} ${enriched.shortName || enriched.name}`,
+        rm?.story || enriched.desc,
+        `💡 CODING TIP: ${rm?.codingConcept || enriched.codeHint}`,
+      ]);
+    } else if (enriched?.isGameMission) {
       setShowZoneIntro(true);
       const m = getGameMission(enriched);
       const z1 = m?.zones?.[0];
@@ -11312,40 +13394,230 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
         enriched.codeHint ? `💡 ${enriched.codeHint}` : 'Use IF/ELSE and sensors — not just MOVE forward!',
       ]);
     }
-  }, []);
+  }, [rc]);
 
-  // Robot-group-exclusive course filtering — exclusive + game-logic courses first
+  const selectBiomeTrack = useCallback((mkCourse) => {
+    if (!mkCourse?.arenaType) return;
+    selectCourse(MK_RACING_COURSE_BY_ID[mkCourse.arenaType] || mkCourse);
+  }, [selectCourse]);
+
+  const selectCourseRef = useRef(selectCourse);
+  selectCourseRef.current = selectCourse;
+
+  // Only apply when the URL track actually changes. Do NOT re-run when
+  // selectCourse identity changes — that was snapping every cup tab back to Sunset Cove.
+  useEffect(() => {
+    if (!initialCourseId) return;
+    if (appliedUrlCourseRef.current === initialCourseId) return;
+    appliedUrlCourseRef.current = initialCourseId;
+    const fromUrl = lookupCourseById(initialCourseId);
+    if (!fromUrl) return;
+    selectCourseRef.current(fromUrl);
+  }, [initialCourseId]);
+
+  useEffect(() => {
+    const applyTrackFromHash = () => {
+      try {
+        const query = window.location.hash.split('?')[1] || '';
+        const track = new URLSearchParams(query).get('track');
+        if (!track || !BIOME_ARENA_TYPES.has(track)) return;
+        if (appliedUrlCourseRef.current === track) return;
+        const mk = MK_RACING_COURSE_BY_ID[track];
+        if (!mk) return;
+        appliedUrlCourseRef.current = track;
+        selectBiomeTrack(mk);
+      } catch { /* ignore */ }
+    };
+    window.addEventListener('hashchange', applyTrackFromHash);
+    return () => window.removeEventListener('hashchange', applyTrackFromHash);
+  }, [selectBiomeTrack]);
+
+  // Strict chassis filtering — exactly 10 modes for the selected chassis
   const robotCourses = useMemo(() => {
-    const recKeys = profile?.recKeys || [];
-    return filterCoursesForRobot(ALL_COURSES, robotType, recKeys);
-  }, [robotType, profile]);
+    const chassisId = rc?.chassisId || 'rover';
+    return getCoursesForChassis(chassisId, ALL_COURSES).map((c) => enrichCourseWithGameLogic(c));
+  }, [rc?.chassisId]);
+
+  useEffect(()=>{
+    const onKey=(e)=>{
+      if(e.code!=='Space'&&e.key!==' ') return;
+      if(runMode!=='running'&&runMode!=='step') return;
+      const isFlappy=isFlappyBirdCourse(challengeRef.current?.id);
+      if(!isFlappy) return;
+      e.preventDefault();
+      flappySpacebarRef.current=true;
+    };
+    window.addEventListener('keydown',onKey);
+    return ()=>window.removeEventListener('keydown',onKey);
+  },[runMode]);
+
+  useEffect(() => {
+    if (!isFightingCourse(challenge?.id, challenge?.arenaType)) return undefined;
+    const detach = attachFightingKeyboard(fightingCombatRef, {
+      enabled: () => runMode === 'running' || runMode === 'step',
+    });
+    return detach;
+  }, [runMode, challenge?.id, challenge?.arenaType]);
+
+  const isFlappyCourse=isFlappyBirdCourse(challenge?.id, challenge?.arenaType);
+  const isFightingCourseActive=isFightingCourse(challenge?.id, challenge?.arenaType);
+  const isFootballCourseActive=isFootballCourse(challenge?.id, challenge?.arenaType);
+  const isRaceCourseActive=isRaceCourse(challenge?.linkedRaceCourse || challenge?.id, challenge?.arenaType)
+    || challenge?.physics === 'racing_spline'
+    || challenge?.genre === 'racing';
+  const isBiomeTrackActive = BIOME_ARENA_TYPES.has(arenaType);
+  const showCodeRacerCup = isCarChassis(rc?.chassisId || challenge?.chassisId);
+  const isCodeRacerImmersive = isBiomeTrackActive && (isRunning || isPaused || isIdle);
+  const buildStamp = typeof window !== 'undefined' ? window.__BYTEBUDDIES_BUILD : '';
+  const wrongCrystalArena = WRONG_CRYSTAL_ARENAS.has(arenaType) || WRONG_CRYSTAL_ARENAS.has(challenge?.id);
+
+  useEffect(() => {
+    if (isBiomeTrackActive) setCodeRacerCodeOpen(true);
+  }, [isBiomeTrackActive, arenaType, challenge?.id]);
+
+  useEffect(() => {
+    if (!isCodeRacerImmersive) setCodeRacerMissionOpen(false);
+  }, [isCodeRacerImmersive]);
+
+  useEffect(() => {
+    if (!isCodeRacerImmersive) return undefined;
+    const onKey = (e) => {
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        setCodeRacerMissionOpen((open) => !open);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isCodeRacerImmersive]);
 
   return (
-    <div ref={gameRootRef} className="bb-game-root bb-new-layout">
-      {showWorlds && (
-        <GameLevelSelect
-          courses={robotCourses}
-          currentId={challenge.id}
-          robotName={rc.name || 'Robot'}
-          onSelect={selectCourse}
-          onClose={() => setShowWorlds(false)}
-        />
-      )}
-
+    <div
+      ref={gameRootRef}
+      className={[
+        'bb-game-root',
+        'bb-new-layout',
+        isBiomeTrackActive ? 'bb-biome-split' : '',
+        isCodeRacerImmersive ? 'bb-coderacer-immersive' : '',
+        isBiomeTrackActive ? 'bb-panel-code-open' : '',
+        codeRacerMissionOpen ? 'bb-panel-mission-open' : '',
+      ].filter(Boolean).join(' ')}
+    >
       <CustomCodePanel
-        robotType={detectRobotType(rc)}
+        key={`${challenge?.id || 'lab'}-${arenaType}-${footballLaunchKey}-${isFootballCourseActive ? 'football' : 'std'}`}
+        robotType={isFootballCourseActive ? 'footballbot' : detectRobotType(rc)}
         scriptRef={customScriptRef}
         clearRef={clearScriptRef}
         onBlockCountChange={setBlockCount}
         onOpenLevels={() => !isRunning && setShowWorlds(true)}
         activeStepIndex={activeStepIndex}
+        activeBlockUid={highlightId || ''}
         isRunning={isRunning || runMode === 'step'}
+        starterScript={isFlappyCourse ? FLAPPY_STARTER_SCRIPT : isFightingCourseActive ? FIGHTING_STARTER_SCRIPT : isFootballCourseActive ? FOOTBALL_STARTER_SCRIPT : isRaceCourseActive ? getRaceStarterScript(arenaType, challenge?.linkedRaceCourse || challenge?.id) : null}
+        teamSize={challenge?.teamSize ?? 1}
+        footballScriptsRef={footballScriptsRef}
+        footballActiveRoleRef={footballActiveRoleRef}
+        courseKey={isFootballCourseActive ? `${challenge?.id || 'football'}:${footballLaunchKey}` : (challenge?.id || '')}
+        arenaType={arenaType}
+        eventsFocusKey={eventsFocusKey}
       />
 
-      <div className="bb-center-viewport">
+      <div className={`bb-center-viewport${(isBiomeTrackActive || showCodeRacerCup || isCodeRacerImmersive) ? ' bb-center-viewport--coderacer' : ''}`}>
+          {showWorlds && (
+            <GameLevelSelect
+              courses={robotCourses}
+              currentId={challenge.id}
+              robotName={rc.name || 'Robot'}
+              robotType={detectRobotType(rc)}
+              chassisId={rc?.chassisId || 'rover'}
+              currentArenaType={arenaType}
+              strictChassisModes
+              onSelect={selectCourse}
+              onSelectBiomeTrack={selectBiomeTrack}
+              onClose={() => setShowWorlds(false)}
+            />
+          )}
           <div className="bb-viewport-frame" aria-hidden="true" />
+          {(showCodeRacerCup || isCodeRacerImmersive) && (
+            <div className="bb-viewport-toolbar">
+              {showCodeRacerCup && (
+                <div className="bb-viewport-toolbar-row bb-viewport-toolbar-row--tracks">
+                  <CodeRacerTrackCup
+                    variant="toolbar"
+                    arenaType={arenaType}
+                    disabled={isRunning || isPaused}
+                    onSelect={selectBiomeTrack}
+                  />
+                </div>
+              )}
+              <div className="bb-viewport-toolbar-row bb-viewport-toolbar-row--controls">
+                <span className="bb-vp-build-stamp" title="Deployed build stamp">{buildStamp || 'dev'}</span>
+                <div className="bb-vp-run-controls bb-vp-run-controls--toolbar">
+                {isIdle && !showCountdown && (
+                  <button type="button" className="bb-vp-run-btn" onClick={doRun}>▶ Simulate</button>
+                )}
+                {isRunning && (
+                  <button type="button" className="bb-vp-run-btn bb-vp-pause-btn" onClick={doPause}>⏸</button>
+                )}
+                {isPaused && (
+                  <button type="button" className="bb-vp-run-btn" onClick={doPause}>▶</button>
+                )}
+                {(isRunning || isPaused) && (
+                  <button type="button" className="bb-vp-stop-btn" onClick={doReset}>■ Stop</button>
+                )}
+                {!isRunning && !isPaused && (
+                  <button type="button" className="bb-vp-step-btn" onClick={doStep} title="Step">⏭</button>
+                )}
+                <button type="button" className="bb-vp-icon-btn" onClick={() => !isRunning && setShowWorlds(true)} title="Choose level">🎮</button>
+                <button type="button" className="bb-vp-icon-btn" onClick={toggleFullscreen} title="Fullscreen">{isFullscreen ? '⤓' : '⤢'}</button>
+                <button
+                  type="button"
+                  className="bb-vp-icon-btn"
+                  title={`Graphics: ${qualityOverride === 'auto' ? 'Auto (adapts to your device)' : qualityOverride} — click to change`}
+                  onClick={() => {
+                    const order = ['auto', 'high', 'medium', 'low'];
+                    const next = order[(order.indexOf(qualityOverride) + 1) % order.length];
+                    if (next === 'auto') localStorage.removeItem('bb_quality_tier');
+                    else localStorage.setItem('bb_quality_tier', next);
+                    setQualityOverride(next);
+                    setIntroKey((k) => k + 1);
+                  }}
+                >
+                  {qualityOverride === 'low' ? '🐢' : qualityOverride === 'medium' ? '⚙️' : qualityOverride === 'high' ? '✨' : '🔄'}
+                </button>
+                </div>
+              </div>
+            </div>
+          )}
+          {wrongCrystalArena && (
+            <div className="bb-biome-wrong-course" role="status">
+              Wrong course — open <strong>Rover → Crystal Cavern Run</strong> (racing track), not Crystal Caverns adventure.
+            </div>
+          )}
+          {isBiomeTrackActive && !isCodeRacerImmersive && (
+            <div className="bb-biome-debug-badge" role="status">
+              HEROKIT · {challenge?.shortName || challenge?.name || arenaType}
+              {' · '}
+              {buildStamp || 'dev'}
+            </div>
+          )}
+          {isCodeRacerImmersive && (
+            <>
+              {!codeRacerMissionOpen && (
+                <div className="bb-slide-hint bb-slide-hint--right" aria-hidden="true">Tab — Mission</div>
+              )}
+              <div className="bb-orient-hint" aria-hidden="true">
+                Tip: turn device sideways for more track view
+              </div>
+            </>
+          )}
+          {isBiomeTrackActive && stats.trackLoading && !stats.sceneryPopulated && (
+            <div className="bb-track-loading-overlay" role="status">
+              Loading track… 🏎️
+            </div>
+          )}
           <SimCanvas
-            key={simKey}
+            key={`${simKey}-${arenaType}-${challenge?.id || 'lab'}-${footballLaunchKey}`}
             robotConfig={rc}
             codeBlocks={codeBlocks}
             runMode={runMode}
@@ -11357,8 +13629,109 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
             onBlockActive={handleBlockActive}
             introKey={introKey}
             onZoneChange={handleZoneChange}
+            flappyHandlersRef={flappyHandlersRef}
+            flappyProgramRef={flappyProgramRef}
+            fightingHandlersRef={fightingHandlersRef}
+            fightingProgramRef={fightingProgramRef}
+            footballHandlersRef={footballHandlersRef}
+            footballProgramsRef={footballProgramsRef}
+            fightingCombatRef={fightingCombatRef}
+            flappySpacebarRef={flappySpacebarRef}
+            flappyStartRunRef={flappyStartRunRef}
+            eventHandlersRef={eventHandlersRef}
           />
           {showCountdown && <RunCountdown onDone={onCountdownDone} />}
+          {showFightHub && isFightingCourseActive && (
+            <FightingHub
+              courses={robotCourses.filter((c) => c.arenaType === 'robot_fight')}
+              currentId={challenge?.id}
+              career={fightCareer}
+              onSelect={(c) => { selectCourse(c); setShowFightHub(false); }}
+              onClose={() => setShowFightHub(false)}
+            />
+          )}
+          {fightResults && (
+            <FightingResults
+              variant={isFootballCourse(fightResults.course?.id, fightResults.course?.arenaType) ? 'football' : 'combat'}
+              won={fightResults.won}
+              course={fightResults.course}
+              stats={fightResults.stats}
+              rewards={fightResults.rewards}
+              onRematch={() => { setFightResults(null); failShownRef.current = false; xpAwardedRef.current = false; doReset(); doRun(); }}
+              onHub={() => {
+                setFightResults(null);
+                if (isFootballCourseActive) setShowFootballHub(true);
+                else setShowFightHub(true);
+              }}
+              onClose={() => { setFightResults(null); failShownRef.current = false; xpAwardedRef.current = false; }}
+            />
+          )}
+          {isFightingCourseActive && !isRunning && !fightResults && !showCountdown && !combatStats?.over && (
+            <div className="fight-arena-entry">
+              <div className="fight-arena-entry-inner">
+                <span className="fight-arena-entry-icon">🥊</span>
+                <strong>COMBAT ARENA</strong>
+                <span>{challenge?.name || 'Training Arena'}</span>
+                <span className="fight-arena-entry-hint">A/D kicks · ↓+A sweep · Striker blocks in Code · ▶ Run</span>
+                <button type="button" className="fight-hub-open-btn" onClick={() => setShowFightHub(true)}>
+                  🏟️ Boxing Modes
+                </button>
+              </div>
+            </div>
+          )}
+          {showFootballHub && isFootballCourseActive && (
+            <FootballHub
+              courses={robotCourses.filter((c) => c.arenaType === 'robot_football')}
+              currentId={challenge?.id}
+              robotName={rc?.name || 'Striker FC'}
+              onSelect={(c) => { selectCourse(c); setShowFootballHub(false); }}
+              onClose={() => setShowFootballHub(false)}
+            />
+          )}
+          {isFootballCourseActive && !isRunning && !fightResults && !showCountdown && (
+            <div className="fight-arena-entry football-arena-entry">
+              <div className="fight-arena-entry-inner">
+                <span className="fight-arena-entry-icon">⚽</span>
+                <strong>ROBOT FOOTBALL</strong>
+                <span>{challenge?.name || 'FIFA 3v3 Match'}</span>
+                <span className="fight-arena-entry-hint">Green team vs blue team · Press ▶ Simulate to kick off</span>
+                <button type="button" className="fight-hub-open-btn" onClick={() => setShowFootballHub(true)}>
+                  🏟️ Football Modes
+                </button>
+              </div>
+            </div>
+          )}
+          {isFootballCourseActive && (
+            <FootballHUD
+              match={combatStats || {}}
+              robotName={rc?.name || 'FootballBot'}
+              enemyName={
+                challenge?.matchMode === 'fifa3v3' ? 'Blue Team'
+                  : challenge?.enemyType?.includes('footballbot') ? 'AI Opponent'
+                    : 'Opponent'
+              }
+              challenge={challenge}
+              visible={!!combatStats?.active && !fightResults}
+            />
+          )}
+          {isFightingCourseActive && (
+            <>
+              <FightingAcademyHUD
+                combat={combatStats || {}}
+                robotName={rc?.name || 'Striker'}
+                challenge={challenge}
+                visible={!!combatStats?.active && !fightResults}
+                showControls
+              />
+              <FightingHUD
+                combat={combatStats || {}}
+                robotName={rc?.name || 'You'}
+                enemyName={challenge?.enemyType === 'dummy' ? 'Training Dummy' : (challenge?.shortName || 'Opponent')}
+                academyLayout
+                minimal
+              />
+            </>
+          )}
           {failure && (
             <GameFailureScreen
               message={failure.message}
@@ -11370,7 +13743,7 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
           {hitFlash && (
             <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,30,30,0.35)', pointerEvents: 'none', zIndex: 8, boxShadow: 'inset 0 0 60px rgba(255,0,0,0.5)' }} />
           )}
-          {/* Run/Pause/Stop controls — floating overlay top-right of viewport */}
+          {!showCodeRacerCup && !isCodeRacerImmersive && (
           <div className="bb-vp-run-controls">
             {isIdle && !showCountdown && (
               <button type="button" className="bb-vp-run-btn" onClick={doRun}>▶ Simulate</button>
@@ -11389,14 +13762,43 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
             )}
             <button type="button" className="bb-vp-icon-btn" onClick={() => !isRunning && setShowWorlds(true)} title="Choose level">🎮</button>
             <button type="button" className="bb-vp-icon-btn" onClick={toggleFullscreen} title="Fullscreen">{isFullscreen ? '⤓' : '⤢'}</button>
+            <button
+              type="button"
+              className="bb-vp-icon-btn"
+              title={`Graphics: ${qualityOverride === 'auto' ? 'Auto (adapts to your device)' : qualityOverride} — click to change`}
+              onClick={() => {
+                const order = ['auto', 'high', 'medium', 'low'];
+                const next = order[(order.indexOf(qualityOverride) + 1) % order.length];
+                if (next === 'auto') localStorage.removeItem('bb_quality_tier');
+                else localStorage.setItem('bb_quality_tier', next);
+                setQualityOverride(next);
+                setIntroKey((k) => k + 1);
+              }}
+            >
+              {qualityOverride === 'low' ? '🐢' : qualityOverride === 'medium' ? '⚙️' : qualityOverride === 'high' ? '✨' : '🔄'}
+            </button>
           </div>
+          )}
 
-          {execLabel && isRunning && (
+          {execLabel && isRunning && !isFightingCourseActive && !isFootballCourseActive && !isCodeRacerImmersive && (
             <div className="bb-exec-pill" style={{ borderColor: execLabel.color, color: execLabel.color }}>
               ⚡ {execLabel.text}
             </div>
           )}
 
+          {showCodingTip && activeRobotMission && (
+            <MissionCodingTip
+              concept={activeRobotMission.codingConcept}
+              onDismiss={() => setShowCodingTip(false)}
+            />
+          )}
+          {missionVictory && (
+            <MissionVictoryBanner
+              winText={missionVictory.winText}
+              xp={missionVictory.xp}
+              stars={missionVictory.stars}
+            />
+          )}
           {showZoneIntro && activeMission && (
             <MissionZoneIntro
               mission={activeMission}
@@ -11411,7 +13813,7 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
             />
           )}
 
-          {activeMission ? (
+          {activeMission && !activeRobotMission ? (
             <MissionStudioPanel
               mission={activeMission}
               challenge={challenge}
@@ -11424,6 +13826,14 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
               blockCount={blockCount}
               onEndMission={doReset}
             />
+          ) : activeRobotMission ? (
+            <RobotMissionPanel
+              challenge={challenge}
+              story={courseStory}
+              stats={stats}
+              robotName={rc?.name}
+              onEndMission={doReset}
+            />
           ) : (
             <MissionControlPanel
               challenge={challenge}
@@ -11434,6 +13844,9 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
               zoneInfo={zoneInfo}
               story={courseStory}
               onEndMission={doReset}
+              onRestart={doReset}
+              compact={isCodeRacerImmersive || (isFightingCourseActive && (isRunning || isPaused))}
+              immersiveHidden={isCodeRacerImmersive && !codeRacerMissionOpen}
             />
           )}
 
@@ -11441,9 +13854,12 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
             stats={stats}
             zoneInfo={zoneInfo}
             challenge={challenge}
+            arenaType={arenaType}
             isRunning={isRunning}
             fps={fps}
+            onRestart={doReset}
           />
+          {!challenge?.isRobotMission && !isCodeRacerImmersive && <ChallengeMedalBar challenge={challenge} stats={stats} />}
         </div>
     </div>
   );

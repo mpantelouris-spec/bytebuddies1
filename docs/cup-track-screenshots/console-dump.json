@@ -1,0 +1,112 @@
+[
+  {
+    "trackId": "sunset_cove_01",
+    "shortName": "Sunset Cove",
+    "active": "Sunset Cove",
+    "tabOk": true,
+    "build": "2026-08-17-v54-mega-scenery",
+    "worldLog": "[TrackWorld] sunset_cove_01 {mode: scenery-populated, props: 74, scatter: 10, buildings: 3, animals: 3}",
+    "gltfLog": "[TrackGltf] sunset_cove_01 {mode: additive-gltf, start: 6, scatter: 13, buildings: 3, animals: 2}",
+    "minimap": "🏖️ Sunset Cove Speedway0%Bay straightNext: Palm curveRead the map → code each turn!",
+    "shot": "docs/cup-track-screenshots/sunset_cove_01.png"
+  },
+  {
+    "trackId": "candy_carnival_01",
+    "shortName": "Candy Carnival",
+    "active": "Candy Carnival",
+    "tabOk": true,
+    "build": "2026-08-17-v54-mega-scenery",
+    "worldLog": "[TrackWorld] candy_carnival_01 {mode: scenery-populated, props: 77, scatter: 9, buildings: 4, animals: 3}",
+    "gltfLog": "[TrackGltf] candy_carnival_01 {mode: additive-gltf, start: 6, scatter: 14, buildings: 4, animals: 0}",
+    "minimap": "🎡 Candy Carnival Circuit0%MidwayNext: Coaster dipRead the map → code each turn!",
+    "shot": "docs/cup-track-screenshots/candy_carnival_01.png"
+  },
+  {
+    "trackId": "neon_metro_01",
+    "shortName": "Neon Metro",
+    "active": "Neon Metro",
+    "tabOk": true,
+    "build": "2026-08-17-v54-mega-scenery",
+    "worldLog": "[TrackWorld] neon_metro_01 {mode: scenery-populated, props: 70, scatter: 5, buildings: 6, animals: 0}",
+    "gltfLog": "[TrackGltf] neon_metro_01 {mode: additive-gltf, start: 5, scatter: 13, buildings: 5, animals: 0}",
+    "minimap": "🚇 Neon Metro Rush0%Tunnel runNext: Station cornerRead the map → code each turn!",
+    "shot": "docs/cup-track-screenshots/neon_metro_01.png"
+  },
+  {
+    "trackId": "cloud_citadel_01",
+    "shortName": "Cloud Citadel",
+    "active": "Cloud Citadel",
+    "tabOk": true,
+    "build": "2026-08-17-v54-mega-scenery",
+    "worldLog": "[TrackWorld] cloud_citadel_01 {mode: scenery-populated, props: 71, scatter: 3, buildings: 3, animals: 0}",
+    "gltfLog": "[TrackGltf] cloud_citadel_01 {mode: additive-gltf, start: 4, scatter: 10, buildings: 3, animals: 0}",
+    "minimap": "🏰 Cloud Citadel Loop0%Castle gateNext: Rope bridgeRead the map → code each turn!",
+    "shot": "docs/cup-track-screenshots/cloud_citadel_01.png"
+  },
+  {
+    "trackId": "jungle_ruins_01",
+    "shortName": "Jungle Ruins",
+    "active": "Jungle Ruins",
+    "tabOk": true,
+    "build": "2026-08-17-v54-mega-scenery",
+    "worldLog": "[TrackWorld] jungle_ruins_01 {mode: scenery-populated, props: 70, scatter: 4, buildings: 2, animals: 3}",
+    "gltfLog": "[TrackGltf] jungle_ruins_01 {mode: additive-gltf, start: 4, scatter: 12, buildings: 2, animals: 0}",
+    "minimap": "🗿 Jungle Ruins Rally0%Temple gateNext: Pyramid hairpinRead the map → code each turn!",
+    "shot": "docs/cup-track-screenshots/jungle_ruins_01.png"
+  },
+  {
+    "trackId": "frost_peak_01",
+    "shortName": "Frost Peak",
+    "active": "Frost Peak",
+    "tabOk": true,
+    "build": "2026-08-17-v54-mega-scenery",
+    "worldLog": "[TrackWorld] frost_peak_01 {mode: scenery-populated, props: 71, scatter: 4, buildings: 2, animals: 0}",
+    "gltfLog": "[TrackGltf] frost_peak_01 {mode: additive-gltf, start: 5, scatter: 10, buildings: 2, animals: 0}",
+    "minimap": "🏔️ Frost Peak Descent0%Alpine startNext: Pine slalomRead the map → code each turn!",
+    "shot": "docs/cup-track-screenshots/frost_peak_01.png"
+  },
+  {
+    "trackId": "lava_foundry_01",
+    "shortName": "Lava Foundry",
+    "active": "Lava Foundry",
+    "tabOk": true,
+    "build": "2026-08-17-v54-mega-scenery",
+    "worldLog": "[TrackWorld] lava_foundry_01 {mode: scenery-populated, props: 72, scatter: 3, buildings: 3, animals: 0}",
+    "gltfLog": "[TrackGltf] lava_foundry_01 {mode: additive-gltf, start: 5, scatter: 10, buildings: 3, animals: 0}",
+    "minimap": "🔥 Lava Foundry Forge0%Forge floorNext: Lava channelRead the map → code each turn!",
+    "shot": "docs/cup-track-screenshots/lava_foundry_01.png"
+  },
+  {
+    "trackId": "star_station_01",
+    "shortName": "Star Station",
+    "active": "Star Station",
+    "tabOk": true,
+    "build": "2026-08-17-v54-mega-scenery",
+    "worldLog": "[TrackWorld] star_station_01 {mode: scenery-populated, props: 71, scatter: 3, buildings: 3, animals: 0}",
+    "gltfLog": "[TrackGltf] star_station_01 {mode: additive-gltf, start: 3, scatter: 9, buildings: 3, animals: 0}",
+    "minimap": "🛸 Star Station Ring0%Dock ringNext: Glass deckRead the map → code each turn!",
+    "shot": "docs/cup-track-screenshots/star_station_01.png"
+  },
+  {
+    "trackId": "fairy_glen_01",
+    "shortName": "Fairy Glen",
+    "active": "Fairy Glen",
+    "tabOk": true,
+    "build": "2026-08-17-v54-mega-scenery",
+    "worldLog": "[TrackWorld] fairy_glen_01 {mode: scenery-populated, props: 74, scatter: 5, buildings: 2, animals: 3}",
+    "gltfLog": "[TrackGltf] fairy_glen_01 {mode: additive-gltf, start: 5, scatter: 11, buildings: 2, animals: 0}",
+    "minimap": "🧚 Fairy Glen Gardens0%Garden gateNext: Flower tunnelRead the map → code each turn!",
+    "shot": "docs/cup-track-screenshots/fairy_glen_01.png"
+  },
+  {
+    "trackId": "thunder_ridge_01",
+    "shortName": "Thunder Ridge",
+    "active": "Thunder Ridge",
+    "tabOk": true,
+    "build": "2026-08-17-v54-mega-scenery",
+    "worldLog": "[TrackWorld] thunder_ridge_01 {mode: scenery-populated, props: 72, scatter: 3, buildings: 3, animals: 0}",
+    "gltfLog": "[TrackGltf] thunder_ridge_01 {mode: additive-gltf, start: 5, scatter: 10, buildings: 3, animals: 0}",
+    "minimap": "⛈️ Thunder Ridge Challenge0%Ridge climbNext: HairpinRead the map → code each turn!",
+    "shot": "docs/cup-track-screenshots/thunder_ridge_01.png"
+  }
+]
