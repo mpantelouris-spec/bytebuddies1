@@ -499,7 +499,7 @@ export const CAR_MODE_TRACK_LABELS = {
   dry_dry_desert: 'Desert Dunes',
   fairy_glen_01: 'Forest Trail',
   frost_peak_01: 'Ice Valley',
-  star_station_01: 'Space Station',
+  star_station_01: 'Cosmic Skyway',
   lava_foundry_01: 'Volcano Run',
   jungle_ruins_01: 'Jungle Ruins',
   thunder_ridge_01: 'Final Challenge',
