@@ -2,6 +2,8 @@
  * TrackWorldRecipes.js — Per-track scenery recipes (buildings, trees, animals, vistas).
  * Mixed props along the sides — full enough to read as a world, not a copy-paste fence.
  */
+import { isCosmicSkywayArena } from './CosmicSkywayRegistry.js';
+
 export const TRACK_WORLD_RECIPES = {
   sunset_cove_01: {
     scatter: ['palm', 'hut', 'torch', 'umbrella', 'palm', 'torch', 'hut', 'umbrella'],
@@ -139,5 +141,6 @@ export const TRACK_WORLD_RECIPES = {
 };
 
 export function getTrackWorldRecipe(arenaType) {
+  if (isCosmicSkywayArena(arenaType)) return TRACK_WORLD_RECIPES.star_station_01;
   return TRACK_WORLD_RECIPES[arenaType] ?? null;
 }

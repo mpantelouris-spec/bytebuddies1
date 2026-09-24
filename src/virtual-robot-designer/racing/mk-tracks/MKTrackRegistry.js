@@ -5,7 +5,7 @@
 import { MARIO_CIRCUIT_RAINBOW } from '../MarioKartTrackBuilder.js';
 import { CLASSIC_RAINBOW_TRACK } from './MKTrackVisualSpec.js';
 import { buildProfessionalCircuitWaypoints } from '../ProfessionalRainbowTrack.js';
-import { BIOME_TRACKS, BIOME_ARENA_TYPES } from './BiomeTrackRegistry.js';
+import { BIOME_TRACKS, BIOME_ARENA_TYPES, COSMIC_SKYWAY_BONUS_TRACKS } from './BiomeTrackRegistry.js';
 import { mergeTrackStandard, buildTrackSegmentsFromSections } from './CodeRacerTrackStandards.js';
 
 /** Simple flat oval */
@@ -373,10 +373,12 @@ export const MK_ARENA_TYPES = new Set([
 export const MK_TRACK_BY_ARENA = Object.fromEntries([
   ...MK_TRACKS.map((t) => [t.arenaType, t]),
   ...BIOME_TRACKS.map((t) => [t.arenaType, t]),
+  ...COSMIC_SKYWAY_BONUS_TRACKS.map((t) => [t.arenaType, t]),
 ]);
 export const MK_TRACK_BY_COURSE = Object.fromEntries([
   ...MK_TRACKS.map((t) => [t.courseId, t]),
   ...BIOME_TRACKS.map((t) => [t.courseId, t]),
+  ...COSMIC_SKYWAY_BONUS_TRACKS.map((t) => [t.courseId, t]),
 ]);
 
 export function getMKTrack(arenaOrCourseId) {

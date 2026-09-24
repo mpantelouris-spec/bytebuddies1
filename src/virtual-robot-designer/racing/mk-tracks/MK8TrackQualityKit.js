@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import { placeAtTrack } from '../GameWorldBuilder.js';
 import { pbrMat } from './BiomeAAAKit.js';
 import { getTrackStandard } from './CodeRacerTrackStandards.js';
+import { isCosmicSkywayArena } from './CosmicSkywayRegistry.js';
 import { buildSurfShack, buildMiningCartProp, buildTransitBreakRoom } from './TrackStoryKit.js';
 import { buildResearchHut } from './VolcanoHeroKit.js';
 import { buildHoloBillboard } from './CyberCityHeroKit.js';
@@ -490,7 +491,8 @@ const BIOME_DRESSING = {
 
 /** MK8 play-layer dressing — lane markings + edge glow; kerbs from MarioKartTrackBuilder only on cup tracks. */
 export function installMK8PlayDressing(world, curve, hw, arenaType, opts = {}) {
-  const cfg = BIOME_DRESSING[arenaType];
+  const cfg = BIOME_DRESSING[arenaType]
+    || (isCosmicSkywayArena(arenaType) ? BIOME_DRESSING.star_station_01 : null);
   if (!cfg) return;
   const tier = opts.qualityTier || 'medium';
   const cupIds = new Set([
@@ -498,7 +500,7 @@ export function installMK8PlayDressing(world, curve, hw, arenaType, opts = {}) {
     'jungle_ruins_01', 'frost_peak_01', 'lava_foundry_01', 'star_station_01',
     'fairy_glen_01', 'thunder_ridge_01',
   ]);
-  const isCup = cupIds.has(arenaType);
+  const isCup = cupIds.has(arenaType) || isCosmicSkywayArena(arenaType);
   // Cup tracks: skip heavy moss slabs — keep lane guides + edge glow for MK8 road read.
   if (isCup) {
     const steps = tier === 'high' ? 30 : tier === 'medium' ? 24 : 18;

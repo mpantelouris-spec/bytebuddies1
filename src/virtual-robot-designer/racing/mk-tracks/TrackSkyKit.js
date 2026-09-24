@@ -3,6 +3,7 @@
  * MeshBasic + scene.background so track switches never fall through to a black clear color.
  */
 import * as THREE from 'three';
+import { isCosmicSkywayArena } from './CosmicSkywayRegistry.js';
 
 const SKY_PRESETS = {
   sunset_cove_01: { top: '#287fc4', mid: '#69c5ea', horizon: '#ffd39a', fog: 0xb7ddec },
@@ -39,6 +40,7 @@ function removeNamed(scene, name) {
 }
 
 export function getTrackSkyPreset(arenaType) {
+  if (isCosmicSkywayArena(arenaType)) return SKY_PRESETS.star_station_01;
   return SKY_PRESETS[arenaType] || SKY_PRESETS.sunset_cove_01;
 }
 
@@ -48,8 +50,9 @@ export function installTrackSky(scene, bounds, arenaType) {
   const preset = getTrackSkyPreset(arenaType);
   const bg = hex(preset.horizon);
   scene.background = bg;
-  const fogNear = arenaType === 'star_station_01' ? 95 : 70;
-  const fogFar = arenaType === 'star_station_01' ? 420 : 340;
+  const cosmicSky = isCosmicSkywayArena(arenaType);
+  const fogNear = cosmicSky ? 95 : 70;
+  const fogFar = cosmicSky ? 420 : 340;
   scene.fog = new THREE.Fog(preset.fog ?? bg.getHex(), fogNear, fogFar);
 
   const r = 900;

@@ -2,7 +2,7 @@
  * RealGameTrackKit.js — Master orchestrator for 3D Mario Kart–quality worlds.
  */
 import { getBiomeAAASpec } from './BiomeAAAVisualSpec.js';
-import { getBiomeTrack } from './BiomeTrackRegistry.js';
+import { getBiomeTrack, isCosmicSkywayArena } from './BiomeTrackRegistry.js';
 import { scatterAAAGuardrails } from './BiomeAAAKit.js';
 import { installTrackEnvironment } from './TrackEnvironmentKit.js';
 import { installTrackSky, animateTrackSky } from './TrackSkyKit.js';
@@ -53,7 +53,7 @@ export function buildRealGameWorld(scene, curve, world, bounds, arenaType, finis
     console.warn('[RealGameWorld] environment failed', arenaType, err);
   }
   // Cosmic Skyway ships its own full scenery kit; the generic station props clutter the view.
-  const cosmic = arenaType === 'star_station_01';
+  const cosmic = isCosmicSkywayArena(arenaType);
   buildTrackWorld(world, curve, hw, bounds, arenaType, perf, scene, finishT);
   scene.userData.trackBounds = bounds;
   installMK8PlayDressing(world, curve, hw, arenaType, { qualityTier: perf.tier });

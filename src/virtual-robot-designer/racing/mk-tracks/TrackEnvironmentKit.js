@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import { getBiomeAAASpec } from './BiomeAAAVisualSpec.js';
 import { getTrackSkyPreset } from './TrackSkyKit.js';
+import { isCosmicSkywayArena } from './CosmicSkywayRegistry.js';
 
 function installTrackLights(scene, spec) {
   // Live Lab already installed amb/hemi/sun/fill. Extra keys read as a floating lamp.
@@ -47,7 +48,7 @@ function installCanvasEnv(scene, arenaType) {
   scene.environment = tex;
   const spec = getBiomeAAASpec(arenaType);
   const underground = spec?.underground;
-  const cosmic = spec?.isCosmicBiome || arenaType === 'star_station_01';
+  const cosmic = spec?.isCosmicBiome || isCosmicSkywayArena(arenaType);
   scene.environmentIntensity = cosmic ? 0.55 : (underground ? 0.28 : 0.52);
 }
 
@@ -64,7 +65,7 @@ export function installTrackEnvironment(scene, arenaType, renderer) {
 
   installTrackLights(scene, spec);
 
-  if (spec.isCosmicBiome || arenaType === 'star_station_01') {
+  if (spec.isCosmicBiome || isCosmicSkywayArena(arenaType)) {
     if (!scene.getObjectByName('cosmic-skyway-fill')) {
       const fill = new THREE.AmbientLight(0xa0a4b8, 0.45);
       fill.name = 'cosmic-skyway-fill';

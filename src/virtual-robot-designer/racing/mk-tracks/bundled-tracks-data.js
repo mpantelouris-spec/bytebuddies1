@@ -9,5 +9,15 @@ export const BUNDLED_TRACKS = {
   "lava_foundry_01": true,
   "star_station_01": true,
   "fairy_glen_01": true,
-  "thunder_ridge_01": true
+  "thunder_ridge_01": true,
+  "cosmic_nebula_ring_02": true,
+  "cosmic_wormhole_run_03": true,
+  "cosmic_asteroid_belt_04": true,
+  "cosmic_twin_loop_05": true,
+  "cosmic_supernova_06": true,
+  "cosmic_comet_arc_07": true,
+  "cosmic_orbit_cross_08": true,
+  "cosmic_pulsar_spiral_09": true,
+  "cosmic_void_oval_10": true,
+  "cosmic_event_horizon_11": true
 };

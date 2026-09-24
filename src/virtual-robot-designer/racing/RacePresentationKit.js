@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { asteroidGeometry } from './mk-tracks/CosmicSkywayKit.js';
+import { isCosmicSkywayArena } from './mk-tracks/CosmicSkywayRegistry.js';
 
 function mat(color, roughness = 0.72, extras = {}) {
   return new THREE.MeshStandardMaterial({
@@ -232,7 +233,7 @@ export function installRacePresentation(scene, curve, {
   const fwd = new THREE.Vector3(Math.sin(angle), 0, Math.cos(angle));
   const right = new THREE.Vector3(fwd.z, 0, -fwd.x);
 
-  if (theme === 'star_station_01') {
+  if (isCosmicSkywayArena(theme)) {
     installCosmicPresentation(scene, curve, root, origin, fwd, right, angle, halfWidth);
     scene.add(root);
     scene.userData.racePresentationRoot = root;

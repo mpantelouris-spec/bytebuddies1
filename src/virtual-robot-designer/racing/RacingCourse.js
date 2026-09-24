@@ -455,7 +455,7 @@ export function buildRacingCourse(scene, zoneConfig) {
     scene.userData.lightMood = isBiome
       ? (mkTrack.arenaType === 'neon_metro_01'
         || mkTrack.arenaType === 'lava_foundry_01'
-        || mkTrack.arenaType === 'star_station_01'
+        || (typeof mkTrack.isCosmicBiome === 'boolean' && mkTrack.isCosmicBiome)
         ? [0.55, 0.6, 0.2]
         : [1.0, 1.0, 0.92])
       : (visual?.lightMood || [1.25, 1.2, 1.1]);

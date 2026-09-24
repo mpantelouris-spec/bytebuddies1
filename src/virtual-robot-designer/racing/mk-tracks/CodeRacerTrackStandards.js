@@ -1,6 +1,7 @@
 /**
  * CodeRacerTrackStandards.js — 10 Mario Kart–quality track bible (2026 lineup).
  */
+import { COSMIC_TRACK_STANDARDS, isCosmicSkywayArena } from './CosmicSkywayRegistry.js';
 export const GLOBAL_TRACK_STANDARD = {
   trackWidthM: 8,
   curbWidthM: 1,
@@ -150,11 +151,11 @@ export function buildTrackSegmentsFromSections(sections = []) {
 export const CUP_TRACK_IDS = new Set(Object.keys(TRACK_STANDARDS));
 
 export function isCupTrack(arenaType) {
-  return CUP_TRACK_IDS.has(arenaType);
+  return CUP_TRACK_IDS.has(arenaType) || isCosmicSkywayArena(arenaType);
 }
 
 export function getTrackStandard(arenaType) {
-  return TRACK_STANDARDS[arenaType] || null;
+  return TRACK_STANDARDS[arenaType] || COSMIC_TRACK_STANDARDS[arenaType] || null;
 }
 
 export function mergeTrackStandard(track) {

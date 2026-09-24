@@ -1,6 +1,8 @@
 /**
  * BiomeAAAVisualSpec.js — Lighting, fog, post per 2026 track lineup.
  */
+import { isCosmicSkywayArena } from './CosmicSkywayRegistry.js';
+
 export const BIOME_CAMERA_STANDARD = {
   camBack: 6.4,
   camUp: 2.9,
@@ -101,6 +103,7 @@ export const BIOME_AAA_SPECS = {
 };
 
 export function getBiomeAAASpec(arenaType) {
+  if (isCosmicSkywayArena(arenaType)) return BIOME_AAA_SPECS.star_station_01;
   return BIOME_AAA_SPECS[arenaType] || BIOME_AAA_SPECS.sunset_cove_01;
 }
 

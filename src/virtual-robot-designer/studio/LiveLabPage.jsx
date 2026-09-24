@@ -101,7 +101,7 @@ import {
   buildMKTrackArena,
 } from './CircuitSprintArena.js';
 import { MK_ARENA_TYPES } from '../racing/mk-tracks/MKTrackRegistry.js';
-import { BIOME_ARENA_TYPES, getBiomeTrack } from '../racing/mk-tracks/BiomeTrackRegistry.js';
+import { BIOME_ARENA_TYPES, getBiomeTrack, isCosmicSkywayArena } from '../racing/mk-tracks/BiomeTrackRegistry.js';
 import { isCupTrack } from '../racing/mk-tracks/CodeRacerTrackStandards.js';
 import { getBiomeCssGrade } from '../racing/mk-tracks/BiomeAAAVisualSpec.js';
 import { getTrackSkyPreset } from '../racing/mk-tracks/TrackSkyKit.js';
@@ -10147,9 +10147,9 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
     }
     // ── Quality tier — cup races use sharper defaults on school laptops ──
     const _biomeRaceEarly = _isBiomeTrackEarly && _isRaceArena(arenaType, challenge, robotConfig?.chassisId);
-    const _isCosmicSkyway = arenaType === 'star_station_01'
-      || challenge?.arenaType === 'star_station_01'
-      || challenge?.id === 'star_station_01';
+    const _isCosmicSkyway = isCosmicSkywayArena(arenaType)
+      || isCosmicSkywayArena(challenge?.arenaType)
+      || isCosmicSkywayArena(challenge?.id);
     let _qTier = _biomeRaceEarly && !_isCosmicSkyway
       ? detectCupTrackQualityTier()
       : detectQualityTier();
@@ -10589,10 +10589,10 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
         const underground = scene.userData.biomeAAASpec?.underground
           || mkArena === 'neon_metro_01'
           || mkArena === 'lava_foundry_01'
-          || mkArena === 'star_station_01';
+          || isCosmicSkywayArena(mkArena);
         if (isBiomeArena) {
           if (underground) {
-            setupRaceEnvironment(scene, { space: mkArena === 'star_station_01' });
+            setupRaceEnvironment(scene, { space: isCosmicSkywayArena(mkArena) });
           }
           // Day cup tracks keep TrackSkyKit sky + canvas env — extra env maps look like a lamp.
         } else if (nightMk.has(mkArena)) setupStadiumNightEnvironment(scene);
@@ -10602,8 +10602,8 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
           const underground = scene.userData.biomeAAASpec?.underground
             || arenaType === 'neon_metro_01'
             || arenaType === 'lava_foundry_01'
-            || arenaType === 'star_station_01';
-          const cosmic = arenaType === 'star_station_01';
+            || isCosmicSkywayArena(arenaType);
+          const cosmic = isCosmicSkywayArena(arenaType);
           if (cosmic || underground) setupRaceEnvironment(scene, { space: cosmic });
           else if (arenaType === 'neon_metro_01') setupStadiumNightEnvironment(scene);
           else setupMKDayEnvironment(scene);
@@ -10625,7 +10625,7 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
         const underground = scene.userData.biomeAAASpec?.underground
           || arenaType === 'neon_metro_01'
           || arenaType === 'lava_foundry_01';
-        renderer.toneMappingExposure = arenaType === 'star_station_01' ? 1.2
+        renderer.toneMappingExposure = isCosmicSkywayArena(arenaType) ? 1.2
           : (underground ? 1.1 : 1.08);
       } else {
         const expCap = nightMkArenas.has(mkArena) ? 1.32 : (scene.userData.mkThemedTrack ? 1.48 : 1.25);
@@ -12063,7 +12063,7 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
         const underground = arenaType === 'crystal_palace_01'
           || arenaType === 'cyber_boulevard_01'
           || scene.userData.biomeAAASpec?.underground;
-        renderer.toneMappingExposure = arenaType === 'star_station_01' ? 1.2
+        renderer.toneMappingExposure = isCosmicSkywayArena(arenaType) ? 1.2
           : (underground ? 1.1 : 1.08);
       }
       } catch(err){ console.warn('[SimCanvas tick]',err); }

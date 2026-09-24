@@ -13,6 +13,7 @@ import { trackHasBundledAssets } from './TrackAssetManifest.js';
 import { isCupTrack, blocksLaunchDriveLane } from './CodeRacerTrackStandards.js';
 import { pbrMat } from './BiomeAAAKit.js';
 import { installCosmicSkyway, animateCosmicSkyway } from './CosmicSkywayKit.js';
+import { getCosmicSkywayVariant, isCosmicSkywayArena } from './CosmicSkywayRegistry.js';
 import {
   buildPalmTree, buildBeachHut, buildTikiTorch, buildBeachUmbrella,
   buildFerrisWheel, buildCircusTent, buildMetroPillar, buildCastleTower,
@@ -406,7 +407,7 @@ function addGroundDisc(world, arenaType, recipe, bounds) {
     return;
   }
 
-  if (recipe?.vista === 'cosmic' || (recipe?.vista === 'earth' && arenaType === 'star_station_01')) {
+  if (recipe?.vista === 'cosmic' || (recipe?.vista === 'earth' && isCosmicSkywayArena(arenaType))) {
     addThemedAtmosphere(world, arenaType, bounds);
     return;
   }
@@ -526,8 +527,8 @@ function addThemedAtmosphere(world, arenaType, bounds) {
     world.add(aurora);
   }
 
-  if (arenaType === 'star_station_01') {
-    installCosmicSkyway(world, bounds);
+  if (isCosmicSkywayArena(arenaType)) {
+    installCosmicSkyway(world, bounds, getCosmicSkywayVariant(arenaType));
   }
 
   if (arenaType === 'thunder_ridge_01') {

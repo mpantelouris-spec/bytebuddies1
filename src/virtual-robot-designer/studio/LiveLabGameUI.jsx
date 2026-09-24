@@ -21,6 +21,7 @@ import { FOOTBALL_BLOCK_LIBRARY, isFootballCourse, FOOTBALL_STARTER_SCRIPT, FOOT
 import { buildRaceBlockLibrary, isRaceCourse } from '../data/racing-blocks.js';
 import { isCarChassis } from '../data/car-racing-tracks.js';
 import { CarRobotTrackGrid } from '../racing/CarRobotTrackGrid.jsx';
+import { COSMIC_SKYWAY_UI_TRACKS } from '../racing/mk-tracks/CosmicSkywayRegistry.js';
 import { getSecurityBotArena } from '../data/securitybot-arenas.js';
 import { getPrimaryRobotDisplay, getPrimaryStudioArena, getStudioRobotGroup, kidSafeText } from '../data/primary-robot-studio.js';
 import { UNIVERSAL_EVENTS_CATEGORY, withUniversalEvents } from '../data/universal-event-blocks.js';
@@ -1619,21 +1620,24 @@ export function GameLevelSelect({ courses, currentId, robotName, robotType, chas
                   />
                   {onSelectBiomeTrack && (
                     <div className="gls-card-grid gls-card-grid--compact" style={{ marginBottom: 12 }}>
-                      <button
-                        type="button"
-                        className={`gls-mission-card${currentArenaType === 'star_station_01' ? ' playing' : ''}`}
-                        style={{ '--mc': '#AA44FF' }}
-                        onClick={() => { onSelectBiomeTrack({ arenaType: 'star_station_01' }); onClose(); }}
-                      >
-                        <div className="gls-mc-hero" style={{ background: 'linear-gradient(135deg,#1e1b4b,#7a2cff,#06b6d4)' }}>
-                          <span className="gls-mc-icon">🛸</span>
-                          {currentArenaType === 'star_station_01' && <span className="gls-mc-playing">▶ PLAYING</span>}
-                        </div>
-                        <div className="gls-mc-body">
-                          <div className="gls-mc-name">Cosmic Skyway</div>
-                          <div className="gls-mc-story">Bonus race · wormhole, asteroids, blue planet, figure-8 overpass</div>
-                        </div>
-                      </button>
+                      {COSMIC_SKYWAY_UI_TRACKS.map((t) => (
+                        <button
+                          key={t.arenaType}
+                          type="button"
+                          className={`gls-mission-card${currentArenaType === t.arenaType ? ' playing' : ''}`}
+                          style={{ '--mc': t.color }}
+                          onClick={() => { onSelectBiomeTrack({ arenaType: t.arenaType }); onClose(); }}
+                        >
+                          <div className="gls-mc-hero" style={{ background: t.cardGradient }}>
+                            <span className="gls-mc-icon">{t.emoji}</span>
+                            {currentArenaType === t.arenaType && <span className="gls-mc-playing">▶ PLAYING</span>}
+                          </div>
+                          <div className="gls-mc-body">
+                            <div className="gls-mc-name">{t.label}</div>
+                            <div className="gls-mc-story">Bonus race · {t.story}</div>
+                          </div>
+                        </button>
+                      ))}
                     </div>
                   )}
                   <div className="gls-card-grid gls-card-grid--compact">
@@ -1683,30 +1687,32 @@ export function GameLevelSelect({ courses, currentId, robotName, robotType, chas
                     <>
                       <SectionHead
                         icon="🛸"
-                        title="Bonus race track"
-                        subtitle="Race your rover through space"
+                        title="Cosmic race tracks"
+                        subtitle="11 space highways — same graphics, different layouts"
                         color="#aa44ff"
                       />
                       <div className="gls-card-grid gls-card-grid--compact">
-                        <MissionHeroCard
-                          key="cosmic-skyway"
-                          robotName={robotName}
-                          gradient="linear-gradient(135deg,#1e1b4b,#7a2cff,#06b6d4)"
-                          metaColor="#AA44FF"
-                          isSel={currentArenaType === 'star_station_01'}
-                          onSelect={() => onSelectBiomeTrack({ arenaType: 'star_station_01' })}
-                          onClose={onClose}
-                          course={{
-                          id: 'star_station_01',
-                          arenaType: 'star_station_01',
-                          icon: '🛸',
-                          name: 'Cosmic Skyway',
-                          environmentName: 'Cosmic Skyway',
-                          shortName: 'Cosmic Skyway',
-                          color: '#AA44FF',
-                          tagline: 'Bonus · Twisting space highway past a wormhole, asteroids and a blue planet',
-                        }}
-                        />
+                        {COSMIC_SKYWAY_UI_TRACKS.map((t) => (
+                          <MissionHeroCard
+                            key={t.arenaType}
+                            robotName={robotName}
+                            gradient={t.cardGradient}
+                            metaColor={t.color}
+                            isSel={currentArenaType === t.arenaType}
+                            onSelect={() => onSelectBiomeTrack({ arenaType: t.arenaType })}
+                            onClose={onClose}
+                            course={{
+                              id: t.arenaType,
+                              arenaType: t.arenaType,
+                              icon: t.emoji,
+                              name: t.label,
+                              environmentName: t.label,
+                              shortName: t.label,
+                              color: t.color,
+                              tagline: `Bonus · ${t.story}`,
+                            }}
+                          />
+                        ))}
                       </div>
                     </>
                   )}

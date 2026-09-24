@@ -14,6 +14,9 @@ import {
   THUNDER_RIDGE_SPLINE,
 } from './CodeRacerSplines.js';
 import { BIOME_CAMERA_STANDARD } from './BiomeAAAVisualSpec.js';
+import { COSMIC_SKYWAY_BONUS_TRACKS, COSMIC_SKYWAY_ARENA_IDS, isCosmicSkywayArena } from './CosmicSkywayRegistry.js';
+
+export { isCosmicSkywayArena, COSMIC_SKYWAY_BONUS_TRACKS, COSMIC_SKYWAY_ARENA_IDS };
 
 const CAM = BIOME_CAMERA_STANDARD;
 
@@ -109,7 +112,9 @@ export const BIOME_TRACKS = [
 ];
 
 export function getBiomeTrack(arenaType) {
-  return BIOME_TRACKS.find((t) => t.arenaType === arenaType || t.id === arenaType);
+  return BIOME_TRACKS.find((t) => t.arenaType === arenaType || t.id === arenaType)
+    || COSMIC_SKYWAY_BONUS_TRACKS.find((t) => t.arenaType === arenaType || t.id === arenaType)
+    || null;
 }
 
 export function getBiomeTrackByMode(modeIndex) {
@@ -117,4 +122,7 @@ export function getBiomeTrackByMode(modeIndex) {
   return BIOME_TRACKS[idx];
 }
 
-export const BIOME_ARENA_TYPES = new Set(BIOME_TRACKS.map((t) => t.arenaType));
+export const BIOME_ARENA_TYPES = new Set([
+  ...BIOME_TRACKS.map((t) => t.arenaType),
+  ...COSMIC_SKYWAY_ARENA_IDS,
+]);

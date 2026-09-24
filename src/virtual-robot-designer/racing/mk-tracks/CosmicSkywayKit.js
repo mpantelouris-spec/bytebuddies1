@@ -343,36 +343,44 @@ function buildNebulaDome(cx, cz) {
  * Start line is on the +x lobe heading -z, so the hero wormhole, galaxy burst and planet
  * are placed in that forward view, echoing the art's composition.
  */
-export function installCosmicSkyway(world, bounds) {
+export function installCosmicSkyway(world, bounds, variant = null) {
   const g = new THREE.Group();
   g.name = 'cosmic-skyway-vista';
   const { cx, cz } = bounds;
+  const v = variant || {
+    wormhole: { x: 10, y: 42, z: -150 },
+    burst: { x: 115, y: 62, z: -250 },
+    planet: { x: 150, y: -95, z: -170 },
+    loopA: { x: 95, y: 28, z: -70, ry: Math.PI / 2.4 },
+    loopB: { x: -100, y: 24, z: 40, ry: -Math.PI / 3 },
+    asteroidSeed: 99,
+  };
 
   g.add(buildNebulaDome(cx, cz));
 
   const wormhole = buildWormhole();
-  wormhole.position.set(cx + 10, 42, cz - 150);
+  wormhole.position.set(cx + v.wormhole.x, v.wormhole.y, cz + v.wormhole.z);
   wormhole.lookAt(cx + 54, 10, cz);
   g.add(wormhole);
 
   const burst = buildGalaxyBurst();
-  burst.position.set(cx + 115, 62, cz - 250);
+  burst.position.set(cx + v.burst.x, v.burst.y, cz + v.burst.z);
   burst.lookAt(cx + 54, 10, cz);
   g.add(burst);
 
   const planet = buildPlanet();
-  planet.position.set(cx + 150, -95, cz - 170);
+  planet.position.set(cx + v.planet.x, v.planet.y, cz + v.planet.z);
   g.add(planet);
 
-  g.add(buildAsteroidBelt(cx, cz));
+  g.add(buildAsteroidBelt(cx, cz, 48));
 
   const loopA = buildNeonLoop(28);
-  loopA.position.set(cx + 95, 28, cz - 70);
-  loopA.rotation.y = Math.PI / 2.4;
+  loopA.position.set(cx + v.loopA.x, v.loopA.y, cz + v.loopA.z);
+  loopA.rotation.y = v.loopA.ry;
   g.add(loopA);
   const loopB = buildNeonLoop(22);
-  loopB.position.set(cx - 100, 24, cz + 40);
-  loopB.rotation.y = -Math.PI / 3;
+  loopB.position.set(cx + v.loopB.x, v.loopB.y, cz + v.loopB.z);
+  loopB.rotation.y = v.loopB.ry;
   g.add(loopB);
 
   g.add(buildDistantHighway([
