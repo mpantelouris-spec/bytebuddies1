@@ -1452,7 +1452,7 @@ function MissionHeroCard({ course, robotName, gradient, metaColor, isSel, onSele
       </div>
       <div className="gls-mc-body">
         <div className="gls-mc-env" style={{ fontSize: 11, fontWeight: 800, color: metaColor || course.color, letterSpacing: '0.04em' }}>
-          {course.displayRobotName || robotName} · Mode {course.modeIndex || 1}
+          {course.cardLabel || `${course.displayRobotName || robotName} · Mode ${course.modeIndex || 1}`}
         </div>
         <div className="gls-mc-name">{displayTitle}</div>
         <div className="gls-mc-story">{kidSafeText(course.desc)}</div>
@@ -1688,11 +1688,11 @@ export function GameLevelSelect({ courses, currentId, robotName, robotType, chas
                       <SectionHead
                         icon="🛸"
                         title="Cosmic race tracks"
-                        subtitle="11 space highways — same graphics, different layouts"
+                        subtitle="11 space race tracks — scroll down to find them all"
                         color="#aa44ff"
                       />
                       <div className="gls-card-grid gls-card-grid--compact">
-                        {COSMIC_SKYWAY_UI_TRACKS.map((t) => (
+                        {COSMIC_SKYWAY_UI_TRACKS.map((t, i) => (
                           <MissionHeroCard
                             key={t.arenaType}
                             robotName={robotName}
@@ -1709,7 +1709,9 @@ export function GameLevelSelect({ courses, currentId, robotName, robotType, chas
                               environmentName: t.label,
                               shortName: t.label,
                               color: t.color,
-                              tagline: `Bonus · ${t.story}`,
+                              tagline: t.story,
+                              cardLabel: `${robotName} · Space track ${i + 1} of ${COSMIC_SKYWAY_UI_TRACKS.length}`,
+                              difficulty: t.arenaType === 'cosmic_event_horizon_11' ? 'Expert' : 'Hard',
                             }}
                           />
                         ))}
