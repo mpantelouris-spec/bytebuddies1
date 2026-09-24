@@ -13203,6 +13203,9 @@ function resolveLabCourse(initialCourseId, robotConfig) {
     isCourseForChassis(course.id, chassisId)
     || chassisModes.some((c) => c.id === course.id)
     || (resolveChassisKey(chassisId) === 'birdbot' && isFlappyBirdCourse(course.id, course.arenaType))
+    || BIOME_ARENA_TYPES.has(course.arenaType)
+    || BIOME_ARENA_TYPES.has(course.id)
+    || course.genre === 'racing'
   );
 
   // Football robots must never inherit a stale forest/racing world from localStorage.
@@ -13465,8 +13468,8 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
     if (isFootballRobot(rc)) return;
     if (activeCourse?.isPrimaryMission) return;
     const chassisId = rc?.chassisId || 'rover';
-    if (!isPrimaryStudioChassis(chassisId)
-      && (BIOME_ARENA_TYPES.has(activeCourse?.arenaType) || BIOME_ARENA_TYPES.has(activeCourse?.id))) return;
+    if (BIOME_ARENA_TYPES.has(activeCourse?.arenaType) || BIOME_ARENA_TYPES.has(activeCourse?.id)) return;
+    if (activeCourse?.genre === 'racing' && isCarRacingArenaType(activeCourse?.arenaType)) return;
     const chassisChanged = prevChassisIdRef.current !== null && prevChassisIdRef.current !== chassisId;
     prevChassisIdRef.current = chassisId;
     const courseId = activeCourse?.id;
@@ -13543,6 +13546,8 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
       return 'robot_football';
     }
     if (isPrimaryStudioChassis(rc?.chassisId || challenge?.chassisId)) {
+      if (BIOME_ARENA_TYPES.has(challenge?.arenaType)) return challenge.arenaType;
+      if (challenge?.genre === 'racing' && isCarRacingArenaType(challenge?.arenaType)) return challenge.arenaType;
       if (challenge?.arenaBible) return challenge.arenaType || 'sandbox';
       if (isCarChassis(rc?.chassisId || challenge?.chassisId)) {
         const track = getCarRacingTrack(
@@ -14265,6 +14270,7 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
         selectBiomeTrack(mk);
       } catch { /* ignore */ }
     };
+    applyTrackFromHash();
     window.addEventListener('hashchange', applyTrackFromHash);
     return () => window.removeEventListener('hashchange', applyTrackFromHash);
   }, [selectBiomeTrack]);

@@ -1617,6 +1617,25 @@ export function GameLevelSelect({ courses, currentId, robotName, robotType, chas
                     subtitle="Each mode teaches one block idea on its track"
                     color="#7c3aed"
                   />
+                  {onSelectBiomeTrack && (
+                    <div className="gls-card-grid gls-card-grid--compact" style={{ marginBottom: 12 }}>
+                      <button
+                        type="button"
+                        className={`gls-mission-card${currentArenaType === 'star_station_01' ? ' playing' : ''}`}
+                        style={{ '--mc': '#AA44FF' }}
+                        onClick={() => { onSelectBiomeTrack({ arenaType: 'star_station_01' }); onClose(); }}
+                      >
+                        <div className="gls-mc-hero" style={{ background: 'linear-gradient(135deg,#1e1b4b,#7a2cff,#06b6d4)' }}>
+                          <span className="gls-mc-icon">🛸</span>
+                          {currentArenaType === 'star_station_01' && <span className="gls-mc-playing">▶ PLAYING</span>}
+                        </div>
+                        <div className="gls-mc-body">
+                          <div className="gls-mc-name">Cosmic Skyway</div>
+                          <div className="gls-mc-story">Bonus race · wormhole, asteroids, blue planet, figure-8 overpass</div>
+                        </div>
+                      </button>
+                    </div>
+                  )}
                   <div className="gls-card-grid gls-card-grid--compact">
                     {courses.map((c, i) => renderCard(
                       {
