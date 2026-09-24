@@ -3148,32 +3148,9 @@ let lastBodyVideoStateFromBlock = null;
  * Updates TRANSPARENCY_STATE immediately if transparency has changed.
  */
 export function monitorBodyDetectionBlockParams(sprites) {
-  console.log('[Body] monitorBodyDetectionBlockParams called, sprites:', !!sprites);
-
-  if (!sprites) {
-    console.log('[Body] DEBUG: sprites is null/undefined');
-    return;
-  }
-  if (!sprites[0]) {
-    console.log('[Body] DEBUG: sprites[0] is null/undefined');
-    return;
-  }
-  if (!sprites[0].blocks) {
-    console.log('[Body] DEBUG: sprites[0].blocks is null/undefined. sprites[0] keys:', Object.keys(sprites[0] || {}));
-    return;
-  }
+  if (!sprites?.[0]?.blocks) return;
 
   const blocks = sprites[0].blocks;
-
-  // Debug: log block types on first run
-  if (lastBodyTransparencyFromBlock === null && blocks.length > 0) {
-    console.log('[Body] DEBUG: All blocks in workspace:', blocks.map(b => ({
-      type: b.type,
-      params: b.params,
-      hasTransparency: !!(b.params && 'transparency' in b.params),
-      hasState: !!(b.params && 'state' in b.params)
-    })));
-  }
 
   // Find the body-video-on block (try both 'body-video-on' and 'bb_body_video_on')
   for (let block of blocks) {

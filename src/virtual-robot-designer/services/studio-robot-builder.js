@@ -4,7 +4,11 @@
  * Creates distinct, visually rich 3D models for each chassis type.
  */
 import * as THREE from 'three';
-import { prepareLabRobot } from './art-direction.js';
+import { isCarChassis } from '../data/car-racing-tracks.js';
+import { getPrimaryRobotDisplay } from '../data/primary-robot-studio.js';
+import { buildProfessionalFighterHumanoid } from '../studio/fighter-character-models.js';
+import { buildFootballBot } from '../studio/football-character-models.js';
+import { prepareLabRobot, prepareCombatFighter } from './art-direction.js';
 
 // Shared geometry instances (reused across builds)
 const BOX_GEO = new THREE.BoxGeometry(1, 1, 1);
@@ -225,7 +229,7 @@ export const CHASSIS_DATA = [
   },
   {
     id: 'tank',
-    name: 'Tank',
+    name: 'Heavy Rover',
     icon: '🛡️',
     badge: 'Heavy',
     primaryColor: '#2C3E50',
@@ -237,7 +241,7 @@ export const CHASSIS_DATA = [
   },
   {
     id: 'stealth',
-    name: 'Stealth',
+    name: 'Quiet Rover',
     icon: '🌑',
     badge: 'Dark Ops',
     primaryColor: '#0d0d1a',
@@ -261,7 +265,7 @@ export const CHASSIS_DATA = [
   },
   {
     id: 'securitybot',
-    name: 'Security Bot',
+    name: 'Safety Patrol Bot',
     icon: '👮',
     badge: 'Patrol',
     primaryColor: '#1e40af',
@@ -472,7 +476,7 @@ export const CHASSIS_DATA = [
   },
   {
     id: 'battlebot',
-    name: 'Battle Mech',
+    name: 'Mega Mech',
     icon: '⚔️',
     badge: 'Combat',
     primaryColor: '#1f2937',
@@ -481,6 +485,66 @@ export const CHASSIS_DATA = [
     weight: '6.0 kg', movement: 'Tracks',
     movementHint: 'tracks',
     bgGrad: ['#F9FAFB', '#F3F4F6'],
+  },
+  {
+    id: 'striker',
+    name: 'Sport Striker',
+    icon: '🥊',
+    badge: 'Boxing',
+    primaryColor: '#f97316',
+    accentColor: '#fbbf24',
+    speed: 95, power: 80, durability: 55,
+    weight: '1.2 kg', movement: 'Legs',
+    movementHint: 'legs',
+    bgGrad: ['#FFF7ED', '#FFEDD5'],
+  },
+  {
+    id: 'footballbot',
+    name: 'Striker FC',
+    icon: '⚽',
+    badge: 'Football',
+    primaryColor: '#16A34A',
+    accentColor: '#FFFFFF',
+    speed: 92, power: 75, durability: 60,
+    weight: '1.1 kg', movement: 'Legs',
+    movementHint: 'legs',
+    bgGrad: ['#ECFDF5', '#D1FAE5'],
+  },
+  {
+    id: 'blaster',
+    name: 'Elemental Maker',
+    icon: '✨',
+    badge: 'Mage',
+    primaryColor: '#7c3aed',
+    accentColor: '#a855f7',
+    speed: 70, power: 85, durability: 60,
+    weight: '1.4 kg', movement: 'Hover',
+    movementHint: 'hover',
+    bgGrad: ['#F5F3FF', '#EDE9FE'],
+  },
+  {
+    id: 'ninja',
+    name: 'Ninja Helper',
+    icon: '🥷',
+    badge: 'Stealth',
+    primaryColor: '#1e293b',
+    accentColor: '#94a3b8',
+    speed: 99, power: 78, durability: 65,
+    weight: '0.9 kg', movement: 'Legs',
+    movementHint: 'legs',
+    bgGrad: ['#F1F5F9', '#E2E8F0'],
+  },
+  {
+    id: 'berserker',
+    name: 'Power Bot',
+    icon: '💢',
+    badge: 'Rage',
+    primaryColor: '#dc2626',
+    accentColor: '#f87171',
+    speed: 55, power: 92, durability: 75,
+    weight: '2.8 kg', movement: 'Legs',
+    movementHint: 'legs',
+    bgGrad: ['#FEF2F2', '#FEE2E2'],
   },
   {
     id: 'medbot',
@@ -509,7 +573,7 @@ export const CHASSIS_DATA = [
   // ── Jet / Plane ────────────────────────────────────────────────────────────
   {
     id: 'jetplane',
-    name: 'Jet Fighter',
+    name: 'Jet Explorer',
     icon: '✈️',
     badge: 'Fixed-Wing',
     primaryColor: '#1e40af',
@@ -521,7 +585,7 @@ export const CHASSIS_DATA = [
   },
   {
     id: 'steathjet',
-    name: 'Stealth Jet',
+    name: 'Quiet Jet',
     icon: '🌑',
     badge: 'Stealth',
     primaryColor: '#0d0d1a',
@@ -542,6 +606,20 @@ export const CHASSIS_DATA = [
     weight: '1.0 kg', movement: 'Jets',
     movementHint: 'jets',
     bgGrad: ['#FFF1F2', '#FFE4E6'],
+  },
+  // ── Launcher Robot ─────────────────────────────────────────────────────────
+  {
+    id: 'birdbot',
+    name: 'Sling-B',
+    icon: '🐦',
+    badge: 'Launcher',
+    primaryColor: '#e52222',
+    accentColor: '#ffdd00',
+    speed: 60, power: 90, durability: 75,
+    weight: '1.6 kg', movement: 'Wheels',
+    movementHint: 'wheels',
+    bgGrad: ['#FFF1F0', '#FFE0DF'],
+    description: 'A round, bird-inspired launcher robot. Fires energy projectiles with precision!',
   },
 ];
 
@@ -767,7 +845,7 @@ export const BLOCKS_DATA = [
 export const SAMPLE_ROBOTS = [
   {
     id: 1,
-    name: 'Rover X1',
+    name: 'Rover',
     chassisId: 'rover',
     primaryColor: '#FF8C00',
     accentColor: '#FFD700',
@@ -1102,6 +1180,41 @@ function buildCrawler(primary, accent) {
     [-0.76, 0.34, -0.58],
     [ 0.76, 0.34, -0.58],
   ], 0.34, 0.26, '#1a1a1a');
+  return g;
+}
+
+/** Mining bot — tracked hauler with front drill boom (not military tank). */
+function buildMiningBot(primary, accent) {
+  const g = new THREE.Group();
+  const body = box(1.22, 0.48, 1.35, primary, 0.55, 0.48);
+  body.position.set(0, 0.48, 0);
+  g.add(body);
+  const cab = box(0.72, 0.42, 0.62, accent, 0.5, 0.42);
+  cab.position.set(0, 0.82, -0.18);
+  g.add(cab);
+  const hopper = box(0.9, 0.28, 0.72, '#4a3728', 0.45, 0.55);
+  hopper.position.set(0, 0.72, 0.32);
+  g.add(hopper);
+  const drillArm = cylinder(0.07, 0.55, '#555', 0.75, 0.35);
+  drillArm.rotation.z = Math.PI / 2;
+  drillArm.position.set(0.42, 0.55, 0.72);
+  g.add(drillArm);
+  const drillHead = new THREE.Mesh(
+    new THREE.ConeGeometry(0.16, 0.34, 8),
+    mat(accent, 0.65, 0.38),
+  );
+  drillHead.rotation.z = -Math.PI / 2;
+  drillHead.position.set(0.88, 0.55, 0.72);
+  g.add(drillHead);
+  const lamp = sphere(0.06, '#ffee88', 0.1, 0.3, '#ffcc44');
+  lamp.material.emissiveIntensity = 1.4;
+  lamp.position.set(0.2, 0.95, 0.55);
+  g.add(lamp);
+  [[-0.62, 0.32, 0.5], [0.62, 0.32, 0.5], [-0.62, 0.32, -0.5], [0.62, 0.32, -0.5]].forEach(([x, y, z]) => {
+    const track = box(0.22, 0.24, 0.55, '#1a1a1a', 0.8, 0.4);
+    track.position.set(x, y, z);
+    g.add(track);
+  });
   return g;
 }
 
@@ -2188,6 +2301,33 @@ function buildMech(primary, accent) {
   };
 
   return g;
+}
+
+/** Combat chassis — professional humanoid fighters (Striker, Tank, Blaster, Ninja, Berserker) */
+export function buildFighterHumanoid(primary, accent, variant = 'striker') {
+  return buildProfessionalFighterHumanoid(primary, accent, variant);
+}
+
+function buildStriker(primary, accent)   { return buildFighterHumanoid(primary, accent, 'striker'); }
+function buildTankFighter(primary, accent) { return buildFighterHumanoid(primary || '#36454F', accent || '#FF6600', 'tank'); }
+function buildBlaster(primary, accent)   { return buildFighterHumanoid(primary, accent, 'blaster'); }
+function buildNinja(primary, accent)     { return buildFighterHumanoid(primary, accent, 'ninja'); }
+function buildBerserker(primary, accent) { return buildFighterHumanoid(primary, accent, 'berserker'); }
+
+/** Spec-accurate combat palettes — always used in Live Lab fighting arenas */
+const COMBAT_FIGHTER_PALETTE = {
+  striker: { primary: '#0047AB', accent: '#FF0000', variant: 'striker' },
+  tank: { primary: '#36454F', accent: '#FF6600', variant: 'tank' },
+  blaster: { primary: '#6B21A8', accent: '#E879F9', variant: 'blaster' },
+  ninja: { primary: '#0F172A', accent: '#22D3EE', variant: 'ninja' },
+  berserker: { primary: '#7F1D1D', accent: '#FF7700', variant: 'berserker' },
+  dummy: { primary: '#B8860B', accent: '#CD7F32', variant: 'dummy' },
+};
+
+/** Professional PBR fighting humanoid for arena combat (player + enemy) */
+export function buildCombatFighterMesh(archetype = 'striker') {
+  const pal = COMBAT_FIGHTER_PALETTE[archetype] || COMBAT_FIGHTER_PALETTE.striker;
+  return buildFighterHumanoid(pal.primary, pal.accent, pal.variant);
 }
 
 function buildDroneQuad(primary, accent) {
@@ -3921,6 +4061,251 @@ function buildFirebot(primary, accent) {
   return g;
 }
 
+// SLING-B (BIRDBOT) — round-bodied launcher robot inspired by bird silhouettes
+// Features: spherical body, expressive LED eyes, beak launcher nozzle,
+// wing-flap thruster arms, forehead crest antenna, wheeled base.
+function buildBirdBot(primary, accent) {
+  const g = new THREE.Group();
+
+  // ── Wheeled base platform ────────────────────────────────────────────────
+  const base = box(0.82, 0.16, 0.88, '#2a1a00', 0.7, 0.4);
+  base.position.set(0, 0.10, 0);
+  g.add(base);
+  addWheels(g, [
+    [-0.44, 0.15,  0.30], [0.44, 0.15,  0.30],
+    [-0.44, 0.15, -0.30], [0.44, 0.15, -0.30],
+  ], 0.155, 0.14, '#1a1a1a');
+
+  // ── Round main body ──────────────────────────────────────────────────────
+  const body = new THREE.Mesh(
+    new THREE.SphereGeometry(0.46, 24, 18),
+    mat(primary, 0.35, 0.55),
+  );
+  body.scale.set(1.0, 1.12, 1.0); // slightly taller than wide — bird silhouette
+  body.position.set(0, 0.65, 0);
+  g.add(body);
+
+  // ── White belly patch ────────────────────────────────────────────────────
+  const belly = new THREE.Mesh(
+    new THREE.SphereGeometry(0.31, 16, 12, 0, Math.PI * 2, Math.PI * 0.32, Math.PI * 0.56),
+    mat('#f8f0e0', 0.1, 0.8),
+  );
+  belly.position.set(0, 0.58, 0.28);
+  g.add(belly);
+
+  // ── Expressive LED eyes (pair) ───────────────────────────────────────────
+  const eyeWhiteL = new THREE.Mesh(new THREE.SphereGeometry(0.115, 14, 10), mat('#ffffff', 0.05, 0.5));
+  const eyeWhiteR = eyeWhiteL.clone();
+  eyeWhiteL.position.set(-0.17, 0.72, 0.36);
+  eyeWhiteR.position.set( 0.17, 0.72, 0.36);
+  g.add(eyeWhiteL); g.add(eyeWhiteR);
+
+  const pupilMat = mat('#111122', 0.1, 0.6, accent);
+  pupilMat.emissiveIntensity = 2.2;
+  const pupilL = new THREE.Mesh(new THREE.SphereGeometry(0.062, 10, 8), pupilMat.clone());
+  const pupilR = new THREE.Mesh(new THREE.SphereGeometry(0.062, 10, 8), pupilMat.clone());
+  pupilL.position.set(-0.17, 0.72, 0.455);
+  pupilR.position.set( 0.17, 0.72, 0.455);
+  g.add(pupilL); g.add(pupilR);
+
+  // Angry brow ridges (thick accent-coloured strips over eyes)
+  [-0.17, 0.17].forEach((x, i) => {
+    const brow = box(0.18, 0.04, 0.09, accent, 0.4, 0.5);
+    brow.position.set(x, 0.845, 0.36);
+    brow.rotation.z = i === 0 ? 0.28 : -0.28; // V-shape furrow for personality
+    g.add(brow);
+  });
+
+  // ── Beak / launcher nozzle ───────────────────────────────────────────────
+  const beakOuter = new THREE.Mesh(
+    new THREE.ConeGeometry(0.09, 0.28, 8),
+    mat(accent, 0.4, 0.5),
+  );
+  beakOuter.rotation.x = Math.PI / 2;
+  beakOuter.position.set(0, 0.60, 0.60);
+  g.add(beakOuter);
+
+  // Inner beak channel (launcher barrel)
+  const beakInner = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.04, 0.04, 0.20, 8),
+    mat('#111', 0.8, 0.2),
+  );
+  beakInner.rotation.x = Math.PI / 2;
+  beakInner.position.set(0, 0.60, 0.68);
+  g.add(beakInner);
+
+  // Launcher glow tip — glows when ready to fire
+  const launcherTip = sphere(0.038, '#ff8800', 0, 0.2, '#ffcc00');
+  launcherTip.material.emissiveIntensity = 1.8;
+  launcherTip.position.set(0, 0.60, 0.80);
+  g.add(launcherTip);
+  launcherTip.userData.isLed = true;
+
+  // ── Wing-flap thruster arms ───────────────────────────────────────────────
+  const wingMat = mat(primary, 0.4, 0.55);
+  const wingL = new THREE.Group();
+  const wingR = new THREE.Group();
+
+  // Main wing blade
+  [wingL, wingR].forEach((wg, i) => {
+    const side = i === 0 ? -1 : 1;
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.06, 0.22), wingMat.clone());
+    blade.rotation.z = side * 0.22;
+    blade.position.set(side * 0.18, 0, 0);
+    wg.add(blade);
+
+    // Thruster nozzle at wing tip
+    const nozzle = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.04, 0.055, 0.12, 7),
+      mat('#333', 0.75, 0.3),
+    );
+    nozzle.rotation.x = Math.PI / 2;
+    nozzle.position.set(side * 0.38, -0.04, 0.04);
+    wg.add(nozzle);
+
+    // Thruster glow
+    const glow = sphere(0.03, '#ff6600', 0, 0.2, '#ff9900');
+    glow.material.emissiveIntensity = 1.5;
+    glow.position.set(side * 0.38, -0.04, 0.10);
+    wg.add(glow);
+    glow.userData.isLed = true;
+  });
+
+  wingL.position.set(-0.46, 0.65, 0.04);
+  wingR.position.set( 0.46, 0.65, 0.04);
+  g.add(wingL); g.add(wingR);
+
+  // ── Forehead crest / antenna ─────────────────────────────────────────────
+  const crestBase = cylinder(0.04, 0.18, accent, 0.45, 0.5);
+  crestBase.position.set(0, 1.10, -0.06);
+  g.add(crestBase);
+
+  const crestTip = sphere(0.065, accent, 0.3, 0.4, accent);
+  crestTip.material.emissiveIntensity = 1.4;
+  crestTip.position.set(0, 1.22, -0.06);
+  g.add(crestTip);
+  crestTip.userData.isLed = true;
+
+  // Secondary crest feathers (3 small fins swept back)
+  [-0.08, 0, 0.08].forEach((x, i) => {
+    const feather = new THREE.Mesh(
+      new THREE.ConeGeometry(0.028, 0.14 - i * 0.025, 5),
+      mat(i === 1 ? accent : primary, 0.3, 0.5),
+    );
+    feather.position.set(x, 1.14 + i * 0.01, -0.1 - i * 0.03);
+    feather.rotation.x = -0.45;
+    feather.rotation.z = x * 0.8;
+    g.add(feather);
+  });
+
+  // ── Tail fin (swept back, gives aerodynamic personality) ─────────────────
+  const tailFin = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.02, 0.08, 0.28, 4),
+    mat(accent, 0.4, 0.5),
+  );
+  tailFin.rotation.x = -0.7;
+  tailFin.position.set(0, 0.74, -0.44);
+  g.add(tailFin);
+
+  base.userData.flappyHide = true;
+  g.userData.wingL = wingL;
+  g.userData.wingR = wingR;
+  g.userData.flappyHideParts = [base];
+  g.traverse(c => { if (c.userData?.isWheel) g.userData.flappyHideParts.push(c); });
+
+  // ── Animations ──────────────────────────────────────────────────────────
+  g.userData.animate = (t) => {
+    // Eyes pulse with slight squint (scale Y) — personality
+    const blink = t % 4.0 < 0.12 ? 0.15 : 1.0; // blink every ~4s
+    pupilL.scale.y = blink;
+    pupilR.scale.y = blink;
+
+    // Wing flap (idle)
+    wingL.rotation.z =  Math.sin(t * 3.5) * 0.14;
+    wingR.rotation.z = -Math.sin(t * 3.5) * 0.14;
+
+    // Launcher tip pulse — charge glow
+    launcherTip.material.emissiveIntensity = 1.4 + Math.sin(t * 4.2) * 0.6;
+
+    // Crest tip pulse
+    crestTip.material.emissiveIntensity = 1.0 + Math.sin(t * 2.8) * 0.6;
+
+    // Body subtle bob
+    body.position.y = 0.65 + Math.sin(t * 4.8) * 0.012;
+    belly.position.y = 0.58 + Math.sin(t * 4.8) * 0.012;
+  };
+
+  return g;
+}
+
+/** Classic side-view Flappy Bird — round flyer (not the wheeled Sling-B launcher). */
+function buildClassicFlappyBird(primary, accent) {
+  const g = new THREE.Group();
+  const bodyColor = primary || '#facc15';
+  const beakColor = accent || '#f97316';
+  const bodyMat = mat(bodyColor, 0.15, 0.62);
+  const bellyMat = mat('#fff8e8', 0.05, 0.75);
+
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.36, 20, 16), bodyMat);
+  body.scale.set(1.08, 0.96, 0.82);
+  body.position.set(0, 0.34, 0);
+  g.add(body);
+
+  const belly = new THREE.Mesh(
+    new THREE.SphereGeometry(0.28, 14, 10, 0, Math.PI * 2, Math.PI * 0.25, Math.PI * 0.5),
+    bellyMat,
+  );
+  belly.position.set(0.04, 0.28, 0.14);
+  g.add(belly);
+
+  const eyeWhite = new THREE.Mesh(new THREE.SphereGeometry(0.11, 12, 10), mat('#ffffff', 0.05, 0.45));
+  eyeWhite.position.set(0.08, 0.42, 0.2);
+  g.add(eyeWhite);
+
+  const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.055, 10, 8), mat('#111111', 0.1, 0.55));
+  pupil.position.set(0.1, 0.42, 0.28);
+  g.add(pupil);
+
+  const beak = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.22, 8), mat(beakColor, 0.25, 0.55));
+  beak.rotation.z = -Math.PI / 2;
+  beak.position.set(0.42, 0.3, 0.02);
+  g.add(beak);
+
+  const wingMat = mat(bodyColor, 0.2, 0.58);
+  const wingL = new THREE.Group();
+  const wingR = new THREE.Group();
+  const wingShape = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.06, 0.2), wingMat);
+  wingShape.position.set(-0.12, 0, 0);
+  wingL.add(wingShape);
+  wingL.position.set(-0.08, 0.34, -0.04);
+  wingL.rotation.z = 0.35;
+  const wingShapeR = wingShape.clone();
+  wingR.add(wingShapeR);
+  wingR.position.set(-0.08, 0.34, 0.04);
+  wingR.rotation.z = -0.35;
+  g.add(wingL, wingR);
+
+  const tail = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.08, 0.14), mat(beakColor, 0.25, 0.55));
+  tail.position.set(-0.34, 0.28, 0);
+  tail.rotation.z = 0.25;
+  g.add(tail);
+
+  g.userData.wingL = wingL;
+  g.userData.wingR = wingR;
+  g.userData.flappyHideParts = [];
+  g.userData.isFlappyBird = true;
+  g.userData.chassisId = 'birdbot';
+
+  g.userData.animate = (t) => {
+    const flap = Math.sin(t * 4.2) * 0.22;
+    wingL.rotation.z = 0.35 + flap;
+    wingR.rotation.z = -0.35 - flap;
+    body.position.y = 0.34 + Math.sin(t * 4.8) * 0.02;
+  };
+
+  return g;
+}
+
 // FACTORY BOT — vertical industrial lifter/sorter with articulated claw arm
 function buildFactoryBot(primary, accent) {
   const g = new THREE.Group();
@@ -4008,18 +4393,24 @@ function buildFactoryBot(primary, accent) {
 // ─── Attachment builders ───────────────────────────────────────────────────
 
 function addCamera(group) {
-  // Mounted on the roof — small bracket + housing + lens
-  const mount = cylinder(0.045, 0.1, '#2a2a30', 0.6, 0.5);
-  mount.position.set(0, 0.92, 0.18);
+  const bbox = new THREE.Box3().setFromObject(group);
+  const size = new THREE.Vector3();
+  const center = new THREE.Vector3();
+  bbox.getSize(size);
+  bbox.getCenter(center);
+  const y = Number.isFinite(bbox.max.y) ? bbox.max.y + 0.05 : 0.92;
+  const z = Number.isFinite(center.z) ? center.z + Math.min(0.22, size.z * 0.18) : 0.18;
+  const mount = cylinder(0.05, 0.12, '#2a2a30', 0.6, 0.5);
+  mount.position.set(0, y - 0.04, z);
   group.add(mount);
-  const body = box(0.16, 0.13, 0.15, '#23232a', 0.55, 0.45);
-  body.position.set(0, 1.0, 0.2);
+  const body = box(0.18, 0.14, 0.16, '#23232a', 0.55, 0.45);
+  body.position.set(0, y + 0.04, z);
   group.add(body);
-  const lens = cylinder(0.05, 0.07, '#1a1aff', 0.5, 0.15);
+  const lens = cylinder(0.055, 0.08, '#1a1aff', 0.5, 0.15);
   lens.rotation.x = Math.PI / 2;
   lens.material.emissive = new THREE.Color('#0044cc');
   lens.material.emissiveIntensity = 0.55;
-  lens.position.set(0, 1.0, 0.29);
+  lens.position.set(0, y + 0.04, z + 0.1);
   group.add(lens);
 }
 
@@ -4046,7 +4437,7 @@ function addGrabber(group) {
 // ─── Main export ───────────────────────────────────────────────────────────
 
 /** Modular builder chassis IDs → studio build keys */
-const MODULAR_BUILD_KEYS = {
+export const MODULAR_BUILD_KEYS = {
   'rover-explorer': 'rover', 'rover-racer': 'scout', 'rover-cargo': 'crawler',
   'mech-slim': 'mech', 'mech-warrior': 'mech', 'mech-heavy': 'droid',
   'spider-nano': 'spider', 'spider-scout': 'spider', 'spider-tank': 'battlebot',
@@ -4058,8 +4449,21 @@ const MODULAR_BUILD_KEYS = {
 };
 
 export function normalizeRobotBuildConfig(config = {}) {
+  const known = new Set([
+    'Rover X1', 'My Robot', 'Robot', 'Speedster', 'Climber', 'Explorer', 'Walker',
+    'Rover', 'Scout Rover', 'Crawler', 'Heavy Rover', 'Quiet Rover', 'Mining Bot',
+    'Safety Patrol Bot', 'Farm Bot', 'Spider Bot', 'Humanoid', 'Mech Walker',
+    'Drone', 'Racing Drone', 'Rescue Drone', 'Helicopter', 'Hover Bot', 'Hover Racer',
+    'Sub Drone', 'Deep Sea Bot', 'Robot Arm', 'Factory Bot', 'Space Rover', 'LEGO Bot',
+    'Mega Mech', 'Sport Striker', 'Striker FC', 'Elemental Maker', 'Ninja Helper',
+    'Power Bot', 'Med Bot', 'Fire Safety Bot', 'Jet Explorer', 'Quiet Jet', 'Aero Stunt',
+    'Sling-B', 'Custom Bot', 'Tank', 'Stealth', 'Jet Fighter', 'Battle Mech', 'Boxing Striker',
+    'Berserker', 'Shadow Ninja', 'Elemental Blaster',
+  ]);
+  const incomingName = config.name;
+  const useDisplayName = !incomingName || known.has(incomingName);
   const base = {
-    name: 'Rover X1',
+    name: useDisplayName ? getPrimaryRobotDisplay(config.chassisId || 'rover').name : incomingName,
     chassisId: 'rover',
     primaryColor: '#FF8C00',
     accentColor: '#FFD700',
@@ -4074,12 +4478,30 @@ export function normalizeRobotBuildConfig(config = {}) {
     materialGlow: 1.0,
     ...config,
   };
-  if (!base.chassisBuildKey && MODULAR_BUILD_KEYS[base.chassisId]) {
-    base.chassisBuildKey = MODULAR_BUILD_KEYS[base.chassisId];
+  if (useDisplayName) {
+    base.name = getPrimaryRobotDisplay(config.chassisId || 'rover').name;
   }
-  if (!CHASSIS_DATA.find(c => c.id === base.chassisId)) {
-    if (!base.chassisBuildKey) base.chassisBuildKey = MODULAR_BUILD_KEYS[base.chassisId] || 'rover';
-    base.chassisId = 'rover';
+  const nativeChassis = CHASSIS_DATA.find(c => c.id === base.chassisId);
+  const explicitBuildKey = base.chassisBuildKey;
+  if (nativeChassis) {
+    // Keep modular override when build key differs from stored chassis id
+    if (!explicitBuildKey || explicitBuildKey === base.chassisId) {
+      delete base.chassisBuildKey;
+    }
+  } else {
+    const mapped = MODULAR_BUILD_KEYS[base.chassisId];
+    if (mapped) {
+      base.chassisId = mapped;
+      base.chassisBuildKey = mapped;
+    } else {
+      if (!base.chassisBuildKey) base.chassisBuildKey = MODULAR_BUILD_KEYS[base.chassisId] || 'rover';
+      if (!CHASSIS_DATA.some(c => c.id === base.chassisId)) {
+        base.chassisId = base.chassisBuildKey;
+      }
+    }
+  }
+  if (useDisplayName) {
+    base.name = getPrimaryRobotDisplay(base.chassisId || 'rover').name;
   }
   return base;
 }
@@ -4101,8 +4523,18 @@ export function bakeMeshScalesIntoGeometry(root) {
 }
 
 function buildFallbackSimRobot(cfg) {
-  const primary = cfg.primaryColor || '#FF8C00';
-  const accent = cfg.accentColor || '#FFD700';
+  const normalized = normalizeRobotBuildConfig(cfg);
+  try {
+    const group = buildRobotModel(normalized);
+    bakeMeshScalesIntoGeometry(group);
+    group.userData.buildFallback = true;
+    group.userData.chassisId = normalized.chassisBuildKey || normalized.chassisId || 'rover';
+    return group;
+  } catch (e) {
+    console.warn('[buildFallbackSimRobot] minimal placeholder', e);
+  }
+  const primary = normalized.primaryColor || '#FF8C00';
+  const accent = normalized.accentColor || '#FFD700';
   const g = new THREE.Group();
   const bodyMat = new THREE.MeshStandardMaterial({ color: primary, metalness: 0.45, roughness: 0.48 });
   const accentMat = new THREE.MeshStandardMaterial({ color: accent, metalness: 0.5, roughness: 0.4 });
@@ -4115,13 +4547,17 @@ function buildFallbackSimRobot(cfg) {
   const hood = new THREE.Mesh(new THREE.BoxGeometry(0.98, 0.08, 0.52), accentMat);
   hood.position.set(0, 0.64, 0.52);
   g.add(hood);
-  [[-0.7, 0.28, 0.55], [0.7, 0.28, 0.55], [-0.7, 0.28, -0.55], [0.7, 0.28, -0.55]].forEach(([x, y, z]) => {
-    const w = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.2, 16), new THREE.MeshStandardMaterial({ color: '#1a1a1a', roughness: 0.92 }));
-    w.rotation.z = Math.PI / 2;
-    w.position.set(x, y, z);
-    g.add(w);
-  });
-  g.userData.chassisId = cfg.chassisBuildKey || cfg.chassisId || 'rover';
+  if (isCarChassis(normalized.chassisId)) {
+    [[-0.7, 0.28, 0.55], [0.7, 0.28, 0.55], [-0.7, 0.28, -0.55], [0.7, 0.28, -0.55]].forEach(([x, y, z]) => {
+      const w = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.2, 16), new THREE.MeshStandardMaterial({ color: '#1a1a1a', roughness: 0.92 }));
+      w.rotation.z = Math.PI / 2;
+      w.position.set(x, y, z);
+      w.userData.isWheel = true;
+      g.add(w);
+    });
+  }
+  g.userData.chassisId = normalized.chassisBuildKey || normalized.chassisId || 'rover';
+  g.userData.buildFallback = true;
   g.userData.envTex = buildEnvTex();
   bakeMeshScalesIntoGeometry(g);
   return g;
@@ -4130,13 +4566,66 @@ function buildFallbackSimRobot(cfg) {
 /** Build + prepare robot for Live Lab / simulator (handles shared-geometry WebGL bugs) */
 export function buildSimRobot(config = {}) {
   const cfg = normalizeRobotBuildConfig(config);
-  try {
+
+  // Football arenas use the FootballBot sprinter mesh
+  if (cfg.footballFighter) {
+    const group = buildFootballBot({
+      teamColor: cfg.teamColor || 'green',
+      jerseyNumber: cfg.jerseyNumber ?? 10,
+      bootType: cfg.bootType || 'standard',
+      playstyle: cfg.playstyle || 'striker',
+    });
+    group.userData.chassisId = 'footballbot';
+    group.userData.isFootballBot = true;
+    group.userData.isFootballPlayer = true;
+    try {
+      bakeMeshScalesIntoGeometry(group);
+      group.traverse((o) => { if (o.isMesh) o.frustumCulled = false; });
+    } catch (e) {
+      console.warn('[buildSimRobot] football bot prepare failed — using raw mesh', e);
+      group.userData.combatPBR = true;
+    }
+    return group;
+  }
+
+  // Combat arenas must never fall back to the orange rover — always use the pro fighter mesh
+  if (cfg.combatFighter) {
+    const archetype = cfg.combatArchetype || 'striker';
+    const group = buildCombatFighterMesh(archetype);
+    group.userData.chassisId = archetype;
+    group.userData.isCombatFighter = true;
+    group.userData.combatArchetype = archetype;
+    try {
+      bakeMeshScalesIntoGeometry(group);
+      prepareCombatFighter(group);
+    } catch (e) {
+      console.warn('[buildSimRobot] combat fighter prepare failed — using raw mesh', e);
+      group.userData.combatPBR = true;
+      group.userData.isCombatFighter = true;
+    }
+    return group;
+  }
+
+  if (cfg.flappyBird || cfg.flappyMode) {
+    const group = buildClassicFlappyBird(cfg.primaryColor, cfg.accentColor);
+    try {
+      bakeMeshScalesIntoGeometry(group);
+      prepareLabRobot(group);
+    } catch (e) {
+      console.warn('[buildSimRobot] classic flappy bird prepare failed', e);
+    }
+    return group;
+  }
+
+    try {
     const group = buildRobotModel(cfg);
     bakeMeshScalesIntoGeometry(group);
     let meshCount = 0;
     group.traverse(o => { if (o.isMesh) meshCount++; });
-    if (meshCount < 2) throw new Error('robot mesh count too low');
+    if (meshCount < 1) throw new Error('robot mesh count too low');
     prepareLabRobot(group);
+    if (cfg.raceMode) group.userData.isRaceMode = true;
+    console.log('[buildSimRobot]', { chassisId: cfg.chassisId, meshCount, raceMode: !!cfg.raceMode, name: cfg.name });
     return group;
   } catch (e) {
     console.warn('[buildSimRobot] using fallback rover mesh', e);
@@ -4145,17 +4634,35 @@ export function buildSimRobot(config = {}) {
 }
 
 export function buildRobotModel(config = {}) {
-  const chassis = CHASSIS_DATA.find(c => c.id === config.chassisId) || CHASSIS_DATA[0];
-  const buildId = config.chassisBuildKey || chassis.id;
+  const cfg = normalizeRobotBuildConfig(config);
+  const chassis = CHASSIS_DATA.find(c => c.id === cfg.chassisId) || CHASSIS_DATA[0];
+  const buildId = (
+    cfg.chassisBuildKey && cfg.chassisBuildKey !== cfg.chassisId
+      ? cfg.chassisBuildKey
+      : null
+  ) || (CHASSIS_DATA.some(c => c.id === cfg.chassisId) ? cfg.chassisId : null)
+    || MODULAR_BUILD_KEYS[cfg.chassisId]
+    || cfg.chassisBuildKey
+    || chassis.id;
 
-  const primary    = config.primaryColor  || chassis.primaryColor;
-  const accent     = config.accentColor   || chassis.accentColor;
-  const trimColor  = config.trimColor     || accent;
-  const wheelColor = config.wheelColor    || '#1a1a1a';
-  const ledColor   = config.ledColor      || '#00D9FF';
-  const metalnessOverride = config.materialMetalness !== undefined ? config.materialMetalness : null;
-  const roughnessOverride = config.materialRoughness !== undefined ? config.materialRoughness : null;
-  const glowOverride      = config.materialGlow      !== undefined ? config.materialGlow      : null;
+  const primary    = cfg.primaryColor  || chassis.primaryColor;
+  const accent     = cfg.accentColor   || chassis.accentColor;
+  const trimColor  = cfg.trimColor     || accent;
+  const wheelColor = cfg.wheelColor    || '#1a1a1a';
+  const ledColor   = cfg.ledColor      || '#00D9FF';
+  const metalnessOverride = cfg.materialMetalness !== undefined ? cfg.materialMetalness : null;
+  const roughnessOverride = cfg.materialRoughness !== undefined ? cfg.materialRoughness : null;
+  const glowOverride      = cfg.materialGlow      !== undefined ? cfg.materialGlow      : null;
+
+  // Combat arenas always use the professional fighter humanoid — never the cartoon chassis mesh
+  if (cfg.combatFighter) {
+    const archetype = cfg.combatArchetype || 'striker';
+    const group = buildCombatFighterMesh(archetype);
+    group.userData.chassisId = archetype;
+    group.userData.isCombatFighter = true;
+    group.userData.combatArchetype = archetype;
+    return group;
+  }
 
   // Override the shared wheel helper to use user-chosen wheelColor
   const _origWheel = wheel;
@@ -4168,9 +4675,9 @@ export function buildRobotModel(config = {}) {
     case 'rover':       group = buildRover(primary, accent);        break;
     case 'scout':       group = buildScout(primary, accent);        break;
     case 'crawler':     group = buildCrawler(primary, accent);      break;
-    case 'tank':        group = buildTank(primary, accent);         break;
+    case 'tank':        group = cfg.combatFighter ? buildTankFighter(primary, accent) : buildTank(primary, accent); break;
     case 'stealth':     group = buildStealth(primary, accent);      break;
-    case 'miningbot':   group = buildTank(primary, accent);         break;
+    case 'miningbot':   group = cfg.combatFighter ? buildTankFighter(primary, accent) : buildMiningBot(primary, accent); break;
     case 'securitybot': group = buildSecurityBot(primary, accent);  break;
     case 'farmbot':     group = buildFarmBot(primary, accent);      break;
     case 'medbot':      group = buildMedbot(primary, accent);       break;
@@ -4194,23 +4701,36 @@ export function buildRobotModel(config = {}) {
     // Factory robots
     case 'robotarm':    group = buildRobotArm(primary, accent);     break;
     case 'factorybot':  group = buildFactoryBot(primary, accent);   break;
-    case 'battlebot':   group = buildTank(primary, accent);         break;
+    case 'battlebot':   group = cfg.combatFighter ? buildTankFighter(primary, accent) : buildMech(primary, accent); break;
     // Space robots
     case 'spacerover':  group = buildSpaceRover(primary, accent);   break;
     // Jet planes
     case 'jetplane':    group = buildJetPlane(primary, accent);     break;
     case 'steathjet':   group = buildJetPlane(primary, accent);     break;
     case 'aerobat':     group = buildJetPlane(primary, accent);     break;
+    case 'birdbot':     group = buildBirdBot(primary, accent);      break;
+    case 'striker':     group = buildStriker(primary, accent);      break;
+    case 'footballbot':
+      group = buildFootballBot({
+        teamColor: cfg.teamColor || 'green',
+        jerseyNumber: cfg.jerseyNumber ?? 10,
+        bootType: cfg.bootType || 'standard',
+        playstyle: cfg.playstyle || 'striker',
+      });
+      break;
+    case 'blaster':     group = buildBlaster(primary, accent);      break;
+    case 'ninja':       group = buildNinja(primary, accent);        break;
+    case 'berserker':   group = buildBerserker(primary, accent);    break;
     default:            group = buildRover(primary, accent);
   }
 
   // Sensors — legacy ids + registry heuristics
-  const sensorIds = config.sensors || [];
+  const sensorIds = cfg.sensors || [];
   if (sensorIds.some((id) => /camera|vision|optic|face/i.test(id))) addCamera(group);
   if (sensorIds.some((id) => /ultra|sonar|lidar|radar|proximity/i.test(id))) addSonar(group);
 
   // Tools — legacy + registry
-  const toolIds = config.tools || [];
+  const toolIds = cfg.tools || [];
   if (toolIds.some((id) => /grab|claw|grip|pincer|hand|fork/i.test(id))) addGrabber(group);
 
   // Apply material overrides from config (metalness, roughness, glow, ledColor)

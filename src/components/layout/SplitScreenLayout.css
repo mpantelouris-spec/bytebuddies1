@@ -1,0 +1,83 @@
+/* SplitScreenLayout — 40/60 KS2 simulator shell (spec-aligned layout tokens) */
+
+.split-screen-root {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  color: #ffffff;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #000000;
+}
+
+.split-screen-editor {
+  display: flex;
+  flex-direction: column;
+  width: 40%;
+  min-width: 450px;
+  border-right: 2px solid #312e81;
+  background: #0b0914;
+  z-index: 10;
+  flex-shrink: 0;
+}
+
+.split-screen-editor-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.split-screen-editor-footer {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 14px;
+  border-top: 1px solid rgba(49, 46, 129, 0.55);
+  background: linear-gradient(180deg, rgba(11, 9, 20, 0.92) 0%, rgba(15, 12, 28, 0.98) 100%);
+}
+
+.split-screen-footer-brand {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(199, 210, 254, 0.42);
+}
+
+.split-screen-footer-tag {
+  font-size: 10px;
+  color: rgba(165, 180, 252, 0.28);
+  white-space: nowrap;
+}
+
+.split-screen-simulation {
+  position: relative;
+  flex: 1 1 auto;
+  width: 60%;
+  min-width: 0;
+  background: #000000;
+  z-index: 0;
+}
+
+@media (max-width: 900px) {
+  .split-screen-root {
+    flex-direction: column;
+  }
+
+  .split-screen-editor {
+    width: 100%;
+    min-width: 0;
+    height: 42vh;
+    border-right: none;
+    border-bottom: 2px solid #312e81;
+  }
+
+  .split-screen-simulation {
+    width: 100%;
+    height: 58vh;
+  }
+}

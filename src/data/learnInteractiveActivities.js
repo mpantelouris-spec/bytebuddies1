@@ -1,8 +1,12 @@
-// Auto-generated interactive activities for ByteBuddies Learn World (80 lessons)
-import { COURSES, COURSE_ORDER } from './learnWorldData.js';
+// Interactive activities for ByteBuddies Learn World
+import { Y3_ACTIVITIES } from './y3Activities.js';
+
+// COURSE_ORDER defined locally to avoid circular dependency
+const COURSE_ORDER = ['y3', 'y4', 'y5', 'y6'];
 
 export const LESSON_INTERACTIVES = {
-  "y3": [
+  "y3": Y3_ACTIVITIES,
+  "y3_old": [
     [
       {
         "type": "multiSeq",
@@ -15,20 +19,20 @@ export const LESSON_INTERACTIVES = {
             "name": "Making a sandwich",
             "steps": [
               "Take out bread",
+              "Open peanut butter jar",
               "Spread peanut butter",
               "Place second bread slice",
               "Put sandwich on plate",
-              "Cut sandwich",
-              "Open peanut butter jar"
+              "Cut sandwich"
             ]
           },
           {
             "name": "Getting dressed",
             "steps": [
               "Put on underwear",
+              "Put on socks",
               "Put on trousers/skirt",
               "Put on top",
-              "Put on socks",
               "Put on shoes"
             ]
           },
@@ -454,7 +458,7 @@ export const LESSON_INTERACTIVES = {
         "questions": [
           {
             "q": "What is steps after the loop? (type a number)",
-            "answer": "9",
+            "answer": "5",
             "hint": "Add 1 three times, then add 2 once"
           }
         ],
@@ -1530,7 +1534,7 @@ export const LESSON_INTERACTIVES = {
         "questions": [
           {
             "q": "What is steps after the loop? (type a number)",
-            "answer": "9",
+            "answer": "5",
             "hint": "Add 1 three times, then add 2 once"
           }
         ],
@@ -1644,7 +1648,7 @@ export const LESSON_INTERACTIVES = {
         "questions": [
           {
             "q": "What is steps after the loop? (type a number)",
-            "answer": "9",
+            "answer": "5",
             "hint": "Add 1 three times, then add 2 once"
           }
         ],
@@ -1758,7 +1762,7 @@ export const LESSON_INTERACTIVES = {
         "questions": [
           {
             "q": "What is steps after the loop? (type a number)",
-            "answer": "9",
+            "answer": "5",
             "hint": "Add 1 three times, then add 2 once"
           }
         ],
@@ -1872,7 +1876,7 @@ export const LESSON_INTERACTIVES = {
         "questions": [
           {
             "q": "What is steps after the loop? (type a number)",
-            "answer": "9",
+            "answer": "5",
             "hint": "Add 1 three times, then add 2 once"
           }
         ],
@@ -1986,7 +1990,7 @@ export const LESSON_INTERACTIVES = {
         "questions": [
           {
             "q": "What is steps after the loop? (type a number)",
-            "answer": "9",
+            "answer": "5",
             "hint": "Add 1 three times, then add 2 once"
           }
         ],
@@ -6636,7 +6640,10 @@ export const LESSON_INTERACTIVES = {
 };
 
 export function getLessonInteractives(yr, lessonIdx) {
-  return LESSON_INTERACTIVES[yr]?.[lessonIdx] ?? [];
+  const result = LESSON_INTERACTIVES[yr]?.[lessonIdx];
+  // Ensure we always return an array of valid activities
+  if (!Array.isArray(result)) return [];
+  return result.filter(act => act && typeof act === 'object');
 }
 
 export function getInteractiveCount() {

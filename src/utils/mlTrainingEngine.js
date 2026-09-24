@@ -80,7 +80,9 @@ export async function addImageTrainingExample(className, imageTensor) {
   const mobilenet = await tf.loadLayersModel(
     'https://tfhub.dev/google/tfjs-models/mobilenet_v2/classification/1',
   );
-  const features = mobilenet.predict(imageTensor);
+  // Models expect a batch dimension; accept a single unbatched image tensor too.
+  const batched = imageTensor.rank === 3 ? imageTensor.expandDims(0) : imageTensor;
+  const features = mobilenet.predict(batched);
 
   TRAINING_DATA.image[className].push(features);
 

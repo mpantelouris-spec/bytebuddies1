@@ -1,0 +1,122 @@
+/**
+ * CodeRacerSplines.js — Smooth closed loops (even control points, no duplicate close).
+ * Hand-placed sparse points + CatmullRom make the road look crooked.
+ */
+function coastalElevation(points) {
+  const n = points.length;
+  return points.map((p, i) => {
+    const t = i / Math.max(1, n - 1);
+    const wave = Math.sin(t * Math.PI * 2) * 1.65 + Math.sin(t * Math.PI * 4 + 0.9) * 0.6;
+    return { x: p.x, y: (p.y ?? 0) + wave, z: p.z };
+  });
+}
+
+/** Coastal loop — inlined (avoid TenPremiumTracks + THREE on critical import path). */
+const SUNSET_COAST_RAW = [
+  { x: 0, z: 60 }, { x: 28, z: 54 }, { x: 46, z: 38 }, { x: 48, z: 12 },
+  { x: 42, z: -18 }, { x: 18, z: -36 }, { x: -8, z: -38 }, { x: -32, z: -28 },
+  { x: -48, z: 0 }, { x: -44, z: 32 }, { x: -18, z: 50 }, { x: 0, z: 60 },
+];
+function loop(rx, rz, n = 24, y = 0) {
+  const pts = [];
+  for (let i = 0; i < n; i++) {
+    const t = i / n;
+    const a = Math.PI / 2 + t * Math.PI * 2;
+    const yy = typeof y === 'function' ? y(t) : y;
+    pts.push({ x: Math.cos(a) * rx, y: yy, z: Math.sin(a) * rz });
+  }
+  return pts;
+}
+
+/** Rounded-rectangle stadium (power 2 = ellipse, 4 = long straights + round corners). */
+function stadium(rx, rz, n = 28, power = 3.2, y = 0) {
+  const pts = [];
+  const p = 2 / power;
+  for (let i = 0; i < n; i++) {
+    const t = i / n;
+    const a = Math.PI / 2 + t * Math.PI * 2;
+    const c = Math.cos(a);
+    const s = Math.sin(a);
+    const x = Math.sign(c) * rx * Math.pow(Math.abs(c), p);
+    const z = Math.sign(s) * rz * Math.pow(Math.abs(s), p);
+    const yy = typeof y === 'function' ? y(t) : y;
+    pts.push({ x, y: yy, z });
+  }
+  return pts;
+}
+
+/**
+ * F1-style circuit — long straights + tight hairpin corners (stadium layout).
+ */
+function buildF1Circuit(n = 40, rx = 58, rz = 38, power = 5.15) {
+  const pts = [];
+  const p = 2 / power;
+  for (let i = 0; i < n; i++) {
+    const t = i / n;
+    const a = Math.PI / 2 + t * Math.PI * 2;
+    const c = Math.cos(a);
+    const s = Math.sin(a);
+    pts.push({
+      x: Math.sign(c) * rx * Math.pow(Math.abs(c), p),
+      y: 0,
+      z: Math.sign(s) * rz * Math.pow(Math.abs(s), p),
+    });
+  }
+  return pts;
+}
+
+/** Figure-8 circuit — lemniscate loop (crosses at center, two lobes). */
+function buildFigure8Circuit(n = 52, rx = 52, rz = 40) {
+  const pts = [];
+  for (let i = 0; i < n; i++) {
+    const a = Math.PI / 2 + (i / n) * 2 * Math.PI;
+    pts.push({
+      x: rx * Math.sin(a),
+      y: 0,
+      z: rz * Math.sin(2 * a),
+    });
+  }
+  return pts;
+}
+
+/** Mode 1 — Sunset Cove: scenic coastal loop (pier → ocean bend → bay return) */
+export const SUNSET_COVE_SPLINE = coastalElevation(SUNSET_COAST_RAW);
+
+/** Mode 2 — Candy Carnival: figure-8 midway circuit */
+export const CANDY_CARNIVAL_SPLINE = buildFigure8Circuit(52, 54, 42);
+
+/** Mode 6 — Frost Peak: alpine oval with gentle downhill */
+export const FROST_PEAK_SPLINE = loop(46, 40, 24, (t) => 8 - t * 5);
+
+/** Mode 7 — Lava Foundry: compact stadium */
+export const LAVA_FOUNDRY_SPLINE = stadium(36, 30, 28, 2.8, 0);
+
+/** Mode 8 — Star Station: orbital ring */
+export const STAR_STATION_SPLINE = loop(46, 44, 24, 8);
+
+/** Mode 10 — Thunder Ridge: flowing oval with a mild pinch (still C2-smooth) */
+export const THUNDER_RIDGE_SPLINE = (() => {
+  const pts = [];
+  for (let i = 0; i < 28; i++) {
+    const t = i / 28;
+    const a = Math.PI / 2 + t * Math.PI * 2;
+    pts.push({
+      x: Math.cos(a) * 44 + Math.sin(2 * a) * 4,
+      y: 2 + t * 8,
+      z: Math.sin(a) * 40,
+    });
+  }
+  return pts;
+})();
+
+/** Mode 3 — Neon Metro: stadium with round corners */
+export const NEON_METRO_SPLINE = stadium(46, 38, 28, 3.4, 0);
+
+/** Mode 4 — Cloud Citadel: high oval, gentle waves (no step dips) */
+export const CLOUD_CITADEL_SPLINE = loop(46, 40, 24, (t) => 10 + Math.sin(t * Math.PI * 2) * 1.4);
+
+/** Mode 5 — Jungle Ruins: smooth jungle oval */
+export const JUNGLE_RUINS_SPLINE = loop(44, 40, 24, 0);
+
+/** Mode 9 — Fairy Glen: garden oval */
+export const FAIRY_GLEN_SPLINE = loop(42, 38, 24, 0);

@@ -2,6 +2,7 @@
  * LiveLabGameUI.jsx — ByteBuddies Custom Block Palette + Game UI
  */
 import React, { useMemo, useState, useCallback, useRef, useEffect } from 'react';
+import PrimaryArenaThumbnail from './PrimaryArenaThumbnail.jsx';
 import { RacingHUD } from '../racing/RacingHUD.jsx';
 import { CodeRacerHUD } from '../racing/CodeRacerHUD.jsx';
 import { isCodeRacerArena } from '../racing/CodeRacerWorldKit.js';
@@ -12,22 +13,26 @@ import { FLAGSHIP_WORLD_SECTIONS } from '../data/flagship-courses.js';
 import { MISSION_GENRE_SECTIONS } from '../data/game-missions.js';
 import { CAMPAIGN_WORLD_SECTIONS, getCampaignZoneWorlds } from '../data/robot-mission-campaign.js';
 import { pickFeaturedCourses, resolveCourseObjectives, deriveMissionProgress, isSubObjectiveMet, getCourseZoneCount } from '../data/course-game-logic.js';
+import { resolveCourseCodeHints, isCupManualTrack, BLOCK_CODE_EXPLAIN } from '../data/course-code-hints.js';
 import { isEventHatBlock } from '../data/flappy-starter-script.js';
 import { FLAPPY_BLOCK_LIBRARY, isFlappyBirdCourse } from '../data/flappy-bird-blocks.js';
 import { FIGHTING_BLOCK_LIBRARY, isFightingCourse, FIGHTING_STARTER_SCRIPT } from '../data/fighting-blocks.js';
 import { FOOTBALL_BLOCK_LIBRARY, isFootballCourse, FOOTBALL_STARTER_SCRIPT, FOOTBALL_ROLE_STARTERS, FOOTBALL_TEAM_ROLES } from '../data/football-blocks.js';
 import { buildRaceBlockLibrary, isRaceCourse } from '../data/racing-blocks.js';
 import { isCarChassis } from '../data/car-racing-tracks.js';
-import { CodeRacerTrackCup } from '../racing/CodeRacerTrackCup.jsx';
+import { CarRobotTrackGrid } from '../racing/CarRobotTrackGrid.jsx';
+import { getSecurityBotArena } from '../data/securitybot-arenas.js';
+import { getPrimaryRobotDisplay, getPrimaryStudioArena, getStudioRobotGroup, kidSafeText } from '../data/primary-robot-studio.js';
 import { UNIVERSAL_EVENTS_CATEGORY, withUniversalEvents } from '../data/universal-event-blocks.js';
 import './LiveLabGame.css';
 
 /** Pick block library — course-scoped palettes; Events always universal */
+/** Pick block library — course-scoped palettes; Events always universal */
 export function getBlockLibraryForCourse(courseKey, arenaType) {
   if (isFlappyBirdCourse(courseKey, arenaType)) return withUniversalEvents(FLAPPY_BLOCK_LIBRARY);
-  if (isFightingCourse(courseKey, arenaType)) return withUniversalEvents(FIGHTING_BLOCK_LIBRARY);
   if (isFootballCourse(courseKey, arenaType)) return withUniversalEvents(FOOTBALL_BLOCK_LIBRARY);
-  if (isRaceCourse(courseKey, arenaType)) return buildRaceBlockLibrary(BLOCK_LIBRARY, arenaType);
+  if (isFightingCourse(courseKey, arenaType) && arenaType === 'robot_fight') return withUniversalEvents(FIGHTING_BLOCK_LIBRARY);
+  if (isRaceCourse(courseKey, arenaType) && arenaType !== 'sandbox') return buildRaceBlockLibrary(BLOCK_LIBRARY, arenaType);
   return withUniversalEvents(BLOCK_LIBRARY);
 }
 
@@ -35,14 +40,36 @@ export { FIGHTING_STARTER_SCRIPT, FOOTBALL_STARTER_SCRIPT };
 
 /* ─── ROBOT GROUP DETECTION ──────────────────────────────────────────────── */
 export function getRobotGroup(robotType) {
-  if (['drone', 'jet', 'hover', 'racedrone'].includes(robotType)) return 'aerial';
-  if (['spider', 'humanoid'].includes(robotType)) return 'walker';
-  if (robotType === 'underwater') return 'underwater';
-  if (['factory', 'factorybot'].includes(robotType)) return 'arm';
+  if (!robotType) return 'wheeled';
+  const mapped = getStudioRobotGroup(robotType);
+  if (mapped && mapped !== 'wheeled') return mapped;
+  if (['drone', 'jet', 'hover', 'racedrone', 'jetplane', 'helicopter', 'hoverbot', 'hoverracer', 'rescuedrone', 'steathjet', 'aerobat'].includes(robotType)) return 'aerial';
+  if (['spider', 'humanoid', 'droid', 'mech', 'battlebot', 'striker', 'blaster', 'ninja', 'berserker'].includes(robotType)) return 'walker';
+  if (['underwater', 'submarine', 'deepseabot'].includes(robotType)) return 'underwater';
+  if (['factory', 'factorybot', 'robotarm', 'arm'].includes(robotType)) return 'arm';
   if (robotType === 'birdbot') return 'birdbot';
-  if (['striker', 'blaster', 'ninja', 'berserker'].includes(robotType)) return 'fighter';
   if (['footballbot', 'football'].includes(robotType)) return 'footballbot';
   return 'wheeled';
+}
+
+function sortBlocksForGroup(blocks, group) {
+  const preferred = {
+    aerial: ['fly_forward', 'fly_up', 'fly_down', 'hover_hold', 'bank_left', 'bank_right', 'roll', 'dive'],
+    walker: ['step_forward', 'turn_left', 'turn_right', 'climb', 'crouch', 'jump', 'balance', 'pose', 'recover'],
+    underwater: ['swim_forward', 'dive_deep', 'surface', 'sonar_ping', 'turn_left', 'turn_right'],
+    arm: ['rotate_joint', 'grip', 'release', 'move_to_marker', 'turn_left', 'turn_right'],
+    footballbot: ['chase_ball', 'short_pass', 'shoot', 'dribble', 'guard_goal'],
+    birdbot: ['flap', 'float_up', 'dive', 'hover_hold'],
+    wheeled: ['move_forward', 'turn_left', 'turn_right', 'set_speed', 'follow_track_on'],
+  }[group] || ['move_forward', 'turn_left', 'turn_right'];
+  return [...blocks].sort((a, b) => {
+    const ai = preferred.indexOf(a.id);
+    const bi = preferred.indexOf(b.id);
+    if (ai === -1 && bi === -1) return 0;
+    if (ai === -1) return 1;
+    if (bi === -1) return -1;
+    return ai - bi;
+  });
 }
 
 /* ─── BLOCK LIBRARY ──────────────────────────────────────────────────────── */
@@ -80,6 +107,7 @@ export const BLOCK_LIBRARY = {
       { id:'rotate_to_heading', label:'Rotate to heading', icon:'📐', params:[{key:'degrees',label:'°',def:0}], robotGroups:['wheeled'] },
       { id:'move_forward_units', label:'Move forward units', icon:'📏', params:[{key:'units',label:'units',def:6,precision:0.1}], robotGroups:['wheeled'] },
       // AERIAL ONLY
+      { id:'fly_forward', label:'Fly forward', icon:'↑', params:[{key:'steps',label:'m',def:3}], robotGroups:['aerial'] },
       { id:'fly_up',    label:'Fly up',     icon:'🛫', params:[{key:'height',label:'m',def:5}],  robotGroups:['aerial'] },
       { id:'fly_down',  label:'Fly down',   icon:'🛬', params:[{key:'height',label:'m',def:5}],  robotGroups:['aerial'] },
       { id:'hover_hold',label:'Hover for',  icon:'🛸', params:[{key:'seconds',label:'s',def:3}], robotGroups:['aerial'] },
@@ -92,10 +120,19 @@ export const BLOCK_LIBRARY = {
       { id:'climb',    label:'Climb obstacle',icon:'🧗',  robotGroups:['walker'] },
       { id:'crouch',   label:'Crouch down',  icon:'🦆',  robotGroups:['walker'] },
       { id:'jump',     label:'Jump',         icon:'🦘',  params:[{key:'height',label:'m',def:1}],robotGroups:['walker'] },
+      { id:'balance',  label:'Balance',      icon:'🧘',  robotGroups:['walker'] },
+      { id:'pose',     label:'Hold a pose',  icon:'🕺',  robotGroups:['walker'] },
+      { id:'recover',  label:'Recover',      icon:'💫',  robotGroups:['walker'] },
       // UNDERWATER ONLY
+      { id:'swim_forward', label:'Swim forward', icon:'↑', params:[{key:'steps',label:'m',def:3}], robotGroups:['underwater'] },
       { id:'dive_deep',label:'Dive to depth',icon:'🤿',params:[{key:'depth',label:'m',def:10}],robotGroups:['underwater'] },
       { id:'surface',  label:'Surface to top',icon:'⬆️', robotGroups:['underwater'] },
       { id:'sonar_ping',label:'Sonar ping',  icon:'📡', robotGroups:['underwater'] },
+      // ARM ONLY
+      { id:'rotate_joint', label:'Rotate joint', icon:'🔄', params:[{key:'degrees',label:'°',def:45}], robotGroups:['arm'] },
+      { id:'grip', label:'Grip', icon:'✊', robotGroups:['arm'] },
+      { id:'release', label:'Release', icon:'🖐️', robotGroups:['arm'] },
+      { id:'move_to_marker', label:'Move to marker', icon:'🎯', robotGroups:['arm'] },
       // BIRDBOT ONLY
       { id:'flap',      label:'Flap!',       icon:'🐦', robotGroups:['birdbot'] },
       { id:'float_up',  label:'Float up',    icon:'⬆️', robotGroups:['birdbot'] },
@@ -185,7 +222,208 @@ function loadStarterBlocks(starterScript) {
     .map((b) => ({ ...b, _uid: uid(), paramValues: { ...(b.paramValues || {}) } }));
 }
 
-export function CustomCodePanel({ robotType, scriptRef, clearRef, onBlockCountChange, onOpenLevels, activeStepIndex = -1, activeBlockUid = '', isRunning = false, starterScript = null, courseKey = '', arenaType = '', eventsFocusKey = 0, teamSize = 1, footballScriptsRef = null, footballActiveRoleRef = null }) {
+const FB_TEAM_SCRIPT_LS = 'bb-football-team-scripts-v2';
+
+function readStoredFootballScripts() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(FB_TEAM_SCRIPT_LS) || 'null');
+    if (!raw || typeof raw !== 'object') return null;
+    return raw;
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredFootballScripts(scripts) {
+  try {
+    localStorage.setItem(FB_TEAM_SCRIPT_LS, JSON.stringify(scripts));
+  } catch { /* ignore */ }
+}
+
+function isFootballTeamMatch(teamSize, matchMode) {
+  return (Number(teamSize) || 0) >= 3 || matchMode === 'fifa3v3' || matchMode === 'team3v3';
+}
+
+/** Collapsible hints — easy → pro → expert tiers (read-only, students add blocks from palette) */
+export function CourseCodeHintsPanel({ hints, defaultOpen = false }) {
+  const [open, setOpen] = useState(defaultOpen);
+  const [proOpen, setProOpen] = useState(false);
+  const [expertOpen, setExpertOpen] = useState(false);
+  if (!hints) return null;
+
+  const renderSteps = (steps, showNumbers = false) => (
+    <ol className="course-code-hints-steps">
+      <li className="step-event">
+        {showNumbers && <span className="step-num">1</span>}
+        <span className="step-label">{hints.eventLabel || 'When START clicked'}</span>
+        <span className="step-explain">{BLOCK_CODE_EXPLAIN[hints.eventBlock || 'when_start']}</span>
+      </li>
+      {steps.map((step, i) => (
+        <li
+          key={`${step.label}-${i}`}
+          className={[
+            step.indent ? `indent-${Math.min(step.indent, 3)}` : '',
+            step.kind === 'condition' ? 'step-condition' : '',
+            step.kind === 'loop' ? 'step-loop' : '',
+          ].filter(Boolean).join(' ')}
+        >
+          {showNumbers && <span className="step-num">{i + 2}</span>}
+          <span className="step-label">{step.label}</span>
+          <span className="step-explain">{step.explain}</span>
+        </li>
+      ))}
+    </ol>
+  );
+
+  return (
+    <div className={`course-code-hints${open ? ' is-open' : ''}`}>
+      <button
+        type="button"
+        className="course-code-hints-toggle"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+      >
+        <span className="course-code-hints-toggle-icon">💡</span>
+        <span className="course-code-hints-toggle-title">
+          {open ? `Code hints — ${hints.courseName}` : 'Need help? Tap for code hints'}
+        </span>
+        <span className="course-code-hints-toggle-caret">{open ? '▾' : '▸'}</span>
+      </button>
+      {open && (
+        <div className="course-code-hints-body">
+          {hints.winCondition && (
+            <p className="course-code-hints-goal">
+              <strong>Goal:</strong> {hints.winCondition}
+            </p>
+          )}
+          {hints.codeHint && (
+            <p className="course-code-hints-tip">{hints.codeHint}</p>
+          )}
+          {hints.robotTip && (
+            <p className="course-code-hints-robot">🤖 {hints.robotTip}</p>
+          )}
+
+          {hints.simpleSteps?.length > 0 && (
+            <div className="course-code-hints-tier course-code-hints-tier--easy">
+              <div className="course-code-hints-tier-head">⭐ Easy — start here</div>
+              {hints.simpleNote && <p className="course-code-hints-tier-note">{hints.simpleNote}</p>}
+              {renderSteps(hints.simpleSteps)}
+            </div>
+          )}
+
+          {hints.hasAdvanced && hints.advancedSteps?.length > 0 && (
+            <>
+              <button
+                type="button"
+                className="course-code-hints-tier-toggle course-code-hints-tier-toggle--pro"
+                onClick={() => setProOpen((v) => !v)}
+                aria-expanded={proOpen}
+              >
+                <span>🚀 {hints.tierLabels?.advanced || 'Pro code'} ({hints.advancedSteps.length + 1} blocks)</span>
+                <span>{proOpen ? '▾' : '▸'}</span>
+              </button>
+              {proOpen && (
+                <div className="course-code-hints-tier course-code-hints-tier--pro">
+                  {hints.advancedNote && <p className="course-code-hints-tier-note">{hints.advancedNote}</p>}
+                  {renderSteps(hints.advancedSteps)}
+                </div>
+              )}
+            </>
+          )}
+
+          {hints.hasExpert && hints.expertSteps?.length > 0 && (
+            <>
+              <button
+                type="button"
+                className="course-code-hints-tier-toggle course-code-hints-tier-toggle--expert"
+                onClick={() => setExpertOpen((v) => !v)}
+                aria-expanded={expertOpen}
+              >
+                <span>🏆 {hints.tierLabels?.expert || 'Expert code'} ({hints.expertBlockCount || hints.expertSteps.length + 1} blocks)</span>
+                <span>{expertOpen ? '▾' : '▸'}</span>
+              </button>
+              {expertOpen && (
+                <div className="course-code-hints-tier course-code-hints-tier--expert">
+                  {hints.expertNote && <p className="course-code-hints-tier-note">{hints.expertNote}</p>}
+                  {renderSteps(hints.expertSteps, true)}
+                </div>
+              )}
+            </>
+          )}
+
+          {hints.racingSections?.length > 0 && (
+            <div className="course-code-hints-section course-code-hints-racing">
+              <div className="course-code-hints-label">
+                {hints.racingManual ? '🏎️ Each minimap bend' : '🏎️ Track section guide'}
+              </div>
+              {hints.racingManual && (
+                <p className="course-code-hints-tier-note">
+                  Match each minimap section to a block — Move forward on straights, Curve left/right at bends. Slow to ~45% before hairpins.
+                </p>
+              )}
+              {hints.racingSections.map((sec) => (
+                <details key={`${sec.blockId}-${sec.num}`} className="course-code-hints-zone">
+                  <summary>
+                    {sec.num}. {sec.name}
+                    <span className="course-code-hints-racing-block">{sec.blockId?.replace(/_/g, ' ')}</span>
+                  </summary>
+                  <p className="course-code-hints-zone-mechanic">{sec.instruction}</p>
+                  {sec.explain && <p className="course-code-hints-zone-tip">{sec.explain}</p>}
+                </details>
+              ))}
+            </div>
+          )}
+
+          {hints.zoneHints?.length > 0 && (
+            <div className="course-code-hints-section course-code-hints-zones">
+              <div className="course-code-hints-label">Zone-by-zone build guide</div>
+              {hints.zoneHints.map((zone) => (
+                <details key={zone.num} className="course-code-hints-zone">
+                  <summary>Zone {zone.num}: {zone.name}</summary>
+                  {zone.mechanic && <p className="course-code-hints-zone-mechanic">{zone.mechanic}</p>}
+                  {zone.tip && <p className="course-code-hints-zone-tip">Blocks: {zone.tip}</p>}
+                  {zone.steps?.length > 0 && renderSteps(zone.steps)}
+                </details>
+              ))}
+            </div>
+          )}
+
+          {hints.keyBlocks?.length > 0 && (
+            <div className="course-code-hints-section">
+              <div className="course-code-hints-label">Key blocks to try</div>
+              <ul className="course-code-hints-blocks">
+                {hints.keyBlocks.map((b) => (
+                  <li key={b.id}>
+                    <strong>{b.label}</strong> — {b.explain}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {hints.objectives?.length > 0 && (
+            <div className="course-code-hints-section">
+              <div className="course-code-hints-label">Mission checklist</div>
+              <ul className="course-code-hints-objectives">
+                {hints.objectives.map((obj, i) => (
+                  <li key={i}>{obj}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {hints.programmingConcepts?.length > 0 && (
+            <div className="course-code-hints-concepts">
+              Learn: {hints.programmingConcepts.join(' · ')}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function CustomCodePanel({ robotType, scriptRef, clearRef, onBlockCountChange, onOpenLevels, activeStepIndex = -1, activeBlockUid = '', isRunning = false, starterScript = null, courseKey = '', arenaType = '', eventsFocusKey = 0, teamSize = 1, matchMode = '', footballScriptsRef = null, footballActiveRoleRef = null, footballExecBotId = null, footballSwitchRoleRef = null, challenge = null }) {
   const blockLibrary = useMemo(
     () => getBlockLibraryForCourse(courseKey, arenaType),
     [courseKey, arenaType],
@@ -194,14 +432,12 @@ export function CustomCodePanel({ robotType, scriptRef, clearRef, onBlockCountCh
   const isFighting = isFightingCourse(courseKey, arenaType);
   const isFootball = isFootballCourse(courseKey, arenaType);
   const isRacing = isRaceCourse(courseKey, arenaType);
-  const multiRobotFootball = isFootball && teamSize >= 3;
+  const multiRobotFootball = isFootball && isFootballTeamMatch(teamSize, matchMode);
   const paletteRobotType = isFootball ? 'footballbot' : (isRacing ? 'rover' : robotType);
   const paletteRobotGroup = getRobotGroup(paletteRobotType || 'rover');
   const [activeRole, setActiveRole] = useState('striker');
   const [script, setScript]       = useState(() => loadStarterBlocks(starterScript));
-  const [activeCat, setActiveCat] = useState(
-    isFighting ? 'Striker' : isFootball ? 'Football' : isRacing ? 'Track' : 'Events',
-  );
+  const [activeCat, setActiveCat] = useState('Movement');
   const [search, setSearch]       = useState('');
   const [history, setHistory]     = useState(() => [loadStarterBlocks(starterScript)]);
   const [histIdx, setHistIdx]     = useState(0);
@@ -222,6 +458,7 @@ export function CustomCodePanel({ robotType, scriptRef, clearRef, onBlockCountCh
     if (scriptRef) scriptRef.current = next;
     if (multiRobotFootball && footballScriptsRef?.current) {
       footballScriptsRef.current[activeRole] = next;
+      writeStoredFootballScripts(footballScriptsRef.current);
     }
     onBlockCountChange?.(next.length);
   }, [scriptRef, onBlockCountChange, multiRobotFootball, footballScriptsRef, activeRole]);
@@ -230,6 +467,7 @@ export function CustomCodePanel({ robotType, scriptRef, clearRef, onBlockCountCh
     if (!multiRobotFootball || roleId === activeRole) return;
     if (footballScriptsRef?.current) {
       footballScriptsRef.current[activeRole] = script;
+      writeStoredFootballScripts(footballScriptsRef.current);
     }
     const next = footballScriptsRef?.current?.[roleId] || loadStarterBlocks(FOOTBALL_ROLE_STARTERS[roleId]);
     setActiveRole(roleId);
@@ -248,6 +486,10 @@ export function CustomCodePanel({ robotType, scriptRef, clearRef, onBlockCountCh
     if (footballActiveRoleRef) footballActiveRoleRef.current = activeRole;
   }, [activeRole, footballActiveRoleRef]);
 
+  useEffect(() => {
+    if (footballSwitchRoleRef) footballSwitchRoleRef.current = switchFootballRole;
+  }, [footballSwitchRoleRef, switchFootballRole]);
+
   const lastCourseKeyRef = useRef('');
   const lastStarterSigRef = useRef('');
 
@@ -265,8 +507,9 @@ export function CustomCodePanel({ robotType, scriptRef, clearRef, onBlockCountCh
     const isFight = isFightingCourse(courseKey, arenaType);
     const isFootballMode = isFootballCourse(courseKey, arenaType);
     const isRacingMode = isRaceCourse(courseKey, arenaType);
+    const cupManual = isRacingMode && isCupManualTrack(arenaType, courseKey?.split(':')[0] || courseKey);
     lastStarterSigRef.current = '';
-    setActiveCat(isFight ? 'Striker' : isFootballMode ? 'Football' : isRacingMode ? 'Track' : 'Events');
+    setActiveCat(cupManual ? 'Track' : isFootball ? 'Football' : 'Movement');
     setSearch('');
     requestAnimationFrame(() => {
       paletteRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
@@ -275,9 +518,13 @@ export function CustomCodePanel({ robotType, scriptRef, clearRef, onBlockCountCh
 
   useEffect(() => {
     if (!multiRobotFootball) return;
+    const stored = readStoredFootballScripts();
     const loaded = {};
     for (const role of FOOTBALL_TEAM_ROLES) {
-      loaded[role.id] = loadStarterBlocks(FOOTBALL_ROLE_STARTERS[role.id]);
+      const saved = stored?.[role.id];
+      loaded[role.id] = Array.isArray(saved) && saved.length
+        ? saved
+        : loadStarterBlocks(FOOTBALL_ROLE_STARTERS[role.id]);
     }
     if (footballScriptsRef) footballScriptsRef.current = loaded;
     const strikerScript = loaded.striker;
@@ -389,26 +636,39 @@ export function CustomCodePanel({ robotType, scriptRef, clearRef, onBlockCountCh
 
   // ── Filtered palette ────────────────────────────────────────────────────
   const filteredCats = useMemo(() => {
-    const cats = Object.entries(blockLibrary).map(([key, cat]) => ({
+    const cats = Object.entries(blockLibrary).filter(([, cat]) => cat && Array.isArray(cat.blocks)).map(([key, cat]) => ({
       key,
       ...cat,
-      blocks: (cat.blocks || []).filter((b) => {
+      blocks: sortBlocksForGroup((cat.blocks || []).filter((b) => {
         const groupOk = key === 'Events' || !b.robotGroups
           || b.robotGroups.includes(paletteRobotGroup)
           || b.robotGroups.includes(paletteRobotType);
         const searchOk = !search || b.label.toLowerCase().includes(search.toLowerCase());
         return groupOk && searchOk;
-      }),
+      }), paletteRobotGroup),
     })).filter((c) => c.blocks.length > 0);
 
     // Events must always be present for every robot
     const eventsCat = cats.find((c) => c.key === 'Events');
+    let result = cats;
     if (!eventsCat || eventsCat.blocks.length !== UNIVERSAL_EVENTS_CATEGORY.blocks.length) {
-      const merged = cats.filter((c) => c.key !== 'Events');
-      merged.unshift({ key: 'Events', ...UNIVERSAL_EVENTS_CATEGORY });
-      return merged;
+      result = cats.filter((c) => c.key !== 'Events');
+      result.unshift({ key: 'Events', ...UNIVERSAL_EVENTS_CATEGORY });
     }
-    return cats;
+
+    if (!search) {
+      const allBlocks = result
+        .filter((c) => c.key !== 'Events')
+        .flatMap((c) => c.blocks.map((b) => ({ ...b, catKey: c.key, catColor: c.color })));
+      if (allBlocks.length > 0) {
+        return [
+          { key: 'All', label: 'All Blocks', icon: '🧩', color: '#64748b', blocks: allBlocks },
+          ...result,
+        ];
+      }
+    }
+
+    return result;
   }, [blockLibrary, paletteRobotGroup, paletteRobotType, search]);
 
   const paletteBlocks = useMemo(() => {
@@ -421,7 +681,11 @@ export function CustomCodePanel({ robotType, scriptRef, clearRef, onBlockCountCh
       }));
     }
     const cat = filteredCats.find(c => c.key === activeCat) || filteredCats[0];
-    return (cat?.blocks || []).map(b => ({ ...b, catKey: cat?.key, catColor: cat?.color }));
+    return (cat?.blocks || []).map(b => ({
+      ...b,
+      catKey: b.catKey || cat?.key,
+      catColor: b.catColor || cat?.color,
+    }));
   }, [filteredCats, activeCat, search]);
 
   const categoryRail = useMemo(() => {
@@ -429,15 +693,42 @@ export function CustomCodePanel({ robotType, scriptRef, clearRef, onBlockCountCh
     entries.sort((a, b) => {
       if (a[0] === 'Events') return -1;
       if (b[0] === 'Events') return 1;
+      if (a[0] === 'All') return -1;
+      if (b[0] === 'All') return 1;
       if (a[0] === 'Track') return -1;
       if (b[0] === 'Track') return 1;
       return 0;
     });
-    return entries;
-  }, [blockLibrary]);
+    const allVisible = entries
+      .filter(([key, cat]) => key !== 'Events' && cat)
+      .flatMap(([key, cat]) => (cat.blocks || []).filter((b) => !b.robotGroups
+        || b.robotGroups.includes(paletteRobotGroup)
+        || b.robotGroups.includes(paletteRobotType)));
+    const withAll = allVisible.length > 0
+      ? [['All', { label: 'All Blocks', icon: '🧩', color: '#64748b', blocks: allVisible }], ...entries]
+      : entries;
+    return withAll;
+  }, [blockLibrary, paletteRobotGroup, paletteRobotType]);
 
   const canUndo = histIdx > 0;
   const canRedo = histIdx < history.length - 1;
+
+  const codeHints = useMemo(() => {
+    const course = challenge || { id: courseKey?.split(':')[0] || courseKey, arenaType };
+    return resolveCourseCodeHints(course, {
+      robotType,
+      arenaType,
+      multiRobotFootball,
+      activeFootballRole: activeRole,
+      isFlappy,
+      isFighting,
+      isFootball,
+      isRacing,
+      starterScript,
+    });
+  }, [challenge, courseKey, arenaType, robotType, multiRobotFootball, activeRole, isFlappy, isFighting, isFootball, isRacing, starterScript]);
+
+  const isCupManual = isRacing && isCupManualTrack(arenaType, courseKey?.split(':')[0] || courseKey);
 
   return (
     <div className="scratch-panel">
@@ -449,20 +740,50 @@ export function CustomCodePanel({ robotType, scriptRef, clearRef, onBlockCountCh
           </div>
           <div className="scratch-panel-banner-sub">
             {multiRobotFootball
-              ? 'Switch tabs to program each robot on your green team'
+              ? 'Tap Defender, Striker or Midfielder — each tab is a different robot. Simulate runs all three.'
               : isRacing
-                ? 'Track tab has named turns for this circuit — Racing tab has all driving blocks'
+                ? (isCupManual
+                  ? 'Tap Code hints for Easy → Pro → Expert — then add blocks from Track & Racing tabs'
+                  : 'Track tab has named turns for this circuit — Racing tab has all driving blocks')
                 : 'Click a block below to add code'}
           </div>
         </div>
       </div>
+      {multiRobotFootball && (
+        <div className="football-role-tabs football-role-tabs--full">
+          {FOOTBALL_TEAM_ROLES.map((role) => (
+            <button
+              key={role.id}
+              type="button"
+              className={`football-role-tab${activeRole === role.id ? ' active' : ''}${footballExecBotId === role.botId ? ' executing-role' : ''}`}
+              style={{ '--role-c': role.color }}
+              onClick={() => switchFootballRole(role.id)}
+              title={`Program ${role.label} #${role.number}`}
+            >
+              <span className="football-role-tab-icon">{role.icon}</span>
+              <span className="football-role-tab-label">{role.label}</span>
+              <span className="football-role-tab-num">#{role.number}</span>
+            </button>
+          ))}
+        </div>
+      )}
+      {multiRobotFootball && (
+        <div className="football-coding-chip football-coding-chip--full">
+          Coding {FOOTBALL_TEAM_ROLES.find((r) => r.id === activeRole)?.label || 'Striker'} #{FOOTBALL_TEAM_ROLES.find((r) => r.id === activeRole)?.number || 9}
+          {activeRole === 'striker' ? ' — your robot. Simulate runs all 3.' : ' — Simulate runs the whole team'}
+        </div>
+      )}
+      <CourseCodeHintsPanel hints={codeHints} />
       <div className="scratch-panel-body">
       {/* ══ LEFT: CATEGORY RAIL ════════════════════════════════════════════ */}
       <nav className="scratch-cat-rail">
         {categoryRail.map(([key, cat]) => {
+          if (!cat) return null;
           const visible = key === 'Events'
             ? UNIVERSAL_EVENTS_CATEGORY.blocks
-            : (cat.blocks || []).filter(b => !b.robotGroups || b.robotGroups.includes(paletteRobotGroup) || b.robotGroups.includes(paletteRobotType));
+            : key === 'All'
+              ? cat.blocks || []
+              : (cat.blocks || []).filter(b => !b.robotGroups || b.robotGroups.includes(paletteRobotGroup) || b.robotGroups.includes(paletteRobotType));
           if (!visible.length) return null;
           const isActive = activeCat === key && !search;
           return (
@@ -534,23 +855,8 @@ export function CustomCodePanel({ robotType, scriptRef, clearRef, onBlockCountCh
 
       {/* ══ RIGHT: WORKSPACE ═══════════════════════════════════════════════ */}
       <div className="scratch-workspace">
-        {multiRobotFootball && (
-          <div className="football-role-tabs">
-            {FOOTBALL_TEAM_ROLES.map((role) => (
-              <button
-                key={role.id}
-                type="button"
-                className={`football-role-tab${activeRole === role.id ? ' active' : ''}`}
-                style={{ '--role-c': role.color }}
-                onClick={() => switchFootballRole(role.id)}
-                title={`Program ${role.label} #${role.number}`}
-              >
-                <span className="football-role-tab-icon">{role.icon}</span>
-                <span className="football-role-tab-label">{role.label}</span>
-                <span className="football-role-tab-num">#{role.number}</span>
-              </button>
-            ))}
-          </div>
+        {isFootball && !multiRobotFootball && (
+          <div className="football-solo-hint">Solo mode — you control the kicker only</div>
         )}
         <div className="scratch-ws-toolbar">
           <button className="scratch-tool-btn" onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)">↩</button>
@@ -565,8 +871,10 @@ export function CustomCodePanel({ robotType, scriptRef, clearRef, onBlockCountCh
 
         <div className="scratch-ws-canvas" ref={workspaceRef} onDragOver={e => e.preventDefault()}>
           <div className="scratch-anchor-block">
-            <span className="scratch-blk-icon">▶️</span>
-            <span className="scratch-blk-text">When START clicked</span>
+            <span className="scratch-blk-icon">{codeHints?.eventBlock === 'when_spacebar' ? '⌨️' : '▶️'}</span>
+            <span className="scratch-blk-text">
+              {codeHints?.eventLabel || (isFlappy ? 'When spacebar clicked' : 'When START clicked')}
+            </span>
           </div>
 
           {script.length === 0 ? (
@@ -589,7 +897,9 @@ export function CustomCodePanel({ robotType, scriptRef, clearRef, onBlockCountCh
                   ? blockLibrary.Events?.color || '#ef4444'
                   : (blockLibrary[blk.catKey]?.color || '#4c97ff');
                 const uidMatch = activeBlockUid && (activeBlockUid === blk._uid || activeBlockUid.startsWith(`${blk._uid}_r`));
-                const isExecuting = isRunning && (uidMatch || (activeStepIndex === i && !activeBlockUid));
+                const roleForHighlight = FOOTBALL_TEAM_ROLES.find((r) => r.id === activeRole);
+                const highlightThisRole = !multiRobotFootball || !footballExecBotId || footballExecBotId === roleForHighlight?.botId;
+                const isExecuting = isRunning && highlightThisRole && (uidMatch || (activeStepIndex === i && !activeBlockUid));
                 const isCompleted = isRunning && activeStepIndex > i && !uidMatch;
                 const isHat = isEventHatBlock(blk.id);
                 return (
@@ -757,10 +1067,11 @@ const GENRE_META = {
   defense:     { icon: '🛡️', label: 'Defense Game',      color: '#f97316' },
   platformer:  { icon: '🦘', label: 'Platformer',        color: '#3b82f6' },
   stealth:     { icon: '👻', label: 'Stealth Game',      color: '#374151' },
-  simulation:  { icon: '⚙️', label: 'Simulation',        color: '#06b6d4' },
+  simulation:  { icon: '⚙️', label: 'Robot Lab',         color: '#06b6d4' },
+  aerial:      { icon: '✈️', label: 'Sky Mission',       color: '#38bdf8' },
   exploration: { icon: '🔭', label: 'Exploration',       color: '#0ea5e9' },
   football:    { icon: '⚽', label: 'Robot Football',    color: '#16A34A' },
-  combat:      { icon: '🥊', label: 'Combat Academy',  color: '#ef4444' },
+  combat:      { icon: '🏅', label: 'Robot Games',  color: '#22c55e' },
 };
 
 const ZONE_NAMES = [
@@ -787,8 +1098,9 @@ export function MissionControlPanel({ challenge, profile, robotConfig, stats, ro
     [challenge, stats, zoneInfo],
   );
 
-  const primaryObj = objectives[0] || challenge?.winCondition || 'Reach the goal zone';
-  const subObjs = objectives.slice(1);
+  const toObjText = (o) => (typeof o === 'string' ? o : (o?.label || o?.text || ''));
+  const primaryObj = toObjText(objectives[0]) || challenge?.winCondition || 'Reach the goal zone';
+  const subObjs = objectives.slice(1).map(toObjText).filter(Boolean);
 
   const subObjIcons = ['🪨', '⚡', '🎯', '🏁', '💫'];
 
@@ -897,7 +1209,12 @@ export function MissionControlPanel({ challenge, profile, robotConfig, stats, ro
 export function StatsBar({ stats, zoneInfo, challenge, arenaType, isRunning, fps, onRestart }) {
   const isFlappy = isFlappyBirdCourse(challenge?.id, challenge?.arenaType);
   const isFight = isFightingCourse(challenge?.id, challenge?.arenaType);
-  const isRace = stats.raceMode || isRaceCourse(challenge?.id, challenge?.arenaType) || challenge?.arenaType === 'time_trial_gauntlet';
+  const isPrimaryRally = challenge?.isPrimaryMission && challenge?.modeIndex === 10;
+  const isRace = isPrimaryRally || (
+    (stats.raceMode || isRaceCourse(challenge?.id, challenge?.arenaType) || challenge?.arenaType === 'time_trial_gauntlet')
+      && challenge?.arenaType !== 'sandbox'
+      && challenge?.genre !== 'simulation'
+  );
   if (isFight && isRunning) return null;
   if (isFlappy) {
     const score = stats.flappyScore ?? stats.collected ?? 0;
@@ -1091,7 +1408,7 @@ const WORLD_SECTIONS = {
   deep:           { label: 'Deep Sea',             icon: '🦑', blurb: 'Pitch-black abyss & hydrothermal vents', color: '#1d4ed8' },
   ai:             { label: 'AI Laboratory',        icon: '🧠', blurb: 'Sensor missions & smart routing',         color: '#a855f7' },
   cavern:         { label: 'Crystal Cavern',       icon: '💎', blurb: 'Glowing underground chambers',           color: '#8b5cf6' },
-  combat:         { label: 'Combat Arena',         icon: '🥊', blurb: 'Training, sparring, tournaments & boss fights', color: '#ef4444' },
+  combat:         { label: 'Robot Games',         icon: '🏅', blurb: 'Balance, sport, rescue drills and teamwork', color: '#22c55e' },
   football:       { label: 'Robot Football',       icon: '⚽', blurb: '1v1 skills matches & championship football', color: '#16A34A' },
 };
 
@@ -1102,8 +1419,17 @@ function MissionHeroCard({ course, robotName, gradient, metaColor, isSel, onSele
     : GameProgress.getBest(robotName || 'Robot', course.id);
   const designerXp = best > 0 ? Math.round(best * 1.5) : 0;
   const genre = GENRE_META[course.genre] || GENRE_META.adventure;
-  const heroBg = gradient || worldArt(course).bg;
+  const heroBg = course.studioGradient || gradient || worldArt(course).bg;
   const zoneCount = course.zones || course.zoneCount || (course.isRobotMission ? 1 : 10);
+  const isSecurityBot = !course.arenaBible && (course.chassisId === 'securitybot' || course.exclusive === 'securitybot');
+  const securityArena = isSecurityBot ? getSecurityBotArena(course.modeIndex || course.modeSpec?.modeNumber) : null;
+  const studioArena = course.chassisId ? getPrimaryStudioArena(course.chassisId, course.modeIndex || 1) : null;
+  const displayTitle = kidSafeText(securityArena?.title || course.environmentName || course.name);
+  const displayStory = kidSafeText([
+    course.difficulty,
+    course.skillLearned ? `Learn ${course.skillLearned}` : null,
+    course.tryThis || course.desc || course.tagline,
+  ].filter(Boolean).join(' · '));
   return (
     <button
       type="button"
@@ -1112,30 +1438,32 @@ function MissionHeroCard({ course, robotName, gradient, metaColor, isSel, onSele
       onClick={() => { onSelect(course); onClose(); }}
     >
       <div className="gls-mc-hero" style={{ background: heroBg }}>
-        <span className="gls-mc-icon">{course.icon}</span>
+        {course.arenaBible && studioArena
+          ? <PrimaryArenaThumbnail arena={studioArena} />
+          : <span className="gls-mc-icon">{securityArena?.emoji || course.environmentEmoji || studioArena?.emoji || course.icon}</span>}
         {isSel && <span className="gls-mc-playing">▶ PLAYING</span>}
         {course.isGameMission && <span className="bb-level-featured gls-mc-badge">🎮 GAME BUILD</span>}
         {course.isRobotMission && <span className="bb-level-featured gls-mc-badge">📋 CAMPAIGN</span>}
         {course.isFlagship && <span className="bb-level-featured gls-mc-badge">🎓 FLAGSHIP</span>}
         <span className="gls-genre-badge" style={{ background: genre.color }}>
-          {genre.icon} {genre.label}
+          {genre.icon} {kidSafeText(genre.label)}
         </span>
       </div>
       <div className="gls-mc-body">
-        <div className="gls-mc-name">{course.name}</div>
-        <div className="gls-mc-story">{course.tagline || course.desc}</div>
-        {course.systemsBuilt?.length > 0 && (
+        <div className="gls-mc-env" style={{ fontSize: 11, fontWeight: 800, color: metaColor || course.color, letterSpacing: '0.04em' }}>
+          {course.displayRobotName || robotName} · Mode {course.modeIndex || 1}
+        </div>
+        <div className="gls-mc-name">{displayTitle}</div>
+        <div className="gls-mc-story">{kidSafeText(course.desc)}</div>
+        <div className="gls-mc-story">{displayStory}</div>
+        {course.recommendedBlocks && (
           <div className="gls-mc-systems">
-            <span className="gls-sys-label">You'll build:</span>
-            {course.systemsBuilt.slice(0, 5).map((s) => (
-              <span key={s} className="gls-sys-tag">{s.replace(/_/g, ' ')}</span>
-            ))}
+            <span className="gls-sys-label">Try:</span>
+            <span className="gls-sys-tag">{Array.isArray(course.recommendedBlocks) ? course.recommendedBlocks.join(' · ') : course.tryThis || 'Starter movement blocks'}</span>
           </div>
         )}
         <div className="gls-mc-foot">
-          <span className="gls-mc-zones">📍 {zoneCount} zone{zoneCount !== 1 ? 's' : ''}</span>
-          {course.laps && <span className="gls-mc-time">🏁 {course.laps} lap{course.laps !== 1 ? 's' : ''}</span>}
-          {course.checkpoints && <span className="gls-mc-time">🚩 {course.checkpoints} CP</span>}
+          <span className="gls-mc-zones">🎯 {course.difficulty || 'Easy'}</span>
           {course.estMinutes && <span className="gls-mc-time">⏱ ~{course.estMinutes} min</span>}
           {designerXp > 0
             ? <span className="gls-mc-xp">🎮 {designerXp} Designer XP</span>
@@ -1170,7 +1498,10 @@ export function GameLevelSelect({ courses, currentId, robotName, robotType, chas
     }
     if (search) {
       const q = search.toLowerCase();
-      return (c.name || '').toLowerCase().includes(q) || (c.desc || '').toLowerCase().includes(q) || (c.tagline || '').toLowerCase().includes(q);
+      return (c.name || '').toLowerCase().includes(q)
+        || (c.desc || '').toLowerCase().includes(q)
+        || (c.tagline || '').toLowerCase().includes(q)
+        || (c.environmentName || '').toLowerCase().includes(q);
     }
     return true;
   };
@@ -1228,8 +1559,7 @@ export function GameLevelSelect({ courses, currentId, robotName, robotType, chas
           <div className="gls-header-left">
             <span className="gls-title">🎮 Choose Mission</span>
             <span className="gls-sub">
-              {robotName} · {courses.length} game mode{courses.length !== 1 ? 's' : ''}
-              {strictChassisModes ? ' · chassis-exclusive' : ' · ⚡ Event blocks stay on the left'}
+              {getPrimaryRobotDisplay(chassisId).emoji} {getPrimaryRobotDisplay(chassisId).name} · 10 arenas for {getPrimaryRobotDisplay(chassisId).name}
             </span>
           </div>
           <div className="gls-header-right">
@@ -1273,46 +1603,65 @@ export function GameLevelSelect({ courses, currentId, robotName, robotType, chas
             </div>
           ) : strictChassisModes ? (
             <>
-              {isCarChassis(chassisId) && onSelectBiomeTrack && (
-                <section className="gls-section gls-cup-section">
+              {isCarChassis(chassisId) && !courses.some(c => c.arenaBible) ? (
+                <section className="gls-section gls-car-tracks-section">
+                  <CarRobotTrackGrid
+                    courses={courses}
+                    currentId={currentId}
+                    currentArenaType={currentArenaType}
+                    onSelectCourse={(course) => { onSelect(course); onClose(); }}
+                  />
                   <SectionHead
-                    icon="🏎️"
-                    title="CodeRacer Cup"
-                    subtitle="10 Mario Kart circuits — tap any track to jump straight in"
-                    color="#6366f1"
+                    icon="🧩"
+                    title="Coding missions"
+                    subtitle="Each mode teaches one block idea on its track"
+                    color="#7c3aed"
                   />
-                  <CodeRacerTrackCup
-                    variant="inline"
-                    arenaType={currentArenaType || courses.find((c) => c.id === currentId)?.arenaType}
-                    onSelect={(course) => {
-                      onSelectBiomeTrack(course);
-                      onClose();
-                    }}
+                  <div className="gls-card-grid gls-card-grid--compact">
+                    {courses.map((c, i) => renderCard(
+                      {
+                        ...c,
+                        icon: c.icon || c.environmentEmoji || '🏁',
+                        name: c.raceTrackLabel || c.name,
+                        environmentName: c.raceTrackLabel || c.environmentName,
+                        tagline: [
+                          `Mode ${c.modeIndex || i + 1}`,
+                          c.difficulty ? `${c.difficulty}` : null,
+                          c.tryThis || c.desc || c.tagline,
+                        ].filter(Boolean).join(' · '),
+                        shortName: c.raceTrackLabel || c.shortName || `Mode ${i + 1}`,
+                      },
+                    ))}
+                  </div>
+                </section>
+              ) : (
+                <section className="gls-section">
+                  <SectionHead
+                    icon="🤖"
+                    title={`10 arenas for ${getPrimaryRobotDisplay(chassisId).name}`}
+                    subtitle="Each arena looks different and teaches one coding idea"
+                    color="#7c3aed"
                   />
+                  <div className="gls-card-grid">
+                    {courses.map((c, i) => renderCard(
+                      c.chassisId === 'securitybot' || c.exclusive === 'securitybot'
+                        ? { ...c, icon: c.environmentEmoji || c.icon || '👮' }
+                        : {
+                          ...c,
+                          icon: c.icon || c.environmentEmoji || '🎮',
+                          name: c.raceTrackLabel || c.name,
+                          tagline: [
+                            `Mode ${c.modeIndex || i + 1}`,
+                            c.difficulty ? `${c.difficulty}` : null,
+                            c.raceTrackLabel && c.raceTrackLabel !== c.name ? `🏁 ${c.raceTrackLabel}` : null,
+                            c.desc || c.tagline,
+                          ].filter(Boolean).join(' · '),
+                          shortName: c.raceTrackLabel || c.shortName || `Mode ${i + 1}`,
+                        },
+                    ))}
+                  </div>
                 </section>
               )}
-              <section className="gls-section">
-                <SectionHead
-                  icon="🤖"
-                  title="Game Modes"
-                  subtitle={`10 rover modes — each mode maps to a cup track above`}
-                  color="#7c3aed"
-                />
-                <div className="gls-card-grid">
-                  {courses.map((c, i) => renderCard({
-                    ...c,
-                    icon: c.icon || c.environmentEmoji || '🎮',
-                    name: c.raceTrackLabel || c.name,
-                    tagline: [
-                      `Mode ${c.modeIndex || i + 1}`,
-                      c.difficulty ? `${c.difficulty}` : null,
-                      c.raceTrackLabel && c.raceTrackLabel !== c.name ? `🏁 ${c.raceTrackLabel}` : null,
-                      c.desc || c.tagline,
-                    ].filter(Boolean).join(' · '),
-                    shortName: c.raceTrackLabel || c.shortName || `Mode ${i + 1}`,
-                  }))}
-                </div>
-              </section>
             </>
           ) : (
             <>

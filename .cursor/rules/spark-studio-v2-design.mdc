@@ -1,0 +1,17 @@
+---
+description: When redesigning Spark Studio, Robot Studio, Live Lab UI, or primary-school arenas, follow the Spark Studio V2 spec pack.
+globs:
+  - src/virtual-robot-designer/**
+  - src/components/SparkStudio*
+  - docs/spark-studio-v2/**
+---
+
+# Spark Studio V2 design authority
+
+Before substantive UI, arena, or primary-school UX changes:
+
+1. Read `docs/spark-studio-v2/CODEBASE_MAP.md` and the relevant chapter (00–07).
+2. For **Live Lab / Robot Studio / classrooms**, always apply `docs/spark-studio-v2/07-primary-school-robot-studio-rebuild.md`: friendly copy, unlimited retries in learn modes, no harsh failure language, accessibility (not colour-only cues).
+3. Prefer **Mission** framing over **Lesson** in child-facing strings.
+4. Minimize diff; do not refactor `LiveLabPage.jsx` wholesale in one pass.
+5. After sim-visible changes: `npm run build` and `npm run deploy:vps` per deploy-after-tasks unless the user opts out.

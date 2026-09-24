@@ -47,31 +47,8 @@ function HeroLighting() {
   );
 }
 
-function StudioPlatform({ snapPulse }) {
-  const groupRef = useRef();
-  const ringRef = useRef();
-  useFrame((state, dt) => {
-    if (groupRef.current) groupRef.current.rotation.y += dt * 0.04;
-    if (ringRef.current) {
-      ringRef.current.material.opacity = 0.42 + Math.sin(state.clock.elapsedTime * 2) * 0.12 + (snapPulse ? 0.2 : 0);
-    }
-  });
-  return (
-    <group ref={groupRef} position={[0, -0.56, 0]}>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <cylinderGeometry args={[1.9, 2.05, 0.12, 64]} />
-        <meshStandardMaterial color="#d4dae2" metalness={0.95} roughness={0.12} />
-      </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, 0]}>
-        <circleGeometry args={[1.8, 64]} />
-        <meshStandardMaterial color="#eef1f5" metalness={0.98} roughness={0.08} />
-      </mesh>
-      <mesh ref={ringRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.07, 0]}>
-        <ringGeometry args={[1.68, 2.1, 64]} />
-        <meshBasicMaterial color="#00D9FF" transparent opacity={0.45} blending={THREE.AdditiveBlending} />
-      </mesh>
-    </group>
-  );
+function StudioPlatform() {
+  return null;
 }
 
 function SceneContent({

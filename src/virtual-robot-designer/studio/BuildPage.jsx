@@ -8,8 +8,10 @@ import * as THREE from 'three';
 import {
   CHASSIS_DATA, SENSORS_DATA, TOOLS_DATA, POWER_DATA, HEADS_DATA, ARMS_DATA, LIGHTS_DATA,
   AI_DATA, COMM_DATA, STRUCTURAL_DATA, DECO_DATA, LEGO_DATA,
-  BLOCKS_DATA, SAMPLE_ROBOTS, buildRobotModel,
+  BLOCKS_DATA, SAMPLE_ROBOTS, buildRobotModel, normalizeRobotBuildConfig,
 } from '../services/studio-robot-builder.js';
+import { parseWeightKg, getPrimaryRobotDisplay } from '../data/primary-robot-studio.js';
+import { createSimWebGLRenderer } from '../services/art-direction.js';
 
 // ─── Colour palettes ────────────────────────────────────────────────────────
 const PALETTE_CLASSIC = [
@@ -224,11 +226,14 @@ const CHASSIS_SOCKETS = {
   spider: SOCKET_DEFS.spider,
   drone: SOCKET_DEFS.drone, racedrone: SOCKET_DEFS.drone, rescuedrone: SOCKET_DEFS.drone,
   droid: SOCKET_DEFS.humanoid, mech: SOCKET_DEFS.humanoid,
+  striker: SOCKET_DEFS.humanoid, blaster: SOCKET_DEFS.humanoid,
+  ninja: SOCKET_DEFS.humanoid, berserker: SOCKET_DEFS.humanoid,
+  footballbot: SOCKET_DEFS.humanoid,
   helicopter: SOCKET_DEFS.heli,
   hoverbot: SOCKET_DEFS.hover, hoverracer: SOCKET_DEFS.hover,
   submarine: SOCKET_DEFS.sub, deepseabot: SOCKET_DEFS.sub,
   robotarm: SOCKET_DEFS.arm,
-  jetplane: SOCKET_DEFS.plane, stealthjet: SOCKET_DEFS.plane, aerobat: SOCKET_DEFS.plane,
+  jetplane: SOCKET_DEFS.plane, steathjet: SOCKET_DEFS.plane, aerobat: SOCKET_DEFS.plane,
 };
 
 const CATEGORIES = [
@@ -499,6 +504,30 @@ function ColorToolbar({ robotConfig, setRobotConfig }) {
   );
 }
 
+/** Plant robot on y=0 and point the studio camera at its visual center. */
+function frameStudioRobot(model, camera) {
+  if (!model || !camera) return;
+  if (typeof model.userData.animate === 'function') model.userData.animate(0);
+
+  const box = new THREE.Box3().setFromObject(model);
+  if (box.isEmpty()) return;
+
+  model.position.y -= box.min.y;
+
+  box.setFromObject(model);
+  const center = new THREE.Vector3();
+  const size = new THREE.Vector3();
+  box.getCenter(center);
+  box.getSize(size);
+
+  const midY = center.y;
+  const span = Math.max(size.x, size.y, size.z, 1);
+  const dist = Math.max(3.4, span * 2.15);
+
+  camera.position.set(dist * 0.55, midY + dist * 0.38, dist * 0.85);
+  camera.lookAt(0, midY, 0);
+}
+
 // ─── 3D Viewer ─────────────────────────────────────────────────────────────
 function RobotCanvas({ robotConfig, onRobotClick, onDrop, children }) {
   const wrapRef  = useRef(null);
@@ -513,7 +542,9 @@ function RobotCanvas({ robotConfig, onRobotClick, onDrop, children }) {
   // Init scene once per key-mount
   useEffect(() => {
     const el = wrapRef.current;
-    if (!el) return;
+    if (!el) return undefined;
+    let renderer = null;
+    try {
 
     const W = Math.max(el.clientWidth, 1);
     const H = Math.max(el.clientHeight, 1);
@@ -553,8 +584,9 @@ function RobotCanvas({ robotConfig, onRobotClick, onDrop, children }) {
     camera.lookAt(0, 0.4, 0);
     camRef.current = camera;
 
-    // Renderer — high quality settings
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+    // Renderer — high quality settings, never throw if GPU/WebGL is blocked
+    renderer = createSimWebGLRenderer({ antialias: true });
+    if (!renderer) throw new Error('Error creating WebGL context.');
     renderer.setSize(W, H);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
@@ -594,37 +626,6 @@ function RobotCanvas({ robotConfig, onRobotClick, onDrop, children }) {
     const bounce = new THREE.DirectionalLight(0xfff0d8, 0.2);
     bounce.position.set(0, -4, 2);
     scene.add(bounce);
-
-    // ── Floor + grid ─────────────────────────────────────────────────────────
-    const floorGeo  = new THREE.CircleGeometry(4.5, 64);
-    const floorMat  = new THREE.MeshStandardMaterial({ color: 0xe8edf5, metalness: 0.08, roughness: 0.9 });
-    const floor     = new THREE.Mesh(floorGeo, floorMat);
-    floor.rotation.x = -Math.PI / 2;
-    floor.position.y  = -0.12;
-    floor.receiveShadow = true;
-    scene.add(floor);
-
-    // Platform disc
-    const platMat = new THREE.MeshStandardMaterial({ color: 0xdde2f2, metalness: 0.55, roughness: 0.3 });
-    const plat    = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 0.08, 64), platMat);
-    plat.position.y = -0.04;
-    plat.receiveShadow = true;
-    scene.add(plat);
-
-    // Platform accent ring (purple)
-    const ringMat = new THREE.MeshStandardMaterial({ color: 0x7c3aed, emissive: new THREE.Color(0x7c3aed), emissiveIntensity: 0.7 });
-    const ring    = new THREE.Mesh(new THREE.TorusGeometry(1.52, 0.04, 8, 72), ringMat);
-    ring.position.y = 0.02;
-    ring.rotation.x = Math.PI / 2;
-    scene.add(ring);
-
-    // Shadow ground (barely visible on light bg)
-    const shadowGeo = new THREE.CircleGeometry(2.0, 32);
-    const shadowMat = new THREE.MeshStandardMaterial({ color: 0xc8cee0, transparent: true, opacity: 0.18 });
-    const shadow    = new THREE.Mesh(shadowGeo, shadowMat);
-    shadow.rotation.x = -Math.PI / 2;
-    shadow.position.y  = -0.11;
-    scene.add(shadow);
 
     // ── Particle system ───────────────────────────────────────────────────
     const MAX_P = 120;
@@ -767,7 +768,7 @@ function RobotCanvas({ robotConfig, onRobotClick, onDrop, children }) {
         if (pEmitTimer > 0.12 && robot) {
           pEmitTimer = 0;
           const cid = robot.userData.chassisId || '';
-          if (/spider|walker|droid|mech|legobot/.test(cid)) {
+          if (/spider|walker|droid|mech|legobot|striker|ninja|berserker|footballbot/.test(cid)) {
             // Foot-level dust for walking robots
             const leg = Math.floor(Math.random() * 4);
             const lx = (leg < 2 ? -0.5 : 0.5) * 0.8 + (Math.random() - 0.5) * 0.2;
@@ -790,8 +791,6 @@ function RobotCanvas({ robotConfig, onRobotClick, onDrop, children }) {
         }
       }
       updateParticles(dt);
-      // Pulse the platform ring
-      ring.material.emissiveIntensity = 0.5 + Math.sin(t * 2.0) * 0.2;
       renderer.render(scene, camera);
     };
     tick();
@@ -804,9 +803,19 @@ function RobotCanvas({ robotConfig, onRobotClick, onDrop, children }) {
       cancelAnimationFrame(rafRef.current);
       roRef.current?.disconnect();
       window.removeEventListener('resize', onResize);
-      if (el && renderer.domElement.parentNode === el) el.removeChild(renderer.domElement);
-      renderer.dispose();
+      if (el && renderer?.domElement?.parentNode === el) el.removeChild(renderer.domElement);
+      renderer?.dispose();
     };
+    } catch (err) {
+      console.warn('[BuildPage 3D]', err);
+      try { renderer?.dispose(); } catch { /* ignore */ }
+      el.replaceChildren();
+      const fallback = document.createElement('div');
+      fallback.style.cssText = 'display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:28px;text-align:center;color:#334155;font-family:system-ui,sans-serif;gap:10px;background:#f0f2f8';
+      fallback.innerHTML = '<div style="font-size:42px">🤖</div><div style="font-weight:800;font-size:16px">Open this page in Chrome</div><div style="font-size:13px;max-width:280px;line-height:1.5">The 3D robot view needs a full browser window — not a preview pane.</div>';
+      el.appendChild(fallback);
+      return undefined;
+    }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Rebuild robot model when config changes — attach to pivot, not scene
@@ -818,9 +827,10 @@ function RobotCanvas({ robotConfig, onRobotClick, onDrop, children }) {
       pivot.remove(robotRef.current);
       robotRef.current = null;
     }
-    const model = buildRobotModel(robotConfig);
+    const model = buildRobotModel(normalizeRobotBuildConfig(robotConfig));
     pivot.add(model);
     robotRef.current = model;
+    frameStudioRobot(model, camRef.current);
     // Apply environment map for metallic reflections
     if (scene && model.userData.envTex) {
       scene.environment = model.userData.envTex;
@@ -836,7 +846,7 @@ function RobotCanvas({ robotConfig, onRobotClick, onDrop, children }) {
 
 
 // ─── Left Panel ────────────────────────────────────────────────────────────
-function LeftPanel({ robotConfig, setRobotConfig, activeRobotId, setActiveRobotId, customParts = [], onGoCreate }) {
+function LeftPanel({ robotConfig, setRobotConfig, activeRobotId, setActiveRobotId, customParts = [], onGoCreate, onSimulate, onSaveDesign, onFootballLaunch }) {
   const [activeCat, setActiveCat] = useState('body');
   const [search, setSearch]       = useState('');
   const [savedRobots]             = useState(SAMPLE_ROBOTS);
@@ -911,13 +921,28 @@ function LeftPanel({ robotConfig, setRobotConfig, activeRobotId, setActiveRobotI
                   key={ch.id}
                   ch={ch}
                   active={robotConfig.chassisId === ch.id}
-                  onClick={() => setRobotConfig(prev => ({
-                    ...prev,
-                    chassisId: ch.id,
-                    primaryColor: ch.primaryColor || prev.primaryColor,
-                    accentColor: ch.accentColor || prev.accentColor,
-                    socketAttachments: {}, // reset sockets when chassis changes
-                  }))}
+                  onClick={() => {
+                    if (ch.id === 'footballbot' && onFootballLaunch) {
+                      onFootballLaunch();
+                      return;
+                    }
+                    setRobotConfig(prev => {
+                    const next = {
+                      ...prev,
+                      chassisId: ch.id,
+                      name: getPrimaryRobotDisplay(ch.id).name,
+                      primaryColor: ch.primaryColor || prev.primaryColor,
+                      accentColor: ch.accentColor || prev.accentColor,
+                      movementId: ({
+                        wheels: 'wheels', wheels6: 'wheels6', tracks: 'tracks',
+                        legs: 'legs', flying: 'flying', hover: 'flying', swim: 'flying', jets: 'jets',
+                      }[ch.movementHint] || prev.movementId),
+                      socketAttachments: {}, // reset sockets when chassis changes
+                    };
+                    delete next.chassisBuildKey;
+                    return next;
+                  });
+                  }}
                 />
               ))}
               <button className="bb-chassis-card bb-chassis-card--create" onClick={onGoCreate}>
@@ -1280,7 +1305,7 @@ function ColorSection({ label, value, onChange, presets, swatches }) {
 }
 
 // ─── Right Panel ────────────────────────────────────────────────────────────
-function RightPanel({ robotConfig, setRobotConfig, onSimulate, robotValidation }) {
+function RightPanel({ robotConfig, setRobotConfig, onSimulate, onSaveDesign, robotValidation }) {
   const chassis = CHASSIS_DATA.find(c => c.id === robotConfig.chassisId) || CHASSIS_DATA[0];
 
   // Validation notices (errors + warnings only)
@@ -1319,7 +1344,10 @@ function RightPanel({ robotConfig, setRobotConfig, onSimulate, robotValidation }
     power:      Math.min(chassis.power + (robotConfig.tools.length * 5) + (aiBoost > 0 ? Math.floor(aiBoost / 4) : 0), 100),
     durability: Math.min(chassis.durability + sizeDurDelta + Math.floor(armorBoost / 2), 100),
     ai:         Math.min(aiBoost, 100),
-    weight:     Math.round(chassis.weight * sizeWeightMult * 10) / 10,
+    weight:     (() => {
+      const w = Math.round(parseWeightKg(chassis?.weight) * sizeWeightMult * 10) / 10;
+      return Number.isFinite(w) ? w : 2.0;
+    })(),
   };
 
   // Build full installed-parts list with remove callbacks
@@ -1521,10 +1549,10 @@ function RightPanel({ robotConfig, setRobotConfig, onSimulate, robotValidation }
         <button className="bb-studio-act-btn bb-studio-act-btn--simulate" onClick={onSimulate}>
           📝 Code My Robot →
         </button>
-        <button className="bb-studio-act-btn bb-studio-act-btn--save">
+        <button type="button" className="bb-studio-act-btn bb-studio-act-btn--save" onClick={onSaveDesign}>
           💾 Save Design
         </button>
-        <button className="bb-studio-act-btn bb-studio-act-btn--code">
+        <button type="button" className="bb-studio-act-btn bb-studio-act-btn--code" onClick={onSimulate}>
           &lt;/&gt; Generate Code
         </button>
         <button className="bb-studio-act-btn bb-studio-act-btn--ghost"
@@ -1617,7 +1645,7 @@ function SocketOverlay({ sockets, draggingPartType, socketAttachments, onSocketD
 }
 
 // ─── Build Page ─────────────────────────────────────────────────────────────
-export default function BuildPage({ robotConfig, setRobotConfig, onSimulate, customParts = [], onGoCreate, robotValidation }) {
+export default function BuildPage({ robotConfig, setRobotConfig, onSimulate, onRobotClick, customParts = [], onGoCreate, robotValidation, onSaveDesign, onFootballLaunch }) {
   const [activeRobotId,    setActiveRobotId]    = useState(1);
   const [partsOverlay,     setPartsOverlay]     = useState(false);
   const [isDragOver,       setIsDragOver]       = useState(false);
@@ -1640,7 +1668,7 @@ export default function BuildPage({ robotConfig, setRobotConfig, onSimulate, cus
       case 'struct':   { const c = prev.structParts||[]; return { ...prev, structParts: c.includes(id)?c:[...c,id] }; }
       case 'deco':     { const c = prev.decoParts||[];   return { ...prev, decoParts:   c.includes(id)?c:[...c,id] }; }
       case 'lego':     { const c = prev.legoParts||[];   return { ...prev, legoParts:   c.includes(id)?c:[...c,id] }; }
-      case 'chassis':  { const ch=CHASSIS_DATA.find(c=>c.id===id); return {...prev,chassisId:id,socketAttachments:{},primaryColor:ch?.primaryColor||prev.primaryColor,accentColor:ch?.accentColor||prev.accentColor}; }
+      case 'chassis':  { const ch=CHASSIS_DATA.find(c=>c.id===id); return {...prev,chassisId:id,name:getPrimaryRobotDisplay(id).name,socketAttachments:{},primaryColor:ch?.primaryColor||prev.primaryColor,accentColor:ch?.accentColor||prev.accentColor}; }
       default: return prev;
     }
   }, []);
@@ -1713,14 +1741,35 @@ export default function BuildPage({ robotConfig, setRobotConfig, onSimulate, cus
 
   return (
     <div className="bb-studio-build">
-      <LeftPanel
-        robotConfig={robotConfig}
-        setRobotConfig={setRobotConfig}
-        activeRobotId={activeRobotId}
-        setActiveRobotId={setActiveRobotId}
-        customParts={customParts}
-        onGoCreate={onGoCreate}
-      />
+      <div className="bb-studio-commandbar">
+        <div className="bb-studio-command-copy">
+          <span className="bb-studio-command-kicker">ROBOT HANGAR / ACTIVE BAY 01</span>
+          <strong>Make something that moves.</strong>
+          <span>Snap parts, give your robot a personality, then send it into the arena.</span>
+        </div>
+        <div className="bb-studio-mode-dock" aria-label="Creator modes">
+          <span className="bb-studio-mode-chip active"><b>01</b> BUILD</span>
+          <button className="bb-studio-mode-chip" onClick={onSimulate}><b>02</b> PLAY TEST <span>↗</span></button>
+          <button className="bb-studio-mode-chip" onClick={onSimulate}><b>03</b> CODE <span>↗</span></button>
+        </div>
+        <div className="bb-studio-quick-actions">
+          <button type="button" onClick={onSaveDesign} title="Save this invention">✦ Save</button>
+          <button type="button" onClick={onGoCreate} title="Open the modular builder">＋ New invention</button>
+        </div>
+      </div>
+
+      <div className="bb-studio-workspace">
+        <LeftPanel
+          robotConfig={robotConfig}
+          setRobotConfig={setRobotConfig}
+          activeRobotId={activeRobotId}
+          setActiveRobotId={setActiveRobotId}
+          customParts={customParts}
+          onGoCreate={onGoCreate}
+          onSimulate={onSimulate}
+          onSaveDesign={onSaveDesign}
+          onFootballLaunch={onFootballLaunch}
+        />
 
       {/* Center Viewport */}
       <div
@@ -1745,8 +1794,9 @@ export default function BuildPage({ robotConfig, setRobotConfig, onSimulate, cus
           <span style={{ fontSize: 11, color: '#aaa', fontStyle: 'italic' }}>
             {draggingPartType
               ? `🎯 Hover a glowing socket to snap ${draggingPartType} here`
-              : 'Drag parts onto glowing sockets · Click robot to manage'}
+              : 'Drag parts onto glowing sockets · Click robot to code'}
           </span>
+          <button className="bb-studio-vp-btn" onClick={() => setPartsOverlay(true)} title="Manage attached parts">🔩 Parts</button>
           <button className="bb-studio-vp-btn bb-studio-vp-btn--test" onClick={onSimulate}>📝 Code My Robot</button>
           <button className="bb-studio-vp-btn bb-studio-vp-btn--reset"
             onClick={() => setRobotConfig(prev => ({
@@ -1767,7 +1817,7 @@ export default function BuildPage({ robotConfig, setRobotConfig, onSimulate, cus
         {/* 3D canvas — socket overlay rendered as children so it lives inside the canvas-wrap */}
         <RobotCanvas
           robotConfig={robotConfig}
-          onRobotClick={() => setPartsOverlay(v => !v)}
+          onRobotClick={() => (onRobotClick || onSimulate)?.()}
           onDrop={handleDrop}
         >
           <SocketOverlay
@@ -1778,7 +1828,7 @@ export default function BuildPage({ robotConfig, setRobotConfig, onSimulate, cus
             onDetach={handleSocketDetach}
           />
           <span className="bb-studio-canvas-label">{chassis.name} · {chassis.badge}</span>
-          <span className="bb-studio-canvas-hint">🖱 Drag to rotate · Click robot to manage parts</span>
+          <span className="bb-studio-canvas-hint">🖱 Drag to rotate · Click robot to open Events coding</span>
         </RobotCanvas>
 
         {/* Click-robot overlay */}
@@ -1817,12 +1867,14 @@ export default function BuildPage({ robotConfig, setRobotConfig, onSimulate, cus
 
       </div>
 
-      <RightPanel
-        robotConfig={robotConfig}
-        setRobotConfig={setRobotConfig}
-        onSimulate={onSimulate}
-        robotValidation={robotValidation}
-      />
+        <RightPanel
+          robotConfig={robotConfig}
+          setRobotConfig={setRobotConfig}
+          onSimulate={onSimulate}
+          onSaveDesign={onSaveDesign}
+          robotValidation={robotValidation}
+        />
+      </div>
     </div>
   );
 }

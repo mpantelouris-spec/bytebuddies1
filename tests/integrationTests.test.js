@@ -3,16 +3,31 @@
  * Run: npm test -- integrationTests.test.js
  */
 
-import * as mlEngine from '../utils/mlTrainingEngine';
-import { ArduinoCommands, MicroBitCommands, MotorCommands } from '../utils/hardwareCommunication';
+// mlTrainingEngine fetches MobileNet from tfhub.dev at runtime; that host no
+// longer serves the legacy tfjs-models JSON format. Build a tiny real local
+// model instead so downstream tf.layers calls operate on genuine tensors.
+jest.mock('@tensorflow/tfjs', () => {
+  const actual = jest.requireActual('@tensorflow/tfjs');
+  return {
+    ...actual,
+    loadLayersModel: jest.fn(async () => {
+      const input = actual.input({ shape: [224, 224, 3] });
+      const output = actual.layers.globalAveragePooling2d({}).apply(input);
+      return actual.model({ inputs: input, outputs: output });
+    }),
+  };
+});
+
+import * as mlEngine from '../src/utils/mlTrainingEngine';
+import { ArduinoCommands, MicroBitCommands, MotorCommands } from '../src/utils/hardwareCommunication';
 import {
   setCloudVariable,
   getCloudVariable,
   sendThingSpeakData,
   askChatGPT,
   getWeather,
-} from '../utils/cloudBackend';
-import { visualEffects, performanceOptimizer } from '../utils/visualEffectsOptimization';
+} from '../src/utils/cloudBackend';
+import { visualEffects, performanceOptimizer } from '../src/utils/visualEffectsOptimization';
 
 describe('ML Training Engine', () => {
   test('should initialize image classifier', async () => {
@@ -285,8 +300,13 @@ describe('Performance Optimization', () => {
 
   test('should get memory usage', () => {
     const memUsage = performanceOptimizer.getMemoryUsage();
-    expect(memUsage).toHaveProperty('usedMB');
-    // Will be 'unavailable' in test environment without performance.memory
+    // 'usedMB' is only present when the non-standard performance.memory API
+    // exists (Chrome only); jsdom doesn't provide it, so expect the fallback.
+    if (performance.memory) {
+      expect(memUsage).toHaveProperty('usedMB');
+    } else {
+      expect(memUsage).toEqual({ status: 'unavailable' });
+    }
   });
 });
 

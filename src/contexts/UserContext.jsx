@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { saveUserProfile } from '../firebase';
+import { saveUserProfile, firebaseSignOut, onFirebaseAuthChange, firebaseUserToProfile } from '../firebase';
 
 const UserContext = createContext();
 
@@ -49,6 +49,25 @@ export function UserProvider({ children }) {
   useEffect(() => {
     localStorage.setItem('cv-user', JSON.stringify(user));
   }, [user]);
+
+  // Sync login state with Firebase session
+  useEffect(() => {
+    const unsub = onFirebaseAuthChange((fbUser) => {
+      if (fbUser) {
+        const profile = firebaseUserToProfile(fbUser);
+        setUser(prev => {
+          const merged = { ...prev, ...profile };
+          saveUserProfile(merged);
+          return merged;
+        });
+        setIsLoggedIn(true);
+        localStorage.setItem('cv-loggedin', 'true');
+      } else if (localStorage.getItem('cv-loggedin') !== 'true') {
+        setIsLoggedIn(false);
+      }
+    });
+    return unsub;
+  }, []);
 
   const addXP = (amount) => {
     setUser(prev => {
@@ -155,7 +174,11 @@ export function UserProvider({ children }) {
     setIsLoggedIn(true);
     localStorage.setItem('cv-loggedin', 'true');
   };
-  const logout = () => { setIsLoggedIn(false); localStorage.setItem('cv-loggedin', 'false'); };
+  const logout = async () => {
+    try { await firebaseSignOut(); } catch (e) { console.error('[Auth] sign out failed:', e); }
+    setIsLoggedIn(false);
+    localStorage.setItem('cv-loggedin', 'false');
+  };
 
   return (
     <UserContext.Provider value={{

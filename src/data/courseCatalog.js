@@ -459,12 +459,20 @@ export const ALL_CATALOG = [...spider, ...drone, ...heavy, ...ninja, ...humanoid
 
 // Map detectRobotType() output to catalog robot IDs
 export const ROBOT_TYPE_TO_CATALOG = {
-  spider:  'explorerSpider',
-  drone:   'racerDrone',
-  hover:   'racerDrone',
-  jet:     'ninjaDrone',
-  factory: 'heavyRobot',
-  tank:    'heavyRobot',
-  rover:   'humanoid',
-  default: 'humanoid',
+  spider:     'explorerSpider',
+  drone:      'racerDrone',
+  hover:      'racerDrone',
+  racedrone:  'racerDrone',
+  jet:        'ninjaDrone',
+  factory:    'heavyRobot',
+  factorybot: 'heavyRobot',
+  tank:       'heavyRobot',
+  rover:      'humanoid',
+  humanoid:   'humanoid',
+  underwater: 'explorerSpider',
+  medbot:     'humanoid',
+  firebot:    'heavyRobot',
+  security:   'ninjaDrone',
+  birdbot:    'humanoid',
+  default:    'humanoid',
 };

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useUser } from '../contexts/UserContext';
-import { signInWithGoogle, lookupClassByCode, addStudentToClass } from '../firebase';
+import { signInWithGoogle, lookupClassByCode, addStudentToClass, signUpWithEmail, signInWithEmail } from '../firebase';
 
 const GoogleLogo = () => (
   <svg width="24" height="24" viewBox="0 0 24 24">
@@ -257,7 +257,7 @@ export default function AuthModal({ onClose, initialRole }) {
     setTimeout(() => onClose(), 1000);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     setError('');
     if (mode === 'signup') {
       if (!name.trim()) return setError('Please enter a username');
@@ -267,10 +267,21 @@ export default function AuthModal({ onClose, initialRole }) {
     if (password.length < 6) return setError('Password must be at least 6 characters');
     if (!validateTeacherEmail(email)) return;
 
-    const userData = mode === 'signup'
-      ? { name: name.trim(), avatar: name.trim().slice(0, 2).toUpperCase() }
-      : {};
-    proceedAfterSignIn(userData);
+    try {
+      const fbUser = mode === 'signup'
+        ? await signUpWithEmail(email.trim(), password, name.trim())
+        : await signInWithEmail(email.trim(), password);
+      const userData = mode === 'signup'
+        ? { name: name.trim(), avatar: name.trim().slice(0, 2).toUpperCase(), email: fbUser.email }
+        : { email: fbUser.email, name: fbUser.displayName || email.split('@')[0], avatar: (fbUser.displayName || email.split('@')[0]).slice(0, 2).toUpperCase() };
+      proceedAfterSignIn(userData);
+    } catch (e) {
+      const code = e?.code || '';
+      if (code === 'auth/email-already-in-use') setError('That email is already registered. Try signing in instead.');
+      else if (code === 'auth/invalid-credential' || code === 'auth/wrong-password') setError('Invalid email or password.');
+      else if (code === 'auth/weak-password') setError('Password is too weak. Use at least 6 characters.');
+      else setError(e?.message || 'Sign-in failed. Please try again.');
+    }
   };
 
   const handleLogout = () => {

@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, signInAnonymously } from 'firebase/auth';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, signInAnonymously, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, updateProfile } from 'firebase/auth';
 import { getFirestore, doc, setDoc, getDoc, updateDoc, deleteDoc, collection, query, where, getDocs } from 'firebase/firestore';
 
 const firebaseConfig = {
@@ -30,6 +30,34 @@ export async function signInWithGoogle() {
 
 export async function firebaseSignOut() {
   await signOut(auth);
+}
+
+export function onFirebaseAuthChange(callback) {
+  return onAuthStateChanged(auth, callback);
+}
+
+export async function signUpWithEmail(email, password, displayName) {
+  const result = await createUserWithEmailAndPassword(auth, email, password);
+  if (displayName) {
+    await updateProfile(result.user, { displayName });
+  }
+  return result.user;
+}
+
+export async function signInWithEmail(email, password) {
+  const result = await signInWithEmailAndPassword(auth, email, password);
+  return result.user;
+}
+
+export function firebaseUserToProfile(fbUser) {
+  if (!fbUser) return null;
+  const name = fbUser.displayName || fbUser.email?.split('@')[0] || 'Coder';
+  return {
+    name,
+    email: fbUser.email || '',
+    avatar: name.slice(0, 2).toUpperCase(),
+    photoURL: fbUser.photoURL,
+  };
 }
 
 export async function saveClassToFirestore(classData) {

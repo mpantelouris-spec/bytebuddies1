@@ -2,6 +2,8 @@
  * flagship-arenas.js — Visual environments for 8 flagship Robot Studio courses
  */
 import * as THREE from 'three';
+import { buildWarehouseScenery } from '../studio/FamilyArenaBuilders.js';
+import { addHorizonSilhouette, addConveyor } from '../studio/ArenaSceneryKit.js';
 
 function addFloor(g, w, len, color, centerZ = 0) {
   const floor = new THREE.Mesh(
@@ -145,85 +147,48 @@ export function buildTransitTunnelArena(scene, ch = {}) {
   scene.add(g);
 }
 
-/** COURSE 2 — Bright automated warehouse with conveyors and color bins */
+/** COURSE 2 — Warehouse sort missions on rich shelf/conveyor scenery */
 export function buildWarehouseSortArena(scene, ch = {}) {
-  const g = new THREE.Group();
-  g.name = 'arena';
   const level = ch?.flagshipLevel || 1;
   const dist = Math.max(24, ch?.totalDist || 30);
-  const centerZ = (4 - dist) / 2;
+  const finishZ = 4 - dist;
 
-  scene.background = new THREE.Color(0xe8e8ec);
-  scene.fog = new THREE.Fog(0xe0e0e0, 30, 65);
+  buildWarehouseScenery(scene);
+  scene.userData.customSky = true;
+  scene.userData.customDecor = true;
+  if (!scene.getObjectByName('HorizonSilhouette')) addHorizonSilhouette(scene, 'industrial');
 
-  addFloor(g, 36, dist + 18, 0xe0e0e0, centerZ);
+  const g = new THREE.Group();
+  g.name = 'arena';
 
-  // LED ceiling strips
-  const ledMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 1.2 });
-  for (let z = 4; z > 4 - dist; z -= 12) {
-    const led = new THREE.Mesh(new THREE.BoxGeometry(28, 0.1, 0.5), ledMat);
-    led.position.set(0, 6.5, z);
-    g.add(led);
-  }
-
-  // Color-coded bins
+  // Color-coded sort bins at mission end
   const binColors = [0xef4444, 0x3b82f6, 0x22c55e, 0xfbbf24];
   const binCount = Math.min(4, 2 + level);
   binColors.slice(0, binCount).forEach((col, i) => {
     const bx = -10 + i * 7;
     const bin = new THREE.Mesh(
       new THREE.BoxGeometry(2.5, 2.8, 2.5),
-      new THREE.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: 0.35, roughness: 0.5 })
+      new THREE.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: 0.45, roughness: 0.5 }),
     );
-    bin.position.set(bx, 1.4, 4 - dist + 3);
+    bin.position.set(bx, 1.4, finishZ + 3);
     g.add(bin);
-    const rim = new THREE.Mesh(
-      new THREE.BoxGeometry(2.7, 0.12, 2.7),
-      new THREE.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: 1.0 })
-    );
-    rim.position.set(bx, 2.85, 4 - dist + 3);
-    g.add(rim);
   });
 
-  // Conveyor belts
-  const beltMat = new THREE.MeshStandardMaterial({ color: 0xc0c0c0, metalness: 0.6, roughness: 0.4 });
-  const stripeMat = new THREE.MeshStandardMaterial({ color: 0x3b82f6, emissive: 0x3b82f6, emissiveIntensity: 0.5 });
-  [[-5, 0], [5, -dist * 0.4]].forEach(([bx, bz]) => {
-    const belt = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.2, dist * 0.6), beltMat);
-    belt.position.set(bx, 0.1, bz - dist * 0.2);
-    g.add(belt);
-    for (let z = bz; z > bz - dist * 0.55; z -= 2) {
-      const stripe = new THREE.Mesh(new THREE.BoxGeometry(2, 0.04, 0.5), stripeMat);
-      stripe.position.set(bx, 0.22, z);
-      stripe.name = 'beltstripe';
-      g.add(stripe);
-    }
-  });
+  addConveyor(scene, -5, -8, dist * 0.35);
+  addConveyor(scene, 6, -dist * 0.45, dist * 0.3);
 
-  // Items on belts
-  const itemColors = [0xef4444, 0x3b82f6, 0x22c55e, 0xfbbf24, 0xec4899];
-  const itemCount = Math.min(10, 2 + level * 2);
-  for (let i = 0; i < itemCount; i++) {
-    const col = itemColors[i % itemColors.length];
-    const shape = i % 3 === 0 ? new THREE.BoxGeometry(0.5, 0.5, 0.5)
-      : i % 3 === 1 ? new THREE.CylinderGeometry(0.25, 0.25, 0.5, 10)
-        : new THREE.SphereGeometry(0.28, 8, 8);
-    const item = new THREE.Mesh(shape, new THREE.MeshStandardMaterial({ color: col, roughness: 0.4 }));
-    item.position.set(-5 + (i % 2) * 10, 0.45, -2 - i * 2.5);
-    item.castShadow = true;
-    g.add(item);
-  }
+  // Yellow safety path strip
+  const pathMat = new THREE.MeshStandardMaterial({ color: 0xfbbf24, emissive: 0xfbbf24, emissiveIntensity: 0.35 });
+  const path = new THREE.Mesh(new THREE.PlaneGeometry(3, dist), pathMat);
+  path.rotation.x = -Math.PI / 2;
+  path.position.set(0, 0.03, (4 + finishZ) / 2);
+  g.add(path);
 
-  // Safety rails
-  const railMat = new THREE.MeshStandardMaterial({ color: 0xfbbf24, emissive: 0xfbbf24, emissiveIntensity: 0.4 });
-  [-8, 8].forEach((rx) => {
-    const rail = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.8, dist + 10), railMat);
-    rail.position.set(rx, 0.4, centerZ);
-    g.add(rail);
-  });
-
-  scene.userData.arenaBounds = { camMinZ: 4 - dist - 8, camMaxZ: 10, camMaxX: 18, floorLen: dist + 18 };
+  addFinishGate(g, finishZ);
   scene.add(g);
+
+  scene.userData.finishZone = { x: 0, z: finishZ, radius: 3.2, y3d: 0 };
+  scene.userData.arenaBounds = { camMinZ: finishZ - 14, camMaxZ: 10, camMaxX: 18, floorLen: dist + 20 };
 }
 
 /** COURSE 3 — Dense tropical jungle expedition */
@@ -393,15 +358,15 @@ export function buildSoccerArena(scene, ch = {}) {
   // Grass field
   addFloor(g, 28, fieldLen + 8, 0x00aa00, centerZ);
 
-  // Field markings
-  const lineMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.3 });
-  const centerLine = new THREE.Mesh(new THREE.PlaneGeometry(0.12, fieldLen), lineMat);
+  // Field markings — faint painted line, not a bright beam down the pitch
+  const lineMat = new THREE.MeshStandardMaterial({ color: 0xcfdccf, roughness: 0.95 });
+  const centerLine = new THREE.Mesh(new THREE.PlaneGeometry(0.07, fieldLen), lineMat);
   centerLine.rotation.x = -Math.PI / 2;
-  centerLine.position.set(0, 0.015, centerZ);
+  centerLine.position.set(0, 0.012, centerZ);
   g.add(centerLine);
 
   // Goals
-  const goalMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.5 });
+  const goalMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6 });
   [[6 - fieldLen, -1], [6, 1]].forEach(([gz, side]) => {
     [-3.5, 3.5].forEach((gx) => {
       const post = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 2.2, 8), goalMat);

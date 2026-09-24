@@ -1,0 +1,9 @@
+.bb-game-studio-entry {
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  min-width: 0;
+  overflow: hidden;
+  background: #101321;
+}
+.bb-game-studio-frame { display: block; width: 100%; height: 100%; border: 0; }

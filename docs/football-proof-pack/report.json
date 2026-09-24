@@ -1,0 +1,18 @@
+{
+  "base": "https://bytebuddies.technology",
+  "shots": [
+    "fifa_3v3_wide.png",
+    "fifa_builder_close.png",
+    "penalty_backdrop.png",
+    "match_t15s.png",
+    "match_t30s.png",
+    "match_t45s.png",
+    "match_after_45s.png"
+  ],
+  "build": "2026-08-26-v86-fifa-pipeline",
+  "checks": {
+    "cinemaLayout": true,
+    "penaltyHint": "⚽ROBOT FOOTBALLFIFA 3v3 Match3v3 · Code Defender, Striker & Midfielder · ▶ Simulate🏟️ Football Modes",
+    "goalMoments": 0
+  }
+}

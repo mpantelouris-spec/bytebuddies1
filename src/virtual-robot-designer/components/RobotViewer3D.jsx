@@ -337,11 +337,13 @@ export default function RobotViewer3D({ robotConfig }) {
     camera.lookAt(0, 0.55, 0);
     cameraRef.current = camera;
 
-    // Renderer
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+    // Renderer — preview widget, not the main game canvas.
+    // Antialias disabled; DPR capped at 1.0 since this is a small panel.
+    const renderer = new THREE.WebGLRenderer({ antialias: false, alpha: false, stencil: false });
     renderer.setSize(initW, initH);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.0));
     renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.shadowMap.type = THREE.PCFShadowMap; // faster than PCFSoftShadowMap
     containerRef.current.appendChild(renderer.domElement);
     rendererRef.current = renderer;
 
@@ -354,8 +356,9 @@ export default function RobotViewer3D({ robotConfig }) {
     const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
     dirLight.position.set(4, 6, 3);
     dirLight.castShadow = true;
-    dirLight.shadow.mapSize.width = 2048;
-    dirLight.shadow.mapSize.height = 2048;
+    // 512 is plenty for this small preview widget
+    dirLight.shadow.mapSize.width = 512;
+    dirLight.shadow.mapSize.height = 512;
     dirLight.shadow.camera.left = -10;
     dirLight.shadow.camera.right = 10;
     dirLight.shadow.camera.top = 10;
@@ -367,30 +370,6 @@ export default function RobotViewer3D({ robotConfig }) {
     const accentLight = new THREE.PointLight(0x00d9ff, 0.08);
     accentLight.position.set(-3, 3, 3);
     scene.add(accentLight);
-
-    // PLATFORM
-    const platformGeom = new THREE.CylinderGeometry(1.2, 1.2, 0.08, 32);
-    const platformMat = new THREE.MeshStandardMaterial({
-      color: 0x2a2a3a,
-      metalness: 0.9,
-      roughness: 0.1,
-    });
-    const platform = new THREE.Mesh(platformGeom, platformMat);
-    platform.position.y = -0.04;
-    platform.receiveShadow = true;
-    scene.add(platform);
-
-    // Subtle accent ring around platform edge
-    const ringGeom = new THREE.TorusGeometry(1.2, 0.04, 8, 64);
-    const ringMat = new THREE.MeshBasicMaterial({
-      color: 0x00d9ff,
-      transparent: true,
-      opacity: 0.22,
-    });
-    const ring = new THREE.Mesh(ringGeom, ringMat);
-    ring.position.y = 0.045;
-    ring.rotation.x = Math.PI / 2;
-    scene.add(ring);
 
     // Robot group
     const robotGroup = new THREE.Group();

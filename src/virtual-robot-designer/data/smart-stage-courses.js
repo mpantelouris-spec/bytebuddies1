@@ -6,6 +6,10 @@ export const SMART_STAGE_COURSES = [
   // ═══════════════════════════════════════════════════════════
   // ROVER X1 — ROBOT-EXCLUSIVE COURSES (flat/road/grid only)
   // ═══════════════════════════════════════════════════════════
+  { id: 'sunny_circuit', profileIds: ['wheeled', 'tank'], recommended: true, mission: '🍭 CANDY KINGDOM: Race through cookie villages, chocolate rivers, and donut tunnels — collect stars!' },
+  { id: 'dragon_skyway', profileIds: ['wheeled', 'tank'], recommended: true, mission: '🐉 DRAGON SKYWAY: Fly through a floating fantasy kingdom — dragons, castles, and cloud waterfalls!' },
+  { id: 'street_grand_prix', profileIds: ['wheeled', 'tank'], recommended: true, mission: '🌈 RAINBOW ROAD: Cosmic highway through nebulae, crystals, and planet rings — don\'t fall into space!' },
+  { id: 'volcano_drift', profileIds: ['wheeled', 'tank'], recommended: true, mission: '🌋 VOLCANO DRIFT: Race an erupting crater circuit — dodge lava pools and blast through fire geysers!' },
   { id: 'rover_transit',  profileIds: ['wheeled'],          recommended: true,  mission: '🚇 TRANSIT LINE: Follow the glowing cyan track through the underground cargo tunnel at speed!' },
   { id: 'rover_delivery', profileIds: ['wheeled','inventor'],recommended: true,  mission: '🏙️ CITY DELIVERY: Navigate city blocks, obey traffic lights, and hit every drop zone!' },
   { id: 'rover_survey',   profileIds: ['wheeled'],          recommended: true,  mission: '📡 TERRAIN SURVEY: Drive precisely to every survey marker and hold position for a scan!' },
@@ -224,6 +228,10 @@ export const SMART_STAGE_COURSES = [
 /** Display metadata for every course id. */
 export const COURSE_DISPLAY = {
   // ── ROVER X1 exclusive courses ────────────────────────────────────────────
+  sunny_circuit: { label: 'Candy Kingdom', icon: '🍭', desc: 'Playful candy world — cookies, rivers, donut tunnels', color: '#ff88cc', tier: 1 },
+  dragon_skyway: { label: 'Dragon Skyway', icon: '🐉', desc: 'Floating fantasy kingdom — dragons, castles, clouds', color: '#ff8866', tier: 2 },
+  street_grand_prix: { label: 'Rainbow Road', icon: '🌈', desc: 'Cosmic highway — nebulae, crystals, planet rings', color: '#cc44ff', tier: 4 },
+  volcano_drift: { label: 'Volcano Drift', icon: '🌋', desc: 'Erupting crater circuit — lava pools, obsidian spires', color: '#ff5500', tier: 3 },
   rover_transit:  { label: 'Transit Line',       icon: '🚇', desc: 'Follow the cyan track through the sci-fi tunnel', color: '#00e5ff', tier: 1 },
   rover_delivery: { label: 'City Delivery Grid', icon: '🏙️', desc: 'Navigate streets and hit every drop zone',         color: '#22c55e', tier: 1 },
   rover_survey:   { label: 'Terrain Survey',     icon: '📡', desc: 'Reach every survey marker with precision',         color: '#fbbf24', tier: 2 },

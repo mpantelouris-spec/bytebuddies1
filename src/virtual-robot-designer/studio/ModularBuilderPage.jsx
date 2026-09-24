@@ -11,7 +11,7 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { buildRobotModel } from '../services/studio-robot-builder.js';
+import { buildRobotModel, normalizeRobotBuildConfig } from '../services/studio-robot-builder.js';
 
 // ─── THREE.js primitives ─────────────────────────────────────────────────────
 const _BOX  = new THREE.BoxGeometry(1, 1, 1);
@@ -127,6 +127,7 @@ function buildChassisMeshFromStudio(chassisId, colorOverride, accentOverride, tr
   const map = CHASSIS_BUILD_MAP[chassisId] || { buildKey:'spider', accent:'#00d9ff', primary:'#374151' };
   const primaryColor = colorOverride || map.primary;
   const group = buildRobotModel({
+    chassisId: map.buildKey,
     chassisBuildKey: map.buildKey,
     primaryColor,
     accentColor: accentOverride || map.accent,
@@ -4389,7 +4390,7 @@ function LoadRobotsModal({ isOpen, onClose, onLoad }) {
 }
 
 // ─── Root ─────────────────────────────────────────────────────────────────────
-export default function ModularBuilderPage() {
+export default function ModularBuilderPage({ onSimulate, onApplyRobot }) {
   const [robotTypeId, setRobotTypeId] = useState('spider');
   const [variantId,   setVariantId  ] = useState('standard');
   const [sizeId,      setSizeId     ] = useState('medium');
@@ -4532,6 +4533,27 @@ export default function ModularBuilderPage() {
 
   const handleSave = useCallback(() => addToast('Robot saved! 🎉','ok'), [addToast]);
 
+  const openInLiveLab = useCallback(() => {
+    if (!onSimulate) {
+      setCodeEditorOpen(true);
+      return;
+    }
+    const buildKey = CHASSIS_BUILD_MAP[chassisId]?.buildKey || chassisId;
+    const cfg = normalizeRobotBuildConfig({
+      name: robotName || 'My Robot',
+      chassisId,
+      chassisBuildKey: buildKey,
+      primaryColor: chassisColor || '#FF8C00',
+      accentColor: accentColor || '#FFD700',
+      trimColor: trimColor || '#FFD700',
+      movementId: ROBOT_TYPE_TO_MOVEID[robotTypeId] || 'wheels',
+      sensors: ['camera'],
+      powerId: 'battery',
+    });
+    onApplyRobot?.(cfg);
+    onSimulate();
+  }, [onSimulate, onApplyRobot, robotName, chassisId, robotTypeId, chassisColor, accentColor, trimColor]);
+
   // ── Wizard steps (0–3) — wrapped in bounded height so NEXT button stays visible ──
   if (wizardStep < 4) {
     let wizardChild;
@@ -4629,8 +4651,8 @@ export default function ModularBuilderPage() {
         <div style={{ height:60, display:'flex' }}>
           <ActionButton emoji="➕" label="ADD PART" color="#a855f7"
             onClick={()=>setPartsModalOpen(true)} />
-          <ActionButton emoji="🎮" label="CODE" color="#f59e0b"
-            onClick={()=>setCodeEditorOpen(true)} />
+          <ActionButton emoji="🎮" label="LIVE LAB" color="#f59e0b"
+            onClick={openInLiveLab} />
           <ActionButton emoji="▶️" label="TEST" color="#0891b2"
             onClick={()=>setTestModeOpen(true)} />
         </div>

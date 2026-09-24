@@ -24,7 +24,8 @@ export function MissionStudioPanel({
   onEndMission,
   blockCount = 0,
 }) {
-  const [expanded, setExpanded] = useState(true);
+  const isRacing = mission?.genre === 'racing';
+  const [expanded, setExpanded] = useState(() => !isRacing);
   const [showRemix, setShowRemix] = useState(false);
 
   const genre = mission ? GAME_GENRES[mission.genre] : null;

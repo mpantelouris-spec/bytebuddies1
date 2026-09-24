@@ -345,10 +345,6 @@ function PartPreviewCanvas({ partType, config }) {
   const groupRef = useRef(null);
   const rafRef   = useRef(null);
   const roRef    = useRef(null);
-  // Holographic extras
-  const platRingRef  = useRef(null);
-  const innerRingRef = useRef(null);
-  const holoRingRef  = useRef(null);
   // Orbit state
   const orbitRef = useRef({ theta: 0.4, phi: 0.52, radius: 3.6, isDragging: false, lastX: 0, lastY: 0, autoSpin: true });
 
@@ -425,51 +421,6 @@ function PartPreviewCanvas({ partType, config }) {
       scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([
         new THREE.Vector3(i * GStep, -0.13, -GS * GStep), new THREE.Vector3(i * GStep, -0.13, GS * GStep)]), m));
     }
-
-    // ── Platform & rings ─────────────────────────────────────────────────
-    const platMat = new THREE.MeshStandardMaterial({ color: 0xdde3f4, metalness: 0.25, roughness: 0.35 });
-    const plat = new THREE.Mesh(new THREE.CylinderGeometry(1.25, 1.25, 0.06, 64), platMat);
-    plat.position.y = -0.08;
-    plat.receiveShadow = true;
-    scene.add(plat);
-
-    // Outer purple ring (animated pulse)
-    const platRingMat = new THREE.MeshStandardMaterial({
-      color: 0x7c3aed, emissive: new THREE.Color(0x7c3aed), emissiveIntensity: 0.9,
-    });
-    const platRing = new THREE.Mesh(new THREE.TorusGeometry(1.26, 0.038, 8, 72), platRingMat);
-    platRing.position.y = -0.05;
-    platRing.rotation.x = Math.PI / 2;
-    scene.add(platRing);
-    platRingRef.current = platRing;
-
-    // Inner accent ring
-    const innerRingMat = new THREE.MeshStandardMaterial({
-      color: 0x4f46e5, emissive: new THREE.Color(0x4f46e5), emissiveIntensity: 0.55,
-    });
-    const innerRing = new THREE.Mesh(new THREE.TorusGeometry(0.88, 0.022, 8, 56), innerRingMat);
-    innerRing.position.y = -0.05;
-    innerRing.rotation.x = Math.PI / 2;
-    scene.add(innerRing);
-    innerRingRef.current = innerRing;
-
-    // Floating soft ring
-    const holoMat = new THREE.MeshStandardMaterial({
-      color: 0x7c3aed, emissive: new THREE.Color(0x7c3aed), emissiveIntensity: 0.3,
-      transparent: true, opacity: 0.12, side: THREE.DoubleSide, depthWrite: false,
-    });
-    const holoRing = new THREE.Mesh(new THREE.TorusGeometry(1.8, 0.04, 6, 40), holoMat);
-    holoRing.rotation.x = Math.PI * 0.3;
-    holoRing.position.y = 0.7;
-    scene.add(holoRing);
-    holoRingRef.current = holoRing;
-
-    // Crosshair guide
-    const crossMat = new THREE.LineBasicMaterial({ color: 0x8888cc, transparent: true, opacity: 0.3 });
-    scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([
-      new THREE.Vector3(-1.2, -0.12, 0), new THREE.Vector3(1.2, -0.12, 0)]), crossMat));
-    scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([
-      new THREE.Vector3(0, -0.12, -1.2), new THREE.Vector3(0, -0.12, 1.2)]), crossMat));
 
     // ── Orbit / mouse controls ─────────────────────────────────────────────
     const onMouseDown = (e) => {
@@ -560,16 +511,6 @@ function PartPreviewCanvas({ partType, config }) {
       // Part levitation
       if (groupRef.current) {
         groupRef.current.position.y = Math.sin(t * 1.2) * 0.05 + 0.1;
-      }
-
-      // Platform ring pulse
-      if (platRingRef.current)  platRingRef.current.material.emissiveIntensity  = 1.0 + Math.sin(t * 2.4) * 0.35;
-      if (innerRingRef.current) innerRingRef.current.material.emissiveIntensity = 0.5 + Math.sin(t * 3.8 + 1) * 0.28;
-
-      // Holographic ring orbit
-      if (holoRingRef.current) {
-        holoRingRef.current.rotation.y += 0.008;
-        holoRingRef.current.material.opacity = 0.1 + Math.sin(t * 1.6) * 0.05;
       }
 
       renderer.render(scene, camera);

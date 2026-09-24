@@ -11,7 +11,6 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/open-dyslexic@1.0.3/open-dyslexic-regular.min.css">
-    <script type="module" src="/src/main.jsx"></script>
   </head>
   <body>
     <div id="root">
@@ -20,12 +19,14 @@
         <div style="font-size:18px;font-weight:700;color:#e2e8f0">Loading ByteBuddies…</div>
         <div id="bb-boot-status" style="font-size:13px;color:#64748b">Starting…</div>
         <a href="/tracks.html" style="font-size:13px;color:#a5b4fc;margin-top:4px">🏎️ CodeRacer tracks</a>
-        <div id="bb-boot-stamp" style="font-size:11px;color:#475569;margin-top:8px">build 2026-08-17-v54-mega-scenery</div>
+        <div id="bb-boot-stamp" style="font-size:11px;color:#475569;margin-top:8px">build 2026-09-17-distinct-arenas-v1</div>
       </div>
     </div>
+    <script type="module" src="/src/main.jsx"></script>
     <script>
     (function () {
-      var BUILD = '2026-08-17-v54-mega-scenery';
+      var BUILD = '2026-09-20-kart-arch-in-view';
+      window.__BYTEBUDDIES_BUILD = BUILD;
       window.__BYTEBUDDIES_BUILD = BUILD;
       var stamp = document.getElementById('bb-boot-stamp');
       if (stamp) stamp.textContent = 'build ' + BUILD;
@@ -54,34 +55,51 @@
           + '</div>';
       }
 
-      function ensureEntry() {
-        document.querySelectorAll('script[type=module]').forEach(function (s) {
-          var src = s.getAttribute('src') || '';
-          if (src.indexOf('/src/main') !== -1 || src.indexOf('main.jsx') !== -1) s.remove();
-        });
-        if (document.querySelector('script[type=module][src*="assets/index-"]')) {
-          setStatus('Starting…');
-          preloadStudioIfNeeded();
-          return;
-        }
-        setStatus('Starting…');
-        fetch('./bb-entry.json?_=' + Date.now(), { cache: 'no-store' })
+      function loadEntryFromManifest() {
+        setStatus('Loading app…');
+        return fetch('./bb-entry.json?_=' + Date.now(), { cache: 'no-store' })
           .then(function (r) {
             if (!r.ok) throw new Error('manifest HTTP ' + r.status);
             return r.json();
           })
           .then(function (j) {
-            preloadStudioChunks(j.studioChunks);
-            setStatus('Starting…');
+            if (window.__BB_BOOTED) return;
+            var existing = document.querySelector('script[type=module][src="' + j.entry + '"]');
+            if (existing) return;
             var s = document.createElement('script');
             s.type = 'module';
             s.crossOrigin = 'anonymous';
             s.src = j.entry;
+            s.onerror = function () {
+              showBootFail('App bundle failed to load. Hard refresh (Cmd+Shift+R) or open /go.html', false);
+            };
             document.head.appendChild(s);
-          })
-          .catch(function (err) {
-            showBootFail('App entry failed: ' + (err.message || err), false);
           });
+      }
+
+      function ensureEntry() {
+        document.querySelectorAll('script[type=module]').forEach(function (s) {
+          var src = s.getAttribute('src') || '';
+          if (src.indexOf('/src/main') !== -1 || src.indexOf('main.jsx') !== -1) s.remove();
+        });
+
+        if (window.__BB_BOOTED) return;
+
+        var headEntry = document.querySelector('script[type=module][src*="assets/index-"]');
+        if (headEntry) {
+          setStatus('Starting…');
+          headEntry.addEventListener('error', function () {
+            loadEntryFromManifest().catch(function (err) {
+              showBootFail('App entry failed: ' + (err.message || err), false);
+            });
+          });
+          preloadStudioIfNeeded();
+          return;
+        }
+
+        loadEntryFromManifest().catch(function (err) {
+          showBootFail('App entry failed: ' + (err.message || err), false);
+        });
       }
 
       function preloadStudioChunks(chunks) {
@@ -96,12 +114,23 @@
         });
       }
 
-      function preloadStudioIfNeeded() {
+      function preloadStudioWhenReady() {
         if (!/studio|academy/.test(location.hash || '')) return;
-        fetch('./bb-entry.json?_=' + Date.now(), { cache: 'no-store' })
-          .then(function (r) { return r.ok ? r.json() : null; })
-          .then(function (j) { if (j) preloadStudioChunks(j.studioChunks); })
-          .catch(function () {});
+        function go() {
+          fetch('./bb-entry.json?_=' + Date.now(), { cache: 'no-store' })
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (j) { if (j) preloadStudioChunks(j.studioChunks); })
+            .catch(function () {});
+        }
+        if (window.__BB_BOOTED) {
+          setTimeout(go, 400);
+        } else {
+          window.addEventListener('bb-app-ready', function () { setTimeout(go, 400); }, { once: true });
+        }
+      }
+
+      function preloadStudioIfNeeded() {
+        preloadStudioWhenReady();
       }
 
       if ('serviceWorker' in navigator) {
@@ -142,14 +171,12 @@
         ensureEntry();
       }
 
-      preloadStudioIfNeeded();
-
       setTimeout(function () {
-        if (!window.__BB_BOOTED) setStatus('Still starting… (first visit on slow Wi‑Fi can take a minute)');
+        if (!window.__BB_BOOTED) setStatus('Still starting… try /go.html if stuck');
       }, 12000);
       setTimeout(function () {
-        if (!window.__BB_BOOTED) showBootFail('Taking too long — try /go.html once, then visits should be instant.', false);
-      }, 90000);
+        if (!window.__BB_BOOTED) showBootFail('Taking too long — open /go.html to clear cache and reload.', false);
+      }, 60000);
     })();
     </script>
   </body>

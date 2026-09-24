@@ -82,7 +82,7 @@ export const FLAGSHIP_PROGRAMS = [
     theme: 'Racing Circuit Championship',
     blurb: 'Maximize speed on a professional neon racing circuit',
     skills: ['Motor control', 'Smooth turning', 'Lap optimization'],
-    rec: ['rover', 'hover', 'race', 'racedrone'],
+    rec: ['rover', 'hover', 'race', 'racedrone', 'drone'],
     levels: [
       { level: 1, name: 'Speed Basics', desc: 'Build a speed system — SET SPEED + brake before the first turn', totalDist: 50, obstacles: 0, timeLimit: 40, estMinutes: 2 },
       { level: 2, name: 'Smooth Turns', desc: 'Figure-8 circuit with gentle banking', totalDist: 42, obstacles: 4, timeLimit: 50, estMinutes: 3 },
@@ -219,6 +219,12 @@ export function expandFlagshipCourses() {
         programName: prog.name,
         theme: prog.theme,
         skills: prog.skills,
+        systemsBuilt: (prog.skills || []).map((s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '')),
+        tagline: lv.desc,
+        winCondition: lv.desc,
+        zones: 5,
+        zoneCount: 5,
+        genre: 'simulation',
       });
     });
   });

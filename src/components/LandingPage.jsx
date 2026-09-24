@@ -5,6 +5,121 @@ const card = { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255
 const sectionLabel = { fontSize: 12, fontWeight: 700, letterSpacing: 3, color: '#6366f1', textTransform: 'uppercase', marginBottom: 14 };
 const gradText = { background: 'linear-gradient(90deg, #818cf8, #c084fc)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' };
 
+const RESPONSIVE_CSS = `
+  .lp-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 48px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    position: sticky;
+    top: 0;
+    background: rgba(8,8,18,0.92);
+    backdrop-filter: blur(16px);
+    z-index: 100;
+    gap: 16px;
+  }
+  .lp-nav-links {
+    display: flex;
+    gap: 32px;
+    font-size: 14px;
+    color: #64748b;
+  }
+  .lp-nav-links a {
+    color: #64748b;
+    text-decoration: none;
+    transition: color 0.2s;
+    white-space: nowrap;
+  }
+  .lp-nav-links a:hover { color: #a5b4fc; }
+  .lp-nav-actions {
+    display: flex;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+  .lp-hamburger {
+    display: none;
+    background: none;
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 8px;
+    color: #94a3b8;
+    cursor: pointer;
+    padding: 8px 12px;
+    font-size: 18px;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+  .lp-mobile-menu {
+    display: none;
+    flex-direction: column;
+    gap: 0;
+    background: rgba(8,8,18,0.98);
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    padding: 8px 0;
+  }
+  .lp-mobile-menu.open { display: flex; }
+  .lp-mobile-menu a {
+    display: block;
+    padding: 14px 24px;
+    color: #94a3b8;
+    text-decoration: none;
+    font-size: 15px;
+    font-weight: 500;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  .lp-mobile-menu a:hover { color: #a5b4fc; background: rgba(99,102,241,0.06); }
+  .lp-mobile-menu-actions {
+    display: flex;
+    gap: 10px;
+    padding: 14px 24px 18px;
+  }
+  .lp-footer {
+    border-top: 1px solid rgba(255,255,255,0.05);
+    padding: 32px 48px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  .lp-section-pad { padding: 90px 24px; }
+  .lp-trust-bar {
+    gap: 48px;
+    padding: 20px 24px;
+  }
+  .lp-two-col {
+    display: flex;
+    gap: 60px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  @media (max-width: 900px) {
+    .lp-nav { padding: 14px 24px; }
+    .lp-nav-links { gap: 20px; font-size: 13px; }
+    .lp-section-pad { padding: 64px 20px; }
+    .lp-trust-bar { gap: 28px; }
+    .lp-two-col { gap: 36px; }
+    .lp-footer { padding: 28px 24px; }
+  }
+
+  @media (max-width: 640px) {
+    .lp-nav { padding: 12px 16px; }
+    .lp-nav-links { display: none; }
+    .lp-nav-actions { display: none; }
+    .lp-hamburger { display: flex; align-items: center; justify-content: center; }
+    .lp-section-pad { padding: 48px 16px; }
+    .lp-trust-bar { gap: 20px; padding: 16px; }
+    .lp-two-col { gap: 28px; }
+    .lp-footer { padding: 24px 16px; flex-direction: column; text-align: center; }
+  }
+
+  @media (max-width: 420px) {
+    .lp-section-pad { padding: 36px 14px; }
+    .lp-trust-bar { padding: 14px; }
+  }
+`;
+
 export default function LandingPage({ onLogin, onSignup }) {
   const [xp, setXp] = useState(340);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -32,30 +147,48 @@ export default function LandingPage({ onLogin, onSignup }) {
     return () => clearInterval(t);
   }, []);
 
+  const navLinks = [['How It Works', 'how-it-works'], ['Results', 'outcomes'], ['For Schools', 'book-demo'], ['Pricing', 'pricing']];
+
   return (
     <div style={{ minHeight: '100vh', background: 'linear-gradient(160deg, #080812 0%, #0f0f23 40%, #0a1628 100%)', display: 'flex', flexDirection: 'column', fontFamily: 'Inter, sans-serif', color: '#fff' }}>
+      <style>{RESPONSIVE_CSS}</style>
 
       {/* NAV */}
-      <nav style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 48px', borderBottom: '1px solid rgba(255,255,255,0.06)', position: 'sticky', top: 0, background: 'rgba(8,8,18,0.9)', backdropFilter: 'blur(16px)', zIndex: 100 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      <nav className="lp-nav">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
           <div style={{ width: 36, height: 36, background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: 16 }}>B</div>
           <span style={{ fontWeight: 900, fontSize: 20, ...gradText }}>ByteBuddies</span>
         </div>
-        <div style={{ display: 'flex', gap: 32, fontSize: 14, color: '#64748b' }}>
-          {[['How It Works', 'how-it-works'], ['Results', 'outcomes'], ['For Schools', 'book-demo'], ['Pricing', 'pricing']].map(([l, id]) => (
-            <a key={l} href={`#${id}`} style={{ color: '#64748b', textDecoration: 'none', transition: 'color 0.2s' }}
-              onMouseEnter={e => e.target.style.color = '#a5b4fc'}
-              onMouseLeave={e => e.target.style.color = '#64748b'}>{l}</a>
+
+        <div className="lp-nav-links">
+          {navLinks.map(([l, id]) => (
+            <a key={l} href={`#${id}`}>{l}</a>
           ))}
         </div>
-        <div style={{ display: 'flex', gap: 12 }}>
+
+        <div className="lp-nav-actions">
           <button onClick={onLogin} style={{ padding: '9px 20px', background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, color: '#94a3b8', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>Log In</button>
           <button onClick={onSignup} style={{ padding: '9px 22px', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', border: 'none', borderRadius: 8, color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 700, boxShadow: '0 0 20px rgba(99,102,241,0.4)' }}>Start Free</button>
         </div>
+
+        <button className="lp-hamburger" onClick={() => setMobileMenuOpen(o => !o)} aria-label="Menu">
+          {mobileMenuOpen ? '✕' : '☰'}
+        </button>
       </nav>
 
+      {/* MOBILE MENU */}
+      <div className={`lp-mobile-menu${mobileMenuOpen ? ' open' : ''}`}>
+        {navLinks.map(([l, id]) => (
+          <a key={l} href={`#${id}`} onClick={() => setMobileMenuOpen(false)}>{l}</a>
+        ))}
+        <div className="lp-mobile-menu-actions">
+          <button onClick={() => { setMobileMenuOpen(false); onLogin(); }} style={{ flex: 1, padding: '11px', background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, color: '#94a3b8', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>Log In</button>
+          <button onClick={() => { setMobileMenuOpen(false); onSignup(); }} style={{ flex: 1, padding: '11px', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', border: 'none', borderRadius: 8, color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 700 }}>Start Free</button>
+        </div>
+      </div>
+
       {/* ── 1. HERO ── */}
-      <section style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '110px 24px 90px', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
+      <section className="lp-section-pad" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
         <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: 800, height: 500, background: 'radial-gradient(ellipse, rgba(99,102,241,0.18) 0%, transparent 70%)', pointerEvents: 'none' }} />
 
         <div style={{ ...pill, marginBottom: 28, fontSize: 13 }}>
@@ -63,28 +196,28 @@ export default function LandingPage({ onLogin, onSignup }) {
           Now accepting students — limited cohort spots remaining
         </div>
 
-        <h1 style={{ fontSize: 'clamp(40px, 7vw, 76px)', fontWeight: 900, lineHeight: 1.08, marginBottom: 28, maxWidth: 860, letterSpacing: '-1.5px' }}>
+        <h1 style={{ fontSize: 'clamp(32px, 7vw, 76px)', fontWeight: 900, lineHeight: 1.08, marginBottom: 24, maxWidth: 860, letterSpacing: '-1.5px' }}>
           Your child spends 7 hours a day on screens.<br />
           <span style={gradText}>Make every minute count.</span>
         </h1>
 
-        <p style={{ fontSize: 19, color: '#94a3b8', maxWidth: 580, lineHeight: 1.75, marginBottom: 12 }}>
+        <p style={{ fontSize: 'clamp(15px, 2.5vw, 19px)', color: '#94a3b8', maxWidth: 580, lineHeight: 1.75, marginBottom: 12 }}>
           ByteBuddies turns screen time into building time. Kids aged 7–16 go from passive scrollers to confident creators — building real games, apps, and AI projects in weeks, not years.
         </p>
-        <p style={{ fontSize: 14, color: '#6366f1', fontWeight: 600, marginBottom: 36, letterSpacing: 0.3 }}>
+        <p style={{ fontSize: 14, color: '#6366f1', fontWeight: 600, marginBottom: 32, letterSpacing: 0.3 }}>
           Trusted by 12,000+ families and 400+ schools worldwide
         </p>
 
-        <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', justifyContent: 'center', marginBottom: 24 }}>
-          <button onClick={onSignup} style={{ padding: '18px 44px', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', border: 'none', borderRadius: 14, color: '#fff', cursor: 'pointer', fontSize: 18, fontWeight: 800, boxShadow: '0 8px 40px rgba(99,102,241,0.55)', letterSpacing: '-0.3px' }}>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center', marginBottom: 20 }}>
+          <button onClick={onSignup} style={{ padding: 'clamp(14px,3vw,18px) clamp(24px,5vw,44px)', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', border: 'none', borderRadius: 14, color: '#fff', cursor: 'pointer', fontSize: 'clamp(15px,2.5vw,18px)', fontWeight: 800, boxShadow: '0 8px 40px rgba(99,102,241,0.55)', letterSpacing: '-0.3px' }}>
             Claim Your Free First Lesson
           </button>
-          <button onClick={() => document.getElementById('outcomes').scrollIntoView({ behavior: 'smooth' })} style={{ padding: '18px 32px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 14, color: '#cbd5e1', cursor: 'pointer', fontSize: 16, fontWeight: 600 }}>
+          <button onClick={() => document.getElementById('outcomes')?.scrollIntoView({ behavior: 'smooth' })} style={{ padding: 'clamp(14px,3vw,18px) clamp(18px,3vw,32px)', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 14, color: '#cbd5e1', cursor: 'pointer', fontSize: 'clamp(14px,2vw,16px)', fontWeight: 600 }}>
             See What Kids Build →
           </button>
         </div>
 
-        <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap', justifyContent: 'center' }}>
+        <div style={{ display: 'flex', gap: 'clamp(12px,3vw,28px)', flexWrap: 'wrap', justifyContent: 'center' }}>
           {['No credit card required', '30-day money-back guarantee', 'Cancel any time'].map(t => (
             <div key={t} style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 13, color: '#475569' }}>
               <span style={{ color: '#22c55e', fontSize: 15 }}>✓</span>{t}
@@ -94,11 +227,11 @@ export default function LandingPage({ onLogin, onSignup }) {
       </section>
 
       {/* TRUST BAR */}
-      <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', borderBottom: '1px solid rgba(255,255,255,0.05)', background: 'rgba(255,255,255,0.02)', padding: '20px 24px' }}>
-        <div style={{ maxWidth: 900, margin: '0 auto', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 48, flexWrap: 'wrap' }}>
+      <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', borderBottom: '1px solid rgba(255,255,255,0.05)', background: 'rgba(255,255,255,0.02)', padding: '20px 16px' }}>
+        <div className="lp-trust-bar" style={{ maxWidth: 900, margin: '0 auto', display: 'flex', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
           {[['12,000+', 'Students'], ['50,000+', 'Projects Built'], ['400+', 'Schools'], ['98%', 'Parent Satisfaction'], ['7–16', 'Age Range']].map(([n, l]) => (
-            <div key={l} style={{ textAlign: 'center' }}>
-              <div style={{ fontWeight: 900, fontSize: 22, ...gradText }}>{n}</div>
+            <div key={l} style={{ textAlign: 'center', padding: '4px 8px' }}>
+              <div style={{ fontWeight: 900, fontSize: 'clamp(18px,3vw,22px)', ...gradText }}>{n}</div>
               <div style={{ fontSize: 12, color: '#475569', letterSpacing: 0.5 }}>{l}</div>
             </div>
           ))}
@@ -106,12 +239,12 @@ export default function LandingPage({ onLogin, onSignup }) {
       </div>
 
       {/* ── 2. PROBLEM ── */}
-      <section style={{ padding: '90px 24px', textAlign: 'center', maxWidth: 860, margin: '0 auto' }}>
+      <section className="lp-section-pad" style={{ textAlign: 'center', maxWidth: 860, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
         <div style={sectionLabel}>The Problem</div>
-        <h2 style={{ fontSize: 'clamp(28px, 4vw, 46px)', fontWeight: 900, marginBottom: 20, lineHeight: 1.15, letterSpacing: '-0.5px' }}>
+        <h2 style={{ fontSize: 'clamp(22px, 4vw, 46px)', fontWeight: 900, marginBottom: 20, lineHeight: 1.15, letterSpacing: '-0.5px' }}>
           Your child's generation will either build the future — or be replaced by it.
         </h2>
-        <p style={{ fontSize: 17, color: '#64748b', lineHeight: 1.8, marginBottom: 60, maxWidth: 640, margin: '0 auto 60px' }}>
+        <p style={{ fontSize: 'clamp(14px,2vw,17px)', color: '#64748b', lineHeight: 1.8, marginBottom: 40, maxWidth: 640, margin: '0 auto 40px' }}>
           The gap between kids who code and kids who don't is widening every year. Right now, most kids are on the wrong side of it.
         </p>
 
@@ -131,17 +264,17 @@ export default function LandingPage({ onLogin, onSignup }) {
       </section>
 
       {/* ── 3. SOLUTION ── */}
-      <section style={{ background: 'linear-gradient(160deg, #0c0c28 0%, #111132 100%)', borderTop: '1px solid rgba(99,102,241,0.12)', borderBottom: '1px solid rgba(99,102,241,0.12)', padding: '90px 24px', textAlign: 'center' }}>
+      <section className="lp-section-pad" style={{ background: 'linear-gradient(160deg, #0c0c28 0%, #111132 100%)', borderTop: '1px solid rgba(99,102,241,0.12)', borderBottom: '1px solid rgba(99,102,241,0.12)', textAlign: 'center' }}>
         <div style={{ maxWidth: 900, margin: '0 auto' }}>
           <div style={sectionLabel}>The ByteBuddies Difference</div>
-          <h2 style={{ fontSize: 'clamp(28px, 4vw, 48px)', fontWeight: 900, marginBottom: 16, letterSpacing: '-0.5px' }}>
+          <h2 style={{ fontSize: 'clamp(22px, 4vw, 48px)', fontWeight: 900, marginBottom: 16, letterSpacing: '-0.5px' }}>
             This is not another coding app.<br /><span style={gradText}>This is a launchpad.</span>
           </h2>
-          <p style={{ fontSize: 17, color: '#64748b', lineHeight: 1.8, marginBottom: 60, maxWidth: 600, margin: '0 auto 60px' }}>
+          <p style={{ fontSize: 'clamp(14px,2vw,17px)', color: '#64748b', lineHeight: 1.8, marginBottom: 48, maxWidth: 600, margin: '0 auto 48px' }}>
             Kids don't learn to code by watching videos or completing checkbox exercises. They learn by building things they actually care about — and sharing them with people they know.
           </p>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 20 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 20 }}>
             {[
               { icon: '🎮', color: '#6366f1', title: 'Real projects from day one', body: 'Every child builds a working game in their first session. Not a tutorial. Not a demo. Something they made, that they can share.' },
               { icon: '💻', color: '#8b5cf6', title: 'Real code, not just blocks', body: 'We start with visual blocks and progressively introduce Python and JavaScript. By month three, your child writes real code.' },
@@ -159,50 +292,23 @@ export default function LandingPage({ onLogin, onSignup }) {
       </section>
 
       {/* ── 4. OUTCOMES ── */}
-      <section id="outcomes" style={{ padding: '90px 24px', textAlign: 'center' }}>
+      <section id="outcomes" className="lp-section-pad" style={{ textAlign: 'center' }}>
         <div style={{ maxWidth: 900, margin: '0 auto' }}>
           <div style={sectionLabel}>Transformation Timeline</div>
-          <h2 style={{ fontSize: 'clamp(28px, 4vw, 48px)', fontWeight: 900, marginBottom: 16, letterSpacing: '-0.5px' }}>
+          <h2 style={{ fontSize: 'clamp(22px, 4vw, 48px)', fontWeight: 900, marginBottom: 16, letterSpacing: '-0.5px' }}>
             What will your child be able to do?
           </h2>
-          <p style={{ fontSize: 16, color: '#64748b', marginBottom: 60, lineHeight: 1.7 }}>
+          <p style={{ fontSize: 'clamp(13px,2vw,16px)', color: '#64748b', marginBottom: 48, lineHeight: 1.7 }}>
             Not features. Not lessons completed. Actual skills your child will have.
           </p>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 24 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 24 }}>
             {[
-              {
-                period: '7 Days', color: '#6366f1', glow: 'rgba(99,102,241,0.2)',
-                headline: 'First game, first win.',
-                outcomes: [
-                  'Build and share their first playable game',
-                  'Understand what code actually does',
-                  'Feel the confidence shift: "I made this"',
-                  'Parents notice the change in energy',
-                ],
-              },
-              {
-                period: '30 Days', color: '#ec4899', glow: 'rgba(236,72,153,0.2)',
-                headline: 'Real skills, visible progress.',
-                outcomes: [
-                  'Build interactive apps with real logic',
-                  'Write their first lines of Python',
-                  'Share a project portfolio with family',
-                  'Understand variables, loops, and conditions',
-                ],
-              },
-              {
-                period: '90 Days', color: '#10b981', glow: 'rgba(16,185,129,0.2)',
-                headline: 'They are now a creator.',
-                outcomes: [
-                  'Publish a portfolio of games and apps',
-                  'Compete in coding challenges and win badges',
-                  'Explore AI, cybersecurity, and game design',
-                  'Ahead of 95% of their classmates',
-                ],
-              },
+              { period: '7 Days', color: '#6366f1', glow: 'rgba(99,102,241,0.2)', headline: 'First game, first win.', outcomes: ['Build and share their first playable game', 'Understand what code actually does', 'Feel the confidence shift: "I made this"', 'Parents notice the change in energy'] },
+              { period: '30 Days', color: '#ec4899', glow: 'rgba(236,72,153,0.2)', headline: 'Real skills, visible progress.', outcomes: ['Build interactive apps with real logic', 'Write their first lines of Python', 'Share a project portfolio with family', 'Understand variables, loops, and conditions'] },
+              { period: '90 Days', color: '#10b981', glow: 'rgba(16,185,129,0.2)', headline: 'They are now a creator.', outcomes: ['Publish a portfolio of games and apps', 'Compete in coding challenges and win badges', 'Explore AI, cybersecurity, and game design', 'Ahead of 95% of their classmates'] },
             ].map(t => (
-              <div key={t.period} style={{ background: `radial-gradient(ellipse at top, ${t.glow}, transparent 70%), rgba(255,255,255,0.03)`, border: `1px solid ${t.color}30`, borderRadius: 20, padding: '36px 28px', textAlign: 'left', position: 'relative' }}>
+              <div key={t.period} style={{ background: `radial-gradient(ellipse at top, ${t.glow}, transparent 70%), rgba(255,255,255,0.03)`, border: `1px solid ${t.color}30`, borderRadius: 20, padding: '32px 24px', textAlign: 'left', position: 'relative' }}>
                 <div style={{ display: 'inline-block', background: t.color, color: '#fff', borderRadius: 8, padding: '4px 14px', fontSize: 12, fontWeight: 800, letterSpacing: 1, marginBottom: 16, textTransform: 'uppercase' }}>{t.period}</div>
                 <div style={{ fontWeight: 800, fontSize: 18, marginBottom: 20, color: '#f1f5f9', lineHeight: 1.3 }}>{t.headline}</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -218,12 +324,12 @@ export default function LandingPage({ onLogin, onSignup }) {
         </div>
       </section>
 
-      {/* ── 9. DASHBOARD / GAMIFICATION ── */}
-      <section style={{ background: 'linear-gradient(160deg, #0a0a22 0%, #0f1a32 100%)', borderTop: '1px solid rgba(255,255,255,0.05)', padding: '90px 24px' }}>
-        <div style={{ maxWidth: 960, margin: '0 auto', display: 'flex', gap: 60, alignItems: 'center', flexWrap: 'wrap' }}>
-          <div style={{ flex: 1, minWidth: 280 }}>
+      {/* ── DASHBOARD / GAMIFICATION ── */}
+      <section className="lp-section-pad" style={{ background: 'linear-gradient(160deg, #0a0a22 0%, #0f1a32 100%)', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+        <div className="lp-two-col" style={{ maxWidth: 960, margin: '0 auto' }}>
+          <div style={{ flex: 1, minWidth: 260 }}>
             <div style={sectionLabel}>Inside the Platform</div>
-            <h2 style={{ fontSize: 'clamp(26px, 4vw, 44px)', fontWeight: 900, marginBottom: 18, letterSpacing: '-0.5px', lineHeight: 1.15 }}>
+            <h2 style={{ fontSize: 'clamp(22px, 4vw, 44px)', fontWeight: 900, marginBottom: 18, letterSpacing: '-0.5px', lineHeight: 1.15 }}>
               Built to keep kids coming back — for the right reasons.
             </h2>
             <p style={{ fontSize: 15, color: '#64748b', lineHeight: 1.8, marginBottom: 32 }}>
@@ -248,7 +354,7 @@ export default function LandingPage({ onLogin, onSignup }) {
           </div>
 
           {/* Dashboard Preview Card */}
-          <div style={{ flex: 1, minWidth: 300, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 20, overflow: 'hidden', boxShadow: '0 32px 80px rgba(0,0,0,0.5)' }}>
+          <div style={{ flex: 1, minWidth: 280, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 20, overflow: 'hidden', boxShadow: '0 32px 80px rgba(0,0,0,0.5)' }}>
             <div style={{ background: 'rgba(99,102,241,0.12)', borderBottom: '1px solid rgba(99,102,241,0.15)', padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 14 }}>A</div>
               <div>
@@ -310,16 +416,16 @@ export default function LandingPage({ onLogin, onSignup }) {
       </section>
 
       {/* ── 5. SOCIAL PROOF ── */}
-      <section style={{ padding: '90px 24px' }}>
+      <section className="lp-section-pad">
         <div style={{ maxWidth: 960, margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: 60 }}>
+          <div style={{ textAlign: 'center', marginBottom: 48 }}>
             <div style={sectionLabel}>Real Families, Real Results</div>
-            <h2 style={{ fontSize: 'clamp(26px, 4vw, 44px)', fontWeight: 900, letterSpacing: '-0.5px' }}>
+            <h2 style={{ fontSize: 'clamp(22px, 4vw, 44px)', fontWeight: 900, letterSpacing: '-0.5px' }}>
               Don't take our word for it.
             </h2>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20, marginBottom: 48 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 20, marginBottom: 48 }}>
             {[
               { quote: "My son was glued to his iPad doing absolutely nothing. Within two weeks of ByteBuddies, he built a game that his whole class plays. I cried a little, honestly.", name: 'Sarah T.', role: 'Parent of Jake, 10', avatar: 'ST', color: '#6366f1' },
               { quote: "I made my own game in a week! It's called Space Crusher and 40 people have played it. I want to be a game developer now.", name: 'Maya', role: 'Student, Age 11', avatar: 'M', color: '#ec4899' },
@@ -345,7 +451,7 @@ export default function LandingPage({ onLogin, onSignup }) {
           {/* Example Projects */}
           <div style={{ textAlign: 'center', marginBottom: 40 }}>
             <div style={{ fontSize: 13, color: '#475569', fontWeight: 600, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 24 }}>Projects Built by Real Students</div>
-            <div style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap' }}>
               {[
                 { name: 'Space Crusher', by: 'Maya, 11', type: 'Game', color: '#6366f1' },
                 { name: 'Quiz Master Pro', by: 'Ethan, 13', type: 'App', color: '#8b5cf6' },
@@ -353,7 +459,7 @@ export default function LandingPage({ onLogin, onSignup }) {
                 { name: 'Maze Runner', by: 'Jake, 10', type: 'Game', color: '#10b981' },
                 { name: 'Weather Bot', by: 'Priya, 14', type: 'App', color: '#ec4899' },
               ].map(p => (
-                <div key={p.name} style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${p.color}25`, borderRadius: 12, padding: '16px 20px', minWidth: 150, textAlign: 'center' }}>
+                <div key={p.name} style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${p.color}25`, borderRadius: 12, padding: '16px 18px', minWidth: 130, textAlign: 'center' }}>
                   <div style={{ width: 44, height: 44, background: `${p.color}18`, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, margin: '0 auto 10px' }}>
                     {p.type === 'Game' ? '🎮' : p.type === 'AI Project' ? '🤖' : '📱'}
                   </div>
@@ -368,19 +474,19 @@ export default function LandingPage({ onLogin, onSignup }) {
       </section>
 
       {/* ── 6. UNIQUE POSITIONING ── */}
-      <section style={{ background: 'rgba(0,0,0,0.25)', borderTop: '1px solid rgba(255,255,255,0.05)', padding: '90px 24px' }}>
+      <section className="lp-section-pad" style={{ background: 'rgba(0,0,0,0.25)', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
         <div style={{ maxWidth: 900, margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: 56 }}>
+          <div style={{ textAlign: 'center', marginBottom: 48 }}>
             <div style={sectionLabel}>Why ByteBuddies</div>
-            <h2 style={{ fontSize: 'clamp(26px, 4vw, 44px)', fontWeight: 900, letterSpacing: '-0.5px', marginBottom: 16 }}>
+            <h2 style={{ fontSize: 'clamp(22px, 4vw, 44px)', fontWeight: 900, letterSpacing: '-0.5px', marginBottom: 16 }}>
               Not just another coding site.
             </h2>
-            <p style={{ fontSize: 16, color: '#64748b', maxWidth: 560, margin: '0 auto', lineHeight: 1.75 }}>
+            <p style={{ fontSize: 'clamp(13px,2vw,16px)', color: '#64748b', maxWidth: 560, margin: '0 auto', lineHeight: 1.75 }}>
               There are hundreds of coding platforms. Most teach the basics and stop there. ByteBuddies is built for where the world is going, not where it's been.
             </p>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
             {[
               { title: 'Others', icon: '❌', items: ['Drag-and-drop only — no real code', 'Toy projects that go nowhere', 'No progression after the basics', 'No AI, no cybersecurity, no game dev', 'Kids lose interest within a month'], bad: true },
               { title: 'ByteBuddies', icon: '✓', items: ['Blocks → Python → JavaScript progression', 'Real projects kids actually share', 'Clear path from beginner to advanced', 'Game Dev, AI, and Cybersecurity tracks', 'Gamified to keep kids coming back'], bad: false },
@@ -400,16 +506,16 @@ export default function LandingPage({ onLogin, onSignup }) {
         </div>
       </section>
 
-      {/* ── CURRICULUM ALIGNMENT ── */}
-      <section id="how-it-works" style={{ maxWidth: 960, margin: '0 auto', padding: '90px 24px' }}>
+      {/* ── CURRICULUM ── */}
+      <section id="how-it-works" className="lp-section-pad" style={{ maxWidth: 960, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
         <div style={sectionLabel}>Curriculum Aligned</div>
-        <h2 style={{ fontSize: 'clamp(24px, 4vw, 42px)', fontWeight: 900, marginBottom: 16, lineHeight: 1.15 }}>
+        <h2 style={{ fontSize: 'clamp(20px, 4vw, 42px)', fontWeight: 900, marginBottom: 16, lineHeight: 1.15 }}>
           Mapped to what schools actually require
         </h2>
-        <p style={{ color: '#64748b', fontSize: 15, lineHeight: 1.8, marginBottom: 48, maxWidth: 640 }}>
-          ByteBuddies is fully mapped to the UK National Curriculum for Computing (KS2 & KS3), CSTA K-12 Computer Science Standards, and the Cambridge Digital Literacy framework. No extra prep needed.
+        <p style={{ color: '#64748b', fontSize: 15, lineHeight: 1.8, marginBottom: 40, maxWidth: 640 }}>
+          ByteBuddies is fully mapped to the UK National Curriculum for Computing (KS2 & KS3), CSTA K-12 Computer Science Standards, and the Cambridge Digital Literacy framework.
         </p>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 16, marginBottom: 40 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 32 }}>
           {[
             { badge: '🇬🇧', title: 'UK National Curriculum', sub: 'KS2 & KS3 Computing', color: '#3b82f6', points: ['Sequences, selection, repetition', 'Debugging & logical reasoning', 'Variables, inputs & outputs', 'Networks & data'] },
             { badge: '🌐', title: 'CSTA K-12 Standards', sub: 'Computer Science', color: '#8b5cf6', points: ['Algorithms & programming (AP)', 'Data & analysis (DA)', 'Computing systems (CS)', 'Impacts of computing (IC)'] },
@@ -431,9 +537,9 @@ export default function LandingPage({ onLogin, onSignup }) {
           ))}
         </div>
         <div style={{ background: 'rgba(99,102,241,0.07)', border: '1px solid rgba(99,102,241,0.18)', borderRadius: 12, padding: '20px 24px', display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap' }}>
-          <div style={{ flex: 1, minWidth: 240 }}>
+          <div style={{ flex: 1, minWidth: 200 }}>
             <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 6 }}>Download our full Curriculum Map</div>
-            <div style={{ fontSize: 13, color: '#64748b' }}>A detailed PDF showing exactly how each lesson, mission, and challenge maps to curriculum standards. Perfect for computing leads and inspections.</div>
+            <div style={{ fontSize: 13, color: '#64748b' }}>A detailed PDF showing exactly how each lesson maps to curriculum standards.</div>
           </div>
           <button onClick={() => { window.location.hash = 'whitepaper'; }} style={{ padding: '12px 24px', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', border: 'none', borderRadius: 8, color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 700, whiteSpace: 'nowrap' }}>
             View Curriculum Map →
@@ -442,13 +548,13 @@ export default function LandingPage({ onLogin, onSignup }) {
       </section>
 
       {/* HOW IT WORKS */}
-      <div style={{ background: 'rgba(255,255,255,0.015)', borderTop: '1px solid rgba(255,255,255,0.05)', padding: '80px 24px' }}>
+      <div className="lp-section-pad" style={{ background: 'rgba(255,255,255,0.015)', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
         <div style={{ maxWidth: 900, margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: 56 }}>
+          <div style={{ textAlign: 'center', marginBottom: 48 }}>
             <div style={sectionLabel}>How It Works</div>
-            <h2 style={{ fontSize: 'clamp(24px, 4vw, 40px)', fontWeight: 900 }}>Up and running in under 5 minutes</h2>
+            <h2 style={{ fontSize: 'clamp(20px, 4vw, 40px)', fontWeight: 900 }}>Up and running in under 5 minutes</h2>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 24 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 24 }}>
             {[
               { step: '01', title: 'Create your account', desc: 'Sign up free as a student, parent, or teacher. No credit card. No commitment. Under 30 seconds.' },
               { step: '02', title: 'Pick what to build', desc: 'Choose from Game Builder, Robot Lab, Block Coding, AI Projects, or a guided Challenge.' },
@@ -466,24 +572,18 @@ export default function LandingPage({ onLogin, onSignup }) {
       </div>
 
       {/* ── SCHOOL DEMO ── */}
-      <div id="book-demo" style={{ background: 'linear-gradient(160deg, #08101e 0%, #0f1a3a 100%)', borderTop: '1px solid rgba(99,102,241,0.15)', borderBottom: '1px solid rgba(99,102,241,0.15)', padding: '90px 24px' }}>
-        <div style={{ maxWidth: 960, margin: '0 auto', display: 'flex', alignItems: 'center', gap: 60, flexWrap: 'wrap' }}>
-          <div style={{ flex: 1, minWidth: 280 }}>
+      <div id="book-demo" className="lp-section-pad" style={{ background: 'linear-gradient(160deg, #08101e 0%, #0f1a3a 100%)', borderTop: '1px solid rgba(99,102,241,0.15)', borderBottom: '1px solid rgba(99,102,241,0.15)' }}>
+        <div className="lp-two-col" style={{ maxWidth: 960, margin: '0 auto' }}>
+          <div style={{ flex: 1, minWidth: 260 }}>
             <div style={sectionLabel}>For Schools</div>
-            <h2 style={{ fontSize: 'clamp(24px, 4vw, 40px)', fontWeight: 900, marginBottom: 16, lineHeight: 1.2 }}>
+            <h2 style={{ fontSize: 'clamp(20px, 4vw, 40px)', fontWeight: 900, marginBottom: 16, lineHeight: 1.2 }}>
               Free 30-day school pilot — no hoops, no cost.
             </h2>
             <p style={{ color: '#64748b', fontSize: 15, lineHeight: 1.8, marginBottom: 24 }}>
               We set up your classes, train your teachers, and give you a live walkthrough. You see exactly how ByteBuddies fits your curriculum before committing to anything.
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 28 }}>
-              {[
-                'Free 30-day pilot — no credit card needed',
-                'Dedicated onboarding and teacher training',
-                'Custom class setup done for you',
-                'Curriculum alignment report for your school',
-                'Google Classroom sync available on request',
-              ].map(item => (
+              {['Free 30-day pilot — no credit card needed', 'Dedicated onboarding and teacher training', 'Custom class setup done for you', 'Curriculum alignment report for your school', 'Google Classroom sync available on request'].map(item => (
                 <div key={item} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, color: '#94a3b8' }}>
                   <span style={{ width: 18, height: 18, borderRadius: '50%', background: 'rgba(99,102,241,0.25)', border: '1px solid rgba(99,102,241,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, flexShrink: 0, color: '#818cf8' }}>✓</span>
                   {item}
@@ -491,9 +591,9 @@ export default function LandingPage({ onLogin, onSignup }) {
               ))}
             </div>
           </div>
-          <div style={{ flex: 1, minWidth: 280, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.09)', borderRadius: 20, padding: 32 }}>
+          <div style={{ flex: 1, minWidth: 260, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.09)', borderRadius: 20, padding: 28 }}>
             <div style={{ fontWeight: 800, fontSize: 18, marginBottom: 4 }}>Book a free school demo</div>
-            <div style={{ fontSize: 13, color: '#475569', marginBottom: 24 }}>Usually responds within 1 school day</div>
+            <div style={{ fontSize: 13, color: '#475569', marginBottom: 20 }}>Usually responds within 1 school day</div>
             {['School name', 'Your name and role', 'Email address', 'Number of students'].map((placeholder, i) => (
               <input key={i} placeholder={placeholder} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '11px 14px', fontSize: 14, color: '#fff', marginBottom: 12, boxSizing: 'border-box', outline: 'none' }} />
             ))}
@@ -506,10 +606,10 @@ export default function LandingPage({ onLogin, onSignup }) {
       </div>
 
       {/* Teacher Testimonials */}
-      <div style={{ maxWidth: 960, margin: '0 auto', padding: '80px 24px' }}>
+      <div className="lp-section-pad" style={{ maxWidth: 960, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
         <div style={sectionLabel}>What Teachers Say</div>
-        <h2 style={{ fontSize: 'clamp(24px, 4vw, 40px)', fontWeight: 900, marginBottom: 48, lineHeight: 1.2 }}>Schools love ByteBuddies</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 20 }}>
+        <h2 style={{ fontSize: 'clamp(20px, 4vw, 40px)', fontWeight: 900, marginBottom: 40, lineHeight: 1.2 }}>Schools love ByteBuddies</h2>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 20 }}>
           {[
             { quote: "My Year 5 students were building working games within the first lesson. The mission stories kept them engaged for the whole hour — no one asked to go to the toilet once!", name: 'Sarah M.', role: 'Year 5 Teacher, Manchester', avatar: 'SM' },
             { quote: "The teacher dashboard is the best I've seen on any platform. I can see exactly which student is struggling with loops vs. conditions and help them directly.", name: 'James T.', role: 'Computing Coordinator, Bristol', avatar: 'JT' },
@@ -534,12 +634,12 @@ export default function LandingPage({ onLogin, onSignup }) {
       </div>
 
       {/* ── PRICING ── */}
-      <div id="pricing" style={{ background: 'rgba(0,0,0,0.2)', borderTop: '1px solid rgba(255,255,255,0.05)', padding: '90px 24px' }}>
+      <div id="pricing" className="lp-section-pad" style={{ background: 'rgba(0,0,0,0.2)', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
         <div style={{ maxWidth: 820, margin: '0 auto', textAlign: 'center' }}>
           <div style={sectionLabel}>Pricing</div>
-          <h2 style={{ fontSize: 'clamp(26px, 4vw, 44px)', fontWeight: 900, marginBottom: 12, letterSpacing: '-0.5px' }}>Simple. Transparent. Affordable.</h2>
-          <p style={{ color: '#475569', fontSize: 16, marginBottom: 52, lineHeight: 1.7 }}>Start free. No credit card. No commitment. Cancel any time.</p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 20, maxWidth: 620, margin: '0 auto' }}>
+          <h2 style={{ fontSize: 'clamp(22px, 4vw, 44px)', fontWeight: 900, marginBottom: 12, letterSpacing: '-0.5px' }}>Simple. Transparent. Affordable.</h2>
+          <p style={{ color: '#475569', fontSize: 16, marginBottom: 44, lineHeight: 1.7 }}>Start free. No credit card. No commitment. Cancel any time.</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 20, maxWidth: 600, margin: '0 auto' }}>
             {[
               {
                 name: 'Classroom', price: 'AED 44', period: '/student/year', desc: 'Billed annually per student',
@@ -552,12 +652,12 @@ export default function LandingPage({ onLogin, onSignup }) {
                 color: '#ec4899',
               },
             ].map(p => (
-              <div key={p.name} style={{ ...card, border: p.highlight ? '2px solid rgba(99,102,241,0.6)' : '1px solid rgba(255,255,255,0.08)', position: 'relative', padding: '36px 26px', background: p.highlight ? 'rgba(99,102,241,0.07)' : 'rgba(255,255,255,0.03)' }}>
+              <div key={p.name} style={{ ...card, border: p.highlight ? '2px solid rgba(99,102,241,0.6)' : '1px solid rgba(255,255,255,0.08)', position: 'relative', padding: '32px 24px', background: p.highlight ? 'rgba(99,102,241,0.07)' : 'rgba(255,255,255,0.03)' }}>
                 {p.highlight && <div style={{ position: 'absolute', top: -13, left: '50%', transform: 'translateX(-50%)', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', borderRadius: 100, padding: '5px 16px', fontSize: 11, fontWeight: 800, whiteSpace: 'nowrap', letterSpacing: 0.5 }}>MOST POPULAR</div>}
                 <div style={{ fontSize: 13, fontWeight: 800, color: p.color, marginBottom: 14, letterSpacing: 0.5 }}>{p.name.toUpperCase()}</div>
-                <div style={{ fontSize: 38, fontWeight: 900, marginBottom: 4, letterSpacing: '-1px' }}>{p.price}<span style={{ fontSize: 14, color: '#475569', fontWeight: 400 }}>{p.period}</span></div>
-                <div style={{ fontSize: 12, color: '#475569', marginBottom: 28 }}>{p.desc}</div>
-                <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 28px', textAlign: 'left' }}>
+                <div style={{ fontSize: 'clamp(28px,5vw,38px)', fontWeight: 900, marginBottom: 4, letterSpacing: '-1px' }}>{p.price}<span style={{ fontSize: 14, color: '#475569', fontWeight: 400 }}>{p.period}</span></div>
+                <div style={{ fontSize: 12, color: '#475569', marginBottom: 24 }}>{p.desc}</div>
+                <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 24px', textAlign: 'left' }}>
                   {p.features.map(f => <li key={f} style={{ fontSize: 13, color: '#94a3b8', padding: '6px 0', display: 'flex', gap: 9 }}><span style={{ color: '#22c55e', flexShrink: 0 }}>✓</span>{f}</li>)}
                 </ul>
                 <button onClick={onSignup} style={{ width: '100%', padding: '12px', background: p.highlight ? 'linear-gradient(135deg, #6366f1, #8b5cf6)' : 'rgba(255,255,255,0.07)', border: p.highlight ? 'none' : '1px solid rgba(255,255,255,0.12)', borderRadius: 8, color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 700, boxShadow: p.highlight ? '0 4px 20px rgba(99,102,241,0.35)' : 'none' }}>
@@ -569,23 +669,23 @@ export default function LandingPage({ onLogin, onSignup }) {
         </div>
       </div>
 
-      {/* ── 7. FINAL OFFER / CTA ── */}
-      <div style={{ textAlign: 'center', padding: '100px 24px', background: 'linear-gradient(160deg, rgba(99,102,241,0.1) 0%, rgba(139,92,246,0.08) 100%)', borderTop: '1px solid rgba(99,102,241,0.15)', position: 'relative', overflow: 'hidden' }}>
+      {/* ── FINAL CTA ── */}
+      <div className="lp-section-pad" style={{ textAlign: 'center', background: 'linear-gradient(160deg, rgba(99,102,241,0.1) 0%, rgba(139,92,246,0.08) 100%)', borderTop: '1px solid rgba(99,102,241,0.15)', position: 'relative', overflow: 'hidden' }}>
         <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: 600, height: 400, background: 'radial-gradient(ellipse, rgba(99,102,241,0.15) 0%, transparent 70%)', pointerEvents: 'none' }} />
         <div style={sectionLabel}>Get Started Today</div>
-        <h2 style={{ fontSize: 'clamp(30px, 5vw, 56px)', fontWeight: 900, marginBottom: 16, letterSpacing: '-1px', lineHeight: 1.1 }}>
+        <h2 style={{ fontSize: 'clamp(26px, 5vw, 56px)', fontWeight: 900, marginBottom: 16, letterSpacing: '-1px', lineHeight: 1.1 }}>
           Your child's first lesson<br /><span style={gradText}>is completely free.</span>
         </h2>
-        <p style={{ color: '#64748b', fontSize: 17, marginBottom: 16, lineHeight: 1.7, maxWidth: 520, margin: '0 auto 20px' }}>
+        <p style={{ color: '#64748b', fontSize: 'clamp(14px,2.5vw,17px)', marginBottom: 16, lineHeight: 1.7, maxWidth: 520, margin: '0 auto 16px' }}>
           No credit card. No commitment. If your child doesn't build something in their first session, we'll refund every penny — no questions asked.
         </p>
-        <p style={{ color: '#f59e0b', fontWeight: 700, fontSize: 14, marginBottom: 40, letterSpacing: 0.3 }}>
+        <p style={{ color: '#f59e0b', fontWeight: 700, fontSize: 14, marginBottom: 36, letterSpacing: 0.3 }}>
           Cohort spots are limited. We cap class sizes to keep quality high.
         </p>
-        <button onClick={onSignup} style={{ padding: '20px 56px', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', border: 'none', borderRadius: 16, color: '#fff', cursor: 'pointer', fontSize: 20, fontWeight: 900, boxShadow: '0 8px 48px rgba(99,102,241,0.6)', letterSpacing: '-0.3px', marginBottom: 24 }}>
+        <button onClick={onSignup} style={{ padding: 'clamp(14px,3vw,20px) clamp(28px,6vw,56px)', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', border: 'none', borderRadius: 16, color: '#fff', cursor: 'pointer', fontSize: 'clamp(16px,3vw,20px)', fontWeight: 900, boxShadow: '0 8px 48px rgba(99,102,241,0.6)', letterSpacing: '-0.3px', marginBottom: 24 }}>
           Claim Your Free Lesson →
         </button>
-        <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap', justifyContent: 'center' }}>
+        <div style={{ display: 'flex', gap: 'clamp(12px,3vw,28px)', flexWrap: 'wrap', justifyContent: 'center' }}>
           {['First lesson free', '30-day money-back guarantee', 'No credit card required'].map(t => (
             <div key={t} style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 13, color: '#475569' }}>
               <span style={{ color: '#22c55e', fontSize: 15 }}>✓</span>{t}
@@ -595,7 +695,7 @@ export default function LandingPage({ onLogin, onSignup }) {
       </div>
 
       {/* FOOTER */}
-      <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', padding: '32px 48px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
+      <div className="lp-footer">
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{ width: 28, height: 28, background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: 13 }}>B</div>
           <span style={{ fontWeight: 700, fontSize: 15, color: '#475569' }}>ByteBuddies</span>

@@ -1,0 +1,136 @@
+.rs-phase1-editor {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.rs-phase1-header {
+  flex-shrink: 0;
+  padding: 16px 18px 12px;
+  background: #1e1b4b;
+  border-bottom: 1px solid rgba(99, 102, 241, 0.35);
+}
+
+.rs-phase1-logo {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  background: linear-gradient(90deg, #c4b5fd, #67e8f9);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.rs-phase1-subtitle {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: rgba(199, 210, 254, 0.65);
+}
+
+.rs-phase1-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(49, 46, 129, 0.45);
+}
+
+.rs-phase1-run {
+  padding: 8px 14px;
+  border: none;
+  border-radius: 8px;
+  background: #22c55e;
+  color: #052e16;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.rs-phase1-run:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.rs-phase1-reset {
+  padding: 8px 12px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 8px;
+  background: transparent;
+  color: #e2e8f0;
+  cursor: pointer;
+}
+
+.rs-phase1-stats {
+  margin-left: auto;
+  display: flex;
+  gap: 12px;
+  font-size: 11px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: rgba(226, 232, 240, 0.75);
+}
+
+.rs-phase1-stack {
+  flex: 1;
+  overflow: auto;
+  padding: 18px 20px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.rs-phase1-block {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 240px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.5);
+  color: #fff;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.rs-phase1-block-value {
+  margin-left: auto;
+  min-width: 42px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.4);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+  text-align: center;
+}
+
+.rs-phase1-sim {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: #020008;
+}
+
+.rs-phase1-sim-stars {
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(1px 1px at 20px 30px, #fff, transparent),
+    radial-gradient(1px 1px at 80px 120px, rgba(255, 255, 255, 0.8), transparent),
+    radial-gradient(1.5px 1.5px at 160px 60px, #fff, transparent),
+    radial-gradient(1px 1px at 240px 180px, rgba(255, 255, 255, 0.7), transparent);
+  background-size: 280px 220px;
+  opacity: 0.85;
+}
+
+.rs-phase1-sim-glow {
+  position: absolute;
+  left: 50%;
+  bottom: 18%;
+  width: 70%;
+  height: 28%;
+  transform: translateX(-50%);
+  background: radial-gradient(ellipse at center, rgba(168, 85, 247, 0.35), transparent 70%);
+  filter: blur(8px);
+}

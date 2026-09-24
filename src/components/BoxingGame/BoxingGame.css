@@ -1,0 +1,476 @@
+/* Professional Boxing Game UI */
+.boxing-game-page {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+}
+
+.boxing-game-root {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 480px;
+  background: #0a0505;
+  overflow: hidden;
+  flex: 1;
+}
+
+.boxing-game-viewport {
+  width: 100%;
+  height: 100%;
+  min-height: inherit;
+}
+
+.boxing-game-canvas {
+  display: block;
+}
+
+.boxing-round-dots {
+  position: absolute;
+  bottom: 88px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 10px;
+}
+
+.boxing-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.25);
+  border: 2px solid rgba(255, 255, 255, 0.4);
+}
+
+.boxing-dot--won { background: #00ff00; border-color: #00ff00; }
+.boxing-dot--lost { background: #ff3333; border-color: #ff3333; }
+.boxing-dot--current { background: #ffd700; border-color: #ffd700; box-shadow: 0 0 8px #ffd700; }
+
+.boxing-game-ui {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 20;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  color: #fff;
+}
+
+.boxing-panel {
+  position: absolute;
+  background: rgba(0, 0, 0, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 12px 16px;
+  backdrop-filter: blur(8px);
+  pointer-events: auto;
+}
+
+.boxing-panel--player {
+  top: 12px;
+  left: 12px;
+  min-width: 180px;
+}
+
+.boxing-panel--opponent {
+  top: 12px;
+  right: 12px;
+  min-width: 180px;
+  text-align: right;
+}
+
+.boxing-panel--bottom-left {
+  bottom: 12px;
+  left: 12px;
+}
+
+.boxing-panel--controls {
+  bottom: 12px;
+  right: 12px;
+  max-width: 220px;
+  font-size: 11px;
+}
+
+.boxing-round {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: #cc0000;
+}
+
+.boxing-timer {
+  font-size: 28px;
+  font-weight: 900;
+  margin: 4px 0;
+}
+
+.boxing-score {
+  font-size: 15px;
+  font-weight: 800;
+  color: #ffd700;
+  margin: 4px 0;
+}
+
+.boxing-hp {
+  font-size: 12px;
+  opacity: 0.9;
+  margin-bottom: 4px;
+}
+
+.boxing-bar {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+
+.boxing-bar > div {
+  height: 100%;
+  transition: width 0.2s ease;
+}
+
+.boxing-bar--hp > div { background: linear-gradient(90deg, #00aa00, #00ff00); }
+.boxing-bar--hp-opponent > div { background: linear-gradient(90deg, #aa0000, #ff3333); }
+.boxing-bar--stamina > div { background: linear-gradient(90deg, #0047ab, #00bfff); }
+
+.boxing-stamina-label {
+  font-size: 10px;
+  opacity: 0.85;
+}
+
+.boxing-label {
+  font-weight: 800;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  margin-bottom: 6px;
+}
+
+.boxing-combo {
+  position: absolute;
+  top: 18%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 32px;
+  font-weight: 900;
+  color: #ffd700;
+  text-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+  animation: boxing-combo-pop 0.15s ease-out, boxing-pulse 0.3s ease infinite alternate;
+}
+
+.boxing-combo--warm {
+  font-size: 36px;
+  color: #ff9900;
+  text-shadow: 0 0 22px rgba(255, 153, 0, 0.9);
+}
+
+.boxing-combo--hot {
+  font-size: 44px;
+  color: #ff3333;
+  text-shadow: 0 0 28px rgba(255, 50, 50, 1);
+}
+
+@keyframes boxing-combo-pop {
+  0% { transform: translateX(-50%) scale(0.5); opacity: 0; }
+  100% { transform: translateX(-50%) scale(1); opacity: 1; }
+}
+
+@keyframes boxing-flash-fade {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes boxing-pulse {
+  from { transform: translateX(-50%) scale(1); }
+  to { transform: translateX(-50%) scale(1.06); }
+}
+
+.boxing-knockdown-msg,
+.boxing-count,
+.boxing-center-msg {
+  position: absolute;
+  top: 28%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-weight: 900;
+  text-align: center;
+}
+
+.boxing-knockdown-msg {
+  font-size: 48px;
+  color: #ff0000;
+  text-shadow: 0 0 24px rgba(255, 0, 0, 0.9);
+  animation: boxing-ko-flash 0.35s ease-out;
+}
+
+@keyframes boxing-ko-flash {
+  0% { transform: translateX(-50%) scale(2); opacity: 0; }
+  60% { transform: translateX(-50%) scale(1.05); opacity: 1; }
+  100% { transform: translateX(-50%) scale(1); opacity: 1; }
+}
+
+.boxing-count {
+  font-size: 96px;
+  color: #ff0000;
+  text-shadow: 0 4px 24px rgba(0, 0, 0, 0.8);
+}
+
+.boxing-center-msg {
+  font-size: 22px;
+  color: #fff;
+  letter-spacing: 0.12em;
+}
+
+.boxing-last-hit {
+  font-size: 22px;
+  font-weight: 900;
+  color: #ffd700;
+}
+
+.boxing-mult {
+  font-size: 16px;
+  color: #ffaa00;
+  font-weight: 700;
+}
+
+.boxing-state-text {
+  font-size: 13px;
+  font-weight: 800;
+  margin-top: 6px;
+  letter-spacing: 0.06em;
+}
+
+.boxing-controls-title {
+  font-weight: 800;
+  margin-bottom: 6px;
+  color: #00bfff;
+}
+
+.boxing-controls-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.boxing-controls-list li {
+  margin: 3px 0;
+}
+
+.boxing-controls-list kbd {
+  background: rgba(255, 255, 255, 0.12);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  margin-right: 4px;
+}
+
+.boxing-action-bar {
+  position: absolute;
+  bottom: 48px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.boxing-action {
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  padding: 6px 14px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.boxing-action--attack { color: #ff3333; }
+.boxing-action--block { color: #00bfff; }
+.boxing-action--kd { color: #ff0000; animation: boxing-pulse 0.2s infinite alternate; }
+
+.boxing-start-overlay,
+.boxing-match-over {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.75);
+  pointer-events: auto;
+  text-align: center;
+  padding: 24px;
+}
+
+.boxing-start-overlay h2,
+.boxing-match-over h2 {
+  font-size: 32px;
+  margin: 0 0 12px;
+  color: #cc0000;
+}
+
+.boxing-winner {
+  font-size: 20px;
+  font-weight: 800;
+  color: #ffd700;
+}
+
+.boxing-final-score {
+  font-size: 16px;
+  opacity: 0.9;
+}
+
+.boxing-judge-card {
+  margin: 16px 0;
+  text-align: left;
+  font-size: 14px;
+}
+
+.boxing-judge-row {
+  margin: 6px 0;
+}
+
+.boxing-judge-pts {
+  margin-left: 12px;
+  opacity: 0.7;
+  font-size: 12px;
+}
+
+.boxing-btn {
+  margin-top: 16px;
+  padding: 12px 28px;
+  border: none;
+  border-radius: 8px;
+  background: #333;
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.boxing-btn--primary {
+  background: linear-gradient(135deg, #cc0000, #880000);
+  font-size: 16px;
+}
+
+.boxing-btn:hover {
+  filter: brightness(1.15);
+}
+
+.boxing-floating-hits {
+  position: absolute;
+  top: 42%;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  pointer-events: none;
+}
+
+.boxing-float-pts {
+  font-size: 22px;
+  font-weight: 900;
+  color: #ffd700;
+  text-shadow: 0 0 12px rgba(255, 215, 0, 0.6);
+  animation: boxing-float-up 1.2s ease-out forwards;
+}
+
+.boxing-float-pts--blocked {
+  color: #00bfff;
+  font-size: 16px;
+  text-shadow: none;
+}
+
+.boxing-float-pts--crit {
+  color: #ff3333;
+  font-size: 28px;
+}
+
+@keyframes boxing-float-up {
+  0% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-48px) scale(1.1); }
+}
+
+.boxing-rest-banner {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  background: rgba(0, 0, 0, 0.82);
+  border: 2px solid rgba(255, 215, 0, 0.45);
+  border-radius: 16px;
+  padding: 28px 48px;
+  pointer-events: none;
+}
+
+.boxing-rest-title {
+  font-size: 36px;
+  font-weight: 900;
+  letter-spacing: 0.2em;
+  color: #ffd700;
+}
+
+.boxing-rest-timer {
+  font-size: 48px;
+  font-weight: 800;
+  margin: 8px 0;
+}
+
+.boxing-rest-hint {
+  margin: 0;
+  font-size: 13px;
+  opacity: 0.75;
+}
+
+.boxing-round-summary {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  background: rgba(0, 0, 0, 0.85);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 14px;
+  padding: 24px 36px;
+  pointer-events: none;
+  min-width: 280px;
+}
+
+.boxing-round-summary h3 {
+  margin: 0 0 12px;
+  font-size: 20px;
+  color: #ffd700;
+}
+
+.boxing-round-summary-scores {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.boxing-round-summary-vs {
+  opacity: 0.5;
+  font-size: 14px;
+}
+
+.boxing-round-summary-winner {
+  margin: 12px 0 0;
+  font-size: 15px;
+  color: #00ff88;
+}
+
+/* Mobile */
+@media (max-width: 640px) {
+  .boxing-panel--player,
+  .boxing-panel--opponent {
+    min-width: 140px;
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+  .boxing-timer { font-size: 22px; }
+  .boxing-count { font-size: 64px; }
+  .boxing-panel--controls { display: none; }
+}

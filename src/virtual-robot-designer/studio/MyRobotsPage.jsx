@@ -2,8 +2,9 @@
  * MyRobotsPage.jsx
  * Visual library of saved robot designs.
  */
-import React, { useState } from 'react';
-import { SAMPLE_ROBOTS, CHASSIS_DATA } from '../services/studio-robot-builder.js';
+import React, { useState, useCallback } from 'react';
+import { CHASSIS_DATA } from '../services/studio-robot-builder.js';
+import { loadRobotLibrary, filterRobotsByTag } from '../services/studio-robot-store.js';
 
 const GRAD_PRESETS = [
   ['#FFF3E0', '#FFE0B2'],
@@ -14,10 +15,16 @@ const GRAD_PRESETS = [
   ['#E0F7FA', '#B2EBF2'],
 ];
 
-export default function MyRobotsPage({ onEditRobot, onTestRobot, onNewRobot }) {
-  const [robots, setRobots] = useState(SAMPLE_ROBOTS);
-  const [activeId, setActiveId] = useState(1);
+export default function MyRobotsPage({ onEditRobot, onSelectRobot, onTestRobot, onNewRobot }) {
+  const [robots, setRobots] = useState(() => loadRobotLibrary());
+  const [activeId, setActiveId] = useState(() => loadRobotLibrary()[0]?.id ?? 1);
   const [filter, setFilter] = useState('all');
+
+  const refresh = useCallback(() => {
+    const lib = loadRobotLibrary();
+    setRobots(lib);
+    if (!lib.find((r) => r.id === activeId)) setActiveId(lib[0]?.id ?? null);
+  }, [activeId]);
 
   const filters = [
     { id: 'all',   label: 'All Robots' },
@@ -26,6 +33,7 @@ export default function MyRobotsPage({ onEditRobot, onTestRobot, onNewRobot }) {
     { id: 'smart', label: '🧠 Smart' },
   ];
 
+  const visibleRobots = filterRobotsByTag(robots, filter);
   const chassis = (r) => CHASSIS_DATA.find(c => c.id === r.chassisId) || CHASSIS_DATA[0];
 
   return (
@@ -37,6 +45,7 @@ export default function MyRobotsPage({ onEditRobot, onTestRobot, onNewRobot }) {
           {filters.map(f => (
             <button
               key={f.id}
+              type="button"
               onClick={() => setFilter(f.id)}
               style={{
                 padding: '6px 14px', borderRadius: 20, border: 'none',
@@ -51,13 +60,13 @@ export default function MyRobotsPage({ onEditRobot, onTestRobot, onNewRobot }) {
             </button>
           ))}
           <button
-            onClick={onNewRobot}
+            type="button"
+            onClick={() => { refresh(); onNewRobot?.(); }}
             style={{
               padding: '8px 18px', borderRadius: 10, border: 'none',
               background: 'linear-gradient(135deg,#7c3aed,#4f46e5)', color: '#fff',
               fontWeight: 800, fontSize: 13, cursor: 'pointer',
               boxShadow: '0 4px 14px rgba(124,58,237,0.35)',
-              transition: 'transform 0.12s',
             }}
           >
             ＋ New Robot
@@ -69,9 +78,9 @@ export default function MyRobotsPage({ onEditRobot, onTestRobot, onNewRobot }) {
       <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
         {[
           { label: 'Total Robots', value: robots.length, icon: '🤖' },
-          { label: 'Total XP Earned', value: robots.reduce((a, r) => a + r.xp, 0), icon: '⭐' },
+          { label: 'Total XP Earned', value: robots.reduce((a, r) => a + (r.xp || 0), 0), icon: '⭐' },
           { label: 'Missions Won', value: 12, icon: '🏆' },
-          { label: 'Parts Used', value: robots.reduce((a, r) => a + r.sensors.length + r.tools.length, 0), icon: '🔧' },
+          { label: 'Parts Used', value: robots.reduce((a, r) => a + (r.sensors?.length || 0) + (r.tools?.length || 0), 0), icon: '🔧' },
         ].map(s => (
           <div
             key={s.label}
@@ -92,7 +101,7 @@ export default function MyRobotsPage({ onEditRobot, onTestRobot, onNewRobot }) {
 
       {/* Robot grid */}
       <div className="bb-studio-myrobots-grid">
-        {robots.map((robot, i) => {
+        {visibleRobots.map((robot, i) => {
           const ch = chassis(robot);
           const grad = robot.bgGrad || GRAD_PRESETS[i % GRAD_PRESETS.length];
           return (
@@ -100,6 +109,9 @@ export default function MyRobotsPage({ onEditRobot, onTestRobot, onNewRobot }) {
               key={robot.id}
               className={`bb-studio-robot-card${activeId === robot.id ? ' active' : ''}`}
               onClick={() => setActiveId(robot.id)}
+              onKeyDown={(e) => { if (e.key === 'Enter') setActiveId(robot.id); }}
+              role="button"
+              tabIndex={0}
             >
               {/* Thumbnail */}
               <div
@@ -107,19 +119,18 @@ export default function MyRobotsPage({ onEditRobot, onTestRobot, onNewRobot }) {
                 style={{ background: `linear-gradient(135deg, ${grad[0]}, ${grad[1]})` }}
               >
                 <span style={{ fontSize: 64, filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.15))' }}>
-                  {robot.icon}
+                  {robot.icon || ch.icon}
                 </span>
                 {activeId === robot.id && (
                   <span className="bb-studio-robot-card-badge">SELECTED</span>
                 )}
-                {/* XP badge */}
                 <span style={{
                   position: 'absolute', bottom: 8, right: 8,
                   background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(6px)',
                   color: '#ffd700', fontSize: 10, fontWeight: 900,
                   padding: '3px 8px', borderRadius: 8,
                 }}>
-                  ⭐ {robot.xp} XP
+                  ⭐ {robot.xp || 0} XP
                 </span>
               </div>
 
@@ -127,10 +138,9 @@ export default function MyRobotsPage({ onEditRobot, onTestRobot, onNewRobot }) {
               <div className="bb-studio-robot-card-body">
                 <div className="bb-studio-robot-card-name">{robot.name}</div>
                 <div className="bb-studio-robot-card-stats">
-                  {ch.name} · {robot.wheels} wheels · {robot.sensors.length} sensors
+                  {ch.name} · {robot.wheels ?? 4} wheels · {(robot.sensors || []).length} sensors
                 </div>
 
-                {/* Mini stat bars */}
                 <div style={{ marginBottom: 10 }}>
                   {[
                     { label: 'Speed',    val: ch.speed,    color: '#1E90FF' },
@@ -151,12 +161,14 @@ export default function MyRobotsPage({ onEditRobot, onTestRobot, onNewRobot }) {
 
                 <div className="bb-studio-robot-card-btns">
                   <button
+                    type="button"
                     className="bb-studio-rcb bb-studio-rcb--edit"
                     onClick={(e) => { e.stopPropagation(); onEditRobot?.(robot); }}
                   >
                     ✏️ Edit
                   </button>
                   <button
+                    type="button"
                     className="bb-studio-rcb bb-studio-rcb--test"
                     onClick={(e) => { e.stopPropagation(); onTestRobot?.(robot); }}
                   >
@@ -168,8 +180,7 @@ export default function MyRobotsPage({ onEditRobot, onTestRobot, onNewRobot }) {
           );
         })}
 
-        {/* New robot card */}
-        <div className="bb-studio-new-card" onClick={onNewRobot}>
+        <div className="bb-studio-new-card" onClick={onNewRobot} role="button" tabIndex={0}>
           <div className="bb-studio-new-card-icon">＋</div>
           <div className="bb-studio-new-card-text">New Robot</div>
           <div style={{ fontSize: 11, color: '#ccc' }}>Start from scratch</div>

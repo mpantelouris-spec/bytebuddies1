@@ -7,16 +7,15 @@ alwaysApply: true
 
 When you finish substantive work in this repo (code fixes, features, CSS, or anything that affects the live site), **deploy to production right away** in the same turn. Do not wait for a separate "deploy" message.
 
-## Steps (Windows PowerShell)
+## Steps (safe — no wipe before upload)
 
 1. `npm run build` in the project root.
-2. SSH clear and upload (key path and host are fixed for this project):
-   - Key: `C:\Users\miche\OneDrive\Documents\Oracle Keys\ssh-key-2026-03-25.key`
-   - Host: `ubuntu@129.151.144.92`
-   - Remote dir: `/home/ubuntu/bytebuddies`
-3. `ssh ... 'rm -rf /home/ubuntu/bytebuddies/*; mkdir -p /home/ubuntu/bytebuddies'`
-4. `scp -r -i KEY -o StrictHostKeyChecking=no "PATH\dist\." ubuntu@129.151.144.92:/home/ubuntu/bytebuddies/`
-5. `ssh ... 'find /home/ubuntu/bytebuddies -type d -exec chmod 755 {} \; ; find /home/ubuntu/bytebuddies -type f -exec chmod 644 {} \; ; sudo nginx -t && sudo systemctl reload nginx'`
+2. `npm run deploy:vps` (or `node scripts/deploy-vps.mjs` after build).
+   - Requires SSH key (Mac: `~/.ssh/bb_deploy_key`, Windows: `C:\Users\miche\OneDrive\Documents\Oracle Keys\ssh-key-2026-03-25.key` via `BB_DEPLOY_KEY`).
+   - Host: `ubuntu@129.151.144.92`, remote dir: `/home/ubuntu/bytebuddies`.
+3. Script verifies `dist/index.html`, runs `verify-dist-index` + `write-bb-entry`, **rsync --delete** (no `rm -rf` on the server), then checks origin serves `/`.
+
+**Do not** run `rm -rf /home/ubuntu/bytebuddies/*` before rsync — a partial upload leaves the site 404 until a full sync completes.
 
 ## Exceptions
 

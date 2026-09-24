@@ -5399,8 +5399,8 @@ export default function RobotPanel({ onNavigate }) {
                     fontSize: 'inherit',
                   }}
                   onClick={() => {
-                    if (onNavigate) onNavigate('vrd/test');
-                    else window.location.hash = 'vrd/test';
+                    if (onNavigate) onNavigate('academy');
+                    else window.location.hash = 'academy';
                   }}
                 >
                   open Test Arena directly

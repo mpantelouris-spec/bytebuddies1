@@ -2,6 +2,8 @@
  * sim-visual-polish.js — Game-like atmosphere, particles, and robot animation helpers for Live Lab.
  */
 import * as THREE from 'three';
+import { addHorizonSilhouette } from '../studio/ArenaSceneryKit.js';
+import { applyArenaBroadcastLook } from '../studio/ArenaBroadcastKit.js';
 
 export const ARENA_THEMES = {
   ground:      { sky: 0xb8dce8, fog: 0xc8e6f0, accent: 0x3b82f6, particles: 'spark',  label: 'Training Lab' },
@@ -9,6 +11,13 @@ export const ARENA_THEMES = {
   sky:         { sky: 0x87ceeb, fog: 0xb0d8f8, accent: 0x0ea5e9, particles: 'cloud',  label: 'Sky World' },
   hover:       { sky: 0xd8e4f0, fog: 0xe0e8f4, accent: 0x6366f1, particles: 'cloud',  label: 'Hover Course' },
   neon_race:   { sky: 0xd0dcf0, fog: 0xdce4f4, accent: 0xec4899, particles: 'spark',  label: 'Race Track' },
+  sunny_circuit: { sky: 0xffccee, fog: 0xffe0f5, accent: 0xff88cc, particles: 'spark', label: 'Candy Kingdom' },
+  rainbow_road: { sky: 0x1a0850, fog: 0x0a0028, accent: 0xcc44ff, particles: 'star', label: 'Rainbow Road' },
+  dragon_skyway: { sky: 0x88bbff, fog: 0xc8ddff, accent: 0xff8866, particles: 'cloud', label: 'Dragon Skyway' },
+  volcano_drift: { sky: 0x1a0a08, fog: 0x4a2418, accent: 0xff5500, particles: 'ember', label: 'Volcano Drift' },
+  circuit_sprint: { sky: 0x1a0850, fog: 0x0a0028, accent: 0xcc44ff, particles: 'star', label: 'Rainbow Road' },
+  racing_circuit: { sky: 0x1a0850, fog: 0x0a0028, accent: 0xcc44ff, particles: 'star', label: 'Rainbow Road' },
+  time_trial_gauntlet: { sky: 0x9988cc, fog: 0xb8a8d8, accent: 0xa855f7, particles: 'spark', label: 'Time Trial' },
   neon_city:   { sky: 0xd0dcf0, fog: 0xdce4f4, accent: 0x0ea5e9, particles: 'spark',  label: 'City Course' },
   jungle:      { sky: 0x2d5a27, fog: 0x1a3d14, accent: 0x22c55e, particles: 'firefly',label: 'Fantasy Forest' },
   jungle_maze: { sky: 0x1e4620, fog: 0x143018, accent: 0x4ade80, particles: 'firefly',label: 'Jungle Maze' },
@@ -24,10 +33,46 @@ export const ARENA_THEMES = {
   jet:         { sky: 0x1e3a5f, fog: 0x0c4a6e, accent: 0xf59e0b, particles: 'cloud',  label: 'Jet Canyon' },
   cavern:      { sky: 0x0a0a14, fog: 0x120820, accent: 0x8b5cf6, particles: 'firefly',label: 'Crystal Cavern' },
   crystal_cave:{ sky: 0x0a0a18, fog: 0x180828, accent: 0xa855f7, particles: 'firefly',label: 'Crystal Cave' },
+  firebot_blaze: { sky: 0x1a0500, fog: 0x3a1008, accent: 0xff4400, particles: 'ember', label: 'Blaze Zone' },
+  hospital_walk: { sky: 0xd8ecff, fog: 0xb8d8f0, accent: 0x22c55e, particles: 'spark', label: 'Hospital' },
+  spider_rescue: { sky: 0x0a2818, fog: 0x143828, accent: 0x10b981, particles: 'firefly', label: 'Spider Climb' },
+  underground_mine: { sky: 0x050308, fog: 0x180818, accent: 0xa855f7, particles: 'ember', label: 'Underground Mine' },
+  auto_factory: { sky: 0x2a2038, fog: 0x3a3050, accent: 0xf59e0b, particles: 'spark', label: 'Auto Factory' },
+  factory_floor: { sky: 0x1a1a28, fog: 0x2a2a38, accent: 0xec4899, particles: 'spark', label: 'Factory Floor' },
+  warehouse: { sky: 0x2a3040, fog: 0x3a4050, accent: 0x94a3b8, particles: 'dust', label: 'Warehouse' },
+  coral_reef: { sky: 0x0369a1, fog: 0x0c4a6e, accent: 0x06b6d4, particles: 'bubble', label: 'Coral Reef' },
+  deep_trench: { sky: 0x021a30, fog: 0x041828, accent: 0x0891b2, particles: 'bubble', label: 'Deep Trench' },
+  alien_planet: { sky: 0x5a2010, fog: 0x8a3820, accent: 0xff6644, particles: 'dust', label: 'Mars Surface' },
+  desert_rally: { sky: 0xc87830, fog: 0xd4a050, accent: 0xfbbf24, particles: 'dust', label: 'Desert Rally' },
+  snow_rescue: { sky: 0xe8f4ff, fog: 0xdce8f8, accent: 0x38bdf8, particles: 'spark', label: 'Snow Rescue' },
+  emergency_blaze: { sky: 0x3a1008, fog: 0x4a1808, accent: 0xff4400, particles: 'ember', label: 'Blaze District' },
+  robot_fight: { sky: 0x1a0505, fog: 0x2a0808, accent: 0xef4444, particles: 'ember', label: 'Fight Ring' },
+  flappy_bird: { sky: 0x6ec8e8, fog: 0x9ad8f0, accent: 0xfbbf24, particles: 'cloud', label: 'Flappy Sky' },
+  power_garden: { sky: 0x88c850, fog: 0xa8d870, accent: 0x65a30d, particles: 'firefly', label: 'Farm Garden' },
+  pipeline_crawl: { sky: 0x1a2030, fog: 0x2a3040, accent: 0x64748b, particles: 'dust', label: 'Pipeline' },
+  drone_canyon: { sky: 0x4488cc, fog: 0x6aa8d8, accent: 0x0ea5e9, particles: 'cloud', label: 'Drone Canyon' },
+  flight_rings: { sky: 0x5ab0e0, fog: 0x88c8e8, accent: 0xfbbf24, particles: 'cloud', label: 'Flight Rings' },
+  space_orbit: { sky: 0x000010, fog: null, accent: 0x94a3b8, particles: 'star', label: 'Space Orbit' },
+  cyber_city: { sky: 0x0f172a, fog: 0x1e293b, accent: 0x06b6d4, particles: 'spark', label: 'Cyber City' },
+  shadow_escape: { sky: 0x020617, fog: 0x0f172a, accent: 0x64748b, particles: 'spark', label: 'Shadow Escape' },
+  warp_gate: { sky: 0x1e1b4b, fog: 0x4c1d95, accent: 0xa855f7, particles: 'star', label: 'Warp Gate' },
+  atlantis: { sky: 0x0e7490, fog: 0x0c4a6e, accent: 0x22d3ee, particles: 'bubble', label: 'Atlantis' },
+  tsunami: { sky: 0x0c4a6e, fog: 0x0369a1, accent: 0x38bdf8, particles: 'bubble', label: 'Tsunami Run' },
+  mariana: { sky: 0x000510, fog: 0x020810, accent: 0x475569, particles: 'bubble', label: 'Mariana Abyss' },
+  hydrothermal: { sky: 0x134e4a, fog: 0x0c4a6e, accent: 0xfbbf24, particles: 'ember', label: 'Thermal Vents' },
+  kelp_forest: { sky: 0x0d9488, fog: 0x0c4a6e, accent: 0x22c55e, particles: 'bubble', label: 'Kelp Forest' },
+  museum_heist: { sky: 0x0f172a, fog: 0x1e293b, accent: 0xec4899, particles: 'spark', label: 'Museum Heist' },
+  shipwreck: { sky: 0x0c4a6e, fog: 0x164e63, accent: 0xeab308, particles: 'bubble', label: 'Shipwreck' },
+  bioluminescent: { sky: 0x020810, fog: 0x041828, accent: 0x22d3ee, particles: 'bubble', label: 'Bio Grotto' },
 };
 
 export function resolveArenaTheme(arenaType, challenge) {
   const cat = challenge?.cat || challenge?.trackId || '';
+  if (/circuit_sprint|street_grand_prix|racing_circuit|rainbow_road/i.test(arenaType)) return ARENA_THEMES.rainbow_road;
+  if (/sunny_circuit|candy/i.test(arenaType)) return ARENA_THEMES.sunny_circuit;
+  if (/dragon_skyway/i.test(arenaType)) return ARENA_THEMES.dragon_skyway;
+  if (/volcano_drift|volcano/i.test(arenaType)) return ARENA_THEMES.volcano_drift;
+  if (/time_trial/i.test(arenaType)) return ARENA_THEMES.time_trial_gauntlet;
   if (/jungle|forest|temple|terrain|jungle_expedition/i.test(arenaType + cat)) return ARENA_THEMES.jungle;
   if (/space|zero_g|asteroid/i.test(arenaType)) return ARENA_THEMES.space;
   if (/underwater|ocean|coral/i.test(arenaType)) return ARENA_THEMES.underwater;
@@ -39,6 +84,32 @@ export function resolveArenaTheme(arenaType, challenge) {
   if (/jet|stunt|supersonic|sky|drone_canyon|drone_rooftop|drone_survey/i.test(arenaType)) return ARENA_THEMES.sky;
   if (/deep_trench|trench/i.test(arenaType)) return ARENA_THEMES.underwater;
   return ARENA_THEMES[arenaType] || ARENA_THEMES.ground;
+}
+
+function _horizonFamilyForArena(arenaType, challenge) {
+  const env = challenge?.environmentId;
+  if (env && env !== 'rainbow_road' && env !== 'flappy') return env;
+  const key = `${arenaType} ${challenge?.cat || ''}`;
+  if (/underwater|coral|reef|trench|kelp|atlantis|mariana|shipwreck|pirate|seafloor/i.test(key)) return 'underwater';
+  if (/mars|martian|regolith/i.test(key)) return 'martian';
+  if (/neon|cyber|city/i.test(key)) return 'cyber_ninja';
+  if (/drone|sky|cloud|flight|jet|aerial|canyon|hover/i.test(key)) return 'sky_aerial';
+  if (/fire|hospital|snow|rescue|emergency|disaster/i.test(key)) return 'emergency';
+  if (/spider|climb/i.test(key)) return 'spider_climber';
+  if (/warehouse|factory|industrial|mine|conveyor|sort/i.test(key)) return 'industrial';
+  return 'industrial';
+}
+
+function _ensureHorizonBackdrop(scene, arenaType, challenge) {
+  if (scene.userData.horizonBuilt || scene.getObjectByName('HorizonSilhouette')) return;
+  addHorizonSilhouette(scene, _horizonFamilyForArena(arenaType, challenge));
+  scene.userData.horizonBuilt = true;
+}
+
+function _ensureAtmosphereParticles(scene, theme) {
+  if (!scene.userData.atmo) {
+    scene.userData.atmo = addAtmosphereParticles(scene, theme);
+  }
 }
 
 function makeParticleTexture(color = '#ffffff') {
@@ -56,7 +127,9 @@ function makeParticleTexture(color = '#ffffff') {
 /** Floating atmospheric particles — visible but lightweight */
 export function addAtmosphereParticles(scene, themeKey, bounds = { x: 36, y: 14, z: 70 }) {
   const theme = typeof themeKey === 'object' ? themeKey : (ARENA_THEMES[themeKey] || ARENA_THEMES.ground);
-  const count = theme.particles === 'star' ? 500 : theme.particles === 'bubble' ? 100 : 220;
+  const tierCap = scene.userData?.qualityPreset?.particleCount;
+  const baseCount = theme.particles === 'star' ? 500 : theme.particles === 'bubble' ? 100 : 220;
+  const count = tierCap ? Math.min(baseCount, tierCap) : baseCount;
   const positions = new Float32Array(count * 3);
   const velocities = [];
   const colors = {
@@ -91,7 +164,11 @@ export function addAtmosphereParticles(scene, themeKey, bounds = { x: 36, y: 14,
   });
   const points = new THREE.Points(geo, mat);
   points.name = 'atmoParticles';
-  points.frustumCulled = false;
+  // frustumCulled=true (Three.js default) lets the GPU skip drawing particles
+  // that are entirely outside the camera frustum — free performance win.
+  // Only disable this if particles span the entire scene and are always visible.
+  points.frustumCulled = true;
+  points.geometry.computeBoundingSphere(); // required for frustum culling to work
   scene.add(points);
 
   return {
@@ -146,6 +223,11 @@ export function addSkyGradient(scene, theme) {
 export function addFloatingDecorations(scene, theme, arenaType) {
   const g = new THREE.Group();
   g.name = 'arenaDecor';
+  // Skip generic decorations for arenas that supply their own full prop sets
+  if (scene.userData.customDecor) {
+    scene.add(g);
+    return { group: g, update() {} };
+  }
   const accent = new THREE.Color(theme.accent || 0x3b82f6);
   const cols = [accent, new THREE.Color(0xec4899), new THREE.Color(0x22c55e), new THREE.Color(0xfbbf24)];
 
@@ -296,19 +378,60 @@ export function addPollenParticles(scene, theme) {
 }
 
 export function applyArenaAtmosphere(scene, arenaType, challenge) {
+  // Biome kart tracks own sky/fog/decor — never layer generic gradient sky on top
+  if (scene.userData?.biomeAAA || scene.userData?.biomeWorldBuilt || scene.userData?.mkThemedTrack) {
+    scene.userData.arenaTheme = resolveArenaTheme(arenaType, challenge);
+    return scene.userData.arenaTheme;
+  }
+  if (scene.userData?.footballMode || scene.userData?.skipArenaAtmosphere) {
+    scene.userData.arenaTheme = resolveArenaTheme(arenaType, challenge);
+    return scene.userData.arenaTheme;
+  }
   const theme = resolveArenaTheme(arenaType, challenge);
+  const envId = challenge?.environmentId || scene.userData?.environmentId;
+  if (envId && !scene.userData?.footballMode && !scene.userData?.raceMode) {
+    applyArenaBroadcastLook(scene, envId, challenge);
+  }
   const isForest = arenaType === 'ground' || challenge?.id === 'fox_battery_chase' || challenge?.isFoxChase;
+  const chassisMode = challenge?.isChassisMode;
   if (isForest) {
     const pollen = addPollenParticles(scene, theme);
     scene.userData.pollen = pollen;
     scene.userData.arenaTheme = theme;
     return theme;
   }
+  if (scene.userData.raceMode || scene.userData.customDecor) {
+    if (!scene.userData.customSky) addSkyGradient(scene, theme);
+    _ensureHorizonBackdrop(scene, arenaType, challenge);
+    _ensureAtmosphereParticles(scene, theme);
+    scene.userData.arenaTheme = theme;
+    return theme;
+  }
+  // Chassis missions: keep builder sky but add horizon + particles + cinematic decor
+  if ((chassisMode || challenge?.isRobotMission) && scene.userData.customSky) {
+    _ensureHorizonBackdrop(scene, arenaType, challenge);
+    _ensureAtmosphereParticles(scene, theme);
+    scene.userData.arenaTheme = theme;
+    return theme;
+  }
   if (!scene.userData.customSky) addSkyGradient(scene, theme);
+  else _ensureHorizonBackdrop(scene, arenaType, challenge);
   const atmo = addAtmosphereParticles(scene, theme);
   const decor = addFloatingDecorations(scene, theme, arenaType);
   scene.userData.atmo = atmo;
   scene.userData.decor = decor;
+  scene.userData.arenaTheme = theme;
+  return theme;
+}
+
+/** Bible v2: broadcast look + horizon + particles when family builders set customSky. */
+export function applyMissionArenaBackdrop(scene, arenaType, challenge) {
+  if (scene.userData?.footballMode || scene.userData?.raceMode || scene.userData?.biomeAAA) return;
+  const theme = scene.userData.arenaTheme || resolveArenaTheme(arenaType, challenge);
+  const envId = challenge?.environmentId || scene.userData?.environmentId;
+  if (envId) applyArenaBroadcastLook(scene, envId, challenge);
+  _ensureHorizonBackdrop(scene, arenaType, challenge);
+  _ensureAtmosphereParticles(scene, theme);
   scene.userData.arenaTheme = theme;
   return theme;
 }

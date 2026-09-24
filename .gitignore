@@ -11,3 +11,8 @@ dist-deploy.zip
 build*.log
 build*.txt
 build*.output
+tmp/
+v82-proof/
+
+.DS_Store
+.claude/worktrees/

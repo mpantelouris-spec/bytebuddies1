@@ -152,11 +152,87 @@
 /* ── Build page layout ──────────────────────────────────────────────────── */
 .bb-studio-build {
   display: flex;
+  flex-direction: column;
   flex: 1;
   overflow: hidden;
   gap: 10px;
   padding: 10px;
   min-height: 0;
+}
+.bb-studio-commandbar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 14px;
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.09);
+}
+.bb-studio-command-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.bb-studio-command-kicker {
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 1.2px;
+  color: #7c3aed;
+  text-transform: uppercase;
+}
+.bb-studio-command-copy strong {
+  font-size: 15px;
+  color: #1f2937;
+}
+.bb-studio-command-copy > span:last-child {
+  font-size: 12px;
+  color: #6b7280;
+}
+.bb-studio-mode-dock {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.bb-studio-mode-chip {
+  border: 1.5px solid #e8e8e8;
+  background: #fafafa;
+  color: #555;
+  border-radius: 10px;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.bb-studio-mode-chip.active {
+  background: #7c3aed;
+  border-color: #7c3aed;
+  color: #fff;
+}
+.bb-studio-quick-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.bb-studio-quick-actions button {
+  border: none;
+  border-radius: 10px;
+  padding: 7px 12px;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  background: #f0eeff;
+  color: #7c3aed;
+}
+.bb-studio-workspace {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  gap: 10px;
+  overflow: hidden;
 }
 
 /* ── Left panel ─────────────────────────────────────────────────────────── */
@@ -1486,8 +1562,14 @@
   .bb-studio-sim-right { width: 260px; min-width: 260px; }
 }
 @media (max-width: 860px) {
-  .bb-studio-left, .bb-studio-right, .bb-studio-sim-right { display: none; }
+  .bb-studio-right, .bb-studio-sim-right { display: none; }
+  .bb-studio-left { width: 220px; min-width: 180px; }
   .bb-studio-nav-btn { padding: 7px 12px; font-size: 12px; }
+  .bb-studio-command-copy > span:last-child,
+  .bb-studio-mode-dock { display: none; }
+}
+@media (max-width: 520px) {
+  .bb-studio-left { display: none; }
 }
 @media (max-width: 600px) {
   .bb-studio-status, .bb-studio-xp { display: none; }

@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate" />
+  <title>ByteBuddies Recovery</title>
+  <style>
+    body { font-family: system-ui, sans-serif; background: #0f0f1a; color: #e2e8f0; min-height: 100vh; display: flex; align-items: center; justify-content: center; text-align: center; padding: 24px; }
+    a { color: #a5b4fc; }
+  </style>
+</head>
+<body>
+  <div>
+    <div style="font-size:48px;margin-bottom:16px">🔄</div>
+    <h1 style="margin:0 0 12px">Clearing cache &amp; reloading…</h1>
+    <p style="color:#94a3b8;max-width:420px;margin:0 auto 20px">If you are not redirected, <a href="/">click here</a>.</p>
+  </div>
+  <script>
+    try {
+      sessionStorage.clear();
+      localStorage.removeItem('bb_chunk_reload_attempted');
+      localStorage.removeItem('bb_force_reload');
+    } catch (e) { /* ignore */ }
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function (regs) {
+        regs.forEach(function (r) { r.unregister(); });
+      });
+    }
+    fetch('/bb-entry.json?_=' + Date.now(), { cache: 'no-store' })
+      .then(function (r) { return r.json(); })
+      .then(function (j) { window.__BB_RECOVER_BUILD = j.build; })
+      .catch(function () {});
+    setTimeout(function () {
+      window.location.replace('/?_recover=' + Date.now() + '#studio?course=rover_rover_obstacle_course');
+    }, 600);
+  </script>
+</body>
+</html>

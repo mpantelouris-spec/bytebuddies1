@@ -57,20 +57,8 @@ jobs:
 
       - name: Deploy to VPS
         run: |
-          # Preserve characters on VPS (3 GB — only sync new/missing files)
-          ssh ubuntu@129.151.144.92 "
-            mkdir -p /home/ubuntu/bytebuddies/assets
-            if [ -d /home/ubuntu/bytebuddies/assets/characters ]; then
-              mv /home/ubuntu/bytebuddies/assets/characters /tmp/bb-characters-bak
-            fi
-            rm -rf /home/ubuntu/bytebuddies/*
-            mkdir -p /home/ubuntu/bytebuddies/assets
-            if [ -d /tmp/bb-characters-bak ]; then
-              mv /tmp/bb-characters-bak /home/ubuntu/bytebuddies/assets/characters
-            fi
-          "
-          # Sync app files (fast — excludes characters)
+          set -euo pipefail
+          # Do not rm the web root before rsync — a failed upload must not leave the site without index.html.
           rsync -az --delete --exclude='assets/characters/' dist/ ubuntu@129.151.144.92:/home/ubuntu/bytebuddies/
-          # Sync characters — upload when file changed (size/mtime); replaces broken/stale sprites
           rsync -az --checksum dist/assets/characters/ ubuntu@129.151.144.92:/home/ubuntu/bytebuddies/assets/characters/
-          ssh ubuntu@129.151.144.92 "find /home/ubuntu/bytebuddies -type d -exec chmod 755 {} \; && find /home/ubuntu/bytebuddies -type f -exec chmod 644 {} \; && sudo nginx -t && sudo systemctl restart nginx && curl -sf -o /dev/null http://127.0.0.1/ && echo 'Site OK on origin'"
+          ssh ubuntu@129.151.144.92 "test -f /home/ubuntu/bytebuddies/index.html && test -f /home/ubuntu/bytebuddies/bb-entry.json && find /home/ubuntu/bytebuddies -type d -exec chmod 755 {} \; && find /home/ubuntu/bytebuddies -type f -exec chmod 644 {} \; && sudo nginx -t && sudo systemctl restart nginx && curl -sf -o /dev/null http://127.0.0.1/ && echo 'Site OK on origin'"

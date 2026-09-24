@@ -4,10 +4,17 @@ import App from './App'
 import './index.css'
 import './styles/blocks.css'
 import './styles/block-shape.css'
-import { prewarmCupTrackAssets } from './virtual-robot-designer/racing/mk-tracks/TrackAssetManifest.js'
 
-window.__BYTEBUDDIES_BUILD = '2026-08-17-v54-mega-scenery';
-setTimeout(() => prewarmCupTrackAssets(), 200);
+window.__BYTEBUDDIES_BUILD = window.__BYTEBUDDIES_BUILD || 'dev';
+
+setTimeout(() => {
+  import('./virtual-robot-designer/racing/mk-tracks/TrackAssetManifest.js')
+    .then((m) => m.prewarmCupTrackAssets?.())
+    .catch(() => {});
+  import('./virtual-robot-designer/studio/football/FootballAssetManifest.js')
+    .then((m) => m.prewarmFootballAssets?.())
+    .catch(() => {});
+}, 8000);
 
 let appBooted = false;
 
@@ -48,6 +55,7 @@ try {
   );
   appBooted = true;
   window.__BB_BOOTED = true;
+  window.dispatchEvent(new Event('bb-app-ready'));
 } catch (e) {
   console.error('React mount error:', e);
   const root = document.getElementById('root');

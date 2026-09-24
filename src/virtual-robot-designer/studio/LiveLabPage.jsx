@@ -9,18 +9,21 @@ import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { GTAOPass } from 'three/examples/jsm/postprocessing/GTAOPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { FXAAShader } from 'three/examples/jsm/shaders/FXAAShader.js';
-import { buildSimRobot, normalizeRobotBuildConfig } from '../services/studio-robot-builder.js';
+import { buildSimRobot, normalizeRobotBuildConfig, CHASSIS_DATA } from '../services/studio-robot-builder.js';
+import { mergeRobotBuildConfig, applyRobotVisualIdentity } from '../data/robot-visual-identity.js';
 import {
-  applyArenaAtmosphere, animateRobotWheels, animateRobotIdle, emitWheelDust, resolveArenaTheme,
+  applyArenaAtmosphere, applyMissionArenaBackdrop, animateRobotWheels, animateRobotIdle, emitWheelDust, resolveArenaTheme,
 } from '../services/sim-visual-polish.js';
 import {
   setupSimLighting, setupSoftEnvironment, setupRaceEnvironment, setupStadiumNightEnvironment, setupMKDayEnvironment, setupCombatEnvironment, setupFootballEnvironment, configureLabRenderer,
   stylizeMeshMaterials, createExecutionTrail, createPreviewPath, WORLD_COLORS,
-  detectQualityTier, QUALITY_PRESETS, createSimWebGLRenderer, formatSimStartupError, isEmbeddedPreviewBrowser,
+  detectQualityTier, detectCupTrackQualityTier, QUALITY_PRESETS, createSimWebGLRenderer, formatSimStartupError, isEmbeddedPreviewBrowser,
 } from '../services/art-direction.js';
+import { createPremiumRendererWebGL } from './aerial-world/AerialWebGPUKit.js';
 import { createRobotStateController, attachRobotAccentGlow } from '../services/robot-visual-states.js';
 import { ROBOT_COURSES, TIERS, ROBOT_TYPE_TO_CATALOG } from '../../data/courseCatalog.js';
 import { ROBOT_TRACKS, trackLevelToCourse, calcTrackScore, calcTrackXp, getTrackLevel, getTrackLevelById, BONUS_COURSES, ALL_COURSES_CATALOG, COURSE_LENGTHS, TRACK_CATEGORIES, LEVELS_PER_TRACK } from '../data/robot-tracks.js';
@@ -43,8 +46,14 @@ import { compileFlappyScratchScript, FlappyBlockRuntime } from '../data/flappy-b
 import { isFightingCourse, FIGHTING_STARTER_SCRIPT } from '../data/fighting-blocks.js';
 import { isFootballCourse, FOOTBALL_STARTER_SCRIPT, FOOTBALL_ROLE_STARTERS, FOOTBALL_TEAM_ROLES } from '../data/football-blocks.js';
 import { isRaceCourse, getRaceStarterScript } from '../data/racing-starter-script.js';
-import { getCarRacingTrack, isCarChassis } from '../data/car-racing-tracks.js';
-import { getMKTrack } from '../racing/mk-tracks/MKTrackRegistry.js';
+import {
+  getPrimaryStarterScript,
+  getPrimaryRobotDisplay,
+  isPrimaryStudioChassis,
+  isPrimaryStudioAerialChassis,
+} from '../data/primary-robot-studio.js';
+import { getCarRacingTrack, isCarChassis, isCarRacingArenaType } from '../data/car-racing-tracks.js';
+import { getMKTrack, getCarModeArenaId } from '../racing/mk-tracks/MKTrackRegistry.js';
 import { FOOTBALL_COURSES, resolveFootballLabCourse } from '../data/football-courses.js';
 import { MK_RACING_COURSES, MK_RACING_COURSE_BY_ID } from '../data/mk-racing-courses.js';
 import { CodeRacerTrackCup } from '../racing/CodeRacerTrackCup.jsx';
@@ -54,6 +63,11 @@ import { compileFootballScratchScript, createFootballRuntimes, tickFootballRunti
 import { getFightingArchetype } from '../data/fighting-robot-types.js';
 import { buildFightingArena, alignFighterToRingSurface } from './FightingArena.js';
 import { buildFootballArena } from './FootballArena.js';
+import { computeFootballCamera } from './football/FootballCameraDirector.js';
+import { buildFootballPlayerMesh, clampFootballActorScale } from './football/FootballPlayerKit.js';
+import { prewarmFootballAssets } from './football/FootballAssetManifest.js';
+import { GOAL_Z } from './football-match-engine.js';
+import { applyFootballTeamKit, buildFootballPlayer, buildUserStrikerFootballer } from './football-character-models.js';
 import { FootballHUD } from './FootballHUD.jsx';
 import { FootballHub } from './FootballHub.jsx';
 import { FightingHUD } from './FightingHUD.jsx';
@@ -61,6 +75,14 @@ import { FightingAcademyHUD } from './FightingAcademyHUD.jsx';
 import { FightingHub } from './FightingHub.jsx';
 import { FightingResults } from './FightingResults.jsx';
 import { attachFightingKeyboard } from './fighting-keyboard-controls.js';
+import { attachRacingKeyboard, racingKeysHeld, emptyRacingKeys, RACE_CONTROLS_HELP } from './racing-keyboard-controls.js';
+import {
+  attachFootballKeyboard,
+  footballKeysToInput,
+  emptyFootballKeys,
+  clearFootballKeyEdges,
+  FOOTBALL_CONTROLS_HELP,
+} from './football-keyboard-controls.js';
 import { recordFightResult, getFightCareer } from '../services/fight-career-progress.js';
 import { createFightingVfx, wireFightingVfx } from './fighting-vfx.js';
 import {
@@ -80,13 +102,29 @@ import {
 } from './CircuitSprintArena.js';
 import { MK_ARENA_TYPES } from '../racing/mk-tracks/MKTrackRegistry.js';
 import { BIOME_ARENA_TYPES, getBiomeTrack } from '../racing/mk-tracks/BiomeTrackRegistry.js';
+import { isCupTrack } from '../racing/mk-tracks/CodeRacerTrackStandards.js';
 import { getBiomeCssGrade } from '../racing/mk-tracks/BiomeAAAVisualSpec.js';
+import { getTrackSkyPreset } from '../racing/mk-tracks/TrackSkyKit.js';
+import { disposeTrackEnvironment } from '../racing/mk-tracks/TrackEnvironmentKit.js';
 import { getHazardSpeedMultiplier } from '../racing/mk-tracks/TrackFeaturesKit.js';
 import { buildFlappyBirdArena } from './FlappyBirdArena.js';
 import { advanceAlongRaceTrack, sampleRaceCamera, sampleRaceStartCamera, sampleGridLaunchCamera, sampleFixedChaseCamera, FLAT_ROAD_SURFACE_Y, KART_VISUAL_LIFT, KART_CHASSIS_ROAD_GAP, plantKartOnRoad, roadSurfaceYAt, raycastRoadSurfaceY, measureKartWheelDrop } from '../racing/RacingRaceLogic.js';
 import { closestTrackT } from '../racing/RacingTrackSystem.js';
 import { downgradeTrackPerfBudget } from '../racing/mk-tracks/TrackPerformanceKit.js';
 import { buildAdventureArena } from './AdventureArenaBuilder.js';
+import { spawnMissionBanner, spawnWinCelebration } from './MissionPresentation.js';
+import { MissionHud } from './MissionHud.jsx';
+import { applyArenaModeDressing } from './ArenaModeDressing.js';
+import { finalizeMissionArenaVisuals, buildMissionWorld } from './MissionArenaFinalize.js';
+import { buildKidClarityBaseArena, getMissionKidClarity } from './mission-world/MissionKidClarity.js';
+import { buildFirebotBlazeArena } from './EmergencyArenaBuilder.js';
+import { buildFlightRingsArena, buildSpiderRescueArena } from './FamilyArenaBuilders.js';
+import { isAerialArenaType } from './aerial-world/AerialCourseRecipes.js';
+import { FLYING_ARENA_SPEC_VERSION, resolveFlyingChassisId } from './aerial-world/FlyingArenaSpec.js';
+import { buildAtmosphereSky } from '../racing/mk-tracks/BiomeAAAKit.js';
+import { initAerialContrails, updateAerialContrails } from './aerial-world/AerialContrailKit.js';
+import { animateUE5AerialEffects } from './aerial-world/AerialUERenderKit.js';
+import { finishChassisOrGoal } from './ArenaBuilderCore.js';
 import { buildMissionArena } from './MissionArenaBuilder.js';
 import {
   expandRobotMissionsAsCourses, getRobotMission, getRobotMissionStory, getMissionFailTip,
@@ -1349,12 +1387,21 @@ function detectRobotType(rc) {
   if (chassis === 'helicopter')                      return 'drone';   // same arena/blocks
   if (['hoverbot','hoverracer'].includes(chassis))   return 'hover';
   if (['submarine','deepseabot'].includes(chassis))  return 'underwater';
-  if (chassis === 'miningbot')                       return 'miningbot'; // dedicated mining campaign
+  if (chassis === 'miningbot')                       return 'miningbot';
   if (chassis === 'securitybot')                     return 'security';
+  if (chassis === 'stealth')                         return 'security';
   if (chassis === 'medbot')                          return 'medbot';
   if (chassis === 'firebot')                         return 'firebot';
   if (chassis === 'factorybot')                      return 'factorybot';
+  if (chassis === 'robotarm')                        return 'factory';
+  if (chassis === 'farmbot')                         return 'farmbot';
+  if (chassis === 'spacerover')                      return 'spacerover';
+  if (chassis === 'crawler')                         return 'crawler';
+  if (chassis === 'scout')                           return 'scout';
+  if (chassis === 'rover')                           return 'rover';
   if (['jetplane','steathjet','aerobat'].includes(chassis)) return 'jet';
+  if (chassis === 'mech')                            return 'humanoid';
+  if (chassis === 'legobot')                         return 'humanoid';
   // Movement-based fallback
   if (mov === 'jets')   return 'jet';
   if (mov === 'flying') return 'drone';
@@ -1369,6 +1416,7 @@ function detectRobotType(rc) {
 const FIGHTER_CHASSIS = new Set(['striker', 'blaster', 'ninja', 'berserker', 'battlebot', 'tank']);
 
 function isFighterRobot(rc) {
+  if (isPrimaryStudioChassis(rc?.chassisId)) return false;
   const type = detectRobotType(rc || {});
   const chassis = rc?.chassisId || '';
   return FIGHTER_CHASSIS.has(chassis) || ['striker', 'blaster', 'ninja', 'berserker', 'tank'].includes(type);
@@ -2003,8 +2051,8 @@ const COURSE_STORIES = {
   grumble_volcano: { emoji:'🌋', story:"Grumble Volcano — active eruptions, geysers, and crumbling bridges. Adapt to chaos!", objectives:["Complete 2 laps","Cross bridge in time","Dodge geysers"], tip:"Speed up when the bridge starts crumbling!", collectibles:"Magma coins · geyser shields" },
   cheese_land: { emoji:'🧀', story:"Cheese Land — surreal wavy track where nothing is quite what it seems. Stay focused!", objectives:["Complete 2 laps","Navigate distortion","Don't get lost"], tip:"Trust your minimap when visuals warp!", collectibles:"Cheese coins · surreal stars" },
   rainbow_road_master: { emoji:'🌈', story:"Rainbow Road Master Edition — the ultimate 10km cosmic lap combining every challenge. This is the final test!", objectives:["Complete 1 mega-lap","Pass all 8 gates","Master every section"], tip:"Use everything you've learned — this is the championship!", collectibles:"Cosmic stars · rainbow coins · boost pads" },
-  sunset_cove_01: { emoji:'🏖️', story:"Sunset Cove Speedway — turquoise bay, palm trees, tiki torches, giant hibiscus arch.", objectives:["Complete 2 laps","Pass hibiscus arch","Beat the timer"], tip:"Smooth steering on the coastal straight!", collectibles:"Sand coins · sunset gems" },
-  candy_carnival_01: { emoji:'🎡', story:"Candy Carnival Circuit — ferris wheel, coaster bridge, neon ticket booth arch.", objectives:["Complete 2 laps","Under coaster bridge","Hit carnival arch"], tip:"Follow the hot-pink lane through the midway!", collectibles:"Confetti · candy tokens" },
+  sunset_cove_01: { emoji:'🏖️', story:"Sunset Cove Speedway — breezy coastal loop along the pier and palm-lined bay.", objectives:["Complete 2 laps","Coastal curve","Ocean bend"], tip:"Stay wide on the ocean bend — palms line the outside!", collectibles:"Sand coins · sunset gems" },
+  candy_carnival_01: { emoji:'🎡', story:"Candy Carnival Circuit — figure-8 midway through the ferris wheel.", objectives:["Complete 2 laps","Top loop then crossover","Bottom loop back to start"], tip:"Curve right on top loop, left through the crossover!", collectibles:"Confetti · candy tokens" },
   neon_metro_01: { emoji:'🚇', story:"Neon Metro Rush — rainy tunnels, holographic departure arch, passing trains.", objectives:["Complete 3 laps","Navigate station corners","Pass departure arch"], tip:"Follow magenta-cyan lanes through the rain!", collectibles:"Metro tokens · holo sparks" },
   cloud_citadel_01: { emoji:'🏰', story:"Cloud Citadel Loop — floating castle, gold guardrails, castle gate arch.", objectives:["Complete 2 laps","Cross rope bridge","Pass castle gate"], tip:"Watch elevation on floating island curves!", collectibles:"Cloud wisps · star coins" },
   jungle_ruins_01: { emoji:'🗿', story:"Jungle Ruins Rally — temple pyramid, stone jaguar, glowing rune arch.", objectives:["Complete 2 laps","Weave temple turns","Pass rune arch"], tip:"Slalom through the jungle temple!", collectibles:"Leaf drift · relic gems" },
@@ -3184,9 +3232,59 @@ function extractActions(ws, { flappyLoop = false } = {}) {
 // ─────────────────────────────────────────────────────────────────────────────
 // SMART ARENA PROFILES — driven by ALL_COURSES
 // ─────────────────────────────────────────────────────────────────────────────
+function profileFromChassis(chassisId) {
+  const TYPE_TO_CHASSIS = {
+    humanoid: 'droid',
+    jet: 'jetplane',
+    hover: 'hoverbot',
+    underwater: 'submarine',
+    factory: 'robotarm',
+    security: 'securitybot',
+    racedrone: 'racedrone',
+    factorybot: 'factorybot',
+    miningbot: 'miningbot',
+    farmbot: 'farmbot',
+    spacerover: 'spacerover',
+    crawler: 'crawler',
+    scout: 'scout',
+    rover: 'rover',
+    birdbot: 'birdbot',
+    footballbot: 'footballbot',
+    striker: 'striker',
+    blaster: 'blaster',
+    ninja: 'ninja',
+    berserker: 'berserker',
+    tank: 'tank',
+  };
+  const resolvedId = CHASSIS_DATA.some((c) => c.id === chassisId)
+    ? chassisId
+    : (TYPE_TO_CHASSIS[chassisId] || chassisId);
+  const ch = CHASSIS_DATA.find((c) => c.id === resolvedId) || CHASSIS_DATA[0];
+  const env = getChassisEnvironment(ch.id);
+  const arenaCfg = ARENA_CONFIG[ch.id];
+  let arenaType = env.arenaTypes[0];
+  if (env.id === 'flappy') arenaType = 'flappy_bird';
+  if (isCarChassis(ch.id)) arenaType = 'street_grand_prix';
+  return {
+    tipIcon: ch.icon,
+    tip: `${ch.name} missions use the ${env.name} environment — not kart cup tracks.`,
+    recommend: `${env.name} modes, themed challenges & Blockly drills`,
+    arenaType,
+    arenaLabel: arenaCfg?.name || env.name,
+    recKeys: [ch.id, chassisId, env.cat],
+  };
+}
+
+function resolveProfileData(rc) {
+  const type = detectRobotType(rc || {});
+  const chassisId = rc?.chassisId || 'rover';
+  return PROFILE_DATA[type] || PROFILE_DATA[chassisId] || profileFromChassis(chassisId);
+}
+
 const PROFILE_DATA = {
-  rover:      { tipIcon:'🏎️', tip:'This rover is built for ground racing & driving!',      recommend:'Rainbow Road, campaign missions, delivery & forest runs',         arenaType:'street_grand_prix', arenaLabel:'Rainbow Road',               recKeys:['rover','race','delivery'] },
-  tank:       { tipIcon:'🛡️', tip:'Heavy fighter — block, slam, and outlast in the boxing ring!', recommend:'Training Arena, Championship Bout, Rainbow Road & demolition', arenaType:'robot_fight', arenaLabel:'Combat Arena', recKeys:['tank','battlebot','bulldozer','mining','fighter','combat'] },
+  rover:      { tipIcon:'🏎️', tip:'This rover is built for ground racing & driving!',      recommend:'Cup tracks, campaign missions, delivery & forest runs',         arenaType:'street_grand_prix', arenaLabel:'Rainbow Road',               recKeys:['rover','race','delivery'] },
+  scout:      { tipIcon:'⚡', tip:'Scout rover — fast laps on cup tracks!',                recommend:'High-speed cup circuits & sprint modes',                          arenaType:'street_grand_prix', arenaLabel:'Rainbow Road',               recKeys:['scout','race','speed'] },
+  tank:       { tipIcon:'🛡️', tip:'Heavy fighter — block, slam, and outlast in the boxing ring!', recommend:'Training Arena, Championship Bout & demolition drills', arenaType:'robot_fight', arenaLabel:'Combat Arena', recKeys:['tank','battlebot','bulldozer','mining','fighter','combat'] },
   drone:      { tipIcon:'🚁', tip:'This drone soars through aerial challenges!',         recommend:'Sky rescue, canyon flights, racing leagues & campaign missions',  arenaType:'sky',        arenaLabel:'Sky City Arena',             recKeys:['drone','aerial','rescue'] },
   jet:        { tipIcon:'✈️', tip:'This jet is built for high-speed aerial racing!',     recommend:'Stunt showdowns, supersonic sprints, storm chases & sky campaigns', arenaType:'jet_stunt',  arenaLabel:'Jet Stunt Circuit',          recKeys:['jet','aerial','stunt'] },
   spider:     { tipIcon:'🕷️', tip:'This spider scales walls and ceilings with ease!',   recommend:'Cavern crawls, temple climbs, rescue ops & campaign missions',    arenaType:'cavern',     arenaLabel:'Crystal Cavern',             recKeys:['spider','climbing','humanoid'] },
@@ -3200,7 +3298,10 @@ const PROFILE_DATA = {
   racedrone:  { tipIcon:'🏁', tip:'This racing drone blazes through aerial circuits!',  recommend:'Drone racing league, warp gates, storm chases & sky campaigns',   arenaType:'neon_race',  arenaLabel:'Neon Racing Circuit',        recKeys:['racedrone','race','aerial'] },
   factorybot: { tipIcon:'🏭', tip:'This factory bot lifts and sorts on the floor!',     recommend:'Auto factory, quality gates, crane challenges & campaign missions', arenaType:'factory',  arenaLabel:'Industrial Workstation',     recKeys:['factorybot','factory','assembly'] },
   birdbot:    { tipIcon:'🐦', tip:'BirdBot flaps through pipe gaps — add When spacebar clicked → Flap!, then press SPACE during play!', recommend:'Flappy pipes, ring courses, storm flights & wrecking ball', arenaType:'flappy_bird', arenaLabel:'Flappy BirdBot', recKeys:['birdbot'] },
-  miningbot:  { tipIcon:'⛏️', tip:'This mining bot crushes ore and navigates quarries!', recommend:'Quarry runs, ore hauls, tunnel digs & heavy terrain missions', arenaType:'street_grand_prix', arenaLabel:'Rainbow Road', recKeys:['miningbot','tank','bulldozer'] },
+  miningbot:  { tipIcon:'⛏️', tip:'This mining bot crushes ore and navigates quarries!', recommend:'Quarry drills, ore hauls, tunnel digs & factory yards', arenaType:'underground_mine', arenaLabel:'Underground Mine', recKeys:['miningbot','factory','industrial'] },
+  crawler:    { tipIcon:'🌿', tip:'All-terrain crawler — mud, rocks & steep climbs!',      recommend:'Martian dunes, rocky climbs & wilderness patrols',                arenaType:'desert_rally',   arenaLabel:'Desert Rally',               recKeys:['crawler','martian','terrain'] },
+  farmbot:    { tipIcon:'🌾', tip:'Farm bot — fields, crops & harvest routes!',          recommend:'Power garden, warehouse hauls & rural patrols',                   arenaType:'power_garden',   arenaLabel:'Power Garden',               recKeys:['farmbot','factory','delivery'] },
+  spacerover: { tipIcon:'🚀', tip:'Space rover — low gravity & red planet runs!',        recommend:'Alien planet surveys, desert rallies & crystal caves',            arenaType:'alien_planet',   arenaLabel:'Alien Planet',               recKeys:['spacerover','martian','space'] },
   striker:    { tipIcon:'🥊', tip:'Striker uses fast combos — add When START → Light Punch → Block!', recommend:'Training Arena, Sparring, Tournament & Survival', arenaType:'robot_fight', arenaLabel:'Combat Arena', recKeys:['striker','fighter','combat'] },
   blaster:    { tipIcon:'✨', tip:'Blaster fights from range with elemental attacks!', recommend:'Sparring, Boss Gauntlet & Combat Strategies', arenaType:'robot_fight', arenaLabel:'Combat Arena', recKeys:['blaster','fighter','combat'] },
   ninja:      { tipIcon:'🥷', tip:'Ninja strikes with precision — dodge then Swift Strike!', recommend:'Sparring, Survival & Combat Strategies', arenaType:'robot_fight', arenaLabel:'Combat Arena', recKeys:['ninja','fighter','combat'] },
@@ -3210,7 +3311,7 @@ const PROFILE_DATA = {
 
 function getSmartProfile(rc) {
   const type  = detectRobotType(rc);
-  const pd    = PROFILE_DATA[type] || PROFILE_DATA.rover;
+  const pd    = resolveProfileData(rc);
   const recCourses = filterCoursesForRobot(ALL_COURSES, type, pd.recKeys);
   const missionDefault = recCourses[0];
   const rest = recCourses.filter((c) => c.id !== missionDefault?.id).slice(0, 3);
@@ -6753,36 +6854,21 @@ function _collectHardArena(scene) {
   scene.add(g);
 }
 
-function _flightRingsArena(scene) {
-  const g = new THREE.Group(); g.name = 'arena';
-  scene.background = new THREE.Color(0x1a6ad0);
-  scene.fog = new THREE.Fog(0x5599dd, 55, 95);
-  const groundMat=new THREE.MeshStandardMaterial({color:0x4a8a30,roughness:0.9});
-  const groundM=new THREE.Mesh(new THREE.PlaneGeometry(200,200),groundMat); groundM.rotation.x=-Math.PI/2; groundM.position.y=-8; g.add(groundM);
-  const cloudMat2=new THREE.MeshStandardMaterial({color:0xffffff,roughness:1,transparent:true,opacity:0.88});
-  for(let i=0;i<14;i++){
-    const cx=(Math.random()-0.5)*72,cy=-2+Math.random()*4,cz=(Math.random()-0.5)*72;
-    [1.5,2.6,2.2,1.8].forEach((r,ci)=>{ const c=new THREE.Mesh(new THREE.SphereGeometry(r,6,5),cloudMat2); c.position.set(cx+ci*r*1.5,cy,cz); g.add(c); });
-  }
-  const ringDefs=[{x:0,y:3,z:-5},{x:5,y:7,z:-13},{x:-5,y:10,z:-21},{x:6,y:8,z:-29},{x:0,y:6,z:-39}];
-  const ringMeshes=ringDefs.map((rd,i)=>{
-    const ringMat=new THREE.MeshStandardMaterial({color:0xfbbf24,emissive:0xffaa00,emissiveIntensity:1.8,metalness:0.92,roughness:0.1});
-    const ring=new THREE.Mesh(new THREE.TorusGeometry(2.6,0.22,12,32),ringMat); ring.position.set(rd.x,rd.y,rd.z); ring.name=`ring_${i}`; ring.castShadow=true; g.add(ring);
-    const inner=new THREE.Mesh(new THREE.CircleGeometry(2.4,16),new THREE.MeshStandardMaterial({color:0xffdd88,emissive:0xffcc44,emissiveIntensity:0.42,transparent:true,opacity:0.14,side:THREE.DoubleSide})); inner.position.copy(ring.position); g.add(inner);
-    const rpl=new THREE.PointLight(0xffaa00,1.8,9); rpl.position.copy(ring.position); g.add(rpl);
-    const marker=new THREE.Mesh(new THREE.SphereGeometry(0.16,6,6),new THREE.MeshStandardMaterial({color:0xffffff,emissive:0xffffff,emissiveIntensity:2.5})); marker.position.set(rd.x,rd.y+2.8,rd.z); marker.name='cp'; g.add(marker);
-    return ring;
+function _flightRingsArena(scene, challenge) {
+  buildFlightRingsArena(scene, challenge || scene.userData?.chassisModeChallenge);
+}
+
+/** All sky_aerial chassis courses — delegates to AerialWorldKit (never legacy box canyons). */
+function _aerialArena(scene, challenge) {
+  const base = challenge || scene.userData?.chassisModeChallenge || {};
+  const at = base.arenaType || scene.userData?.arenaType || 'drone_canyon';
+  const chassisId = resolveFlyingChassisId(base, scene.userData._labRobotConfig);
+  buildFlightRingsArena(scene, {
+    ...base,
+    chassisId: chassisId || base.chassisId,
+    arenaType: at,
+    isChassisMode: true,
   });
-  const pathPts=ringDefs.map(rd=>new THREE.Vector3(rd.x,rd.y,rd.z));
-  const pathLine=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pathPts),new THREE.LineBasicMaterial({color:0xffffff,transparent:true,opacity:0.28})); g.add(pathLine);
-  const sunDir=new THREE.DirectionalLight(0xfff8e0,1.3); sunDir.position.set(10,20,5); sunDir.castShadow=true; g.add(sunDir);
-  const abl4=new THREE.AmbientLight(0xaac8ff,0.65); g.add(abl4);
-  scene.userData.finishZone={x:ringDefs[4].x,z:ringDefs[4].z,radius:2.5,y3d:ringDefs[4].y};
-  scene.userData.obstacles=ringMeshes.map((r,i)=>({mesh:r,radius:2.7,type:'ring_edge',check3d:true}));
-  scene.userData.movers=ringMeshes.map((r,i)=>({
-    update(t){ r.rotation.y+=0.008; r.position.y=ringDefs[i].y+Math.sin(t*0.85+i)*0.45; }
-  }));
-  scene.add(g);
 }
 
 function _flightAcroArena(scene) {
@@ -7364,74 +7450,13 @@ function _spiderRuinsArena(scene){
 }
 
 // ── SPIDER RESCUE ─────────────────────────────────────────────────────────────
-function _spiderRescueArena(scene){
-  const g=new THREE.Group(); g.name='arena';
-  scene.background=_makeSkyTex([[0,'#111827'],[0.5,'#1f2937'],[1,'#111827']]);
-  scene.fog=new THREE.FogExp2(0x111827,0.025);
-  // Urban rubble floor
-  const floor=new THREE.Mesh(new THREE.PlaneGeometry(60,60),new THREE.MeshStandardMaterial({color:0x374151,roughness:1}));
-  floor.rotation.x=-Math.PI/2; floor.receiveShadow=true; g.add(floor);
-  // Collapsed building slabs
-  const concMat=new THREE.MeshStandardMaterial({color:0x4b5563,roughness:0.95});
-  [[-8,1.5,-6,3,3,2.5],[ 6,2,2,3.5,4,2.5],[-4,1,8,2.5,2,2.5],[10,1.5,-10,3,3,2.5],[-12,2.5,4,3,5,2.5]].forEach(([x,y,z,w,h,d])=>{
-    const slab=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),concMat);
-    slab.position.set(x,y/2,z); slab.castShadow=true; g.add(slab);
-  });
-  // Rebar sticking out
-  [[0,1,-6],[6,3,0],[-8,2,8]].forEach(([x,y,z])=>{
-    const rebar=new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.04,2.5,6),new THREE.MeshStandardMaterial({color:0x888888,metalness:0.8}));
-    rebar.position.set(x,y,z); rebar.rotation.z=0.4; g.add(rebar);
-  });
-  // Survivor beacons (orange glow)
-  [[-6,0.1,4],[4,0.1,-8],[0,0.1,14]].forEach(([x,y,z])=>{
-    const beacon=new THREE.Mesh(new THREE.CylinderGeometry(0.5,0.5,0.12,16),new THREE.MeshBasicMaterial({color:0xff4400}));
-    beacon.position.set(x,y,z); g.add(beacon);
-    _addPl(scene,0xff4400,1.5,7,x,y+0.5,z);
-  });
-  // Emergency rotating lights
-  _addPl(scene,0x0044ff,2.0,22,-10,8,0);
-  _addPl(scene,0xff0000,2.0,22,10,8,0);
-  scene.add(new THREE.AmbientLight(0x334455,0.4));
-  _addDl(scene,0x6688aa,0.3,0,12,0,false);
-  scene.add(g);
+function _spiderRescueArena(scene, challenge) {
+  buildSpiderRescueArena(scene, challenge || scene.userData?.chassisModeChallenge);
 }
 
-// ── DRONE CANYON ──────────────────────────────────────────────────────────────
-function _droneCanyonArena(scene){
-  const g=new THREE.Group(); g.name='arena';
-  scene.background=_makeSkyTex([[0,'#e8a060'],[0.4,'#d4784a'],[0.7,'#7a3820'],[1,'#3d1a08']]);
-  scene.fog=new THREE.Fog(0xe8a060,30,65);
-  // Canyon floor
-  const floor=new THREE.Mesh(new THREE.PlaneGeometry(60,80),new THREE.MeshStandardMaterial({color:0xb8622a,roughness:1}));
-  floor.rotation.x=-Math.PI/2; floor.position.y=-8; floor.receiveShadow=true; g.add(floor);
-  // Canyon walls — left and right cliff faces
-  const cliffMat=new THREE.MeshStandardMaterial({color:0xc8722e,roughness:0.95});
-  const cliffMat2=new THREE.MeshStandardMaterial({color:0xa85828,roughness:0.95});
-  // Left cliff
-  for(let i=0;i<8;i++){
-    const h=10+Math.random()*6; const w=6+Math.random()*3;
-    const cliff=new THREE.Mesh(new THREE.BoxGeometry(w,h,9),i%2===0?cliffMat:cliffMat2);
-    cliff.position.set(-12-Math.random()*3,h/2-8,-32+i*9); cliff.castShadow=true; g.add(cliff);
-  }
-  // Right cliff
-  for(let i=0;i<8;i++){
-    const h=10+Math.random()*6; const w=6+Math.random()*3;
-    const cliff=new THREE.Mesh(new THREE.BoxGeometry(w,h,9),i%2===0?cliffMat:cliffMat2);
-    cliff.position.set(12+Math.random()*3,h/2-8,-32+i*9); cliff.castShadow=true; g.add(cliff);
-  }
-  // Arch bridge spanning canyon
-  const archMat=new THREE.MeshStandardMaterial({color:0x8b4220,roughness:0.9});
-  const arch=new THREE.Mesh(new THREE.TorusGeometry(7,0.8,8,24,Math.PI),archMat);
-  arch.rotation.x=Math.PI/2; arch.position.set(0,4,-10); g.add(arch);
-  // Checkpoint rings (glowing orange)
-  [-24,-12,0,12,24].forEach(z=>{
-    const ring=new THREE.Mesh(new THREE.TorusGeometry(4,0.18,10,32),new THREE.MeshBasicMaterial({color:0xff7820}));
-    ring.position.set(0,2,z); g.add(ring);
-    _addPl(scene,0xff7820,0.7,10,0,2,z);
-  });
-  scene.add(new THREE.AmbientLight(0xe08040,0.9));
-  _addDl(scene,0xffb060,1.2,15,20,10,true);
-  scene.add(g);
+// ── DRONE CANYON (legacy gutted — use AerialWorldKit) ─────────────────────────
+function _droneCanyonArena(scene, challenge) {
+  _aerialArena(scene, challenge || scene.userData?.chassisModeChallenge);
 }
 
 // ── DRONE ROOFTOP ─────────────────────────────────────────────────────────────
@@ -7760,7 +7785,7 @@ function _armSortArena(scene){
 }
 
 // ── CORAL REEF ────────────────────────────────────────────────────────────────
-function _coralReefArena(scene){ buildAdventureArena(scene, 'coral_reef'); }
+function _coralReefArena(scene, challenge){ buildAdventureArena(scene, 'coral_reef', challenge); }
 function _deepTrenchArena(scene){ buildAdventureArena(scene, 'deep_trench'); }
 function _jetStuntArena(scene){
   const g=new THREE.Group(); g.name='arena';
@@ -7996,46 +8021,9 @@ function _medbotWardArena(scene){
   _addDl(scene,0xffffff,0.8,5,15,5,true);
 }
 
-// ── FIREBOT BLAZE ARENA ─────────────────────────────────────────────────────
-function _firebotBlazeArena(scene){
-  scene.background=_makeSkyTex('#1a0000','#2a0800');
-  scene.fog=new THREE.Fog('#2a0400',20,70);
-  const floorMat=new THREE.MeshStandardMaterial({color:0x2a1500,roughness:0.9});
-  const floor=new THREE.Mesh(new THREE.PlaneGeometry(120,120),floorMat); floor.rotation.x=-Math.PI/2; floor.receiveShadow=true; scene.add(floor);
-  // Burning structure walls
-  const buildMat=new THREE.MeshStandardMaterial({color:0x3a2010,roughness:0.8,metalness:0.1});
-  const charMat=new THREE.MeshStandardMaterial({color:0x1a0a00,roughness:1.0});
-  [[-15,0,-5],[15,0,-5],[0,0,-20],[-15,0,10],[15,0,10]].forEach(([x,y,z])=>{
-    const wall=new THREE.Mesh(new THREE.BoxGeometry(8,5,1),buildMat); wall.position.set(x,2.5,z); wall.castShadow=true; scene.add(wall);
-    const char=new THREE.Mesh(new THREE.BoxGeometry(8,2,0.2),charMat); char.position.set(x,1,z+0.5); scene.add(char);
-  });
-  // Fire zones — animated flame points
-  scene.userData.movers=[];
-  const flameCols=[0xff4400,0xff8800,0xffcc00];
-  [[-15,-5],[0,-15],[15,5],[-8,12],[10,-18]].forEach(([x,z],i)=>{
-    for(let f=0;f<4;f++){
-      const fMat=new THREE.MeshStandardMaterial({color:flameCols[f%3],emissive:flameCols[f%3],emissiveIntensity:1.2,transparent:true,opacity:0.85});
-      const flame=new THREE.Mesh(new THREE.ConeGeometry(0.6,2+f*0.5,5),fMat); flame.position.set(x+f*0.8-1.2,1+f*0.4,z); scene.add(flame);
-      const ph=f*1.2+i*0.7;
-      scene.userData.movers.push({update(t){flame.scale.y=0.8+Math.sin(t*5+ph)*0.3; flame.rotation.y+=0.05; flame.material.emissiveIntensity=0.8+Math.sin(t*4+ph)*0.5;}});
-    }
-    _addPl(scene,0xff4400,1.2,10,x,3,z);
-  });
-  // Smoke particles
-  const smokeGeo=new THREE.BufferGeometry();
-  const sPos=[]; for(let i=0;i<200;i++){ sPos.push((-40+Math.random()*80),(1+Math.random()*12),(-40+Math.random()*80)); }
-  smokeGeo.setAttribute('position',new THREE.Float32BufferAttribute(sPos,3));
-  const smokeMat=new THREE.PointsMaterial({color:0x333333,size:1.5,transparent:true,opacity:0.25});
-  scene.add(new THREE.Points(smokeGeo,smokeMat));
-  // Rescue victim beacons
-  [[-20,8],[8,20],[-5,-25],[22,-5]].forEach(([x,z])=>{
-    const bMat=new THREE.MeshStandardMaterial({color:0xffff00,emissive:0xffaa00,emissiveIntensity:1.0});
-    const b=new THREE.Mesh(new THREE.CylinderGeometry(0.3,0.3,1.5,6),bMat); b.position.set(x,0.75,z); scene.add(b);
-    _addPl(scene,0xffaa00,0.9,6,x,2,z);
-  });
-  scene.add(new THREE.AmbientLight(0x200800,0.4));
-  _addDl(scene,0xff6620,0.7,5,12,5,false);
-  _addPl(scene,0xff4400,0.6,60,0,8,0);
+// ── FIREBOT BLAZE ARENA (emergency family visual bible) ─────────────────────
+function _firebotBlazeArena(scene, challenge) {
+  buildFirebotBlazeArena(scene, challenge || scene.userData?.chassisModeChallenge);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -8048,7 +8036,7 @@ function _arcticStationArena(scene, challenge){ buildAdventureArena(scene,'arcti
 function _templeMazeArena(scene, challenge){ buildAdventureArena(scene,'temple_maze', challenge); }
 function _templeMazeCourseArena(scene){ buildAdventureArena(scene,'temple_maze_course'); }
 function _desertRallyArena(scene, challenge){ buildAdventureArena(scene,'desert_rally', challenge); }
-function _undergroundMineArena(scene){ buildAdventureArena(scene,'underground_mine'); }
+function _undergroundMineArena(scene, challenge){ buildAdventureArena(scene,'underground_mine', challenge); }
 function _floodedCityArena(scene){ buildAdventureArena(scene,'flooded_city'); }
 function _spaceCorridorArena(scene){ buildAdventureArena(scene,'space_corridor'); }
 function _hauntedGraveyardArena(scene){ buildAdventureArena(scene,'haunted_graveyard'); }
@@ -8058,9 +8046,9 @@ function _pirateDockArena(scene){ buildAdventureArena(scene,'pirate_dock'); }
 function _toxicWastelandArena(scene){ buildAdventureArena(scene,'toxic_wasteland'); }
 function _carnivalFunfairArena(scene){ buildAdventureArena(scene,'carnival_funfair'); }
 function _jungleBridgeArena(scene){ buildAdventureArena(scene,'jungle_bridge'); }
-function _museumHeistArena(scene){ buildAdventureArena(scene,'museum_heist'); }
-function _snowRescueArena(scene){ buildAdventureArena(scene,'snow_rescue'); }
-function _cyberCityArena(scene){ buildAdventureArena(scene,'cyber_city'); }
+function _museumHeistArena(scene, challenge){ buildAdventureArena(scene,'museum_heist', challenge); }
+function _snowRescueArena(scene, challenge){ buildAdventureArena(scene,'snow_rescue', challenge); }
+function _cyberCityArena(scene, challenge){ buildAdventureArena(scene,'cyber_city', challenge); }
 function _canyonFlightArena(scene){ buildAdventureArena(scene,'canyon_flight'); }
 function _citySkylineArena(scene){ buildAdventureArena(scene,'city_skyline'); }
 function _stormCloudArena(scene){ buildAdventureArena(scene,'storm_cloud'); }
@@ -8084,14 +8072,14 @@ function _warpGateArena(scene){ buildAdventureArena(scene,'warp_gate'); }
 function _shadowEscapeArena(scene){ buildAdventureArena(scene,'shadow_escape'); }
 function _jumpWorldArena(scene){ buildAdventureArena(scene,'jump_world'); }
 function _deepCaveArena(scene){ buildAdventureArena(scene,'deep_cave'); }
-function _autoFactoryArena(scene){ buildAdventureArena(scene,'auto_factory'); }
+function _autoFactoryArena(scene, challenge){ buildAdventureArena(scene,'auto_factory', challenge); }
 function _pipelineCrawlArena(scene){ buildAdventureArena(scene,'pipeline_crawl'); }
 function _templeClimbArena(scene){ buildAdventureArena(scene,'temple_climb'); }
 function _collapsedBuildingArena(scene){ buildAdventureArena(scene,'collapsed_building'); }
 function _militaryBaseArena(scene){ buildAdventureArena(scene,'military_base'); }
 function _factoryFloorArena(scene){ buildAdventureArena(scene,'factory_floor'); }
 function _spaceEvaArena(scene){ buildAdventureArena(scene,'space_eva'); }
-function _hospitalWalkArena(scene){ buildAdventureArena(scene,'hospital_walk'); }
+function _hospitalWalkArena(scene, challenge){ buildAdventureArena(scene,'hospital_walk', challenge); }
 function _mineShaftArena(scene){ buildAdventureArena(scene,'mine_shaft'); }
 function _urbanObstacleArena(scene){ buildAdventureArena(scene,'urban_obstacle'); }
 function _colosseumArena(scene){ buildAdventureArena(scene,'colosseum'); }
@@ -8147,7 +8135,7 @@ function _droneRacingLeagueArena(scene){ buildAdventureArena(scene,'drone_racing
    Story: Tiny helper robots keep the energy flowers alive.
    Palette: #ffcc00 flowers · #2d8a18 stems · #1a3a08 ground · #ffe8b0 sky
    ─────────────────────────────────────────────────────────────────────────── */
-function _powerGardenArena(scene){
+function _powerGardenArena(scene, challenge){
   scene.background=new THREE.Color(0x5aaa28);
   scene.fog=new THREE.Fog(0x88cc44,45,95);
 
@@ -8231,6 +8219,10 @@ function _powerGardenArena(scene){
   _addDl(scene,0xffd060,1.3,22,18,-8,true);  // warm afternoon sun
   _addDl(scene,0x88ffaa,0.22,-8,6,12,false);  // soft green fill
   _addPl(scene,0xffcc44,0.9,22,0,3,-6);        // spawn glow
+
+  finishChassisOrGoal(scene, challenge, {
+    path: 0x65a30d, glow: 0xffcc00, goal: 0x22c55e, goalLabel: 'GARDEN HUB',
+  }, -38, 'GARDEN HUB');
 }
 
 /* ── WORLD 2: CRYSTAL CAVERNS ────────────────────────────────────────────────
@@ -8439,10 +8431,27 @@ const RACE_COURSE_IDS = new Set([
   'fairy_glen_01', 'thunder_ridge_01',
 ]);
 
-function _isRaceArena(arenaType, challenge) {
+function _isRaceArena(arenaType, challenge, chassisId) {
+  const cid = chassisId || challenge?.chassisId;
+  if (!isCarChassis(cid)) return false;
+  if (isCarRacingArenaType(arenaType) || challenge?.genre === 'racing' || challenge?.physics === 'racing_spline') {
+    return true;
+  }
+  if (isPrimaryStudioChassis(cid) || isPrimaryStudioChassis(challenge?.chassisId)) return false;
   return RACE_ARENA_TYPES.has(arenaType)
     || RACE_COURSE_IDS.has(challenge?.id)
     || isRaceCourse(challenge?.linkedRaceCourse || challenge?.id, arenaType || challenge?.arenaType);
+}
+
+function isCarRaceCourse(challenge, chassisId) {
+  if (!challenge) return false;
+  const cid = chassisId || challenge?.chassisId;
+  if (!isCarChassis(cid)) return false;
+  if (isCarRacingArenaType(challenge?.arenaType) || challenge?.genre === 'racing' || challenge?.physics === 'racing_spline') {
+    return true;
+  }
+  if (isPrimaryStudioChassis(cid) || isPrimaryStudioChassis(challenge?.chassisId)) return false;
+  return isRaceCourse(challenge?.linkedRaceCourse || challenge?.id, challenge?.arenaType);
 }
 
 /** Rainbow Road uses the long straight grid cam; MK ovals use fixed chase preset. */
@@ -8460,8 +8469,80 @@ function _rainbowRoadArena(scene) { buildCircuitSprintArena(scene); }
 function _volcanoDriftArena(scene) { buildVolcanoDriftArena(scene); }
 
 function buildSmartArena(scene,arenaType,challenge,robotConfig=null){
+  scene.userData.missionWorldBuilt = false;
+  scene.userData.missionWorldKit = false;
+  scene.userData._labRobotConfig = robotConfig;
   scene.userData.missionChallenge = challenge?.isRobotMission ? challenge : null;
   scene.userData.chassisModeChallenge = challenge?.isChassisMode ? challenge : null;
+  const kidClarity = challenge?.isChassisMode ? getMissionKidClarity(challenge) : null;
+  const hybridSkyMission = kidClarity?.environmentId === 'hybrid_race_sky'
+    || challenge?.environmentId === 'hybrid_race_sky'
+    || challenge?.chassisId === 'racedrone'
+    || challenge?.chassisId === 'hoverracer';
+  const specializedKidArena = ['sky_aerial', 'hybrid_race_sky', 'boxing_mech', 'flappy']
+    .includes(kidClarity?.environmentId)
+    || isAerialArenaType(arenaType)
+    || arenaType === 'robot_fight'
+    || arenaType === 'flappy_bird';
+  const primaryStudioWorld = challenge?.isChassisMode && isPrimaryStudioChassis(challenge?.chassisId)
+    && arenaType !== 'flappy_bird'
+    && arenaType !== 'robot_football'
+    && arenaType !== 'robot_fight';
+  const primaryStudioFlying = primaryStudioWorld
+    && isPrimaryStudioAerialChassis(challenge?.chassisId || robotConfig?.chassisId)
+    && (isAerialArenaType(arenaType) || challenge?.physics === 'flight_3dof');
+  if (primaryStudioFlying) {
+    _aerialArena(scene, {
+      ...challenge,
+      chassisId: challenge?.chassisId || robotConfig?.chassisId,
+      physics: 'flight_3dof',
+      isChassisMode: true,
+      arenaType: isAerialArenaType(arenaType) ? arenaType : 'drone_canyon',
+    });
+    finalizeMissionArenaVisuals(scene, arenaType, challenge);
+    spawnMissionBanner(scene, challenge, arenaType);
+    scene.userData.arenaType = arenaType;
+    return;
+  }
+  const carChassisLab = challenge?.isChassisMode
+    && !challenge?.arenaBible
+    && isCarChassis(challenge?.chassisId || robotConfig?.chassisId)
+    && !primaryStudioFlying;
+  if (carChassisLab) {
+    const cid = challenge?.chassisId || robotConfig?.chassisId || 'rover';
+    const modeIdx = challenge?.modeIndex ?? 1;
+    const track = getCarRacingTrack(cid, modeIdx);
+    const mkArena = track?.isClassicRainbow
+      ? 'rainbow_road'
+      : (track?.arenaType || getCarModeArenaId(modeIdx) || arenaType);
+    buildMKTrackArena(scene, mkArena);
+    finalizeMissionArenaVisuals(scene, mkArena, challenge);
+    spawnMissionBanner(scene, challenge, mkArena);
+    scene.userData.arenaType = mkArena;
+    scene.userData.carKidRacing = true;
+    console.log('[LiveLab] Car robot racing track', mkArena, track?.label);
+    return;
+  }
+  if (
+    kidClarity
+    && primaryStudioWorld
+    && ((!isPrimaryStudioAerialChassis(challenge?.chassisId || robotConfig?.chassisId)
+      && !isCarChassis(challenge?.chassisId || robotConfig?.chassisId))
+      || !specializedKidArena)
+  ) {
+    buildKidClarityBaseArena(scene, challenge);
+    finalizeMissionArenaVisuals(scene, arenaType, challenge);
+    spawnMissionBanner(scene, challenge, arenaType);
+    scene.userData.arenaType = arenaType;
+    return;
+  }
+  if (hybridSkyMission && isAerialArenaType(arenaType)) {
+    _aerialArena(scene, challenge);
+    finalizeMissionArenaVisuals(scene, arenaType, challenge);
+    spawnMissionBanner(scene, challenge, arenaType);
+    scene.userData.arenaType = arenaType;
+    return;
+  }
   switch(arenaType){
     case 'sky':             _skyArena(scene); break;
     case 'terrain':         _terrainArena(scene); break;
@@ -8476,7 +8557,7 @@ function buildSmartArena(scene,arenaType,challenge,robotConfig=null){
     case 'neon_race':       _neonRaceArena(scene); break;
     case 'jungle':          _jungleArena(scene); break;
     case 'zero_g':          _zeroGArena(scene); break;
-    case 'warehouse':       _warehouseArena(scene); break;
+    case 'warehouse':       buildAdventureArena(scene, 'warehouse', challenge); break;
     case 'temple':          _templeArena(scene,challenge); break;
     case 'combat':          _combatArena(scene); break;
     case 'dodge_balls':     _dodgeBallsArena(scene); break;
@@ -8488,7 +8569,7 @@ function buildSmartArena(scene,arenaType,challenge,robotConfig=null){
     case 'collect_easy':    _collectEasyArena(scene); break;
     case 'collect_medium':  _collectMediumArena(scene); break;
     case 'collect_hard':    _collectHardArena(scene); break;
-    case 'flight_rings':    _flightRingsArena(scene); break;
+    case 'flight_rings':    _flightRingsArena(scene, challenge); break;
     case 'flight_acro':     _flightAcroArena(scene); break;
     case 'flight_slalom':   _flightSlalomArena(scene); break;
     // New catalog arenas
@@ -8516,8 +8597,8 @@ function buildSmartArena(scene,arenaType,challenge,robotConfig=null){
     case 'rover_survey':     _roverSurveyArena(scene); break;
     case 'spider_pipeline':  _spiderPipelineArena(scene); break;
     case 'spider_ruins':     _spiderRuinsArena(scene); break;
-    case 'spider_rescue':    _spiderRescueArena(scene); break;
-    case 'drone_canyon':     _droneCanyonArena(scene); break;
+    case 'spider_rescue':    _spiderRescueArena(scene, challenge); break;
+    case 'drone_canyon':     _aerialArena(scene, challenge); break;
     case 'drone_rooftop':    _droneRooftopArena(scene); break;
     case 'drone_survey':     _droneSurveyArena(scene); break;
     case 'tank_demolition':  _tankDemolitionArena(scene); break;
@@ -8527,18 +8608,18 @@ function buildSmartArena(scene,arenaType,challenge,robotConfig=null){
     case 'arm_surgery':      _armSurgeryArena(scene); break;
     case 'arm_sort':         _armSortArena(scene); break;
     // ── Underwater ──────────────────────────────────────────────────────────
-    case 'coral_reef':       _coralReefArena(scene); break;
+    case 'coral_reef':       _coralReefArena(scene, challenge); break;
     case 'deep_trench':      _deepTrenchArena(scene); break;
     case 'kelp_forest':      _kelpForestArena(scene); break;
     case 'arctic_dive':      _arcticDiveArena(scene); break;
     // ── Jet ─────────────────────────────────────────────────────────────────
-    case 'jet_stunt':        _jetStuntArena(scene); break;
+    case 'jet_stunt':        _aerialArena(scene, challenge); break;
     case 'jet_supersonic':   _jetSupersonicArena(scene); break;
     // ── Medbot ──────────────────────────────────────────────────────────────
     case 'medbot_triage':    _medbotTriageArena(scene); break;
     case 'medbot_ward':      _medbotWardArena(scene); break;
     // ── Firebot ─────────────────────────────────────────────────────────────
-    case 'firebot_blaze':    _firebotBlazeArena(scene); break;
+    case 'firebot_blaze':    _firebotBlazeArena(scene, challenge); break;
     // ── Ground / Wheeled (20 new) ────────────────────────────────────────────
     case 'forest_trail':         _forestTrailArena(scene); break;
     case 'city_delivery':        _cityDeliveryArena(scene); break;
@@ -8549,7 +8630,7 @@ function buildSmartArena(scene,arenaType,challenge,robotConfig=null){
       else _templeMazeArena(scene, challenge);
       break;
     case 'desert_rally':         _desertRallyArena(scene, challenge); break;
-    case 'underground_mine':     _undergroundMineArena(scene); break;
+    case 'underground_mine':     _undergroundMineArena(scene, challenge); break;
     case 'flooded_city':         _floodedCityArena(scene); break;
     case 'space_corridor':       _spaceCorridorArena(scene); break;
     case 'haunted_graveyard':    _hauntedGraveyardArena(scene); break;
@@ -8584,7 +8665,7 @@ function buildSmartArena(scene,arenaType,challenge,robotConfig=null){
     case 'thunder_ridge_01':
       buildMKTrackArena(scene, arenaType);
       break;
-    case 'flappy_bird':          buildFlappyBirdArena(scene); break;
+    case 'flappy_bird':          buildFlappyBirdArena(scene, challenge); break;
     case 'robot_fight':          buildFightingArena(scene, challenge, getFightingArchetype(detectRobotType(robotConfig||{}), robotConfig?.chassisId)); break;
     case 'robot_football':       buildFootballArena(scene, challenge, robotConfig); break;
     case 'farm_harvest':         _farmHarvestArena(scene); break;
@@ -8592,35 +8673,35 @@ function buildSmartArena(scene,arenaType,challenge,robotConfig=null){
     case 'toxic_wasteland':      _toxicWastelandArena(scene); break;
     case 'carnival_funfair':     _carnivalFunfairArena(scene); break;
     case 'jungle_bridge':        _jungleBridgeArena(scene); break;
-    case 'museum_heist':         _museumHeistArena(scene); break;
+    case 'museum_heist':         _museumHeistArena(scene, challenge); break;
     case 'shadow_escape':        _shadowEscapeArena(scene); break;
     case 'jump_world':           _jumpWorldArena(scene); break;
     case 'deep_cave':            _deepCaveArena(scene); break;
-    case 'auto_factory':         _autoFactoryArena(scene); break;
-    case 'snow_rescue':          _snowRescueArena(scene); break;
-    case 'cyber_city':           _cyberCityArena(scene); break;
+    case 'auto_factory':         _autoFactoryArena(scene, challenge); break;
+    case 'snow_rescue':          _snowRescueArena(scene, challenge); break;
+    case 'cyber_city':           _cyberCityArena(scene, challenge); break;
     case 'time_trial_gauntlet':  _timeTrialGauntletArena(scene); break;
     // ── Aerial (20 new) ─────────────────────────────────────────────────────
-    case 'canyon_flight':        _canyonFlightArena(scene); break;
+    case 'canyon_flight':        _aerialArena(scene, challenge); break;
     case 'city_skyline':         _citySkylineArena(scene); break;
-    case 'storm_cloud':          _stormCloudArena(scene); break;
+    case 'storm_cloud':          _aerialArena(scene, challenge); break;
     case 'volcanic_flythrough':  _volcanicFlythroughArena(scene); break;
     case 'arctic_survey':        _arcticSurveyArena(scene); break;
-    case 'rooftop_delivery':     _rooftopDeliveryArena(scene); break;
-    case 'space_orbit':          _spaceOrbitArena(scene); break;
+    case 'rooftop_delivery':     _aerialArena(scene, challenge); break;
+    case 'space_orbit':          _aerialArena(scene, challenge); break;
     case 'rainforest_canopy':    _rainforestCanopyArena(scene); break;
-    case 'cloud_race':           _cloudRaceArena(scene); break;
+    case 'cloud_race':           _aerialArena(scene, challenge); break;
     case 'night_patrol':         _nightPatrolArena(scene); break;
     case 'desert_air':           _desertAirArena(scene); break;
     case 'mountain_pass':        _mountainPassArena(scene); break;
     case 'glacier_flyover':      _glacierFlyoverArena(scene); break;
-    case 'typhoon':              _typhoonArena(scene); break;
+    case 'typhoon':              _aerialArena(scene, challenge); break;
     case 'alien_planet':         _alienPlanetArena(scene); break;
     case 'fireworks':            _fireworksArena(scene); break;
     case 'cloud_fortress':       _cloudFortressArena(scene); break;
     case 'drone_league':         _droneLeagueArena(scene); break;
     case 'coastal_rescue':       _coastalRescueArena(scene); break;
-    case 'warp_gate':            _warpGateArena(scene); break;
+    case 'warp_gate':            _aerialArena(scene, challenge); break;
     // ── Walker (20 new) ─────────────────────────────────────────────────────
     case 'pipeline_crawl':       _pipelineCrawlArena(scene); break;
     case 'temple_climb':         _templeClimbArena(scene); break;
@@ -8628,7 +8709,7 @@ function buildSmartArena(scene,arenaType,challenge,robotConfig=null){
     case 'military_base':        _militaryBaseArena(scene); break;
     case 'factory_floor':        _factoryFloorArena(scene); break;
     case 'space_eva':            _spaceEvaArena(scene); break;
-    case 'hospital_walk':        _hospitalWalkArena(scene); break;
+    case 'hospital_walk':        _hospitalWalkArena(scene, challenge); break;
     case 'mine_shaft':           _mineShaftArena(scene); break;
     case 'urban_obstacle':       _urbanObstacleArena(scene); break;
     case 'colosseum':            _colosseumArena(scene); break;
@@ -8663,7 +8744,7 @@ function buildSmartArena(scene,arenaType,challenge,robotConfig=null){
     case 'tsunami':              _tsunamiArena(scene); break;
     case 'mariana':              _marianaArena(scene); break;
     // ── Pixar Story Worlds ───────────────────────────────────────────────────
-    case 'power_garden':         _powerGardenArena(scene); break;
+    case 'power_garden':         _powerGardenArena(scene, challenge); break;
     case 'crystal_caverns':      _crystalCavernsArena(scene); break;
     case 'robot_reef':           _robotReefArena(scene, challenge); break;
     case 'sky_island':           _skyIslandArena(scene); break;
@@ -8679,14 +8760,26 @@ function buildSmartArena(scene,arenaType,challenge,robotConfig=null){
     case 'obstacle':
       _autoFactoryArena(scene); break;
     default:
-      if (challenge?.isChassisMode) _autoFactoryArena(scene);
+      if (challenge?.isChassisMode && arenaType) {
+        buildAdventureArena(scene, arenaType, challenge);
+      } else if (challenge?.isChassisMode) _autoFactoryArena(scene);
       else _groundArena(scene, challenge);
       break;
   }
-  if (!scene.userData.customSky && !scene.userData.biomeAAA && !BIOME_ARENA_TYPES.has(arenaType)) {
+  if (!scene.userData.combatMode && !scene.userData.flappyMode && !challenge?.isRobotMission && !challenge?.isChassisMode) {
+    if (!scene.userData.modeDressing) {
+      applyArenaModeDressing(scene, arenaType, challenge);
+    }
+  }
+  finalizeMissionArenaVisuals(scene, arenaType, challenge);
+  if (!scene.userData.combatMode) spawnMissionBanner(scene, challenge, arenaType);
+  scene.userData.arenaType = arenaType;
+  if (!scene.userData.customSky && !scene.userData.biomeAAA && !scene.userData.aerialWorldBuilt && !BIOME_ARENA_TYPES.has(arenaType)) {
     applyArenaAtmosphere(scene, arenaType, challenge);
-  } else if (!scene.userData.arenaTheme) {
-    scene.userData.arenaTheme = resolveArenaTheme(arenaType, challenge);
+  } else {
+    if (!scene.userData.arenaTheme) {
+      scene.userData.arenaTheme = resolveArenaTheme(arenaType, challenge);
+    }
   }
 }
 
@@ -8818,6 +8911,8 @@ function getBlockDuration(block){
   switch(block.id){
     // Durations reduced so each block executes faster — the robot covers more
     // ground per block, matching the larger distance values in applyBlock.
+    case 'fly_forward':
+    case 'swim_forward':
     case 'move_forward':  return Math.max(0.22,(p.steps||3)*0.28);
     case 'move_backward': return Math.max(0.22,(p.steps||1)*0.28);
     case 'turn_left':
@@ -8969,18 +9064,77 @@ function getBlockDuration(block){
 // Universal step distance: 1 step always = MOVE_STEP_SIZE world units, regardless of robot type.
 const MOVE_STEP_SIZE = 2.4;
 // Race courses: scale block + cruise distances to the spline (~420u/lap).
-const RACE_SPEED_BOOST = 2.0;
+const RACE_SPEED_BOOST = 4.2;
 
 function raceStepMult(scene, speedMult, spd, rs) {
   const base = scene?.userData?.raceMode ? speedMult * spd * RACE_SPEED_BOOST : 1.0;
   return base * (rs?._offTrackMul ?? 1);
 }
 
+function cupRaceArena(scene) {
+  return scene?.userData?.arenaType || scene?.userData?.biomeWorldBuilt;
+}
+
+function isCupRace(scene) {
+  return !!(scene?.userData?.raceMode && isCupTrack(cupRaceArena(scene)));
+}
+
 function shouldUseRaceSpline(rs, scene) {
   if (!scene?.userData?.raceMode || !scene?.userData?.raceCurve) return false;
+  // Cup: follow the road only when a helper says so (named section or Follow track).
+  if (isCupRace(scene)) return !!rs.raceAutoSteer;
   const controlMode = scene.userData.racingConfig?.raceControlMode ?? 'rail';
   if (controlMode === 'coded') return !!rs.raceAutoSteer;
   return true;
+}
+
+function remainingSplineT(fromT, toT) {
+  const d = ((toT - fromT) % 1 + 1) % 1;
+  return d;
+}
+
+/** Named Track-palette section blocks follow the spline. Student Move/Curve blocks steer. */
+function applyCupSplineBlockMotion(rs, dt, scene, block, fallbackDist, dur) {
+  const curve = scene?.userData?.raceCurve;
+  if (!curve || !isCupRace(scene)) return false;
+  const segments = scene.userData.racingConfig?.trackSegments || [];
+  const label = String(block?.label || '').trim().toLowerCase();
+  const seg = segments.find((s) => String(s.sectionName || '').trim().toLowerCase() === label);
+  if (!seg) return false;
+
+  const curveLen = Math.max(1, curve.getLength());
+
+  if (!rs._cupBlock || rs._cupBlock.step !== rs.step) {
+    let t0 = rs._raceTrackTHint ?? rs.raceTrackT;
+    if (t0 == null || !Number.isFinite(t0)) t0 = 0;
+    t0 = ((t0 % 1) + 1) % 1;
+    let remainT = remainingSplineT(t0, seg.endT);
+    if (remainT < 0.018) {
+      remainT = remainingSplineT(seg.startT, seg.endT) || (1 / Math.max(1, segments.length));
+    }
+    const remainDist = remainT * curveLen;
+    const sm = rs._speedMult ?? 1;
+    const cruise = MOVE_STEP_SIZE * 2.2 * sm * RACE_SPEED_BOOST * (rs._brakeFactor ?? 1);
+    rs.currentDur = Math.max(dur, remainDist / Math.max(0.8, cruise));
+    rs._cupBlock = { step: rs.step, remainDist };
+    rs.raceAutoSteer = true;
+    rs.raceCodeHint = '';
+  }
+
+  if (rs._cupBlock.remainDist <= 0.08) {
+    rs.stepTime = rs.currentDur;
+    rs.raceAutoSteer = false;
+    return true;
+  }
+  const remTime = Math.max(0.05, rs.currentDur - rs.stepTime);
+  const fwdSpd = (rs._cupBlock.remainDist / remTime) * raceHazardMul(scene, rs);
+  rs._cupBlock.remainDist = Math.max(0, rs._cupBlock.remainDist - fwdSpd * dt);
+  if (advanceAlongRaceTrack(rs, dt, scene, Math.max(0.2, fwdSpd))) {
+    rs.totalDist += fwdSpd * dt;
+    rs.bobPhase += dt * 8;
+    return true;
+  }
+  return false;
 }
 
 /** Coded mode: track proximity for checkpoints/minimap — slow kart when off road edge. */
@@ -8996,9 +9150,10 @@ function applyCodedRaceOffTrack(rs, scene) {
   const hint = rs._raceTrackTHint ?? rs.raceTrackT ?? 0;
   const { t, dist } = closestTrackT(curve, rs.x, rs.z, 40, hint, 0.08);
   rs._raceTrackTHint = t;
-  const off = dist > hw * 1.25;
+  const beginner = (scene.userData.racingConfig?.difficulty ?? 3) <= 2;
+  const off = dist > hw * (beginner ? 1.7 : 1.25);
   rs.raceOffTrack = off;
-  rs._offTrackMul = off ? 0.35 : 1;
+  rs._offTrackMul = off ? (beginner ? 0.78 : 0.35) : 1;
 }
 
 function normalizeAngleDiff(diff) {
@@ -9130,13 +9285,16 @@ function seedRaceDriveState(rs) {
   rs.raceCountdown = 0;
   rs._moveContinuous = false;
   rs._brakeFactor = 1;
-  rs._speedMult = rs._speedMult ?? 0.65;
+  rs._speedMult = rs._speedMult ?? 0.95;
   rs._boostMul = rs._boostMul ?? 1;
   rs.raceFalling = false;
   rs.raceWon = false;
   rs.raceOffTrack = false;
   rs._offTrackMul = 1;
   rs.raceCodeHint = '';
+  rs._cupBlock = null;
+  rs._kbSpeed = 0;
+  rs._kbBoostLatch = false;
 }
 
 /** Belt-and-suspenders spline cruise when blocks are missing (legacy rail tracks only). */
@@ -9151,11 +9309,58 @@ function applyRaceSplineCruise(rs, dt, movId, scene) {
   const sm = rs._speedMult ?? 1.0;
   const boostM = rs._boostMul ?? 1;
   const hazardM = raceHazardMul(scene, rs);
-  const fwdSpd = MOVE_STEP_SIZE * 1.4 * sm * boostM * brakeF * spd * RACE_SPEED_BOOST * hazardM;
+  const fwdSpd = MOVE_STEP_SIZE * 2.05 * sm * boostM * brakeF * spd * RACE_SPEED_BOOST * hazardM;
   if (advanceAlongRaceTrack(rs, dt, scene, fwdSpd)) {
     rs.totalDist += fwdSpd * dt;
     rs.bobPhase += dt * 8;
   }
+}
+
+/** Arrow / WASD kart drive. Returns true when the player is steering this frame. */
+function applyRaceKeyboardDrive(rs, dt, scene, keys) {
+  if (!scene?.userData?.raceMode || rs.done || rs.raceFalling) return false;
+  if ((rs.raceCountdown ?? 0) > 0) return false;
+  if (!keys) return false;
+
+  if (keys.boost && !rs._kbBoostLatch) {
+    rs._boostTimer = Math.max(rs._boostTimer || 0, 1.35);
+    rs._boostMul = 1.8;
+    rs.raceBoostActive = true;
+    rs._kbBoostLatch = true;
+  }
+  if (!keys.boost) rs._kbBoostLatch = false;
+
+  const held = racingKeysHeld(keys);
+  if (!held && Math.abs(rs._kbSpeed || 0) < 0.05) {
+    rs._kbSpeed = 0;
+    return false;
+  }
+
+  rs.raceAutoSteer = false;
+  rs._moveContinuous = false;
+  rs.raceCodeHint = '';
+
+  const brakeF = rs._brakeFactor ?? 1;
+  const sm = rs._speedMult ?? 1;
+  const boostM = rs._boostMul ?? 1;
+  const hazardM = raceHazardMul(scene, rs);
+  const maxSpd = MOVE_STEP_SIZE * 2.05 * sm * boostM * Math.max(0.15, brakeF) * 1.15 * RACE_SPEED_BOOST * hazardM;
+  let spd = rs._kbSpeed || 0;
+  if (keys.up) spd = Math.min(maxSpd, spd + maxSpd * 2.2 * dt);
+  else if (keys.down) spd = Math.max(-maxSpd * 0.45, spd - maxSpd * 2.8 * dt);
+  else spd *= Math.exp(-dt * 1.8);
+  rs._kbSpeed = spd;
+
+  const steer = (keys.left ? 1 : 0) - (keys.right ? 1 : 0);
+  const speedT = Math.min(1, Math.abs(spd) / Math.max(0.8, maxSpd));
+  const steerRate = 2.15 * (0.55 + 0.45 * (1 - speedT * 0.65));
+  rs.angle += steer * steerRate * dt * (spd < 0 ? -1 : 1);
+
+  rs.x += Math.sin(rs.angle) * spd * dt;
+  rs.z += Math.cos(rs.angle) * spd * dt;
+  rs.totalDist += Math.abs(spd) * dt;
+  rs.bobPhase += dt * 8;
+  return true;
 }
 
 function applyContinuousMotion(rs, dt, movId, scene, currentBlockId = null) {
@@ -9168,7 +9373,7 @@ function applyContinuousMotion(rs, dt, movId, scene, currentBlockId = null) {
   const isRace = scene?.userData?.raceMode;
   const sm = rs._speedMult ?? (isRace ? 1.0 : 0.6);
   const boostM = rs._boostMul ?? 1;
-  const fwdSpd = MOVE_STEP_SIZE * 1.4 * sm * boostM * brakeF * (isRace ? spd * RACE_SPEED_BOOST * raceHazardMul(scene, rs) : 1);
+  const fwdSpd = MOVE_STEP_SIZE * 2.05 * sm * boostM * brakeF * (isRace ? spd * RACE_SPEED_BOOST * raceHazardMul(scene, rs) : 1);
   // Rail mode: cruise gas follows the spline. Coded mode: drive in current heading.
   if (isRace && scene?.userData?.raceCurve && shouldUseRaceSpline(rs, scene)) {
     if (advanceAlongRaceTrack(rs, dt, scene, fwdSpd)) {
@@ -9256,13 +9461,17 @@ function applyBlock(block,rs,dt,movId,scene=null){
       if (rs.stepTime < 0.06) {
         rs._moveContinuous = true;
         rs._brakeFactor = 1;
+        if (isCupRace(scene)) rs.raceAutoSteer = true;
       }
       break;
     }
     // MOVE_FORWARD: exact distance = steps × MOVE_STEP_SIZE. No robot-type scaling.
     // speedMult only applies on race courses where blocks control a racing vehicle.
+    case 'fly_forward':
+    case 'swim_forward':
     case 'move_forward': {
       const d = (p.steps||3) * MOVE_STEP_SIZE * raceStepMult(scene, speedMult, spd, rs);
+      if (applyCupSplineBlockMotion(rs, dt, scene, block, d, dur)) break;
       if (applyRaceTrackMotion(rs, dt, scene, d, dur)) break;
       rs.x+=Math.sin(rs.angle)*(d/dur)*dt; rs.z+=Math.cos(rs.angle)*(d/dur)*dt;
       rs.totalDist+=(d/dur)*dt; rs.bobPhase+=dt*8; break;
@@ -9298,6 +9507,7 @@ function applyBlock(block,rs,dt,movId,scene=null){
       const degrees = p.degrees || 45;
       const steps = Math.max(1, p.steps || 3);
       const totalDist = steps * MOVE_STEP_SIZE * raceStepMult(scene, speedMult, spd, rs);
+      if (applyCupSplineBlockMotion(rs, dt, scene, block, totalDist, dur)) break;
       if (applyRaceTrackMotion(rs, dt, scene, totalDist, dur)) break;
       const totalRot = degrees * Math.PI / 180;
       rs.angle += (totalRot / dur) * dt;
@@ -9311,6 +9521,7 @@ function applyBlock(block,rs,dt,movId,scene=null){
       const degrees = p.degrees || 45;
       const steps = Math.max(1, p.steps || 3);
       const totalDist = steps * MOVE_STEP_SIZE * raceStepMult(scene, speedMult, spd, rs);
+      if (applyCupSplineBlockMotion(rs, dt, scene, block, totalDist, dur)) break;
       if (applyRaceTrackMotion(rs, dt, scene, totalDist, dur)) break;
       const totalRot = degrees * Math.PI / 180;
       rs.angle -= (totalRot / dur) * dt;
@@ -9443,6 +9654,8 @@ function applyBlock(block,rs,dt,movId,scene=null){
     case 'loop_maneuver':  {rs.y=Math.sin((rs.stepTime/dur)*Math.PI)*2+0.5; rs.x+=Math.sin(rs.angle)*spd*0.5*dt; rs.z+=Math.cos(rs.angle)*spd*0.5*dt; rs.totalDist+=spd*0.5*dt; break;}
     // tank — slow + powerful
     case 'tank_steer':     {const dir=p.dir==='left'?1:-1; rs.angle+=dir*(Math.PI/2)/dur*dt; rs.x+=Math.sin(rs.angle)*spd*0.3*dt; rs.z+=Math.cos(rs.angle)*spd*0.3*dt; rs.totalDist+=spd*0.3*dt; break;}
+    case 'rotate_joint':
+    case 'rotate_arm':
     case 'rotate_place':   rs.angle+=((p.degrees||90)*Math.PI/180)/dur*dt; break;
     case 'push_object':    {const d=(p.steps||2)*1.2*spd*0.5; rs.x+=Math.sin(rs.angle)*(d/dur)*dt; rs.z+=Math.cos(rs.angle)*(d/dur)*dt; rs.totalDist+=(d/dur)*dt*0.8; rs.bobPhase+=dt*12; break;}
     case 'climb_mode':     /* mode change, no movement */ break;
@@ -9451,6 +9664,8 @@ function applyBlock(block,rs,dt,movId,scene=null){
     case 'step_forward':   {const d=(p.steps||3)*2.0*spd*speedMult; rs.x+=Math.sin(rs.angle)*(d/dur)*dt; rs.z+=Math.cos(rs.angle)*(d/dur)*dt; rs.totalDist+=(d/dur)*dt; rs.bobPhase+=dt*12; break;}
     case 'climb':
     case 'climb_wall':     rs.y=Math.min(4,rs.y+3/dur*dt); rs.totalDist+=3/dur*dt; break;
+    case 'balance':
+    case 'recover':
     case 'stabilize_legs': rs.bobPhase=0; break;
     case 'crouch':         rs.y=Math.max(0,rs.y-0.3); break;
     case 'leap':           {const phase=rs.stepTime/dur; rs.y=Math.max(0,Math.sin(phase*Math.PI)*1.6); rs.x+=Math.sin(rs.angle)*2.5*dt; rs.z+=Math.cos(rs.angle)*2.5*dt; rs.totalDist+=2.5*dt; break;}
@@ -9566,6 +9781,7 @@ function applyBlock(block,rs,dt,movId,scene=null){
     case 'scan_area':
       if(rs.stepTime<0.05) rs.scanTrigger=true;
       break;
+    case 'grip':
     case 'gripper_grab':
     case 'grab':
       if(rs.stepTime<0.05 && !rs.grabTrigger) rs.grabTrigger=true;
@@ -9802,6 +10018,7 @@ const AERIAL_ARENA_TYPES = new Set([
   'flappy_bird', 'jet_stunt', 'sky_island', 'storm_cloud', 'cloud_race', 'mountain_pass',
   'coastal_rescue', 'glacier_flyover', 'typhoon_escape', 'desert_air', 'neon_race',
   'canyon_flight', 'warp_gate', 'volcanic_flythrough',
+  'drone_canyon', 'space_orbit', 'rooftop_delivery', 'typhoon',
 ]);
 
 function isAerialSim(arenaType, movId, ab) {
@@ -9813,10 +10030,11 @@ function isAerialSim(arenaType, movId, ab) {
 // ─────────────────────────────────────────────────────────────────────────────
 // 3D SIMULATOR CANVAS
 // ─────────────────────────────────────────────────────────────────────────────
-function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsUpdate,arenaType,challenge,onBlockActive,introKey,onZoneChange,flappyHandlersRef,flappyProgramRef,flappySpacebarRef,flappyStartRunRef,fightingHandlersRef,fightingProgramRef,fightingCombatRef,footballHandlersRef,footballProgramsRef,eventHandlersRef}){
+function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsUpdate,arenaType,challenge,onBlockActive,introKey,simRunKey=0,footballProgKey=0,sceneHandleRef:sceneHandleRefProp,onZoneChange,flappyHandlersRef,flappyProgramRef,flappySpacebarRef,flappyStartRunRef,fightingHandlersRef,fightingProgramRef,fightingCombatRef,footballHandlersRef,footballProgramsRef,eventHandlersRef,raceKeysRef,footballKeysRef,footballCamMode='broadcast'}){
   const wrapRef=useRef(null);
   const [simError,setSimError]=useState(null);
   const modeRef=useRef('idle');
+  modeRef.current = runMode;
   const rafRef=useRef(null);
   const fpsRef=useRef({frames:0,last:0});
   const rsRef=useRef({x:0,z:5,y:0,angle:Math.PI,step:0,stepTime:0,currentDur:0,totalDist:0,done:false,t:0,bobPhase:0,battery:100,avoided:0,collisions:0,stopTimer:0,collectedItems:0,collectedValue:0,hitFlash:false});
@@ -9826,9 +10044,13 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
   const challengeKey = challenge?.id || 'default';
 
   const introKeyRef=useRef(introKey||0);
-  const sceneHandleRef=useRef(null);
+  const sceneHandleRef=sceneHandleRefProp||useRef(null);
   const lastRunModeRef=useRef('idle');
   useEffect(()=>{modeRef.current=runMode;},[runMode]);
+  useEffect(() => {
+    const scene = sceneHandleRef.current?.scene;
+    if (scene) scene.userData.footballCamMode = footballCamMode;
+  }, [footballCamMode]);
   useEffect(()=>{blocksRef.current=codeBlocks||[];},[codeBlocks]);
   useEffect(()=>{ if(introKey>introKeyRef.current){ introKeyRef.current=introKey; } },[introKey]);
   // Keep block program in sync when Simulate fires (React state can lag one frame).
@@ -9850,6 +10072,19 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
     seedRaceDriveState(rsRef.current);
   }, [runMode, eventHandlersRef]);
 
+  const simRunKeyRef = useRef(simRunKey);
+  useEffect(() => {
+    if (simRunKey <= simRunKeyRef.current) return;
+    simRunKeyRef.current = simRunKey;
+    const scene = sceneHandleRef.current?.scene;
+    if (!scene?.userData?.footballMode) return;
+    const rs = rsRef.current;
+    rs.done = false;
+    rs.footballWon = false;
+    rs.footballLost = false;
+    modeRef.current = runMode;
+  }, [simRunKey, runMode]);
+
   // Refresh football/fight block runtimes when a new run starts — without rebuilding the whole arena.
   useEffect(() => {
     const handle = sceneHandleRef.current;
@@ -9857,8 +10092,9 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
     if (handle.scene.userData.footballMode && footballHandlersRef) {
       const progs = footballProgramsRef?.current || {};
       footballHandlersRef.current = createFootballRuntimes(
-        progs, handle.scene, (uid, op) => onBlockActive?.(-1, op, uid),
+        progs, handle.scene, (uid, op, botId) => onBlockActive?.(-1, op, uid, botId),
       );
+      resetFootballRuntimes(footballHandlersRef.current);
       if (flappyStartRunRef) {
         flappyStartRunRef.current = () => tickFootballRuntimes(footballHandlersRef.current, 1 / 60);
       }
@@ -9870,7 +10106,7 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
       );
       if (flappyStartRunRef) flappyStartRunRef.current = () => fightingHandlersRef.current?.tick?.();
     }
-  }, [introKey, onBlockActive, footballHandlersRef, fightingHandlersRef, footballProgramsRef, fightingProgramRef, flappyStartRunRef]);
+  }, [introKey, simRunKey, footballProgKey, onBlockActive, footballHandlersRef, fightingHandlersRef, footballProgramsRef, fightingProgramRef, flappyStartRunRef]);
 
   useEffect(()=>{
     const el=wrapRef.current; if(!el) return;
@@ -9884,15 +10120,34 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
     let previewPath=null;
     try {
     const W=Math.max(el.clientWidth,1),H=Math.max(el.clientHeight,1);
-    const isRaceCourse=_isRaceArena(arenaType,challenge);
+    let _lastGoodW=W>4?W:Math.max(el.parentElement?.clientWidth||0,320);
+    let _lastGoodH=H>4?H:Math.max(el.parentElement?.clientHeight||0,240);
+    const _applyCanvasSize=(rawW,rawH)=>{
+      const nW=rawW>4?rawW:_lastGoodW;
+      const nH=rawH>4?rawH:_lastGoodH;
+      if(nW>4&&nH>4){ _lastGoodW=nW; _lastGoodH=nH; }
+      renderer.setSize(Math.max(nW,1),Math.max(nH,1),false);
+      if(composer) composer.setSize(Math.max(nW,1),Math.max(nH,1));
+      _setFxaa(Math.max(nW,1),Math.max(nH,1));
+      camera.aspect=Math.max(nW,1)/Math.max(nH,1);
+      camera.updateProjectionMatrix();
+    };
+    const isRaceCourse=_isRaceArena(arenaType,challenge,robotConfig?.chassisId);
     const _isBiomeTrackEarly = BIOME_ARENA_TYPES.has(arenaType)
       || BIOME_ARENA_TYPES.has(challenge?.arenaType)
-      || BIOME_ARENA_TYPES.has(challenge?.id);
+      || BIOME_ARENA_TYPES.has(challenge?.id)
+      || isCarRacingArenaType(arenaType)
+      || isCarRacingArenaType(challenge?.arenaType);
     const scene=new THREE.Scene();
-    const camera=new THREE.PerspectiveCamera(54,W/H,0.1,isRaceCourse?600:120);
-    // ── Quality tier — school devices default low; user can bump via 🔄 button ──
-    const _biomeRaceEarly = _isBiomeTrackEarly && _isRaceArena(arenaType, challenge);
-    let _qTier = detectQualityTier();
+    const camera=new THREE.PerspectiveCamera(54,W/H,0.1,isRaceCourse?2500:120);
+    scene.userData._simCamera = camera;
+    if (_isBiomeTrackEarly) {
+      const skyPreset = getTrackSkyPreset(arenaType);
+      scene.background = new THREE.Color(skyPreset.horizon);
+    }
+    // ── Quality tier — cup races use sharper defaults on school laptops ──
+    const _biomeRaceEarly = _isBiomeTrackEarly && _isRaceArena(arenaType, challenge, robotConfig?.chassisId);
+    let _qTier = _biomeRaceEarly ? detectCupTrackQualityTier() : detectQualityTier();
     try {
       const savedTier = localStorage.getItem('bb_quality_tier');
       if (savedTier === 'low' || savedTier === 'medium' || savedTier === 'high') _qTier = savedTier;
@@ -9911,10 +10166,26 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
       || _rainbowArenaIds.has(challenge?.arenaType);
     const _isNightMk = _nightMkArenas.has(arenaType) || _nightMkArenas.has(challenge?.arenaType);
     // Biome tracks: bloom only on high tier; tablets/MacBooks skip post-process for FPS
+    const isFootballCourseEarly = arenaType === 'robot_football' || challenge?.arenaType === 'robot_football';
+    const isFifaFootballEarly = isFootballCourseEarly && (
+      challenge?.id === 'football_fifa'
+      || challenge?.matchMode === 'fifa3v3'
+      || (challenge?.teamSize ?? 0) >= 3
+    );
+    const _isAerialArenaEarly = isAerialArenaType(arenaType)
+      || isAerialArenaType(challenge?.arenaType)
+      || challenge?.physics === 'flight_3dof'
+      || challenge?.environmentId === 'sky_aerial';
+    const _isMissionVisualEarly = !!(challenge?.isChassisMode || challenge?.isRobotMission);
     const _usePostProcessing = _isBiomeTrack
       ? _q.postProcessing
-      : (isRaceCourse ? false : _q.postProcessing);
-    // Native-resolution cup tracks — blur was from 0.7–0.85 PR + CSS upscale
+      : _isAerialArenaEarly
+        ? (_qTier !== 'low')
+        : (isRaceCourse || isFootballCourseEarly ? false : _q.postProcessing);
+    const _aerialPixelRatio = Math.min(
+      window.devicePixelRatio || 1,
+      _qTier === 'high' ? 2.0 : (_qTier === 'medium' ? 1.5 : 1.0),
+    );
     const _racePixelRatio = isRaceCourse
       ? Math.min(
         window.devicePixelRatio,
@@ -9922,11 +10193,31 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
           ? (_qTier === 'high' ? 2.0 : 1.5)
           : (_isBiomeTrack ? _q.pixelRatio : (_qTier === 'high' ? 1.5 : 1.0)),
       )
-      : Math.min(window.devicePixelRatio, _q.pixelRatio);
+      : isFootballCourseEarly
+        ? Math.min(window.devicePixelRatio || 1, isFifaFootballEarly ? 1.0 : (_qTier === 'high' ? 1.25 : _qTier === 'low' ? 1.0 : 1.1))
+        : (_isAerialArenaEarly
+          ? _aerialPixelRatio
+          : Math.min(window.devicePixelRatio, _q.pixelRatio));
 
-    renderer=createSimWebGLRenderer({
-      antialias: isRaceCourse || _q.shadowEnabled,
-      lowPower: _qTier === 'low',
+    renderer = _isAerialArenaEarly
+      ? createPremiumRendererWebGL({
+        antialias: true,
+        lowPower: _qTier === 'low',
+        canvas: (() => {
+          const c = document.createElement('canvas');
+          c.className = 'll-sim-canvas';
+          c.style.display = 'block';
+          c.style.width = '100%';
+          c.style.height = '100%';
+          c.style.pointerEvents = 'none';
+          el.appendChild(c);
+          return c;
+        })(),
+        exposure: 1.1,
+      })
+      : createSimWebGLRenderer({
+      antialias: isRaceCourse || isFootballCourseEarly || _isAerialArenaEarly || (!_isBiomeTrack && _q.shadowEnabled),
+      lowPower: _qTier === 'low' && !isFootballCourseEarly,
       canvas: (() => {
         const c = document.createElement('canvas');
         c.className = 'll-sim-canvas';
@@ -9938,6 +10229,11 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
         return c;
       })(),
     });
+    if (!renderer) {
+      setSimError('Open ByteBuddies in Chrome, Safari, or Edge to run the 3D lab. Preview panes cannot create graphics.');
+      return;
+    }
+    if (_isAerialArenaEarly) scene.userData.renderBackend = renderer.userData?.premiumBackend || 'webgl';
     if(!renderer.getContext()){
       setSimError('WebGL is not available in your browser. Try updating Chrome or enabling hardware acceleration in Settings.');
       renderer.dispose();
@@ -9945,11 +10241,18 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
     }
     renderer.setSize(W,H,false);
     renderer.setPixelRatio(_racePixelRatio);
-    renderer.shadowMap.enabled = _isBiomeTrack
-      ? false
-      : (isRaceCourse ? false : _q.shadowEnabled);
-    // PCFShadowMap is ~30% cheaper than PCFSoftShadowMap with minimal quality diff
-    renderer.shadowMap.type = THREE.PCFShadowMap;
+    if (_isBiomeTrackEarly) {
+      const skyPreset = getTrackSkyPreset(arenaType);
+      renderer.setClearColor(new THREE.Color(skyPreset.horizon), 1);
+    }
+    renderer.shadowMap.enabled = isFootballCourseEarly
+      ? (_qTier === 'high' && !isFifaFootballEarly)
+      : (_isAerialArenaEarly && _qTier !== 'low')
+        ? true
+        : (_isBiomeTrack ? false : (isRaceCourse ? false : _q.shadowEnabled));
+    renderer.shadowMap.type = (_isAerialArenaEarly && _qTier !== 'low')
+      ? THREE.PCFSoftShadowMap
+      : THREE.PCFShadowMap;
     if (THREE.SRGBColorSpace) renderer.outputColorSpace = THREE.SRGBColorSpace;
     scene.userData._renderer = renderer;
     const canvas=renderer.domElement;
@@ -9960,7 +10263,7 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
       el.dataset.arena = biomeArena;
       el.dataset.buildStamp = window.__BYTEBUDDIES_BUILD || 'dev';
       // CSS filter on WebGL canvas softens pixels — grade in shader instead for races
-      if (!isRaceCourse) {
+      if (!isRaceCourse && !isFootballCourseEarly) {
         canvas.classList.add('ll-sim-biome-grade');
         canvas.style.filter = getBiomeCssGrade(biomeArena);
       }
@@ -9974,9 +10277,10 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
     // Keep seeds conservative — only truly emissive objects should bloom.
     const _AG={sky:{s:1.05,g:[1.02,1.02,1.05],b:0.20,t:0.70},space:{s:1.10,g:[0.95,0.98,1.12],b:0.22,t:0.65},cavern:{s:1.20,g:[1.00,0.96,1.10],b:0.22,t:0.62},neon_race:{s:1.25,g:[1.05,0.98,1.10],b:0.25,t:0.60},rainbow_road:{s:1.12,g:[1.02,1.0,1.06],b:0.22,t:0.68},street_grand_prix:{s:1.12,g:[1.02,1.0,1.06],b:0.20,t:0.70},circuit_sprint:{s:1.12,g:[1.02,1.0,1.06],b:0.20,t:0.70},sunny_circuit:{s:1.18,g:[1.05,1.02,1.0],b:0.18,t:0.72},dragon_skyway:{s:1.15,g:[1.04,1.02,1.02],b:0.20,t:0.70},volcano_drift:{s:1.20,g:[1.10,0.98,0.88],b:0.22,t:0.68},mario_circuit:{s:1.15,g:[1.05,1.02,1.0],b:0.32,t:0.72},luigi_circuit:{s:1.12,g:[1.04,1.02,0.98],b:0.14,t:0.88},moo_moo_meadows:{s:1.10,g:[1.02,1.0,0.96],b:0.10,t:0.90},underwater:{s:1.15,g:[0.92,1.02,1.10],b:0.20,t:0.68},jungle:{s:1.30,g:[1.05,1.05,0.92],b:0.18,t:0.72},factory:{s:1.00,g:[0.96,1.00,1.05],b:0.20,t:0.70},temple:{s:1.18,g:[1.06,1.00,0.90],b:0.20,t:0.70},combat:{s:1.15,g:[1.08,0.95,0.92],b:0.22,t:0.68},jet:{s:1.10,g:[1.03,1.02,0.98],b:0.20,t:0.70},zero_g:{s:1.10,g:[0.97,0.99,1.10],b:0.22,t:0.68},lego:{s:1.20,g:[1.04,1.02,1.00],b:0.20,t:0.72},terrain:{s:1.15,g:[1.05,1.02,0.94],b:0.18,t:0.72},ground:{s:1.30,g:[1.05,1.05,0.92],b:0.20,t:0.70},default:{s:1.10,g:[1.02,1.01,1.00],b:0.20,t:0.70}};
     const _g=_AG[arenaType]||_AG.default;
-    const ColorGradeShader={uniforms:{tDiffuse:{value:null},sat:{value:_g.s},gain:{value:new THREE.Vector3(..._g.g)}},vertexShader:`varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,fragmentShader:`uniform sampler2D tDiffuse;uniform float sat;uniform vec3 gain;varying vec2 vUv;void main(){vec4 t=texture2D(tDiffuse,vUv);vec3 c=t.rgb;float l=dot(c,vec3(0.2126,0.7152,0.0722));c=mix(vec3(l),c,sat)*gain;gl_FragColor=vec4(clamp(c,0.0,1.0),t.a);}`};
+    const ColorGradeShader={uniforms:{tDiffuse:{value:null},sat:{value:_g.s},contrast:{value:1.0},gain:{value:new THREE.Vector3(..._g.g)}},vertexShader:`varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,fragmentShader:`uniform sampler2D tDiffuse;uniform float sat;uniform float contrast;uniform vec3 gain;varying vec2 vUv;void main(){vec4 t=texture2D(tDiffuse,vUv);vec3 c=t.rgb;float l=dot(c,vec3(0.2126,0.7152,0.0722));c=mix(vec3(l),c,sat)*gain;c=(c-0.5)*contrast+0.5;gl_FragColor=vec4(max(c,vec3(0.0)),t.a);}`};
 
     let bloomPass = null;
+    let gtaoPass = null;
     let fxaaPass = null;
     const _setFxaa = (w, h) => {
       if (!fxaaPass) return;
@@ -9985,17 +10289,44 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
     };
 
     // Bloom runs at tier-scaled resolution — cup races keep full bloom scale for neon glow
-    const bloomScale = (_q.bloomScale || 0.65) * (isRaceCourse && !_biomeRace ? 0.85 : 1);
+    const bloomScale = Math.min(
+      1,
+      (_q.bloomScale || 0.65)
+        * (isRaceCourse && !_biomeRace ? 0.85 : 1)
+        * (isFootballCourseEarly ? 0.48 : 1)
+        * (_isAerialArenaEarly ? 1.35 : 1),
+    );
     const bloomW = Math.round(W * bloomScale);
     const bloomH = Math.round(H * bloomScale);
     if (_usePostProcessing) {
       composer=new EffectComposer(renderer);
       composer.addPass(new RenderPass(scene,camera));
+      // GTAO is skipped on premium aerial vistas — they already use heavy geometry + bloom.
+      if (_qTier !== 'low' && _isMissionVisualEarly && !_isAerialArenaEarly) {
+        try {
+        gtaoPass = new GTAOPass(scene, camera, bloomW, bloomH);
+        gtaoPass.blendIntensity = 0.62;
+        gtaoPass.updateGtaoMaterial({
+          radius: 0.18,
+          distanceExponent: 1.7,
+          thickness: 1.2,
+          distanceFallOff: 1,
+          samples: 8,
+          screenSpaceRadius: true,
+        });
+        gtaoPass.updatePdMaterial({ rings: 2, radius: 4, samples: 8 });
+        composer.addPass(gtaoPass);
+        } catch (gtaoErr) {
+          console.warn('[SimCanvas] GTAO unavailable', gtaoErr?.message || gtaoErr);
+          gtaoPass = null;
+        }
+      }
       bloomPass=new UnrealBloomPass(new THREE.Vector2(bloomW,bloomH),_g.b,0.5,_g.t);
       composer.addPass(bloomPass);
       composer.addPass(new ShaderPass(ColorGradeShader));
-      // FXAA softens cup tracks at native resolution — skip for biome CodeRacer
-      if (!_biomeRace) {
+      // Never stack FXAA over native MSAA: double antialiasing visibly blurs
+      // silhouettes and UI-scale route details. FXAA is only a fallback.
+      if (!_biomeRace && !_isAerialArenaEarly && !_q.shadowEnabled) {
         fxaaPass=new ShaderPass(FXAAShader);
         _setFxaa(W,H);
         composer.addPass(fxaaPass);
@@ -10008,7 +10339,7 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
     }
     if (_isBiomeTrack) {
       if (THREE.ACESFilmicToneMapping) renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      renderer.toneMappingExposure = 1.1;
+      renderer.toneMappingExposure = _biomeRace ? 1.24 : 1.1;
     }
     // Low-quality tier / race direct render: skip post-processing (saves ~4–8ms/frame).
     let _aqPostEnabled = _usePostProcessing;
@@ -10024,7 +10355,7 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
       shadowEnabled: _q.shadowEnabled,
       shadowMapSize: _q.shadowMapSize,
     });
-    sun.castShadow = (_isBiomeTrack && _q.shadowEnabled) || (!isRaceCourse && _q.shadowEnabled);
+    sun.castShadow = !isFootballCourseEarly && ((_isBiomeTrack && _q.shadowEnabled) || (!isRaceCourse && _q.shadowEnabled));
     if(isRaceCourse){
       // Tighter frustum — shadows only cover the area directly around the robot.
       // ±80 was covering 160 units of track at once, wasting shadow resolution.
@@ -10042,7 +10373,7 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
       scene.add(spawnWarm);
     }
     let spawnPL=null;
-    if(!isForestCourse){
+    if(!isForestCourse && !isRaceCourse && !_isBiomeTrack){
       spawnPL=new THREE.PointLight(0xffffff,0.35,14);
       spawnPL.position.set(0,5,5);
       scene.add(spawnPL);
@@ -10050,15 +10381,48 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
 
     if (_isBiomeTrack) {
       scene.userData.skipArenaAtmosphere = true;
+      scene.userData.skipTrackLights = true;
     }
 
     buildSmartArena(scene, arenaType, challenge, robotConfig);
-    // Apply biome cinematic bloom after arena sets raceVisual
-    if (_isBiomeTrack && bloomPass && scene.userData.raceVisual) {
+
+    if (_isAerialArenaEarly || scene.userData.aerialWorldBuilt) {
+      const premiumFly = scene.userData.premiumUE5 === true;
+      const aerialSky = scene.userData.flyingContract?.bible?.sky
+        || challenge?.sky
+        || { horizon: '#ffe8b0', top: '#4fc3f7', mid: '#87ceeb', fog: '#e8f4ff', near: 95, far: 340 };
+      if (premiumFly) {
+        buildAtmosphereSky(scene, aerialSky.top, aerialSky.horizon, 880, aerialSky.mid);
+        scene.userData.customSky = true;
+        console.log('[LiveLab] Premium flying vista', scene.userData.flyingVista, FLYING_ARENA_SPEC_VERSION);
+      }
+      const bgColor = premiumFly ? (aerialSky.horizon || aerialSky.mid) : (aerialSky.mid || aerialSky.top || '#87ceeb');
+      scene.background = new THREE.Color(bgColor);
+      if (!scene.fog) {
+        scene.fog = new THREE.Fog(aerialSky.fog || bgColor, aerialSky.near ?? 95, aerialSky.far ?? 340);
+      }
+      renderer.setClearColor(new THREE.Color(bgColor), 1);
+    }
+
+    // Apply biome / aerial cinematic bloom after arena sets raceVisual
+    if ((_isBiomeTrack || scene.userData.aerialWorldBuilt || _isAerialArenaEarly)
+      && bloomPass && scene.userData.raceVisual) {
       const rv = scene.userData.raceVisual;
-      bloomPass.strength = rv.bloom ?? 0.4;
-      bloomPass.threshold = rv.threshold ?? 0.9;
-      bloomPass.radius = rv.radius ?? 0.35;
+      const aerial = scene.userData.aerialWorldBuilt || _isAerialArenaEarly;
+      bloomPass.strength = rv.bloom ?? (aerial ? 0.22 : 0.4);
+      bloomPass.threshold = rv.threshold ?? (aerial ? 0.94 : 0.9);
+      bloomPass.radius = rv.radius ?? (aerial ? 0.14 : 0.35);
+      if (gtaoPass && rv.gtao) {
+        gtaoPass.blendIntensity = rv.gtao.blendIntensity ?? gtaoPass.blendIntensity;
+        gtaoPass.updateGtaoMaterial({
+          radius: rv.gtao.radius ?? 0.22,
+          distanceExponent: 1.7,
+          thickness: 1.2,
+          distanceFallOff: 1,
+          samples: rv.gtao.samples ?? 6,
+          screenSpaceRadius: true,
+        });
+      }
     }
     if (scene.userData.biomeAAA && bloomPass) {
       bloomPass.threshold = 0.85;
@@ -10067,7 +10431,7 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
     console.log('[DEBUG] SimCanvas arenaType:', arenaType, 'course:', challenge?.id, 'biomeBuilt:', scene.userData.biomeWorldBuilt, 'mode: 3d-realgame');
 
     // Underground biomes: kill default daylight so cave emissives read correctly
-    if (scene.userData.suppressSimDaylight) {
+    if (scene.userData.suppressSimDaylight && !scene.userData.aerialWorldBuilt) {
       amb.intensity = 0.12;
       hemi.intensity = 0.15;
       sun.intensity = 0;
@@ -10089,6 +10453,7 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
     if (isCombatArena) scene.userData.combatMode = true;
     if (challenge?.isRobotMission && !isFootballArena) {
       buildMissionArena(scene, challenge);
+      buildMissionWorld(scene, arenaType, challenge);
     }
     const _flappyMovId = robotConfig.movementId || 'flying';
     if (scene.userData.flappyMode && flappyHandlersRef) {
@@ -10113,9 +10478,17 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
       if (flappyStartRunRef) flappyStartRunRef.current = () => fightingHandlersRef.current?.tick?.();
     }
     if (scene.userData.footballMode && footballHandlersRef) {
-      const progs = footballProgramsRef?.current || {};
+      let progs = footballProgramsRef?.current || {};
+      if (scene.userData.footballFifa3v3 && !progs.p1) {
+        const compiled = {};
+        for (const role of FOOTBALL_TEAM_ROLES) {
+          compiled[role.botId] = compileFootballScratchScript(FOOTBALL_ROLE_STARTERS[role.id]);
+        }
+        progs = compiled;
+        if (footballProgramsRef) footballProgramsRef.current = compiled;
+      }
       footballHandlersRef.current = createFootballRuntimes(
-        progs, scene, (uid, op) => onBlockActive?.(-1, op, uid),
+        progs, scene, (uid, op, botId) => onBlockActive?.(-1, op, uid, botId),
       );
       if (flappyStartRunRef) {
         flappyStartRunRef.current = () => tickFootballRuntimes(footballHandlersRef.current, 1 / 60);
@@ -10131,6 +10504,13 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
       fill.intensity*=lightMood[1];
       if(lightMood[3]) sun.color.setHex(lightMood[3]);
     }
+    if (scene.userData.aerialSoftDaylight || scene.userData.aerialWorldBuilt) {
+      sun.intensity = Math.min(sun.intensity, scene.userData.kidFlyingWorld ? 0.72 : 0.55);
+      amb.intensity = Math.min(amb.intensity, scene.userData.kidFlyingWorld ? 0.52 : 0.38);
+      hemi.intensity = Math.min(hemi.intensity, scene.userData.kidFlyingWorld ? 0.48 : 0.32);
+      fill.intensity = Math.min(fill.intensity, scene.userData.kidFlyingWorld ? 0.32 : 0.18);
+      if (spawnPL) spawnPL.intensity = scene.userData.kidFlyingWorld ? 0.18 : 0.12;
+    }
     // Optional ambient/fill color tints (e.g. cavern: purple ambient, cyan fill)
     const lightTint=scene.userData.lightTint;
     if(lightTint){
@@ -10139,14 +10519,37 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
       if(lightTint.hemiSky) hemi.color.setHex(lightTint.hemiSky);
       if(lightTint.hemiGround) hemi.groundColor.setHex(lightTint.hemiGround);
     }
-    if(scene.userData.expMood) renderer.toneMappingExposure*=scene.userData.expMood;
+    // Per-biome AAA lighting — warm sunset / carnival pop without duplicate suns
+    const biomeSpec = scene.userData.biomeAAASpec;
+    if (biomeSpec && !scene.userData.suppressSimDaylight && !scene.userData.aerialWorldBuilt) {
+      sun.color.setHex(biomeSpec.keyLight ?? sun.color.getHex());
+      sun.intensity = Math.max(sun.intensity, _biomeRace ? 1.2 : 1.0);
+      hemi.color.setHex(biomeSpec.fillLight ?? hemi.color.getHex());
+      hemi.groundColor.setHex(biomeSpec.ground ?? hemi.groundColor.getHex());
+      hemi.intensity = Math.max(hemi.intensity, 0.58);
+      fill.color.setHex(biomeSpec.rimLight ?? fill.color.getHex());
+      fill.intensity = Math.max(fill.intensity, 0.38);
+      amb.color.setHex(biomeSpec.ambient ?? amb.color.getHex());
+      amb.intensity = Math.max(amb.intensity, 0.42);
+    }
+    if (scene.userData.aerialWorldBuilt) {
+      renderer.toneMappingExposure = scene.userData.expMood ?? 1.02;
+    } else if (scene.userData.expMood) {
+      renderer.toneMappingExposure *= scene.userData.expMood;
+    }
     const raceVisual=scene.userData.raceVisual;
     if(raceVisual && bloomPass){
       bloomPass.strength=raceVisual.bloom??bloomPass.strength;
       bloomPass.threshold=raceVisual.threshold??bloomPass.threshold;
       if(raceVisual.radius!=null) bloomPass.radius=raceVisual.radius;
+      if(scene.userData.aerialWorldBuilt){
+        bloomPass.strength=raceVisual.bloom??0.28;
+        bloomPass.threshold=raceVisual.threshold??0.82;
+        bloomPass.radius=raceVisual.radius??0.2;
+      }
       if(raceVisual.grade){
         ColorGradeShader.uniforms.sat.value=raceVisual.grade.s;
+        ColorGradeShader.uniforms.contrast.value=raceVisual.grade.c??1.0;
         ColorGradeShader.uniforms.gain.value.set(...raceVisual.grade.g);
       }
     }
@@ -10165,15 +10568,25 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
         setupCombatEnvironment(scene);
       } else if (scene.userData.footballMode) {
         setupFootballEnvironment(scene);
-        renderer.toneMappingExposure = Math.max(renderer.toneMappingExposure, 1.35);
+        renderer.toneMappingExposure = scene.userData.expMood ?? 1.06;
+        renderer.setClearColor(new THREE.Color(0x0a1428), 1);
       } else if (scene.userData.mkThemedTrack) {
         const nightMk = new Set([
           'mario_circuit', 'bowser_castle', 'piranha_plant_slide', 'grumble_volcano',
         ]);
         const mkArena = arenaType || scene.userData.raceHudTheme;
         const isBiomeArena = BIOME_ARENA_TYPES.has(mkArena);
-        if (!isBiomeArena && nightMk.has(mkArena)) setupStadiumNightEnvironment(scene);
-        else if (!isBiomeArena && !scene.userData.customSky) setupMKDayEnvironment(scene);
+        const underground = scene.userData.biomeAAASpec?.underground
+          || mkArena === 'neon_metro_01'
+          || mkArena === 'lava_foundry_01'
+          || mkArena === 'star_station_01';
+        if (isBiomeArena) {
+          if (underground) {
+            setupRaceEnvironment(scene, { space: mkArena === 'star_station_01' });
+          }
+          // Day cup tracks keep TrackSkyKit sky + canvas env — extra env maps look like a lamp.
+        } else if (nightMk.has(mkArena)) setupStadiumNightEnvironment(scene);
+        else if (!scene.userData.customSky) setupMKDayEnvironment(scene);
       } else if (scene.userData.customSky) {
         if (scene.userData.biomeAAA || _isBiomeTrack) {
           const underground = scene.userData.biomeAAASpec?.underground
@@ -10221,8 +10634,8 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
         raceCheckpoint:0,
         raceCheckpointsTotal:scene.userData.racingConfig?.checkpointTs?.length??4,
         raceSpeedKmh:0,
-        racePosition:1,
-        raceTotalRacers:1,
+        racePosition:scene.userData.raceRivalCount ? 1 : 1,
+        raceTotalRacers:scene.userData.raceRivalCount ? scene.userData.raceRivalCount + 1 : 1,
         raceCountdown:0,
         raceMinimap:scene.userData.raceMinimap??null,
         time:0,dist:0,battery:100,avoided:0,progress:0,collisions:0,
@@ -10273,31 +10686,88 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
     };
     let simPTimer=0;
 
+    const storedRobot = readStoredRobotConfig();
+    const liveRobot = normalizeRobotBuildConfig({ ...(robotConfig || {}), ...storedRobot });
+    const footballBuilderCfg = normalizeRobotBuildConfig(
+      liveRobot?.footballBuilderConfig || liveRobot,
+    );
     const flappyRobotCfg = scene.userData.flappyMode
-      ? { ...robotConfig, chassisId: 'birdbot', movementId: 'flying' }
+      ? { ...liveRobot, chassisId: 'birdbot', movementId: 'flying', flappyBird: true }
       : scene.userData.footballMode
         ? {
-          ...robotConfig,
-          footballFighter: true,
-          teamColor: robotConfig?.teamColor || 'green',
-          jerseyNumber: robotConfig?.jerseyNumber ?? 10,
-          bootType: robotConfig?.bootType || 'standard',
-          playstyle: robotConfig?.playstyle || 'striker',
+          ...footballBuilderCfg,
+          footballFighter: false,
+          jerseyNumber: 9,
         }
         : isCombatArena
           ? {
-            ...robotConfig,
+            ...liveRobot,
             combatFighter: true,
-            combatArchetype: getFightingArchetype(detectRobotType(robotConfig), robotConfig?.chassisId),
+            combatArchetype: getFightingArchetype(detectRobotType(liveRobot), liveRobot?.chassisId),
           }
-          : robotConfig;
-    const robot=buildSimRobot({ ...flappyRobotCfg, raceMode: !!scene.userData.raceMode });
-    robot.castShadow=true;
-    robot.scale.setScalar(
-      scene.userData.flappyMode ? 1.55
-        : (isCombatArena || scene.userData.footballMode) ? 1.0
-          : scene.userData.raceMode ? 1.0 : 1.75,
+          : liveRobot;
+    const isFifa3v3Arena = scene.userData.footballMode && (
+      challenge?.id === 'football_fifa'
+      || challenge?.matchMode === 'fifa3v3'
+      || challenge?.matchMode === 'team3v3'
+      || (challenge?.teamSize ?? 0) >= 3
     );
+    let robot;
+    if (isFifa3v3Arena) {
+      robot = buildUserStrikerFootballer({
+        ...footballBuilderCfg,
+        primaryColor: footballBuilderCfg.primaryColor || liveRobot?.primaryColor || '#ff8c00',
+        accentColor: footballBuilderCfg.accentColor || liveRobot?.accentColor || '#22d3ee',
+        jerseyNumber: 9,
+        name: footballBuilderCfg.name || liveRobot?.name || 'My Robot',
+      });
+      robot.castShadow = false;
+      clampFootballActorScale(robot, 1.72);
+    } else {
+    try {
+      robot=buildSimRobot({
+        ...mergeRobotBuildConfig(flappyRobotCfg),
+        raceMode: !!scene.userData.raceMode,
+      });
+      if (!robot?.isObject3D) throw new Error('builder returned no Object3D');
+      if (scene.userData.footballMode && robot.userData?.buildFallback) {
+        throw new Error('builder mesh fell back');
+      }
+    } catch (err) {
+      if (!scene.userData.footballMode) throw err;
+      console.warn('[Robot Football] user builder mesh failed; using #9 fallback', err);
+      robot=buildFootballPlayer({
+        teamColor: 'green',
+        jerseyNumber: 9,
+        playstyle: 'striker',
+      });
+    }
+    robot.castShadow=true;
+    applyRobotVisualIdentity(robot, flappyRobotCfg?.chassisId || liveRobot?.chassisId, {
+      flappyMode: scene.userData.flappyMode,
+      footballMode: scene.userData.footballMode,
+      combatMode: isCombatArena,
+      raceMode: scene.userData.raceMode,
+    });
+    if (scene.userData.capstoneCourse && !scene.userData.flappyMode && !isCombatArena) {
+      robot.scale.setScalar(robot.scale.x * 1.02);
+    }
+    if (scene.userData.footballMode) {
+      robot.updateMatrixWorld(true);
+      const fbBox = new THREE.Box3().setFromObject(robot);
+      const fbH = fbBox.isEmpty() ? 0 : fbBox.getSize(new THREE.Vector3()).y;
+      if (fbH > 2.6) {
+        console.warn('[Robot Football] builder mesh oversized; using procedural #9', fbH);
+        robot = buildFootballPlayer({
+          teamColor: 'green',
+          jerseyNumber: 9,
+          playstyle: 'striker',
+        });
+        robot.scale.setScalar(1.45);
+      }
+      clampFootballActorScale(robot, 1.72);
+    }
+    }
     const robotState=createRobotStateController(robot);
     execTrail=createExecutionTrail(scene);
     if (scene.userData.arenaType === 'sunset_cove_01') {
@@ -10317,7 +10787,8 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
         angle: scene.userData.footballMode ? 0 : Math.PI / 2,
       }
       : null;
-    const spawnPt=combatSpawn||raceSpawn;
+    const aerialSpawn = scene.userData.aerialSpawn;
+    const spawnPt = combatSpawn || raceSpawn || aerialSpawn;
     const spawnZ=spawnPt?.z??5;
     const groundY=scene.userData.groundY??0;
     const spawnY=spawnPt?.y??groundY;
@@ -10327,8 +10798,9 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
       battery:100,avoided:0,collisions:0,stopTimer:0,collectedItems:0,collectedValue:0,
       raceLap:1,raceLapTime:0,raceBestLap:null,raceSpeedKmh:0,
       raceCountdown:0,
-      _moveContinuous:false,_brakeFactor:1,_boostTimer:0,_boostMul:1,_speedMult:scene.userData.raceMode?0.65:0.6,
-      raceAutoSteer:false,raceOffTrack:false,_offTrackMul:1,raceCodeHint:'',
+      _moveContinuous:false,_brakeFactor:1,_boostTimer:0,_boostMul:1,_speedMult:scene.userData.raceMode?0.95:0.6,
+      raceAutoSteer: false,
+      raceOffTrack:false,_offTrackMul:1,raceCodeHint:'',
     });
     if (scene.userData.raceMode && raceSpawn) {
       rs.raceTrackT = raceSpawn.trackT ?? rs.raceTrackT ?? 0;
@@ -10336,9 +10808,11 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
     }
     lastActiveRef.current=-1;
     robot.position.set(rs.x, spawnY, rs.z);
-    robot.rotation.y=rs.angle;
+    const aerialYawOff = scene.userData.aerialMeshYawOffset ?? 0;
+    robot.rotation.y = rs.angle + aerialYawOff;
     if (!scene.userData.combatMode && !scene.userData.footballMode) attachRobotAccentGlow(robot);
     scene.add(robot);
+    if (scene.userData.aerialWorldBuilt) initAerialContrails(scene);
     const raceSpawnPt = scene.userData.raceSpawn;
     if ((scene.userData.raceMode || isRaceCourse) && scene.userData.raceCurve) {
       const spawnT = raceSpawnPt?.trackT ?? rs.raceTrackT ?? 0;
@@ -10356,12 +10830,15 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
     } else if (scene.userData.combatMode || scene.userData.footballMode) {
       alignFighterToRingSurface(robot, scene.userData.combatRingY ?? scene.userData.groundY ?? groundY);
       rs.y = robot.position.y;
+    } else if (scene.userData.aerialWorldBuilt) {
+      rs.y = spawnY;
+      robot.position.y = rs.y;
     } else {
       alignRobotToGround(robot);
       rs.y = robot.position.y;
     }
     const aerialSim=isAerialSim(arenaType,_flappyMovId,scene.userData.arenaBounds);
-    if(aerialSim&&!scene.userData.flappyMode&&!scene.userData.raceMode){
+    if(aerialSim&&!scene.userData.flappyMode&&!scene.userData.raceMode&&!scene.userData.aerialWorldBuilt){
       const hoverY=scene.userData.spawnAltitude??4;
       rs.y=Math.max(rs.y,hoverY);
       robot.position.y=rs.y;
@@ -10378,8 +10855,20 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
     if (scene.userData.footballMode) {
       scene.userData.football?.setPlayerMesh?.(robot);
       robot.rotation.y = 0;
-      robot.scale.setScalar(Math.min(robot.scale.x || 1, 0.92));
-      const hasRing = robot.children?.some((c) => c.geometry?.type === 'RingGeometry');
+      if (!robot.userData?.footballKitApplied) {
+        applyFootballTeamKit(robot, { teamColor: 'green', jerseyNumber: 9 });
+      }
+      robot.userData.isUserFootballStriker = true;
+      robot.userData.jerseyNumber = 9;
+      clampFootballActorScale(robot, 1.72);
+      robot.traverse((o) => {
+        if (o.isMesh) {
+          o.castShadow = false;
+          o.receiveShadow = false;
+          o.frustumCulled = true;
+        }
+      });
+      const hasRing = robot.children?.some((c) => c.userData?.isTeamRing || c.geometry?.type === 'RingGeometry');
       if (!hasRing) {
         const ring = new THREE.Mesh(
           new THREE.RingGeometry(0.55, 0.72, 24),
@@ -10387,7 +10876,20 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
         );
         ring.rotation.x = -Math.PI / 2;
         ring.position.y = 0.04;
+        ring.userData.isTeamRing = true;
         robot.add(ring);
+        robot.userData.teamRing = ring;
+      }
+      if (!robot.userData.actArrow) {
+        const arrow = new THREE.Mesh(
+          new THREE.ConeGeometry(0.16, 0.34, 8),
+          new THREE.MeshBasicMaterial({ color: 0x22c55e }),
+        );
+        arrow.position.y = 2.22;
+        arrow.userData.isActArrow = true;
+        arrow.visible = false;
+        robot.add(arrow);
+        robot.userData.actArrow = arrow;
       }
     }
 
@@ -10463,13 +10965,18 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
     const camPos=isCombatArena
       ? new THREE.Vector3(0, 3, -8)
       : isFootballInit
-        ? (footballCamPreset?.position?.clone?.() ?? new THREE.Vector3(0, 22, 34))
+        ? (footballCamPreset?.position?.clone?.() ?? new THREE.Vector3(16.2, 5.1, 0))
         : (isRaceCourse && scene.userData.raceCurve && raceSpawn?.trackT != null)
           ? (() => {
               const rc = _sampleRaceLaunchCamera(rs, scene);
               return new THREE.Vector3(rc.camX, rc.camY, rc.camZ);
             })()
-          : new THREE.Vector3(
+          : (scene.userData.aerialWorldBuilt && scene.userData.missionCameraPreset)
+            ? (() => {
+                const rc = sampleFixedChaseCamera(rs.x, rs.y, rs.z, rs.angle, scene.userData.missionCameraPreset);
+                return new THREE.Vector3(rc.camX, rc.camY, rc.camZ);
+              })()
+            : new THREE.Vector3(
               rs.x+Math.sin(rs.angle+Math.PI)*initCamBack,
               initCamH,
               rs.z+Math.cos(rs.angle+Math.PI)*initCamBack,
@@ -10477,15 +10984,20 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
     const camLook=isCombatArena
       ? new THREE.Vector3(0, 1, 0)
       : isFootballInit
-        ? (footballCamPreset?.lookAt?.clone?.() ?? new THREE.Vector3(0, 0, 0))
+        ? (footballCamPreset?.lookAt?.clone?.() ?? new THREE.Vector3(0, 0.75, 0))
         : (isRaceCourse && scene.userData.raceCurve && raceSpawn?.trackT != null)
           ? (() => {
               const rc = _sampleRaceLaunchCamera(rs, scene);
               return new THREE.Vector3(rc.lookX, rc.lookY, rc.lookZ);
             })()
-          : aerialSim
-            ? new THREE.Vector3(rs.x+Math.sin(rs.angle)*14, initLookY, rs.z+Math.cos(rs.angle)*14)
-            : new THREE.Vector3(rs.x,rs.y+initLookY,rs.z);
+          : (scene.userData.aerialWorldBuilt && scene.userData.missionCameraPreset)
+            ? (() => {
+                const rc = sampleFixedChaseCamera(rs.x, rs.y, rs.z, rs.angle, scene.userData.missionCameraPreset);
+                return new THREE.Vector3(rc.lookX, rc.lookY, rc.lookZ);
+              })()
+            : aerialSim
+              ? new THREE.Vector3(rs.x+Math.sin(rs.angle)*14, initLookY, rs.z+Math.cos(rs.angle)*14)
+              : new THREE.Vector3(rs.x,rs.y+initLookY,rs.z);
     // Smoothed angle used ONLY for computing the camera behind-position.
     // rs.angle is the true heading; this lags behind to absorb rapid turn oscillation.
     let camSmoothAngle=rs.angle;
@@ -10509,19 +11021,15 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
       camera.updateProjectionMatrix();
     }
     // Robust canvas size fix — try immediately, then fallback with rAF chain
-    const _forceSize=()=>{
-      const nW=el.clientWidth,nH=el.clientHeight;
-      if(nW>4&&nH>4){
-        renderer.setSize(nW,nH,false);
-        if(composer) composer.setSize(nW,nH);
-        _setFxaa(nW,nH);
-        camera.aspect=nW/nH;
-        camera.updateProjectionMatrix();
-      }
-    };
+    const _forceSize=()=>{ _applyCanvasSize(el.clientWidth,el.clientHeight); };
     _forceSize();
     try { renderFrame(); } catch (frameErr) {
       console.error('[SimCanvas] first frame failed', frameErr);
+      if (_aqPostEnabled && composer) {
+        _aqPostEnabled = false;
+        renderFrame = () => renderer.render(scene, camera);
+        try { renderFrame(); return; } catch { /* fall through */ }
+      }
       setSimError(formatSimStartupError(frameErr));
     }
     // Second pass on next paint — catches flex/tabs that need a layout tick
@@ -10556,11 +11064,7 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
 
     ro=new ResizeObserver(()=>{
       if(!el) return;
-      const nW=Math.max(el.clientWidth,1),nH=Math.max(el.clientHeight,1);
-      renderer.setSize(nW,nH,false);
-      if(composer) composer.setSize(nW,nH);
-      camera.aspect=nW/nH;
-      camera.updateProjectionMatrix();
+      _applyCanvasSize(el.clientWidth,el.clientHeight);
     });
     ro.observe(el);
 
@@ -10580,13 +11084,7 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
       // Second-chance size fix — catches any remaining layout-before-paint edge cases
       if(firstTick){
         firstTick=false;
-        const nW=el.clientWidth,nH=el.clientHeight;
-        if(nW>4&&nH>4){
-          renderer.setSize(nW,nH,false);
-          if(composer) composer.setSize(nW,nH);
-          camera.aspect=nW/nH;
-          camera.updateProjectionMatrix();
-        }
+        _applyCanvasSize(el.clientWidth,el.clientHeight);
       }
       const now=performance.now()/1000;
       const dt=Math.min(now-lastTime,0.05); lastTime=now;
@@ -10616,15 +11114,17 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
           if(nowMs-_aqLastAdjust>1500){
             const curPR=renderer.getPixelRatio();
             const maxPR=_racePixelRatio;
-            const minPR=_biomeRace
+            const minPR=_isAerialArenaEarly
+              ? Math.max(1.0, maxPR * 0.95)
+              : (_biomeRace
               ? Math.max(1.0, maxPR * 0.9)
-              : (_qTier==='low'?0.6:(_qTier==='medium'?0.85:1.0));
+              : (_qTier==='low'?0.6:(_qTier==='medium'?0.85:1.0)));
             if(avg<38&&_aqPostEnabled&&composer&&!scene.userData.forceBloom&&!scene.userData.isRainbowRoad){
               _aqPostEnabled=false;
               renderFrame=()=>renderer.render(scene,camera);
               _aqLastAdjust=nowMs;
               if(import.meta.env.DEV) console.log(`[BB perf] FPS avg ${avg.toFixed(0)} → bloom disabled`);
-            } else if(avg<28&&!scene.userData.trackPerfDowngraded){
+            } else if(avg<28&&!scene.userData.trackPerfDowngraded&&!scene.userData.footballMode){
               scene.userData.trackPerfDowngraded=true;
               scene.userData.trackPerfBudget=downgradeTrackPerfBudget(scene.userData.trackPerfBudget||{});
               scene.userData.raceOptimizeHint='Optimizing…';
@@ -10694,7 +11194,7 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
       if(robot.userData.animate) robot.userData.animate(rs.t, scene.userData.combatMode?combatDt:dt);
       if(introKeyRef.current!==lastIntroKey){
         lastIntroKey=introKeyRef.current;
-        scene.userData.introTimer=(scene.userData.arenaBounds?.flappyNoIntro||isRaceCourse)?0:3.2;
+        scene.userData.introTimer=(scene.userData.arenaBounds?.flappyNoIntro||isRaceCourse)?0:0;
         scene.userData.victoryT=0;
         rs.done=false;
         rs.combatWon=false; rs.combatLost=false;
@@ -10753,10 +11253,7 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
           scene.userData.combat?.reset?.();
           fightingHandlersRef?.current?.reset?.();
         }
-        if(scene.userData.footballMode){
-          scene.userData.football?.reset?.();
-          resetFootballRuntimes(footballHandlersRef?.current);
-        }
+        // Football match reset is handled by setFootballSimActive when run starts.
       }
       if(scene.userData.introTimer>0) scene.userData.introTimer-=dt;
       if(scene.userData.atmo?.update) scene.userData.atmo.update(rs.t, dt, { x: rs.x, z: rs.z });
@@ -10785,7 +11282,8 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
       const mode=modeRef.current;
 
       scene.userData.setFlappySimActive?.(mode==='running'||mode==='step');
-      scene.userData.setFootballSimActive?.(mode==='running'||mode==='step');
+      const fifaLive = scene.userData.footballFifaLiveMatch && !scene.userData.footballUserStopped;
+      scene.userData.setFootballSimActive?.(fifaLive || mode==='running'||mode==='step');
 
       if (scene.userData.flappyMode && flappySpacebarRef?.current && (mode==='running'||mode==='step')) {
         flappySpacebarRef.current = false;
@@ -10835,45 +11333,61 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
         }
       }
 
-      if (scene.userData.footballMode && (mode==='running'||mode==='step')) {
-        tickFootballRuntimes(footballHandlersRef?.current, dt);
-        const fState = scene.userData.getFootballState?.();
-        if (fState && typeof fState.playerX === 'number') {
-          const follow = Math.min(1, dt * 16);
-          rs.x += (fState.playerX - rs.x) * follow;
-          rs.z += ((fState.playerZ || 0) - rs.z) * follow;
-          rs.angle = fState.playerFacing ?? rs.angle;
+      if (scene.userData.footballMode && (mode==='running'||mode==='step'||scene.userData.footballFifaLiveMatch)) {
+        const keys = footballKeysRef?.current;
+        if (keys) {
+          scene.userData.football?.setUserInput?.(footballKeysToInput(keys));
+          clearFootballKeyEdges(keys);
         }
+        const fStatePre = scene.userData.getFootballState?.();
+        const footballSlowMo = (fStatePre?.goalFlash ?? 0) > 0 ? 0.42 : 1;
+        tickFootballRuntimes(footballHandlersRef?.current, dt * footballSlowMo);
+        const fState = scene.userData.getFootballState?.();
         if (fState?.over && !rs.done) {
-          rs.done = true;
-          rs.footballWon = !!fState.won;
-          if (!fState.won) rs.footballLost = true;
-          onProgress?.({
-            time: rs.t, dist: rs.totalDist, battery: rs.battery, avoided: rs.avoided,
-            progress: 100, done: !!fState.won, collisions: rs.collisions||0,
-            ...fState, footballWon: !!rs.footballWon, footballLost: !!rs.footballLost,
-            combatWon: !!rs.footballWon, combatLost: !!rs.footballLost,
-          });
-          modeRef.current = 'idle';
-          if (fState.won) robotState.onSuccess?.();
+          if (scene.userData.footballFifaLiveMatch) {
+            scene.userData.football?.reset?.();
+            resetFootballRuntimes(footballHandlersRef?.current);
+            rs.footballWon = !!fState.won;
+            rs.footballLost = !fState.won;
+          } else {
+            rs.done = true;
+            rs.footballWon = !!fState.won;
+            if (!fState.won) rs.footballLost = true;
+            onProgress?.({
+              time: rs.t, dist: rs.totalDist, battery: rs.battery, avoided: rs.avoided,
+              progress: 100, done: !!fState.won, collisions: rs.collisions||0,
+              ...fState, footballWon: !!rs.footballWon, footballLost: !!rs.footballLost,
+              combatWon: !!rs.footballWon, combatLost: !!rs.footballLost,
+            });
+            modeRef.current = 'idle';
+            if (fState.won) robotState.onSuccess?.();
+          }
         }
       }
 
-      if((mode==='running'||mode==='step')&&!rs.done){
-        const blocks=blocksRef.current||[];
+        if((mode==='running'||mode==='step')&&!rs.done){
         if(scene.userData.raceMode && rs.raceCountdown > 0){
           rs.raceCountdown = Math.max(0, rs.raceCountdown - dt);
         }
+        const blocks=blocksRef.current||[];
+        const kbMoved = scene.userData.raceMode
+          ? applyRaceKeyboardDrive(rs, dt, scene, raceKeysRef?.current)
+          : false;
         if(blocks.length>0){
           if(rs.step>=blocks.length){
             if(scene.userData.flappyMode && !rs.flappyCrashed){
               rs.step=0; rs.stepTime=0; rs.currentDur=0;
             } else if(scene.userData.raceMode && !rs.raceFalling){
-              // Keep driving until the race is won or the kart falls — block scripts
-              // are meant to loop (like a forever loop) for the whole 3-lap run.
-              // Skip setup blocks on repeat laps (speed/boost/gas already configured).
-              rs.step = raceLoopRestartStep(blocks);
-              rs.stepTime=0; rs.currentDur=0;
+              if (isCupRace(scene)) {
+                if (!kbMoved) rs.raceCodeHint = rs.raceCodeHint || RACE_CONTROLS_HELP;
+                applyContinuousMotion(rs, dt, movId, scene, null);
+                applyCodedRaceOffTrack(rs, scene);
+                tickBoostTimer(rs, dt);
+              } else {
+                // Legacy rail tracks: loop the script for remaining laps.
+                rs.step = raceLoopRestartStep(blocks);
+                rs.stepTime=0; rs.currentDur=0;
+              }
             } else if(!rs.flappyCrashed) rs.done=true;
           }
           else{
@@ -10885,8 +11399,9 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
               rs.stopTimer-=dt;
             } else {
               const prevX=rs.x, prevZ=rs.z, prevY=rs.y;
-              applyBlock(bk,rs,dt,movId,scene);
-              applyContinuousMotion(rs, dt, movId, scene, bk?.id);
+              const configOnly = CRUISE_PAUSE_BLOCKS.has(bk?.id) || bk?.id === 'follow_track_on' || bk?.id === 'follow_track_off';
+              if (!kbMoved || configOnly) applyBlock(bk,rs,dt,movId,scene);
+              if (!kbMoved) applyContinuousMotion(rs, dt, movId, scene, bk?.id);
               if (scene.userData.raceMode) applyCodedRaceOffTrack(rs, scene);
               tickBoostTimer(rs, dt);
               // Check collisions against dynamic arena obstacles (not on race tracks)
@@ -10896,7 +11411,11 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
                   const mx=obs.mesh.position.x||0, mz=obs.mesh.position.z||0, my=obs.mesh.position.y||0;
                   const dx=rs.x-mx, dz=rs.z-mz, dy=obs.check3d?(rs.y-my):0;
                   const dist=Math.sqrt(dx*dx+dz*dz+dy*dy);
-                  if(dist<(obs.radius||1)+0.45){
+                  const obstacleRadius=obs.radius||1;
+                  const collided=obs.type==='ring_edge'
+                    ? Math.abs(dist-obstacleRadius)<(obs.thickness??0.58)
+                    : dist<obstacleRadius+0.45;
+                  if(collided){
                     rs.x=prevX; rs.z=prevZ; rs.y=prevY;
                     rs.stopTimer=0.9;
                     rs.collisions=(rs.collisions||0)+1;
@@ -10939,14 +11458,11 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
             else{if(rs.stepTime>=rs.currentDur){rs.step++;rs.stepTime=0;rs.currentDur=0;}}
           }
         } else if (scene.userData.raceMode && scene.userData.raceCurve) {
-          const coded = scene.userData.racingConfig?.raceControlMode === 'coded';
-          if (!coded || shouldUseRaceSpline(rs, scene)) {
-            applyRaceSplineCruise(rs, dt, movId, scene);
-            tickBoostTimer(rs, dt);
-          } else {
-            rs.raceCodeHint = 'Add blocks to drive!';
-            rs.bobPhase += dt * 2;
-          }
+          if (!kbMoved) rs.raceCodeHint = rs.raceCodeHint || RACE_CONTROLS_HELP;
+          applyContinuousMotion(rs, dt, movId, scene, null);
+          applyCodedRaceOffTrack(rs, scene);
+          tickBoostTimer(rs, dt);
+          rs.bobPhase += dt * 2;
         } else {
           // Non-race coding missions: robot stays still until blocks drive it.
           const isTrackPreview = !scene.userData.raceMode && (scene.userData.track3D || scene.userData.raceTrackCurve);
@@ -10967,6 +11483,12 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
           ?Math.min(100,(rs.step/Math.max(1,blocks.length))*100)
           :pathProg!=null?pathProg:Math.min(100,(rs.totalDist/targetDist)*100);
         if(pathProg!=null) rs.totalDist=(pathProg/100)*targetDist;
+        if (!rs._prevMissionPos) rs._prevMissionPos = { x: rs.x, z: rs.z, t: rs.t };
+        const dtm = Math.max(0.001, rs.t - rs._prevMissionPos.t);
+        const ddx = rs.x - rs._prevMissionPos.x;
+        const ddz = rs.z - rs._prevMissionPos.z;
+        rs.missionSpeed = Math.sqrt(ddx * ddx + ddz * ddz) / dtm;
+        rs._prevMissionPos = { x: rs.x, z: rs.z, t: rs.t };
         // Race courses: battery stays full — the fail condition is falling off /
         // missing checkpoints, not running out of power mid-lap.
         rs.battery=scene.userData.raceMode
@@ -11017,10 +11539,12 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
           raceOffTrack:rs.raceOffTrack,
           raceCodeHint:rs.raceCodeHint||'',
           raceOptimizeHint:scene.userData.raceOptimizeHint||'',
-          trackLoading:(scene.userData.trackLoading??false)&&!scene.userData.sceneryPopulated,
-          sceneryPopulated:scene.userData.sceneryPopulated??false,
+          trackLoading:false,
+          sceneryPopulated:scene.userData.sceneryPopulated??true,
           raceLapTimeStr:rs.raceLapTimeStr,
           raceBestLapStr:rs.raceBestLapStr,
+          raceTotalRacers: scene.userData.raceRivalCount ? scene.userData.raceRivalCount + 1 : undefined,
+          racePosition: scene.userData.raceRivalCount ? 1 : undefined,
           raceBoostActive:rs.raceBoostActive,
           raceFalling:rs.raceFalling,
           raceWon:rs.raceWon,
@@ -11031,8 +11555,6 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
           raceMagnetActive:rs.raceMagnetActive,
           raceBoostPadsHit:rs.raceBoostPadsHit||0,
           raceTotalCheckpoints:rs.raceTotalCheckpoints||0,
-          racePosition:1,
-          raceTotalRacers:1,
           raceCountdown:rs.raceCountdown??0,
           raceMinimap:scene.userData.raceMinimap??null,
           raceRobotX:rs.x,
@@ -11043,6 +11565,8 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
           codeRacerMode:!!scene.userData.codeRacerMode,
           raceAccentColor:scene.userData.raceAccentColor??null,
           raceObjectives:scene.userData.raceObjectives??null,
+          raceCoinsCollected:rs.collectedItems||0,
+          raceCoinTotal:scene.userData.codeRacerCoinTotal||0,
         }:{};
         const flappyPayload=scene.userData.flappyMode?{
           flappyCrashed:!!rs.flappyCrashed,
@@ -11054,7 +11578,16 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
         }:{};
         const combatPayload = scene.userData.combatMode ? (scene.userData.getCombatState?.() || {}) : {};
         const footballPayload = scene.userData.footballMode ? (scene.userData.getFootballState?.() || {}) : {};
-        onProgress?.({time:rs.t,dist:rs.totalDist,battery:rs.battery,avoided:rs.avoided,progress:prog,done:rs.done&&!rs.flappyCrashed,collisions:rs.collisions||0,hitFlash:hf,collected:rs.collectedItems||0,collectedValue:rs.collectedValue||0,...racePayload,...flappyPayload,...combatPayload,...footballPayload,combatWon:!!rs.combatWon||!!rs.footballWon,combatLost:!!rs.combatLost||!!rs.footballLost,footballWon:!!rs.footballWon,footballLost:!!rs.footballLost});
+        const missionPayload = (scene.userData.chassisModeChallenge || scene.userData.missionChallenge) ? {
+          missionCheckpoint: rs.missionCheckpoint || 0,
+          missionCheckpointsTotal: rs.missionCheckpointsTotal || scene.userData.chassisCheckpointTotal || 0,
+          missionSpeed: rs.missionSpeed || 0,
+          missionElevation: rs.y,
+          missionMinimap: scene.userData.missionMinimap ?? null,
+          missionRobotX: rs.x,
+          missionRobotZ: rs.z,
+        } : {};
+        onProgress?.({time:rs.t,dist:rs.totalDist,battery:rs.battery,avoided:rs.avoided,progress:prog,done:rs.done&&!rs.flappyCrashed,collisions:rs.collisions||0,hitFlash:hf,collected:rs.collectedItems||0,collectedValue:rs.collectedValue||0,...racePayload,...flappyPayload,...combatPayload,...footballPayload,...missionPayload,combatWon:!!rs.combatWon||!!rs.footballWon,combatLost:!!rs.combatLost||!!rs.footballLost,footballWon:!!rs.footballWon,footballLost:!!rs.footballLost});
         if(rs.flappyCrashed && !rs.flappyAwaitingRestart){ modeRef.current='idle'; }
         if(rs.done && !rs.flappyCrashed){
           onProgress?.({time:rs.t,dist:rs.totalDist,battery:rs.battery,avoided:rs.avoided,progress:100,done:true,collisions:rs.collisions||0,...racePayload,...flappyPayload,...combatPayload,combatWon:!!rs.combatWon,combatLost:!!rs.combatLost});
@@ -11066,6 +11599,7 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
         animateRobotIdle(robot, rs.t, mode);
       }
 
+      if (!scene.userData.footballMode) {
       animateRobotWheels(robot, rs, dt, movId, mode);
       emitWheelDust(simEmit, rs, movId, mode);
 
@@ -11084,6 +11618,7 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
         }
       }
       updateSimP(dt);
+      }
 
       // Arena physics movers (flappy bird, race logic) — before robot mesh position
       // combatDt === dt outside combat mode, so this is a no-op for other arenas.
@@ -11117,9 +11652,14 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
       // Non-race uses a slightly faster lerp rate (dt*14) so blocks don't snap
       // but the robot still tracks target position tightly enough to feel precise.
       // Race uses dt*18 for slightly tighter tracking at high speeds.
-      const posLerp=scene.userData.footballMode?Math.min(1,dt*18):isRaceCourse?Math.min(1,dt*18):Math.min(1,dt*14);
-      dispX+=(rs.x-dispX)*posLerp;
-      dispZ+=(rs.z-dispZ)*posLerp;
+      const posLerp=scene.userData.footballFifa3v3?1:scene.userData.footballMode?Math.min(1,dt*18):isRaceCourse?Math.min(1,dt*18):Math.min(1,dt*14);
+      if (!scene.userData.footballFifa3v3) {
+        dispX+=(rs.x-dispX)*posLerp;
+        dispZ+=(rs.z-dispZ)*posLerp;
+      } else if (robot) {
+        dispX = robot.position.x;
+        dispZ = robot.position.z;
+      }
       if (scene.userData.raceMode || isRaceCourse) {
         const trackT = rs._raceTrackTHint ?? rs.raceTrackT ?? 0;
         const splineY = scene.userData.track3D && scene.userData.raceCurve
@@ -11158,7 +11698,17 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
         const anglePosLerp=isRaceCourse?Math.min(1,dt*8):Math.min(1,dt*12);
         dispAngle+=dA*anglePosLerp;
       }
-      robot.position.set(dispX,dispY+yOff,dispZ);
+      if (!scene.userData.footballFifa3v3) {
+        robot.position.set(dispX, dispY + yOff, dispZ);
+      } else {
+        robot.position.y = dispY + yOff;
+        rs.x = robot.position.x;
+        rs.z = robot.position.z;
+        rs.angle = robot.rotation.y;
+      }
+      if (scene.userData.footballFifa3v3) {
+        dispAngle = robot.rotation.y;
+      }
       blobShadow.position.x=dispX; blobShadow.position.z=dispZ;
       if (scene.userData.raceMode || isRaceCourse) {
         const shadowRoad = scene.userData.track3D
@@ -11192,7 +11742,16 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
         robot.position.y += stateFx.yOff;
       }
       // Use smoothed dispAngle instead of raw rs.angle — eliminates rotation jitter
-      robot.rotation.y=dispAngle+(stateFx.rotY||0);
+      robot.rotation.y=dispAngle+(scene.userData.aerialMeshYawOffset??0)+(stateFx.rotY||0);
+      if (scene.userData.aerialWorldBuilt) {
+        const lx = scene.userData._aerialLastX ?? dispX;
+        const lz = scene.userData._aerialLastZ ?? dispZ;
+        const spd = Math.hypot(dispX - lx, dispZ - lz) / Math.max(dt, 0.008);
+        scene.userData._aerialLastX = dispX;
+        scene.userData._aerialLastZ = dispZ;
+        updateAerialContrails(scene, dispX, dispY, dispZ, dispAngle, spd, dt);
+        animateUE5AerialEffects(scene, rs.t);
+      }
       robot.rotation.z=rollZ+(stateFx.rotZ||0);
       robot.rotation.x=(stateFx.rotX||0);
       if(scene.userData.flappyMode){
@@ -11248,6 +11807,9 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
       const isAerial=aerialSim;
       const isCombatCam=!!scene.userData.combatMode;
       const isFootballCam=!!scene.userData.footballMode || arenaType === 'robot_football';
+      const isMissionCam=!isRaceCam&&!isCombatCam&&!isFlappyCam&&!isFootballCam
+        &&(scene.userData.chassisModeChallenge||scene.userData.missionChallenge||scene.userData.aerialWorldBuilt)
+        &&scene.userData.missionCameraPreset;
       // Race: fixed behind-kart chase — offset rotates with robot, no spline swing
       let camDist=isFlappyCam?0:(isRaceCam?8:(isAerial?9:(arenaType==='jet'?8:7.5)));
       const raceCurve=scene.userData.raceCurve;
@@ -11258,11 +11820,24 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
       const enemyX=combatState?.enemyMeshX??combatState?.enemyX??1.5;
       const midX=isCombatCam?(rs.x+enemyX)*0.5:0;
       // Combat camera - side view framing both fighters
-      let bx=isFlappyCam?rs.x:isCombatCam?0:isFootballCam?(scene.userData.footballCamPreset?.position?.x??0):(dispX+Math.sin(camAngleForPos+Math.PI)*camDist);
-      let bz=isFlappyCam?(rs.z+12):isCombatCam?-8:isFootballCam?(scene.userData.footballCamPreset?.position?.z??34):(dispZ+Math.cos(camAngleForPos+Math.PI)*camDist);
+      let bx=isFlappyCam?rs.x:isCombatCam?0:isFootballCam?(scene.userData.footballCamPreset?.position?.x??8):(dispX+Math.sin(camAngleForPos+Math.PI)*camDist);
+      let bz=isFlappyCam?(rs.z+12):isCombatCam?-8:isFootballCam?(scene.userData.footballCamPreset?.position?.z??30):(dispZ+Math.cos(camAngleForPos+Math.PI)*camDist);
       // Race: sit behind & above the kart — never top-down
-      let camH=isFlappyCam?rs.y+0.55:isCombatCam?3:isFootballCam?(scene.userData.footballCamPreset?.position?.y??12):(isRaceCam?(dispY+3):(isAerial?Math.max(rs.y+2.8,5.5):4.0));
-      if (isRaceCam) {
+      let camH=isFlappyCam?rs.y+0.55:isCombatCam?3:isFootballCam?(scene.userData.footballCamPreset?.position?.y??16):(isRaceCam?(dispY+3):(isAerial?Math.max(rs.y+4.5,8):4.0));
+      let footballCamPack = null;
+      if (isMissionCam) {
+        const camPreset = scene.userData.missionCameraPreset || {};
+        const rc = sampleFixedChaseCamera(dispX, dispY, dispZ, dispAngle, camPreset);
+        bx = rc.camX;
+        bz = rc.camZ;
+        camH = rc.camY;
+        if (scene.userData.environmentId === 'emergency' && rs.hitFlash) {
+          const sh = 0.28;
+          camH += (Math.random() - 0.5) * sh;
+          bx += (Math.random() - 0.5) * sh * 0.6;
+          bz += (Math.random() - 0.5) * sh * 0.6;
+        }
+      } else if (isRaceCam) {
         const camPreset = scene.userData.raceCameraPreset || {};
         const biomeCam = scene.userData.biomeAAASpec?.camera || {};
         const rc = sampleFixedChaseCamera(dispX, dispY, dispZ, dispAngle, camPreset);
@@ -11282,10 +11857,38 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
           bz += Math.cos(rs.t * 5) * comp;
         }
       }
+      if (isFootballCam) {
+        const preset = scene.userData.footballCamPreset;
+        const ball = scene.userData.football?.getBall?.() || {};
+        const bounds = scene.userData.arenaBounds || {};
+        const st = scene.userData.football?.getState?.() || {};
+        const holder = st.radar?.find((b) => b.id === st.possessionBotId);
+        footballCamPack = computeFootballCamera({
+          goalFlash: st.goalFlash,
+          kickoffDone: st.kickoffDone,
+          kickoffTimer: st.kickoffTimer,
+          lastScoredTeam: st.lastScoredTeam,
+          possessionX: holder?.x,
+          possessionZ: holder?.z,
+          fifa3v3: scene.userData.footballFifa3v3,
+          playerX: st.playerX,
+          playerZ: st.playerZ,
+          playerFacing: st.playerFacing,
+          layoutCam: scene.userData.footballCamFollow || 'sideline',
+          userCamMode: scene.userData.footballCamMode || 'broadcast',
+          goalZ: GOAL_Z,
+          camMaxX: bounds.camMaxX,
+          camMinZ: bounds.camMinZ,
+          camMaxZ: bounds.camMaxZ,
+        }, ball, preset);
+        bx = footballCamPack.bx;
+        bz = footballCamPack.bz;
+        camH = footballCamPack.camH;
+      }
       const introT=scene.userData.introTimer||0;
 
       if(introT>0&&!skipFlappyIntro&&!isFootballCam&&!isRaceCam){
-        const introDur=ab?.raceCam?1.2:isCombatCam?1.5:3.2;
+        const introDur=ab?.raceCam?0.6:isCombatCam?0.8:0.5;
         const sweep=1-introT/introDur;
         if(ab?.introSweep&&ab?.introCenter){
           const c=ab.introCenter;
@@ -11307,8 +11910,8 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
         bz=ocz+Math.cos(orbit)*orad;
         camH=(isCombatCam?2.5:rs.y)+4.5+Math.sin(orbit*2)*0.6;
       }
-      const camLerp=rs.done?0.035:introT>0&&!skipFlappyIntro&&!isFootballCam&&!isRaceCam?0.07:(isFootballCam?1:(isFlappyCam?0.14:(isCombatCam?0.14:(isRaceCam?0.12:0.045))));
-      const lookY=isFlappyCam?rs.y+0.35:(isRaceCam?dispY+1.0:(isAerial?Math.max(rs.y+1.2,3.5):rs.y+0.7));
+      const camLerp=rs.done?0.035:introT>0&&!skipFlappyIntro&&!isFootballCam&&!isRaceCam?0.07:(isFootballCam?(footballCamPack?.camLerp??0.085):(isFlappyCam?0.14:(isCombatCam?0.14:(isRaceCam?0.12:0.045))));
+      const lookY=isFlappyCam?rs.y+0.35:(isRaceCam?dispY+1.0:(isAerial?Math.max(rs.y+2.0,5):(rs.y+0.7)));
       // Race cam: never clamp — clamping was yanking the chase cam into a top-down view mid-lap
       _camTargetScratch.set(
         (isFlappyCam || isCombatCam || isFootballCam || isRaceCam) ? bx : Math.max(-camMaxX, Math.min(camMaxX, bx)),
@@ -11318,9 +11921,8 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
       camPos.lerp(_camTargetScratch,camLerp);
       if(isCombatCam){
         _lookTargetScratch.set(0, 1.0, 0);
-      } else if(isFootballCam){
-        const look = scene.userData.footballCamPreset?.lookAt;
-        _lookTargetScratch.set(look?.x ?? 0, look?.y ?? 1, look?.z ?? 0);
+      } else if(isFootballCam && footballCamPack){
+        _lookTargetScratch.set(footballCamPack.lookX, footballCamPack.lookY, footballCamPack.lookZ);
       } else if(isAerial&&!isFlappyCam&&!isRaceCam){
         const ahead=14;
         _lookTargetScratch.set(
@@ -11332,17 +11934,14 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
         const camPreset = scene.userData.raceCameraPreset || {};
         const rc = sampleFixedChaseCamera(dispX, dispY, dispZ, dispAngle, camPreset);
         _lookTargetScratch.set(rc.lookX, rc.lookY, rc.lookZ);
+      } else if(isMissionCam){
+        const camPreset = scene.userData.missionCameraPreset || {};
+        const rc = sampleFixedChaseCamera(dispX, dispY, dispZ, dispAngle, camPreset);
+        _lookTargetScratch.set(rc.lookX, rc.lookY, rc.lookZ);
       } else {
         _lookTargetScratch.set(rs.x,lookY,rs.z);
       }
-      camLook.lerp(_lookTargetScratch, isFootballCam ? 1 : (isRaceCam ? 0.1 : (rs.done&&!isFlappyCam?0.05:0.065)));
-      if (isFootballCam) {
-        const preset = scene.userData.footballCamPreset;
-        if (preset?.position && preset?.lookAt) {
-          camPos.copy(preset.position);
-          camLook.copy(preset.lookAt);
-        }
-      }
+      camLook.lerp(_lookTargetScratch, isFootballCam ? (footballCamPack?.lookLerp ?? 0.1) : (isRaceCam ? 0.1 : (rs.done&&!isFlappyCam?0.05:0.065)));
       camera.position.copy(camPos);
       camera.up.set(0, 1, 0);
       camera.lookAt(camLook);
@@ -11351,10 +11950,20 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
         camera.fov+=(targetFov-camera.fov)*Math.min(1,dt*6);
         camera.updateProjectionMatrix();
       }
-      if(isFootballCam){
-        const targetFov=scene.userData.footballCamPreset?.fov??55;
-        camera.fov+=(targetFov-camera.fov)*Math.min(1,dt*6);
-        camera.updateProjectionMatrix();
+      if(isFootballCam && footballCamPack){
+        const targetFov = footballCamPack.fov;
+        camera.fov += (targetFov - camera.fov) * Math.min(1, dt * 6);
+        if (Math.abs(camera.fov - targetFov) > 0.04) camera.updateProjectionMatrix();
+      }
+      if(isMissionCam && scene.userData.missionCameraPreset?.fov){
+        const preset = scene.userData.missionCameraPreset;
+        let targetFov = preset.fov;
+        if (scene.userData.cameraMode === 'aerial_chase' || scene.userData.environmentId === 'sky_aerial' || scene.userData.environmentId === 'hybrid_race_sky') {
+          const spd = rs.missionSpeed || 0;
+          targetFov = preset.fov + Math.min(14, spd * 2.2);
+        }
+        camera.fov += (targetFov - camera.fov) * Math.min(1, dt * 6);
+        if (Math.abs(camera.fov - targetFov) > 0.04) camera.updateProjectionMatrix();
       }
       if(isFlappyCam){
         camera.rotation.x=-0.1;
@@ -11364,7 +11973,7 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
           camera.position.y+=(Math.random()-0.5)*sh*0.45;
         }
       }
-      if (!scene.userData.raceMode) {
+      if (!scene.userData.raceMode && !scene.userData.footballMode) {
         scene.traverse(c=>{
           if(c.name==='cp'){c.rotation.z+=dt*0.9; if(c.material) c.material.emissiveIntensity=0.7+Math.sin(rs.t*3)*0.3;}
           if(c.name&&c.name.startsWith('mover')&&!scene.userData.movers){const idx=parseInt(c.name.slice(5))||0; c.position.x=Math.sin(rs.t*(0.8+idx*0.2))*(4+idx);}
@@ -11373,12 +11982,18 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
       }
       // ── Collectibles check ────────────────────────────────────────────────
       if(scene.userData.collectibles){
+        const racePick=!!scene.userData.raceMode;
         for(const col of scene.userData.collectibles){
           if(col.mesh?.visible && !col.collected) col.mesh.rotation.y+=dt*2.2;
           if(col.collected || !(mode==='running'||mode==='step')) continue;
-          const cdx=rs.x-col.pos.x, cdz=rs.z-col.pos.z, cdy=(rs.y||0)-(col.pos.y||0.4);
-          if(cdx*cdx+cdz*cdz+cdy*cdy<(col.radius||0.85)*(col.radius||0.85)){
-            col.collected=true; col.mesh.visible=false;
+          const cdx=rs.x-col.pos.x, cdz=rs.z-col.pos.z;
+          const mag=rs.raceMagnetActive?2.4:1;
+          const rad=(col.radius||0.85)*mag;
+          const hit=racePick
+            ? (cdx*cdx+cdz*cdz<rad*rad)
+            : (cdx*cdx+cdz*cdz+((rs.y||0)-(col.pos.y||0.4))**2<rad*rad);
+          if(hit){
+            col.collected=true; if(col.mesh) col.mesh.visible=false;
             rs.collectedItems=(rs.collectedItems||0)+1;
             rs.collectedValue=(rs.collectedValue||0)+(col.value||5);
             simEmit(col.pos.x,(col.pos.y||0.4)+0.4,col.pos.z,6,0.14);
@@ -11389,16 +12004,36 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
           }
         }
       }
+      // ── Chassis checkpoint gates ───────────────────────────────────────────
+      if(scene.userData.chassisCheckpoints?.length && !rs.done && (mode==='running'||mode==='step')){
+        const cps=scene.userData.chassisCheckpoints;
+        const next=cps.find((c)=>!c.passed);
+        if(next){
+          const cdx=rs.x-next.x, cdz=rs.z-next.z;
+          const aerialCheckpoint = scene.userData.aerialWorldBuilt;
+          const cdy = aerialCheckpoint ? rs.y - (next.y ?? rs.y) : 0;
+          const altitudeBand = scene.userData.flyingRequiredAltitude;
+          const insideAltitude = !altitudeBand || (rs.y >= altitudeBand[0] && rs.y <= altitudeBand[1]);
+          if(insideAltitude && cdx*cdx+cdz*cdz+cdy*cdy<(aerialCheckpoint ? 16 : 5.5)){
+            next.passed=true;
+            rs.missionCheckpoint=(rs.missionCheckpoint||0)+1;
+            for(let ci=0;ci<14;ci++) simEmit(next.x,rs.y+0.9,next.z,8,0.16);
+          }
+        }
+        rs.missionCheckpointsTotal=cps.length;
+      }
       // ── Finish zone check ──────────────────────────────────────────────────
       if(scene.userData.finishZone && !rs.done && (mode==='running'||mode==='step')){
         const fz=scene.userData.finishZone;
         const fdx=rs.x-fz.x, fdz=rs.z-fz.z;
         const fdy=fz.y3d!=null?(rs.y-fz.y3d):0;
-        if(Math.sqrt(fdx*fdx+fdz*fdz+fdy*fdy)<(fz.radius||3.5)){
+        const gatesComplete = !scene.userData.flyingArenaActive || (scene.userData.chassisCheckpoints || []).every(cp => cp.passed);
+        if(gatesComplete && Math.sqrt(fdx*fdx+fdz*fdz+fdy*fdy)<(fz.radius||3.5)){
           rs.done=true;
           scene.userData.victoryT=0;
           robotState.onSuccess();
           fireEvent('goal');
+          spawnWinCelebration(scene, rs.x, rs.y + 0.8, rs.z);
           for(let fi=0;fi<8;fi++) simEmit(rs.x+(Math.random()-0.5)*2,rs.y+0.8+Math.random(),rs.z+(Math.random()-0.5)*2,12,0.28);
         }
       }
@@ -11412,14 +12047,16 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
         camera.fov+=(targetFOV-camera.fov)*Math.min(1,dt*4);
         camera.updateProjectionMatrix();
       }
-      renderFrame();
-      if (scene.userData.biomeAAA || _isBiomeTrack) {
+      if (scene.userData.footballMode) {
+        renderer.toneMappingExposure = scene.userData.expMood ?? 1.06;
+      } else if (scene.userData.biomeAAA || _isBiomeTrack) {
         const underground = arenaType === 'crystal_palace_01'
           || arenaType === 'cyber_boulevard_01'
           || scene.userData.biomeAAASpec?.underground;
         renderer.toneMappingExposure = underground ? 1.1 : 1.08;
       }
       } catch(err){ console.warn('[SimCanvas tick]',err); }
+      try { renderFrame(); } catch (renderErr) { console.warn('[SimCanvas render]', renderErr); }
     };
     rafRef.current=requestAnimationFrame(tick);
     sceneHandleRef.current = { scene, robot };
@@ -11441,6 +12078,22 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
         roadY: robot.userData._lastRoadY,
         kartClearance: robot.userData._kartRoadClearance ?? rsRef.current?._kartRoadClearance,
       };
+      if (scene.userData.footballMode) {
+        window.__bbFootballDiag = () => ({
+          simActive: scene.userData.footballSimActive,
+          fifaLive: scene.userData.footballFifaLiveMatch,
+          userStopped: scene.userData.footballUserStopped,
+          runtimeKeys: Object.keys(footballHandlersRef?.current || {}),
+          score: scene.userData.getFootballState?.(),
+          bots: scene.userData.football?.getBots?.()?.map((b) => ({
+            id: b.id,
+            x: b.x,
+            z: b.z,
+            intent: b.intent?.type,
+            canAct: b.canAct,
+          })),
+        });
+      }
     }
     } catch (err) {
       console.error('[SimCanvas init]', err);
@@ -11455,6 +12108,7 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
       previewPath?.dispose?.();
       composer?.dispose?.();
       sceneHandleRef.current = null;
+      disposeTrackEnvironment(renderer);
       if(el&&renderer?.domElement?.parentNode===el) el.removeChild(renderer.domElement);
       el?.classList?.remove('ll-sim-biome');
       el?.classList?.remove('ll-sim-crystal-cavern');
@@ -11516,10 +12170,10 @@ function RunCountdown({ onDone }) {
   const [count, setCount] = useState(3);
   useEffect(() => {
     if (count > 0) {
-      const t = setTimeout(() => setCount(c => c - 1), 800);
+      const t = setTimeout(() => setCount(c => c - 1), 320);
       return () => clearTimeout(t);
     } else {
-      const t = setTimeout(onDone, 600);
+      const t = setTimeout(onDone, 200);
       return () => clearTimeout(t);
     }
   }, [count, onDone]);
@@ -11827,7 +12481,7 @@ function CourseTierCard({course,robotName,robotType,onSelect,currentId}){
   const diff=getCourseDiff(course); const diffCol=DIFF_COL[diff];
   const best=GameProgress.getBest(robotName,course.id);
   const sel=course.id===currentId;
-  const pd=PROFILE_DATA[robotType]||PROFILE_DATA.rover;
+  const pd=PROFILE_DATA[robotType]||profileFromChassis(robotType);
   const fit=getRobotFit(robotType,course);
   const isRec=course.rec.some(r=>pd.recKeys.includes(r));
   const stars=DIFF_STARS[diff];
@@ -12191,7 +12845,7 @@ function WorldPicker({ onSelect, onClose, currentId, robotType, robotName }) {
   const lvl = GameProgress.level(xp);
   const abilities  = ROBOT_ABILITIES[robotType]||{icon:'🤖',tags:['Robot']};
   // For 'all' tab (legacy worlds)
-  const pd  = PROFILE_DATA[robotType] || PROFILE_DATA.rover;
+  const pd  = PROFILE_DATA[robotType] || profileFromChassis(robotType);
   const isRec=(course)=>course.rec&&course.rec.some(r=>pd.recKeys.includes(r));
   const cats = ['all', ...Object.keys(CAT_META)];
   const shown = cat==='all' ? ALL_COURSES : ALL_COURSES.filter(c=>c.cat===cat);
@@ -12487,9 +13141,9 @@ function readStoredRobotConfig() {
 
 function lookupCourseById(id) {
   if (!id) return null;
-  const direct = ALL_COURSES.find((c) => c.id === id);
-  if (direct) return direct;
-  return resolveChassisModeCourse(CHASSIS_GAME_MODE_BY_ID[id], ALL_COURSES);
+  const chassisMode = CHASSIS_GAME_MODE_BY_ID[id];
+  if (chassisMode) return resolveChassisModeCourse(chassisMode, ALL_COURSES);
+  return ALL_COURSES.find((c) => c.id === id) || null;
 }
 
 function defaultLabCourseForRobot(robotConfig) {
@@ -12499,7 +13153,7 @@ function defaultLabCourseForRobot(robotConfig) {
   if (chassisDefault) return enrichCourseWithGameLogic(chassisDefault);
 
   const robotType = detectRobotType(rc);
-  const pd = PROFILE_DATA[robotType] || PROFILE_DATA.rover;
+  const pd = resolveProfileData(rc);
   const robotCourses = filterCoursesForRobot(ALL_COURSES, robotType, pd.recKeys);
   const enrich = (c) => (c ? enrichCourseWithGameLogic(c) : null);
 
@@ -12529,7 +13183,12 @@ function defaultLabCourseForRobot(robotConfig) {
     if (first) return enrich(first);
   }
 
-  return enrich(ALL_COURSES.find((c) => c.id === 'street_grand_prix')) || enrich(robotCourses[0]);
+  if (isCarChassis(chassisId)) {
+    return enrich(ALL_COURSES.find((c) => c.id === 'sunset_cove_01' || c.arenaType === 'sunset_cove_01'))
+      || enrich(ALL_COURSES.find((c) => c.id === 'street_grand_prix'))
+      || enrich(robotCourses[0]);
+  }
+  return enrich(robotCourses[0]) || enrich(chassisDefault);
 }
 
 function resolveLabCourse(initialCourseId, robotConfig) {
@@ -12543,34 +13202,45 @@ function resolveLabCourse(initialCourseId, robotConfig) {
   const fitsChassis = (course) => course && (
     isCourseForChassis(course.id, chassisId)
     || chassisModes.some((c) => c.id === course.id)
+    || (resolveChassisKey(chassisId) === 'birdbot' && isFlappyBirdCourse(course.id, course.arenaType))
   );
 
   // Football robots must never inherit a stale forest/racing world from localStorage.
   if (isFootballRobot(rc)) {
     if (initialCourseId) {
       const fromUrl = pick(initialCourseId);
-      if (fromUrl && fitsChassis) return fromUrl;
+      if (fromUrl && (isFootballCourse(fromUrl.id, fromUrl.arenaType) || fitsChassis(fromUrl))) {
+        return enrichCourseWithGameLogic(resolveFootballLabCourse(fromUrl, rc));
+      }
     }
-    const footballDefault = chassisModes.find((c) => c.arenaType === 'robot_football') || chassisModes[0];
-    if (footballDefault) return pick(footballDefault.id);
+    const fifa = pick('football_fifa');
+    if (fifa) return fifa;
+    const footballDefault = chassisModes.find((c) => c.linkedFootballCourse === 'football_fifa')
+      || chassisModes.find((c) => c.arenaType === 'robot_football')
+      || chassisModes[0];
+    if (footballDefault) return pick(footballDefault.linkedFootballCourse || footballDefault.id);
     return defaultLabCourseForRobot(rc);
   }
 
   if (initialCourseId) {
     const fromUrl = pick(initialCourseId);
-    if (fitsChassis(fromUrl)) return fromUrl;
+    if (fromUrl && !isFootballCourse(fromUrl.id, fromUrl.arenaType) && fitsChassis(fromUrl)) return fromUrl;
     if (BIOME_ARENA_TYPES.has(initialCourseId)) {
       const biomeCourse = pick(initialCourseId);
-      if (biomeCourse) return biomeCourse;
+      if (biomeCourse && !isFootballCourse(biomeCourse.id, biomeCourse.arenaType)) return biomeCourse;
     }
   }
   try {
     const saved = localStorage.getItem(LAB_COURSE_LS_KEY);
     if (saved === 'flappy_bird' && resolveChassisKey(chassisId) !== 'birdbot') {
       localStorage.removeItem(LAB_COURSE_LS_KEY);
+    } else if (saved && /football/i.test(saved)) {
+      localStorage.removeItem(LAB_COURSE_LS_KEY);
     } else if (saved) {
       const fromStorage = pick(saved);
-      if (fitsChassis(fromStorage)) return fromStorage;
+      if (fromStorage && !isFootballCourse(fromStorage.id, fromStorage.arenaType) && fitsChassis(fromStorage)) {
+        return fromStorage;
+      }
     }
   } catch { /* ignore */ }
   return defaultLabCourseForRobot(rc);
@@ -12578,6 +13248,14 @@ function resolveLabCourse(initialCourseId, robotConfig) {
 
 function hasFootballGameplayScript(custom = []) {
   return custom.some((b) => b.id && b.id !== 'when_start');
+}
+
+function isFifa3v3Course(course) {
+  if (!course) return false;
+  return course.id === 'football_fifa'
+    || course.matchMode === 'fifa3v3'
+    || course.matchMode === 'team3v3'
+    || (course.teamSize ?? 0) >= 3;
 }
 
 export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,initialChallenge,onChallengeConsumed,initialCourseId,eventsFocusKey=0,footballLaunchKey=0}){
@@ -12604,11 +13282,15 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
   const footballProgramsRef = useRef({});
   const footballScriptsRef = useRef({ defender: [], striker: [], midfielder: [] });
   const footballActiveRoleRef = useRef('striker');
+  const footballSwitchRoleRef = useRef(null);
   const flappySpacebarRef = useRef(false);
+  const raceKeysRef = useRef(emptyRacingKeys());
+  const footballKeysRef = useRef(emptyFootballKeys());
   const flappyStartRunRef = useRef(null);
   const gameRootRef     =useRef(null);
   const codeBlocksRef   =useRef([]);
   const simKeyRef       =useRef(0);
+  const sceneHandleRef = useRef(null);
   const appliedUrlCourseRef = useRef(initialCourseId || null);
   const xpAwardedRef    =useRef(false);
   const failShownRef    =useRef(false);
@@ -12636,8 +13318,11 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
   const [hitFlash,     setHitFlash]     =useState(false);
   const [execLabel,    setExecLabel]    =useState(null);  // {text,color} while running
   const [activeStepIndex, setActiveStepIndex] = useState(-1);
+  const [footballExecBotId, setFootballExecBotId] = useState(null);
   const [showCountdown,setShowCountdown]=useState(false);
   const [introKey,     setIntroKey]     =useState(0);
+  const [simRunKey,    setSimRunKey]    =useState(0);
+  const [footballProgKey, setFootballProgKey] = useState(0);
   const [qualityOverride, setQualityOverride] = useState(() => localStorage.getItem('bb_quality_tier') || 'auto');
   const [victory,      setVictory]      =useState(null);  // {xp, medal, coins}
   const [failure,      setFailure]      =useState(null);  // {message, hint}
@@ -12654,6 +13339,18 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
   const [isFullscreen, setIsFullscreen] =useState(false);
   const [codeRacerCodeOpen, setCodeRacerCodeOpen] = useState(true);
   const [codeRacerMissionOpen, setCodeRacerMissionOpen] = useState(false);
+  const [fifaCodeOpen, setFifaCodeOpen] = useState(true);
+  const [fifaUiRole, setFifaUiRole] = useState('striker');
+  const [footballCinema, setFootballCinema] = useState(() => {
+    try {
+      const saved = localStorage.getItem('bb_football_cinema');
+      if (saved === 'false') return false;
+      return true;
+    } catch {
+      return true;
+    }
+  });
+  const [footballCamMode, setFootballCamMode] = useState('broadcast');
 
   useEffect(()=>{codeBlocksRef.current=codeBlocks;},[codeBlocks]);
   useEffect(()=>{blockCountRef.current=blockCount;},[blockCount]);
@@ -12664,6 +13361,13 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
 
   useEffect(()=>{
     if (!initialChallenge) return;
+    const incomingFootball = isFootballCourse(initialChallenge.id, initialChallenge.arenaType)
+      || initialChallenge.genre === 'football'
+      || initialChallenge.cat === 'football';
+    if (incomingFootball && !isFootballRobot(rc)) {
+      onChallengeConsumed?.();
+      return;
+    }
     const isDirectCourse = initialChallenge.arenaType
       || initialChallenge.isRobotMission
       || initialChallenge.matchMode
@@ -12689,18 +13393,19 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
     setRunMode('idle');
     setStats({ time:0, dist:0, battery:100, avoided:0, progress:0, collisions:0 });
     const isFootball = isFootballCourse(course.id, course.arenaType);
+    const isRace = isCarRaceCourse(course, rc?.chassisId);
     setActivity(isFootball
       ? [`⚽ ${course.name}`, course.desc, course.codeHint ? `💡 ${course.codeHint}` : 'Use Football blocks — Chase ball → Shoot!']
-      : [`🏁 Track: ${initialChallenge.trackName || course.name}${initialChallenge.level ? ` — Level ${initialChallenge.level}` : ''}`, course.desc, course.codeHint ? `💡 ${course.codeHint}` : 'Build your program and press ▶ Run!']);
+      : isRace
+        ? [`🏎️ ${course.name}`, 'Code the lap yourself — Move forward, Curve left, Curve right.', '💡 The car only goes where your blocks say.']
+        : [`🏁 Track: ${initialChallenge.trackName || course.name}${initialChallenge.level ? ` — Level ${initialChallenge.level}` : ''}`, course.desc, course.codeHint ? `💡 ${course.codeHint}` : 'Build your program and press ▶ Run!']);
     onChallengeConsumed?.();
   }, [initialChallenge, onChallengeConsumed, rc?.chassisId]);
 
   useEffect(() => {
     if (!footballLaunchKey) return;
-    const modes = getCoursesForChassis(rc?.chassisId || 'footballbot', ALL_COURSES);
-    const football = modes.find((c) => c.arenaType === 'robot_football') || modes[0];
-    if (!football) return;
-    const enriched = enrichCourseWithGameLogic(resolveFootballLabCourse(football, rc));
+    if (!isFootballRobot(rc)) return;
+    const enriched = enrichCourseWithGameLogic(resolveFootballLabCourse({ id: 'football_fifa' }, rc));
     setCodeBlocks([]);
     failShownRef.current = false;
     setFightResults(null);
@@ -12709,9 +13414,9 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
     simKeyRef.current += 1;
     setSimKey(simKeyRef.current);
     setActivity([
-      '⚽ FIFA 3v3 Match loaded!',
+      '⚽ FIFA 3v3 — match starts automatically!',
       enriched.name,
-      'Press ▶ Simulate — chase, pass & score against the blue team!',
+      'Defender #4, Striker #9 & Midfielder #8 all run their code.',
     ]);
   }, [footballLaunchKey, rc?.chassisId]);
 
@@ -12719,10 +13424,7 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
   useEffect(() => {
     if (!isFootballRobot(rc)) return;
     if (isFootballCourse(activeCourse?.id, activeCourse?.arenaType)) return;
-    const modes = getCoursesForChassis(rc?.chassisId || 'footballbot', ALL_COURSES);
-    const football = modes.find((c) => c.arenaType === 'robot_football') || modes[0];
-    if (!football) return;
-    const enriched = enrichCourseWithGameLogic(football);
+    const enriched = enrichCourseWithGameLogic(resolveFootballLabCourse({ id: 'football_fifa' }, rc));
     setActiveCourse(enriched);
     try { localStorage.setItem(LAB_COURSE_LS_KEY, enriched.id); } catch { /* ignore */ }
     simKeyRef.current += 1;
@@ -12757,22 +13459,31 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
 
   // On chassis change, always snap to mode 1 for that robot's 10 exclusive modes.
   // Never steal a CodeRacer cup track back to rover mode 1 (Sunset Cove).
+  // FootballBot keeps its own FIFA landing effect — do not pin cars onto a leftover pitch.
   const prevChassisIdRef = useRef(null);
   useEffect(() => {
-    if (isFootballCourse(activeCourse?.id, activeCourse?.arenaType)) return;
-    if (BIOME_ARENA_TYPES.has(activeCourse?.arenaType) || BIOME_ARENA_TYPES.has(activeCourse?.id)) return;
+    if (isFootballRobot(rc)) return;
+    if (activeCourse?.isPrimaryMission) return;
     const chassisId = rc?.chassisId || 'rover';
+    if (!isPrimaryStudioChassis(chassisId)
+      && (BIOME_ARENA_TYPES.has(activeCourse?.arenaType) || BIOME_ARENA_TYPES.has(activeCourse?.id))) return;
     const chassisChanged = prevChassisIdRef.current !== null && prevChassisIdRef.current !== chassisId;
     prevChassisIdRef.current = chassisId;
     const courseId = activeCourse?.id;
-    if (!chassisChanged && courseId && isCourseForChassis(courseId, chassisId)) return;
+    const stuckOnFootball = isFootballCourse(courseId, activeCourse?.arenaType);
+    if (!chassisChanged && !stuckOnFootball && courseId && isCourseForChassis(courseId, chassisId)) return;
     const next = enrichCourseWithGameLogic(getDefaultChassisCourse(chassisId, ALL_COURSES));
     if (!next || next.id === activeCourse?.id) return;
     setActiveCourse(next);
     try { localStorage.setItem(LAB_COURSE_LS_KEY, next.id); } catch { /* ignore */ }
     simKeyRef.current += 1;
     setSimKey(simKeyRef.current);
-  }, [rc?.chassisId, activeCourse?.id]);
+    setActivity([
+      `${next.environmentEmoji || '🎮'} ${next.environmentName || 'Robot Mission'}`,
+      next.shortName || next.name,
+      next.desc || 'Press ▶ Simulate and code your robot!',
+    ]);
+  }, [rc?.chassisId, activeCourse?.id, activeCourse?.arenaType]);
 
   // Rebuild 3D arena whenever the selected world OR arena type changes
   useEffect(() => {
@@ -12780,20 +13491,68 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
     simKeyRef.current += 1;
     setSimKey(simKeyRef.current);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeCourse?.id, activeCourse?.arenaType, activeCourse?.linkedRaceCourse, activeCourse?.modeIndex]);
+  }, [activeCourse?.id, activeCourse?.arenaType, activeCourse?.linkedRaceCourse, activeCourse?.modeIndex, activeCourse?.matchMode, activeCourse?.teamSize]);
 
   // If user picked a world via WorldPicker, use that; else use the profile's recommended default
   const challenge=useMemo(()=>{
     const raw = activeCourse
-      ? (lookupCourseById(activeCourse.id) || activeCourse)
+      ? (activeCourse.isPrimaryMission ? activeCourse : (lookupCourseById(activeCourse.id) || activeCourse))
       : profile.challenges[Math.min(challengeI, profile.challenges.length - 1)];
+    if (!raw) return raw;
+    if (raw.isPrimaryMission) return raw;
+    if (isFootballRobot(rc)) {
+      const resolved = resolveFootballLabCourse(raw, rc);
+      return resolved ? enrichCourseWithGameLogic(resolved) : resolved;
+    }
+    if (isFootballCourse(raw.id, raw.arenaType)) {
+      const fallback = getDefaultChassisCourse(rc?.chassisId || 'rover', ALL_COURSES);
+      return fallback ? enrichCourseWithGameLogic(fallback) : raw;
+    }
     const resolved = resolveFootballLabCourse(raw, rc);
     return resolved ? enrichCourseWithGameLogic(resolved) : resolved;
   },[activeCourse, profile, challengeI, rc?.chassisId]);
 
+  const isFootballCourseActive = isFootballCourse(challenge?.id, challenge?.arenaType);
+
+  const isFifa3v3 = isFifa3v3Course(challenge);
+  const footballHudMatch = combatStats?.active
+    ? combatStats
+    : isFootballCourseActive
+      ? {
+        active: true,
+        playerGoals: 0,
+        enemyGoals: 0,
+        teamSize: challenge?.teamSize ?? 3,
+        matchTime: 0,
+        timeLeft: 180,
+        radar: [],
+        playerLabel: '#9 STRIKER',
+        playerStamina: 1,
+      }
+      : null;
+
+  useEffect(() => {
+    if (!isFifa3v3) return;
+    setFootballCinema(false);
+    setFifaCodeOpen(true);
+    setFifaUiRole('striker');
+  }, [isFifa3v3, challenge?.id]);
+
   const arenaType = useMemo(() => {
-    if (isFootballCourse(challenge?.id, challenge?.arenaType) || isFootballRobot(rc)) {
+    if (isFootballRobot(rc)) {
       return 'robot_football';
+    }
+    if (isPrimaryStudioChassis(rc?.chassisId || challenge?.chassisId)) {
+      if (challenge?.arenaBible) return challenge.arenaType || 'sandbox';
+      if (isCarChassis(rc?.chassisId || challenge?.chassisId)) {
+        const track = getCarRacingTrack(
+          rc?.chassisId || challenge?.chassisId || 'rover',
+          challenge?.modeIndex ?? 1,
+        );
+        if (track?.isClassicRainbow) return 'rainbow_road';
+        return track?.arenaType || challenge?.arenaType || 'sunset_cove_01';
+      }
+      return challenge?.arenaType || 'sandbox';
     }
     // Cup tracks must keep their own biome id. Chassis-mode remapping
     // (modeIndex default 1 → Sunset Cove) was forcing every cup tab to look like Cove.
@@ -12803,7 +13562,7 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
       return challenge.linkedRaceCourse;
     }
     // Rover/scout racing modes always use the biome/MK track registry (not stale static arenaType).
-    if (challenge?.isChassisMode && isCarChassis(rc?.chassisId || challenge?.chassisId)) {
+    if (challenge?.isChassisMode && isCarChassis(rc?.chassisId || challenge?.chassisId) && !isPrimaryStudioChassis(rc?.chassisId || challenge?.chassisId)) {
       const track = getCarRacingTrack(
         rc?.chassisId || challenge?.chassisId || 'rover',
         challenge?.modeIndex ?? 1,
@@ -12850,9 +13609,15 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
       return [];
     }
     if (isFootball) {
-      const teamSize = challengeRef.current?.teamSize ?? 1;
+      const teamMatch = challengeRef.current?.id === 'football_fifa'
+        || (challengeRef.current?.teamSize ?? 0) >= 3
+        || challengeRef.current?.matchMode === 'fifa3v3'
+        || challengeRef.current?.matchMode === 'team3v3';
       const scripts = footballScriptsRef.current || {};
-      if (teamSize >= 3) {
+      if (teamMatch) {
+        for (const role of FOOTBALL_TEAM_ROLES) {
+          if (!scripts[role.id]?.length) scripts[role.id] = FOOTBALL_ROLE_STARTERS[role.id];
+        }
         const activeRole = footballActiveRoleRef.current || 'striker';
         scripts[activeRole] = custom;
         footballScriptsRef.current = scripts;
@@ -12862,6 +13627,7 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
           const src = hasFootballGameplayScript(roleScript) ? roleScript : FOOTBALL_ROLE_STARTERS[role.id];
           footballProgramsRef.current[role.botId] = compileFootballScratchScript(src);
         }
+        setFootballProgKey((k) => k + 1);
       } else {
         const src = hasFootballGameplayScript(custom) ? custom : FOOTBALL_STARTER_SCRIPT;
         footballProgramsRef.current = { p0: compileFootballScratchScript(src) };
@@ -12869,11 +13635,7 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
       eventHandlersRef.current = null;
       return [];
     }
-    const isRace = isRaceCourse(
-      challengeRef.current?.linkedRaceCourse || challengeRef.current?.id,
-      challengeRef.current?.arenaType,
-    ) || challengeRef.current?.physics === 'racing_spline'
-      || challengeRef.current?.genre === 'racing';
+    const isRace = isCarRaceCourse(challengeRef.current, challengeRef.current?.chassisId);
     if (isRace) {
       const arena = challengeRef.current?.arenaType
         || challengeRef.current?.linkedRaceCourse
@@ -12918,12 +13680,7 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
     const isFlappy=isFlappyBirdCourse(challengeRef.current?.id)||challengeRef.current?.arenaType==='flappy_bird';
     const isFight=isFightingCourse(challengeRef.current?.id, challengeRef.current?.arenaType);
     const isFootball=isFootballCourse(challengeRef.current?.id, challengeRef.current?.arenaType);
-    const isRace=isRaceCourse(
-      challengeRef.current?.linkedRaceCourse || challengeRef.current?.id,
-      challengeRef.current?.arenaType,
-    ) || challengeRef.current?.physics === 'racing_spline'
-      || challengeRef.current?.genre === 'racing';
-    if (isFlappy || isFight || isFootball || isRace) return true;
+    const isRace = isCarRaceCourse(challengeRef.current, challengeRef.current?.chassisId);
     extractBlocks();
     return countRunnableActions(eventHandlersRef.current)>0;
   },[extractBlocks,countRunnableActions]);
@@ -12932,19 +13689,36 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
     const isFlappy=isFlappyBirdCourse(challengeRef.current?.id)||challengeRef.current?.arenaType==='flappy_bird';
     const isFight=isFightingCourse(challengeRef.current?.id, challengeRef.current?.arenaType);
     const isFootball=isFootballCourse(challengeRef.current?.id, challengeRef.current?.arenaType);
-    const isRace=isRaceCourse(
-      challengeRef.current?.linkedRaceCourse || challengeRef.current?.id,
-      challengeRef.current?.arenaType,
-    ) || challengeRef.current?.physics === 'racing_spline'
-      || challengeRef.current?.genre === 'racing';
+    const isRace = isCarRaceCourse(challengeRef.current, challengeRef.current?.chassisId);
     if(!hasRunnableProgram()){
-      setActivity(['⚠️ Click blocks in the palette on the left to build your program, then press Simulate!']);
-      return;
+      const family = detectRobotType(rc);
+      const hint = family === 'drone' || family === 'jet' || family === 'hover'
+        ? 'This robot flies, so try Fly Up or Hover.'
+        : family === 'humanoid' || family === 'spider'
+          ? 'This robot walks, so try Step Forward.'
+          : 'Add a movement block first';
+      const starter = getPrimaryStarterScript(rc?.chassisId || 'rover', challengeRef.current?.modeIndex || 1);
+      const body = starter.filter((b) => b.id && b.id !== 'when_start');
+      if (body.length) customScriptRef.current = body;
+      setActivity([hint, challengeRef.current?.tryThis || 'Try the starter blocks, then press Simulate again.'].filter(Boolean));
+      if (!body.length) return;
     }
     const acts=extractBlocks();
+    let raceActs = acts;
+    if (isRace && (!raceActs || raceActs.length === 0)) {
+      const arena = challengeRef.current?.arenaType
+        || challengeRef.current?.linkedRaceCourse
+        || challengeRef.current?.id;
+      const starter = getRaceStarterScript(arena, challengeRef.current?.id);
+      raceActs = starter.filter((b) => b.id !== 'when_start');
+    }
     const keepArena = isFlappy || isFight || isFootball || isRace;
     xpAwardedRef.current=false;
     failShownRef.current=false;
+    if (isFootball) {
+      const scene = sceneHandleRef.current?.scene;
+      if (scene) scene.userData.footballUserStopped = false;
+    }
     if (fightResultsTimerRef.current) {
       clearTimeout(fightResultsTimerRef.current);
       fightResultsTimerRef.current = null;
@@ -12953,26 +13727,58 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
     setVictory(null);
     setFailure(null);
     setCombatStats(null); // clear stale VICTORY banner from the previous fight
-    setCodeBlocks(acts);
-    codeBlocksRef.current = acts;
+    setCodeBlocks(raceActs);
+    codeBlocksRef.current = raceActs;
     if (!keepArena) {
       simKeyRef.current++; setSimKey(simKeyRef.current);
     }
     setStats({time:0,dist:0,battery:100,avoided:0,progress:0,collisions:0});
     setHighlightId(null);
     setActiveStepIndex(-1);
-    setIntroKey((k) => k + 1);
+    if (keepArena) setSimRunKey((k) => k + 1);
+    else setIntroKey((k) => k + 1);
     const customLen=(customScriptRef.current||[]).length;
     if (isRace) {
       // Race: skip 3-2-1 overlay — drive immediately on Simulate.
       setShowCountdown(false);
       setRunMode('running');
-      setActivity([`🏁 ${rc.name} racing!`, `Track: ${challenge.name}`, `${customLen || 14} blocks loaded`]);
+      setActivity([`🏁 ${rc.name} racing!`, `Drive with ${RACE_CONTROLS_HELP}`, `Track: ${challenge.name}`]);
+    } else if (isFootball) {
+      setShowCountdown(false);
+      setRunMode('running');
+      setActivity([
+        `⚽ ${rc.name} on the pitch!`,
+        `Challenge: ${challenge.name}`,
+        `${customLen || 5} blocks loaded — chase, pass & shoot!`,
+      ]);
+      setTimeout(() => flappyStartRunRef.current?.(), 0);
+    } else if (isFlappy || isFight) {
+      setShowCountdown(false);
+      setRunMode('running');
+      setActivity([
+        isFlappy ? `🐦 ${rc.name} — press SPACE to flap!` : `🥊 ${rc.name} in the ring!`,
+        `Challenge: ${challenge.name}`,
+        `${customLen || 3} blocks loaded`,
+      ]);
+      setTimeout(() => flappyStartRunRef.current?.(), 0);
     } else {
-      setShowCountdown(true);
-      setActivity([`⏱ ${rc.name} powering up…`, `Challenge: ${challenge.name}`, `${customLen || (isFootball ? 5 : 0)} blocks loaded`]);
+      setShowCountdown(false);
+      setRunMode('running');
+      setActivity([
+        `${rc.name} GO! 🚀`,
+        `Challenge: ${challenge.name}`,
+        `${customLen || 0} blocks loaded`,
+      ]);
+      setTimeout(() => flappyStartRunRef.current?.(), 0);
     }
   },[extractBlocks,hasRunnableProgram,rc,challenge]);
+
+  // FIFA: pre-compile scripts when the arena loads — user must press ▶ Simulate to start.
+  useEffect(() => {
+    if (!isFootballCourse(challenge?.id, challenge?.arenaType)) return;
+    extractBlocks();
+    if (isFifa3v3Course(challenge)) prewarmFootballAssets();
+  }, [challenge?.id, challenge?.matchMode, challenge?.teamSize, footballLaunchKey, extractBlocks]);
 
   const onCountdownDone=useCallback(()=>{
     const acts=extractBlocks();
@@ -13000,13 +13806,15 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
   const doReset=useCallback(()=>{
     xpAwardedRef.current=false;
     failShownRef.current=false;
-    const isRace=isRaceCourse(
-      challengeRef.current?.linkedRaceCourse || challengeRef.current?.id,
-      challengeRef.current?.arenaType,
-    ) || challengeRef.current?.physics === 'racing_spline'
-      || challengeRef.current?.genre === 'racing';
-    if (!isRace) {
+    const cur = challengeRef.current;
+    const isFootball = isFootballCourse(cur?.id, cur?.arenaType);
+    const isRace = isCarRaceCourse(cur, cur?.chassisId);
+    if (!isRace && !isFootball) {
       simKeyRef.current++; setSimKey(simKeyRef.current);
+    }
+    if (isFootball) {
+      const scene = sceneHandleRef.current?.scene;
+      if (scene) scene.userData.footballUserStopped = true;
     }
     setRunMode('idle'); setHighlightId(null); setExecLabel(null); setActiveStepIndex(-1);
     setShowCountdown(false); setVictory(null); setFailure(null);
@@ -13015,6 +13823,8 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
       const acts = extractBlocks();
       setCodeBlocks(acts);
       setActivity(['🔄 Race reset — press ▶ Simulate to drive again!']);
+    } else if (isFootball) {
+      setActivity(['⏹ Match stopped — edit scripts or press ▶ Simulate to play again']);
     } else {
       setCodeBlocks([]); setExecLabel(null);
       setActivity(['🔄 Reset! Build your program and press  ▶ Run']);
@@ -13031,14 +13841,20 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
     setActivity(['🗑 Script cleared — build your program and press ▶ Simulate!']);
   },[]);
 
-  const handleBlockActive=useCallback((idx,rawLabel,blockUid)=>{
+  const handleBlockActive=useCallback((idx,rawLabel,blockUid,botId)=>{
     const b=codeBlocksRef.current[idx];
-    setActiveStepIndex(idx);
-    setHighlightId(blockUid||b?.blocklyId||b?.blockUid||null);
     const bid=b?.id||'';
     const text=BLOCK_EXEC_LABELS[bid]||(rawLabel||bid)||'Running…';
     const color=BLOCK_EXEC_COLORS[bid]||'#a78bfa';
-    setExecLabel({text,color});
+    const role = botId ? FOOTBALL_TEAM_ROLES.find((r) => r.botId === botId) : null;
+    if (botId) setFootballExecBotId(botId);
+    if (role && footballActiveRoleRef.current && role.id !== footballActiveRoleRef.current) {
+      setExecLabel({ text: `${role.label} #${role.number}: ${text}`, color });
+      return;
+    }
+    setActiveStepIndex(idx);
+    setHighlightId(blockUid||b?.blocklyId||b?.blockUid||null);
+    setExecLabel({text: role ? `${role.label} #${role.number}: ${text}` : text, color});
   },[]);
 
   const challengeRef=useRef(challenge);
@@ -13068,6 +13884,13 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
       raceMagnetActive:data.raceMagnetActive,
       raceBoostPadsHit:data.raceBoostPadsHit||0,
       raceTotalCheckpoints:data.raceTotalCheckpoints||0,
+      missionCheckpoint:data.missionCheckpoint??prev.missionCheckpoint??0,
+      missionCheckpointsTotal:data.missionCheckpointsTotal??prev.missionCheckpointsTotal??0,
+      missionSpeed:data.missionSpeed??prev.missionSpeed??0,
+      missionElevation:data.missionElevation??prev.missionElevation??0,
+      missionMinimap:data.missionMinimap??prev.missionMinimap??null,
+      missionRobotX:data.missionRobotX??prev.missionRobotX,
+      missionRobotZ:data.missionRobotZ??prev.missionRobotZ,
       racePosition:data.racePosition??1,
       raceTotalRacers:data.raceTotalRacers??1,
       raceCountdown:data.raceCountdown??0,
@@ -13194,6 +14017,14 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
         RobotMissionProgress.saveMission(rName, robotMission.id, { stars, xpEarned, subCompleted });
         setMissionVictory({ winText: robotMission.winText, xp: xpEarned, stars });
         setTimeout(() => setMissionVictory(null), 5000);
+      } else if (ch?.isChassisMode) {
+        let earned = 1;
+        const cpTotal = data.missionCheckpointsTotal || ch.checkpoints || 0;
+        if (cpTotal === 0 || (data.missionCheckpoint || 0) >= cpTotal) earned = 2;
+        if ((data.collisions || 0) === 0) earned = cpTotal > 0 ? 3 : Math.max(earned, 2);
+        setMissionVictory({ winText: ch.shortName || ch.name, xp: xpEarned, stars: earned });
+        setTimeout(() => setMissionVictory(null), 5000);
+        setActivity((a) => [...a, `✅ Mode ${ch.modeIndex || 1} · ${'⭐'.repeat(earned)} · +${xpEarned} XP`]);
       } else {
         const trackDef = (ch.isTrackLevel || ch.isBonus)
           ? (getTrackLevel(ch.trackId, ch.trackLevel) || getTrackLevelById(ch.id) || { xpReward: ch.xpReward, basePoints: ch.basePoints, totalDist: ch.totalDist, timeLimit: ch.timeLimit })
@@ -13335,7 +14166,7 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
     try { localStorage.setItem(LAB_COURSE_LS_KEY, enriched.id); } catch { /* ignore */ }
     if (clearScriptRef.current) clearScriptRef.current();
     customScriptRef.current = [];
-    if (isRaceCourse(enriched.id, enriched.arenaType)) {
+    if (isCarRaceCourse(enriched, enriched.chassisId || rc?.chassisId)) {
       const raceArena = enriched.arenaType || enriched.linkedRaceCourse || enriched.id;
       const starter = getRaceStarterScript(raceArena, enriched.id);
       const blocks = starter.filter((b) => b.id !== 'when_start');
@@ -13387,6 +14218,12 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
         logic?.winCondition || enriched.desc,
         enriched.codeHint ? `💡 ${enriched.codeHint}` : '📖 Zone 1 — explore, then build your first system in Zone 2!',
       ]);
+    } else if (isCarRaceCourse(enriched, enriched.chassisId || rc?.chassisId)) {
+      setActivity([
+        `${enriched.icon || '🏎️'} ${enriched.name}`,
+        'Code the lap yourself — Move forward, Curve left, Curve right.',
+        '💡 Track helpers are optional shortcuts. The car only goes where your blocks say.',
+      ]);
     } else {
       setActivity([
         `${enriched.icon || '🎮'} ${enriched.name}`,
@@ -13435,6 +14272,9 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
   // Strict chassis filtering — exactly 10 modes for the selected chassis
   const robotCourses = useMemo(() => {
     const chassisId = rc?.chassisId || 'rover';
+    if (isFootballRobot(rc)) {
+      return FOOTBALL_COURSES.map((c) => enrichCourseWithGameLogic(c));
+    }
     return getCoursesForChassis(chassisId, ALL_COURSES).map((c) => enrichCourseWithGameLogic(c));
   }, [rc?.chassisId]);
 
@@ -13461,15 +14301,41 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
 
   const isFlappyCourse=isFlappyBirdCourse(challenge?.id, challenge?.arenaType);
   const isFightingCourseActive=isFightingCourse(challenge?.id, challenge?.arenaType);
-  const isFootballCourseActive=isFootballCourse(challenge?.id, challenge?.arenaType);
-  const isRaceCourseActive=isRaceCourse(challenge?.linkedRaceCourse || challenge?.id, challenge?.arenaType)
-    || challenge?.physics === 'racing_spline'
-    || challenge?.genre === 'racing';
-  const isBiomeTrackActive = BIOME_ARENA_TYPES.has(arenaType);
-  const showCodeRacerCup = isCarChassis(rc?.chassisId || challenge?.chassisId);
+  const footballCodingRole = FOOTBALL_TEAM_ROLES.find((r) => r.botId === footballExecBotId)
+    || FOOTBALL_TEAM_ROLES.find((r) => r.id === footballActiveRoleRef.current)
+    || FOOTBALL_TEAM_ROLES[1];
+  const isRaceCourseActive = isCarRaceCourse(challenge, rc?.chassisId);
+  const isBiomeTrackActive = !isPrimaryStudioChassis(rc?.chassisId) && BIOME_ARENA_TYPES.has(arenaType);
+  const showCodeRacerCup = false;
   const isCodeRacerImmersive = isBiomeTrackActive && (isRunning || isPaused || isIdle);
   const buildStamp = typeof window !== 'undefined' ? window.__BYTEBUDDIES_BUILD : '';
   const wrongCrystalArena = WRONG_CRYSTAL_ARENAS.has(arenaType) || WRONG_CRYSTAL_ARENAS.has(challenge?.id);
+
+  useEffect(() => {
+    if (!isRaceCourseActive) return undefined;
+    return attachRacingKeyboard(raceKeysRef, {
+      enabled: () => runMode === 'running' || runMode === 'step',
+    });
+  }, [runMode, isRaceCourseActive]);
+
+  useEffect(() => {
+    if (!isFootballCourseActive) return undefined;
+    return attachFootballKeyboard(footballKeysRef, {
+      enabled: () => runMode === 'running' || runMode === 'step',
+    });
+  }, [runMode, isFootballCourseActive]);
+
+  useEffect(() => {
+    if (!isFootballCourseActive) return undefined;
+    const onKey = (e) => {
+      if (e.key !== 'Escape') return;
+      if (runMode !== 'running' && runMode !== 'paused') return;
+      e.preventDefault();
+      doReset();
+    };
+    window.addEventListener('keydown', onKey, { capture: true });
+    return () => window.removeEventListener('keydown', onKey, { capture: true });
+  }, [isFootballCourseActive, runMode, doReset]);
 
   useEffect(() => {
     if (isBiomeTrackActive) setCodeRacerCodeOpen(true);
@@ -13499,35 +14365,44 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
         'bb-new-layout',
         isBiomeTrackActive ? 'bb-biome-split' : '',
         isCodeRacerImmersive ? 'bb-coderacer-immersive' : '',
+        isFootballCourseActive ? 'bb-football-layout' : '',
+        isFootballCourseActive && footballCinema ? 'bb-football-cinema' : '',
+        isFifa3v3 && !footballCinema ? 'bb-football-fifa-code-visible' : '',
         isBiomeTrackActive ? 'bb-panel-code-open' : '',
         codeRacerMissionOpen ? 'bb-panel-mission-open' : '',
       ].filter(Boolean).join(' ')}
     >
-      <CustomCodePanel
-        key={`${challenge?.id || 'lab'}-${arenaType}-${footballLaunchKey}-${isFootballCourseActive ? 'football' : 'std'}`}
-        robotType={isFootballCourseActive ? 'footballbot' : detectRobotType(rc)}
-        scriptRef={customScriptRef}
-        clearRef={clearScriptRef}
-        onBlockCountChange={setBlockCount}
-        onOpenLevels={() => !isRunning && setShowWorlds(true)}
-        activeStepIndex={activeStepIndex}
-        activeBlockUid={highlightId || ''}
-        isRunning={isRunning || runMode === 'step'}
-        starterScript={isFlappyCourse ? FLAPPY_STARTER_SCRIPT : isFightingCourseActive ? FIGHTING_STARTER_SCRIPT : isFootballCourseActive ? FOOTBALL_STARTER_SCRIPT : isRaceCourseActive ? getRaceStarterScript(arenaType, challenge?.linkedRaceCourse || challenge?.id) : null}
-        teamSize={challenge?.teamSize ?? 1}
-        footballScriptsRef={footballScriptsRef}
-        footballActiveRoleRef={footballActiveRoleRef}
-        courseKey={isFootballCourseActive ? `${challenge?.id || 'football'}:${footballLaunchKey}` : (challenge?.id || '')}
-        arenaType={arenaType}
-        eventsFocusKey={eventsFocusKey}
-      />
+      {(!isFootballCourseActive || !footballCinema || isFifa3v3) && (
+        <CustomCodePanel
+          key={`${challenge?.id || 'lab'}-${arenaType}-${footballLaunchKey}-${isFootballCourseActive ? 'football' : 'std'}`}
+          robotType={isFootballCourseActive ? 'footballbot' : (rc?.chassisId || detectRobotType(rc))}
+          scriptRef={customScriptRef}
+          clearRef={clearScriptRef}
+          onBlockCountChange={setBlockCount}
+          onOpenLevels={() => !isRunning && setShowWorlds(true)}
+          activeStepIndex={activeStepIndex}
+          activeBlockUid={highlightId || ''}
+          isRunning={isRunning || runMode === 'step'}
+          starterScript={isFlappyCourse ? FLAPPY_STARTER_SCRIPT : isFootballCourseActive ? FOOTBALL_STARTER_SCRIPT : getPrimaryStarterScript(rc?.chassisId || 'rover', challenge?.modeIndex || 1)}
+          teamSize={challenge?.teamSize ?? 1}
+          matchMode={challenge?.matchMode || ''}
+          footballScriptsRef={footballScriptsRef}
+          footballActiveRoleRef={footballActiveRoleRef}
+          footballSwitchRoleRef={footballSwitchRoleRef}
+          footballExecBotId={footballExecBotId}
+          challenge={challenge}
+          courseKey={isFootballCourseActive ? `${challenge?.id || 'football'}:${footballLaunchKey}` : (challenge?.id || '')}
+          arenaType={arenaType}
+          eventsFocusKey={eventsFocusKey}
+        />
+      )}
 
       <div className={`bb-center-viewport${(isBiomeTrackActive || showCodeRacerCup || isCodeRacerImmersive) ? ' bb-center-viewport--coderacer' : ''}`}>
           {showWorlds && (
             <GameLevelSelect
               courses={robotCourses}
-              currentId={challenge.id}
-              robotName={rc.name || 'Robot'}
+              currentId={challenge?.id}
+              robotName={getPrimaryRobotDisplay(rc?.chassisId).name || rc.name || 'Robot'}
               robotType={detectRobotType(rc)}
               chassisId={rc?.chassisId || 'rover'}
               currentArenaType={arenaType}
@@ -13538,6 +14413,34 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
             />
           )}
           <div className="bb-viewport-frame" aria-hidden="true" />
+          {isFootballCourseActive && (
+            <>
+              <button
+                type="button"
+                className="football-cinema-toggle"
+                onClick={() => {
+                  setFootballCinema((open) => {
+                    const next = !open;
+                    try { localStorage.setItem('bb_football_cinema', next ? 'true' : 'false'); } catch { /* ignore */ }
+                    return next;
+                  });
+                }}
+                aria-pressed={footballCinema}
+                title={footballCinema ? 'Show coding blocks' : 'Make the match bigger'}
+              >
+                {footballCinema ? '⌨ Show Code' : '🎬 Cinema'}
+              </button>
+              <button
+                type="button"
+                className="football-cam-toggle"
+                onClick={() => setFootballCamMode((m) => (m === 'coop' ? 'broadcast' : 'coop'))}
+                aria-pressed={footballCamMode === 'coop'}
+                title={footballCamMode === 'coop' ? 'Switch to broadcast camera' : 'Switch to wide co-op camera'}
+              >
+                {footballCamMode === 'coop' ? '📺 Broadcast' : '📐 Co-op'}
+              </button>
+            </>
+          )}
           {(showCodeRacerCup || isCodeRacerImmersive) && (
             <div className="bb-viewport-toolbar">
               {showCodeRacerCup && (
@@ -13611,9 +14514,35 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
               </div>
             </>
           )}
-          {isBiomeTrackActive && stats.trackLoading && !stats.sceneryPopulated && (
+          {false && isBiomeTrackActive && stats.trackLoading && !stats.sceneryPopulated && runMode !== 'running' && (
             <div className="bb-track-loading-overlay" role="status">
               Loading track… 🏎️
+            </div>
+          )}
+          {challenge?.isChassisMode && !isFightingCourseActive && !isFootballCourseActive && !isRaceCourseActive && !isRunning && (
+            <div
+              className="bb-chassis-mode-banner"
+              style={{
+                position: 'absolute', top: 10, left: 10, right: 10, zIndex: 12,
+                display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px',
+                borderRadius: 12, pointerEvents: 'none',
+                background: `linear-gradient(135deg, ${challenge.color || '#3b82f6'}33, rgba(8,12,24,0.88))`,
+                border: `1px solid ${challenge.color || '#3b82f6'}66`,
+                boxShadow: '0 8px 28px rgba(0,0,0,0.35)',
+              }}
+            >
+              <span style={{ fontSize: 28, lineHeight: 1 }}>{challenge.environmentEmoji || '🎮'}</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 11, fontWeight: 800, color: challenge.color || '#93c5fd', letterSpacing: '0.06em' }}>
+                  {challenge.environmentName || 'Robot Mission'} · Mode {challenge.modeIndex || 1}/10
+                </div>
+                <div style={{ fontSize: 14, fontWeight: 900, color: '#f8fafc', marginTop: 2 }}>
+                  {challenge.shortName || challenge.name}
+                </div>
+                <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>
+                  {challenge.modeSpec?.quickInfo?.type || 'Mission'} · {challenge.modeSpec?.quickInfo?.difficulty || 'Play'}
+                </div>
+              </div>
             </div>
           )}
           <SimCanvas
@@ -13628,6 +14557,9 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
             challenge={challenge}
             onBlockActive={handleBlockActive}
             introKey={introKey}
+            simRunKey={simRunKey}
+            footballProgKey={footballProgKey}
+            sceneHandleRef={sceneHandleRef}
             onZoneChange={handleZoneChange}
             flappyHandlersRef={flappyHandlersRef}
             flappyProgramRef={flappyProgramRef}
@@ -13639,6 +14571,9 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
             flappySpacebarRef={flappySpacebarRef}
             flappyStartRunRef={flappyStartRunRef}
             eventHandlersRef={eventHandlersRef}
+            raceKeysRef={raceKeysRef}
+            footballKeysRef={footballKeysRef}
+            footballCamMode={footballCamMode}
           />
           {showCountdown && <RunCountdown onDone={onCountdownDone} />}
           {showFightHub && isFightingCourseActive && (
@@ -13681,12 +14616,17 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
           )}
           {showFootballHub && isFootballCourseActive && (
             <FootballHub
-              courses={robotCourses.filter((c) => c.arenaType === 'robot_football')}
+              courses={FOOTBALL_COURSES}
               currentId={challenge?.id}
               robotName={rc?.name || 'Striker FC'}
               onSelect={(c) => { selectCourse(c); setShowFootballHub(false); }}
               onClose={() => setShowFootballHub(false)}
             />
+          )}
+          {isFootballCourseActive && isIdle && !showCountdown && !fightResults && (
+            <button type="button" className="football-sim-idle-banner" onClick={doRun}>
+              ▶ START MATCH
+            </button>
           )}
           {isFootballCourseActive && !isRunning && !fightResults && !showCountdown && (
             <div className="fight-arena-entry football-arena-entry">
@@ -13694,24 +14634,79 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
                 <span className="fight-arena-entry-icon">⚽</span>
                 <strong>ROBOT FOOTBALL</strong>
                 <span>{challenge?.name || 'FIFA 3v3 Match'}</span>
-                <span className="fight-arena-entry-hint">Green team vs blue team · Press ▶ Simulate to kick off</span>
+                <span className="fight-arena-entry-hint">
+                  {(challenge?.teamSize ?? 0) >= 3
+                    ? '3v3 · Code Defender, Striker & Midfielder · ▶ Simulate'
+                    : challenge?.matchMode === 'penalties'
+                      ? 'SOLO drill — one kicker only · not a full match · ▶ Simulate'
+                      : challenge?.matchMode === 'freekick'
+                        ? 'Free kick over the wall · ▶ Simulate'
+                        : challenge?.matchMode === 'keeper'
+                          ? 'You are the keeper · block the shots · ▶ Simulate'
+                          : challenge?.matchMode === 'training'
+                            ? 'Solo training · chase and shoot · ▶ Simulate'
+                            : '1v1 · code your kicker only · ▶ Simulate'}
+                </span>
                 <button type="button" className="fight-hub-open-btn" onClick={() => setShowFootballHub(true)}>
                   🏟️ Football Modes
                 </button>
               </div>
             </div>
           )}
+          {isFifa3v3 && (
+            <div className="fifa-viewport-role-strip" aria-label="Team roles">
+              {FOOTBALL_TEAM_ROLES.map((role) => (
+                <button
+                  key={role.id}
+                  type="button"
+                  className={`fifa-viewport-role-btn${fifaUiRole === role.id ? ' active' : ''}${footballExecBotId === role.botId ? ' executing' : ''}`}
+                  style={{ '--role-c': role.color }}
+                  onClick={() => {
+                    footballSwitchRoleRef.current?.(role.id);
+                    setFifaUiRole(role.id);
+                    setFootballCinema(false);
+                    setFifaCodeOpen(true);
+                  }}
+                >
+                  <span>{role.icon}</span>
+                  <span>#{role.number} {role.label}</span>
+                </button>
+              ))}
+              {footballCinema && (
+                <button
+                  type="button"
+                  className="fifa-viewport-code-btn"
+                  onClick={() => {
+                    setFootballCinema(false);
+                    setFifaCodeOpen(true);
+                    try { localStorage.setItem('bb_football_cinema', 'false'); } catch { /* ignore */ }
+                  }}
+                >
+                  ⌨ Show Team Code
+                </button>
+              )}
+            </div>
+          )}
+          {(challenge?.isChassisMode || challenge?.isRobotMission) && !isFightingCourseActive && !isFootballCourseActive && !isRaceCourseActive && (
+            <MissionHud challenge={challenge} stats={stats} runMode={runMode} />
+          )}
           {isFootballCourseActive && (
             <FootballHUD
-              match={combatStats || {}}
+              match={footballHudMatch || {}}
               robotName={rc?.name || 'FootballBot'}
               enemyName={
-                challenge?.matchMode === 'fifa3v3' ? 'Blue Team'
+                challenge?.matchMode === 'fifa3v3' ? 'BLUE'
                   : challenge?.enemyType?.includes('footballbot') ? 'AI Opponent'
                     : 'Opponent'
               }
               challenge={challenge}
-              visible={!!combatStats?.active && !fightResults}
+              visible={isFootballCourseActive && !!footballHudMatch?.active && !fightResults}
+              codingLabel={(challenge?.teamSize ?? 0) >= 3 ? `Script: ${footballCodingRole.label} #${footballCodingRole.number}` : ''}
+              showControls={(challenge?.teamSize ?? 0) >= 3}
+              controlsHelp={FOOTBALL_CONTROLS_HELP}
+              onPause={doPause}
+              isPaused={isPaused}
+              isRunning={isRunning}
             />
           )}
           {isFightingCourseActive && (

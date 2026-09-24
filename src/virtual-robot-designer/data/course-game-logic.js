@@ -817,7 +817,7 @@ export function resolveCourseObjectives(course, storyOverlay = {}) {
 export function getCourseZoneCount(challenge) {
   if (!challenge) return 5;
   const racingArena = challenge?.arenaType || getMKTrack(challenge?.linkedRaceCourse)?.arenaType;
-  if (challenge?.genre === 'racing' || challenge?.cat === 'racing' || isRaceCourse(challenge?.id, racingArena)) {
+  if (racingArena !== 'sandbox' && racingArena !== 'flight_rings' && (challenge?.genre === 'racing' || challenge?.cat === 'racing' || isRaceCourse(challenge?.id, racingArena))) {
     const mkTrack = getMKTrack(racingArena || challenge?.linkedRaceCourse);
     return mkTrack?.laps || challenge?.campusMode?.laps || 2;
   }
@@ -828,6 +828,11 @@ export function getCourseZoneCount(challenge) {
 
 /** Primary mission progress for the in-game Mission panel */
 export function deriveMissionProgress(challenge, stats = {}, zoneInfo = {}) {
+  if (challenge?.arenaBible && challenge?.arenaType === 'sandbox') {
+    const target = stats.missionCheckpointsTotal || challenge.checkpoints || 3;
+    const current = Math.min(target, stats.missionCheckpoint || 0);
+    return {current, target, label:'checkpoints', pct:Math.min(100, current / target * 100)};
+  }
   const totalZones = getCourseZoneCount(challenge);
   const zoneNum = zoneInfo?.num || 0;
   const zonesDone = zoneNum > 0 ? Math.max(0, zoneNum - 1) : Math.floor(((stats.progress || 0) / 100) * totalZones);
@@ -868,10 +873,13 @@ export function deriveMissionProgress(challenge, stats = {}, zoneInfo = {}) {
   }
 
   const racingArena = challenge?.arenaType || getMKTrack(challenge?.linkedRaceCourse)?.arenaType;
-  const isRacingMission = challenge?.cat === 'race'
+  const isRacingMission = racingArena !== 'sandbox'
+    && racingArena !== 'flight_rings'
+    && (challenge?.cat === 'race'
     || challenge?.genre === 'racing'
+    || challenge?.cat === 'racing'
     || stats.raceMode
-    || isRaceCourse(challenge?.id, racingArena);
+    || isRaceCourse(challenge?.id, racingArena));
 
   if (isRacingMission) {
     const mkTrack = getMKTrack(racingArena || challenge?.linkedRaceCourse);
@@ -908,7 +916,7 @@ export function deriveMissionProgress(challenge, stats = {}, zoneInfo = {}) {
 
 /** Check whether a bonus/sub-objective line is satisfied */
 export function isSubObjectiveMet(text, { stats = {}, zoneInfo = {}, challenge = {}, totalZones = 5, zonesDone = 0 }) {
-  if (!text) return false;
+  if (!text || typeof text !== 'string') return false;
   const lower = text.toLowerCase();
   if (stats.progress >= 100) return true;
   if (/\d+\+?\s*(coin|item|star|token|container|firefly|gem)/.test(lower)) {

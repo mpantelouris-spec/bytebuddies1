@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate" />
+  <title>ByteBuddies — Direct Loader</title>
+  <style>
+    body { font-family: system-ui, sans-serif; background: #0f0f1a; color: #e2e8f0; min-height: 100vh; display: flex; align-items: center; justify-content: center; text-align: center; padding: 24px; }
+    #log { color: #94a3b8; font-size: 14px; margin-top: 12px; max-width: 440px; line-height: 1.5; }
+    a { color: #a5b4fc; }
+    .ok { color: #86efac; }
+    .err { color: #fca5a5; }
+  </style>
+</head>
+<body>
+  <div>
+    <div style="font-size:48px;margin-bottom:16px">🤖</div>
+    <h1 style="margin:0 0 8px">ByteBuddies Loader</h1>
+    <p id="log">Clearing cache…</p>
+  </div>
+  <script>
+    (function () {
+      var log = document.getElementById('log');
+      function say(msg, cls) {
+        log.textContent = msg;
+        log.className = cls || '';
+      }
+      try {
+        sessionStorage.clear();
+        localStorage.removeItem('bb_chunk_reload_attempted');
+        localStorage.removeItem('bb_force_reload');
+      } catch (e) { /* ignore */ }
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function (regs) {
+          regs.forEach(function (r) { r.unregister(); });
+        });
+      }
+      say('Checking latest version…');
+      fetch('/bb-entry.json?_=' + Date.now(), { cache: 'no-store' })
+        .then(function (r) {
+          if (!r.ok) throw new Error('bb-entry.json HTTP ' + r.status);
+          return r.json();
+        })
+        .then(function (j) {
+          say('Opening ' + j.build + ' … first load may take 2 min on school Wi‑Fi.');
+          setTimeout(function () {
+            window.location.replace('/?_go=' + Date.now() + '#studio?course=rover_rover_obstacle_course');
+          }, 800);
+        })
+        .catch(function (err) {
+          say('Error: ' + (err.message || err) + ' — try home Wi‑Fi or mobile data.', 'err');
+        });
+    })();
+  </script>
+</body>
+</html>

@@ -18,12 +18,12 @@ import { getAuth, signInAnonymously } from 'firebase/auth';
 // ─── FIREBASE SETUP ───
 
 const FIREBASE_CONFIG = {
-  apiKey: process.env.REACT_APP_FIREBASE_API_KEY || 'AIzaSyDemoKey',
-  authDomain: 'bytebuddies-cloud.firebaseapp.com',
-  projectId: 'bytebuddies-cloud',
-  storageBucket: 'bytebuddies-cloud.appspot.com',
-  messagingSenderId: '123456789',
-  appId: '1:123456789:web:abcdef1234567890',
+  apiKey: process.env.VITE_FIREBASE_API_KEY || process.env.VITE_CLOUD_FIREBASE_API_KEY || '',
+  authDomain: process.env.VITE_FIREBASE_AUTH_DOMAIN || 'bytebuddies-cloud.firebaseapp.com',
+  projectId: process.env.VITE_FIREBASE_PROJECT_ID || 'bytebuddies-cloud',
+  storageBucket: process.env.VITE_FIREBASE_STORAGE_BUCKET || 'bytebuddies-cloud.appspot.com',
+  messagingSenderId: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '',
+  appId: process.env.VITE_FIREBASE_APP_ID || '',
 };
 
 let firebaseApp = null;
@@ -32,6 +32,9 @@ let auth = null;
 
 async function initFirebase() {
   if (firebaseApp) return { status: 'ready' };
+  if (!FIREBASE_CONFIG.apiKey) {
+    return { status: 'error', message: 'Cloud Firebase API key not configured (set VITE_FIREBASE_API_KEY)' };
+  }
 
   try {
     firebaseApp = initializeApp(FIREBASE_CONFIG);

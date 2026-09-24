@@ -22,6 +22,7 @@ export const MODES = {
 };
 
 export class AppMode {
+  static MODES = MODES;
   static currentMode = null;
   static listeners = new Set();
 

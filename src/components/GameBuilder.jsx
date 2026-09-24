@@ -371,21 +371,6 @@ function conditionBlocklyNodeToEvaluatorBlock(node) {
         return { type: 'sense-days-since-2000', params: {} };
       case 'sense-username':
         return { type: 'sense-username', params: {} };
-      case 'sense-touching-color':
-        return { type: 'sense-touching-color', params: { color: f.COLOR || '#4a4a4a' } };
-      case 'sense-color-touching-color':
-        return {
-          type: 'sense-color-touching-color',
-          params: { color1: f.COLOR || '#8b4513', color2: f.COLOR2 || '#ff69b4' },
-        };
-      case 'sense-mouse-down':
-        return { type: 'sense-mouse-down', params: {} };
-      case 'sense-mouse-x':
-        return { type: 'sense-mouse-x', params: {} };
-      case 'sense-mouse-y':
-        return { type: 'sense-mouse-y', params: {} };
-      case 'sense-distance':
-        return { type: 'sense-distance', params: { target: f.TARGET || 'mouse-pointer' } };
       case 'logic-bool':
         return { type: 'logic-bool', params: { value: String(f.VALUE ?? f.value ?? 'true').toLowerCase() } };
       case 'logic-compare':
@@ -1149,44 +1134,39 @@ const SPRITE_LIBRARY = [
   {
     category: 'People',
     items: [
-      { name: 'Adventurer', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#2563eb"/></svg>`, color: '#2563eb', customImage: '/assets/characters/chibi/chibi_adventurer.png?v=22' },
-      { name: 'Explorer', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#16a34a"/></svg>`, color: '#16a34a', customImage: '/assets/characters/chibi/chibi_explorer.png?v=22' },
-      { name: 'Sporty', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#dc2626"/></svg>`, color: '#dc2626', customImage: '/assets/characters/chibi/chibi_sporty.png?v=22' },
-      { name: 'Witch', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#9333ea"/></svg>`, color: '#9333ea', customImage: '/assets/characters/chibi/chibi_witch.png?v=22' },
-      { name: 'Ranger', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#15803d"/></svg>`, color: '#15803d', customImage: '/assets/characters/chibi/chibi_ranger.png?v=22' },
-      { name: 'Mechanic', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#ca8a04"/></svg>`, color: '#ca8a04', customImage: '/assets/characters/chibi/chibi_mechanic.png?v=22' },
-      { name: 'Robot', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#64748b"/></svg>`, color: '#64748b', customImage: '/assets/characters/chibi/chibi_robot.png?v=22' },
-      { name: 'Knight', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#475569"/></svg>`, color: '#475569', customImage: '/assets/characters/chibi/chibi_knight.png?v=22' },
-      { name: 'Archer', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#b45309"/></svg>`, color: '#b45309', customImage: '/assets/characters/chibi/chibi_archer.png?v=22' },
-      { name: 'Ninja', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#1e293b"/></svg>`, color: '#1e293b', customImage: '/assets/characters/chibi/chibi_ninja.png?v=22' },
-      { name: 'Pirate Captain', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#1a3a52"/></svg>`, color: '#1a3a52', customImage: '/assets/characters/chibi/chibi_pirate_captain.png?v=22' },
-      { name: 'Astronaut', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#e2e8f0"/></svg>`, color: '#e2e8f0', customImage: '/assets/characters/chibi/chibi_astronaut.png?v=22' },
-      { name: 'Fire Mage', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#ea580c"/></svg>`, color: '#ea580c', customImage: '/assets/characters/chibi/chibi_fire_mage.png?v=22' },
-      { name: 'Dino', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#84cc16"/></svg>`, color: '#84cc16', customImage: '/assets/characters/chibi/chibi_dino.png?v=22' },
-      { name: 'Ice Mage', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#06b6d4"/></svg>`, color: '#06b6d4', customImage: '/assets/characters/chibi/chibi_ice_mage.png?v=22' },
+      { name: 'Adventurer', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#f97316"/></svg>`, color: '#f97316', customImage: '/assets/characters/chibi/chibi_adventurer.png?v=28' },
+      { name: 'Explorer', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#ec4899"/></svg>`, color: '#ec4899', customImage: '/assets/characters/chibi/chibi_explorer.png?v=28' },
+      { name: 'Sporty', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#2563eb"/></svg>`, color: '#2563eb', customImage: '/assets/characters/chibi/chibi_sporty.png?v=28' },
+      { name: 'Coder', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#22c55e"/></svg>`, color: '#22c55e', customImage: '/assets/characters/chibi/chibi_coder.png?v=28' },
+      { name: 'Warrior', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#3b82f6"/></svg>`, color: '#3b82f6', customImage: '/assets/characters/chibi/chibi_warrior.png?v=28' },
+      { name: 'Archer', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#16a34a"/></svg>`, color: '#16a34a', customImage: '/assets/characters/chibi/chibi_archer.png?v=28' },
+      { name: 'Wizard', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#6366f1"/></svg>`, color: '#6366f1', customImage: '/assets/characters/chibi/chibi_wizard.png?v=28' },
+      { name: 'Knight', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#64748b"/></svg>`, color: '#64748b', customImage: '/assets/characters/chibi/chibi_knight.png?v=28' },
+      { name: 'Robot', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#3b82f6"/></svg>`, color: '#3b82f6', customImage: '/assets/characters/chibi/chibi_robot.png?v=28' },
+      { name: 'Mechanic', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#eab308"/></svg>`, color: '#eab308', customImage: '/assets/characters/chibi/chibi_mechanic.png?v=28' },
+      { name: 'RoboDog', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#f5f5f5"/></svg>`, color: '#f5f5f5', customImage: '/assets/characters/chibi/chibi_robodog.png?v=28' },
+      { name: 'Drone', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#f97316"/></svg>`, color: '#f97316', customImage: '/assets/characters/chibi/chibi_drone.png?v=28' },
     ]
   },
   {
     category: 'Animals',
     items: [
-      { name: 'Fox', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#ea580c'}"/></svg>`, color: '#ea580c', customImage: '/assets/characters/animals/animal_fox.png?v=10' },
-      { name: 'Wolf', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#64748b'}"/></svg>`, color: '#64748b', customImage: '/assets/characters/animals/animal_wolf.png?v=10' },
-      { name: 'Bear', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#92400e'}"/></svg>`, color: '#92400e', customImage: '/assets/characters/animals/animal_bear.png?v=10' },
-      { name: 'Rabbit', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#f8fafc'}"/></svg>`, color: '#f8fafc', customImage: '/assets/characters/animals/animal_rabbit.png?v=10' },
-      { name: 'Deer', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#b45309'}"/></svg>`, color: '#b45309', customImage: '/assets/characters/animals/animal_deer.png?v=10' },
-      { name: 'Turtle', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#22c55e'}"/></svg>`, color: '#22c55e', customImage: '/assets/characters/animals/animal_turtle.png?v=10' },
-      { name: 'Owl', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#78716c'}"/></svg>`, color: '#78716c', customImage: '/assets/characters/animals/animal_owl.png?v=10' },
-      { name: 'Bird', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#3b82f6'}"/></svg>`, color: '#3b82f6', customImage: '/assets/characters/animals/animal_bird.png?v=10' },
-      { name: 'Penguin', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#1e293b'}"/></svg>`, color: '#1e293b', customImage: '/assets/characters/animals/animal_penguin.png?v=10' },
-      { name: 'Frog', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#22c55e'}"/></svg>`, color: '#22c55e', customImage: '/assets/characters/animals/animal_frog.png?v=10' },
-      { name: 'Cat', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#1e293b'}"/></svg>`, color: '#1e293b', customImage: '/assets/characters/animals/animal_cat.png?v=10' },
-      { name: 'Panda', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#f8fafc'}"/></svg>`, color: '#f8fafc', customImage: '/assets/characters/animals/animal_panda.png?v=10' },
-      { name: 'Cow', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#f5f5f5'}"/></svg>`, color: '#f5f5f5', customImage: '/assets/characters/animals/animal_cow.png?v=10' },
-      { name: 'Pig', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#f472b6'}"/></svg>`, color: '#f472b6', customImage: '/assets/characters/animals/animal_pig.png?v=10' },
-      { name: 'Sheep', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#e2e8f0'}"/></svg>`, color: '#e2e8f0', customImage: '/assets/characters/animals/animal_sheep.png?v=10' },
-      { name: 'Squirrel', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#92400e'}"/></svg>`, color: '#92400e', customImage: '/assets/characters/animals/animal_squirrel.png?v=10' },
-      { name: 'Raccoon', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#6b7280'}"/></svg>`, color: '#6b7280', customImage: '/assets/characters/animals/animal_raccoon.png?v=10' },
-      { name: 'Lion', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#eab308'}"/></svg>`, color: '#eab308', customImage: '/assets/characters/animals/animal_lion.png?v=10' },
+      { name: 'Lion', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#eab308'}"/></svg>`, color: '#eab308', customImage: '/assets/characters/animals/animal_lion.png?v=13' },
+      { name: 'Elephant', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#9ca3af'}"/></svg>`, color: '#9ca3af', customImage: '/assets/characters/animals/animal_elephant.png?v=13' },
+      { name: 'Fox', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#ea580c'}"/></svg>`, color: '#ea580c', customImage: '/assets/characters/animals/animal_fox.png?v=13' },
+      { name: 'Panda', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#1e293b'}"/></svg>`, color: '#1e293b', customImage: '/assets/characters/animals/animal_panda.png?v=13' },
+      { name: 'Giraffe', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#f59e0b'}"/></svg>`, color: '#f59e0b', customImage: '/assets/characters/animals/animal_giraffe.png?v=13' },
+      { name: 'Dolphin', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#3b82f6'}"/></svg>`, color: '#3b82f6', customImage: '/assets/characters/animals/animal_dolphin.png?v=13' },
+      { name: 'Turtle', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#22c55e'}"/></svg>`, color: '#22c55e', customImage: '/assets/characters/animals/animal_turtle.png?v=13' },
+      { name: 'Penguin', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#1e293b'}"/></svg>`, color: '#1e293b', customImage: '/assets/characters/animals/animal_penguin.png?v=13' },
+      { name: 'Dog', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#f97316'}"/></svg>`, color: '#f97316', customImage: '/assets/characters/animals/animal_dog.png?v=13' },
+      { name: 'Cat', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#6b7280'}"/></svg>`, color: '#6b7280', customImage: '/assets/characters/animals/animal_cat.png?v=13' },
+      { name: 'Horse', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#92400e'}"/></svg>`, color: '#92400e', customImage: '/assets/characters/animals/animal_horse.png?v=13' },
+      { name: 'Cow', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#f5f5f5'}"/></svg>`, color: '#f5f5f5', customImage: '/assets/characters/animals/animal_cow.png?v=13' },
+      { name: 'Sheep', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#e2e8f0'}"/></svg>`, color: '#e2e8f0', customImage: '/assets/characters/animals/animal_sheep.png?v=13' },
+      { name: 'Wolf', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#64748b'}"/></svg>`, color: '#64748b', customImage: '/assets/characters/animals/animal_wolf.png?v=13' },
+      { name: 'Rabbit', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#f8fafc'}"/></svg>`, color: '#f8fafc', customImage: '/assets/characters/animals/animal_rabbit.png?v=13' },
+      { name: 'Crocodile', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#4d7c0f'}"/></svg>`, color: '#4d7c0f', customImage: '/assets/characters/animals/animal_crocodile.png?v=13' },
     ]
   },
   ...RASTER_SPRITE_LIBRARY,
@@ -1246,7 +1226,8 @@ function fitSpriteDimensions(naturalW, naturalH, maxDim = 160) {
 }
 
 function loadImageDimensions(src, options = {}) {
-  const maxDim = options.maxDim ?? (String(src).includes('/chibi/') ? 160 : 120);
+  const isHighRes = String(src).includes('/chibi/') || String(src).includes('/animals/');
+  const maxDim = options.maxDim ?? (isHighRes ? 200 : 120);
   return new Promise((resolve) => {
     const img = new Image();
     img.onload = () => resolve(fitSpriteDimensions(img.naturalWidth, img.naturalHeight, maxDim));
@@ -1293,40 +1274,19 @@ function SpriteThumb({ svgKey, color, customImage, size = 32 }) {
   return <img src={`data:image/svg+xml;base64,${encoded}`} alt={svgKey} width={size} height={size} style={{ imageRendering: 'auto' }} />;
 }
 
-/* ─── Default stage: single Adventurer (blue chibi) on an empty canvas ─── */
-const defaultSprites = [
-  {
-    id: 1,
-    name: 'Adventurer',
-    svgKey: 'Adventurer',
-    category: 'People',
-    customImage: '/assets/characters/chibi/chibi_adventurer.png?v=22',
-    x: STAGE_W / 2 - 43,
-    y: STAGE_H / 2 - 81,
-    w: 86,
-    h: 162,
-    rotation: 90,
-    direction: 90,
-    visible: true,
-    color: null,
-    layer: 1,
-    physicsRole: 'actor',
-    blocks: [],
-    blocklyXml: '',
-    costumes: [],
-    sounds: [],
-    initialVars: {},
-  },
-];
+/* ─── Default stage: empty canvas (no startup sprite) ─── */
+const defaultSprites = [];
 
-/** Old bundled demo sprites — replace with Adventurer-only startup. */
+/** Old bundled demo sprites — reset to empty canvas if detected. */
 const LEGACY_STARTUP_SPRITE_NAMES = new Set(['Star', 'Platform', 'Ninja', 'Adventurer']);
 
-function shouldResetToAdventurerOnly(sprites) {
-  if (!sprites?.length) return true;
+function shouldResetToEmptyCanvas(sprites) {
+  if (!sprites?.length) return false; // Empty is fine, don't force defaults
   const names = sprites.map((s) => s.name);
   if (names.some((n) => n === 'Star' || n === 'Platform')) return true;
   if (names.length > 1 && names.every((n) => LEGACY_STARTUP_SPRITE_NAMES.has(n))) return true;
+  // Single Adventurer from old defaults - also reset
+  if (names.length === 1 && names[0] === 'Adventurer') return true;
   return false;
 }
 
@@ -1366,8 +1326,12 @@ function capOversizedSprites(sprites) {
 
 function normalizeStartupSprites(sprites) {
   const cleaned = capOversizedSprites(bumpTinyRasterSprites(stripStarterAutoScripts(sprites || [])));
-  if (shouldResetToAdventurerOnly(cleaned)) return defaultSprites;
-  return cleaned;
+  if (shouldResetToEmptyCanvas(cleaned)) return defaultSprites;
+  // Ensure all sprites have rotation = 90 (upright) if not set or 0
+  return cleaned.map(s => ({
+    ...s,
+    rotation: (s.rotation == null || s.rotation === 0) ? 90 : s.rotation,
+  }));
 }
 
 const STARTER_BLOCK_TYPES = new Set([
@@ -1580,6 +1544,8 @@ export default function GameBuilder() {
   const [resizingSprite, setResizingSprite] = useState(null);
   const [resizeHandle, setResizeHandle] = useState(null);
   const [resizeStart, setResizeStart] = useState(null);
+  const [rotatingSprite, setRotatingSprite] = useState(null);
+  const [rotateStart, setRotateStart] = useState(null);
   const animRef = useRef(null);
   const runtimeRef = useRef(null);  // GameRuntime instance
   const gameStateRef = useRef(null);  // Current game state
@@ -1801,7 +1767,7 @@ export default function GameBuilder() {
         }
         // Extract movement blocks
         const moveBlocks = (s.blocks || []).map(b => ({ type: b.type, params: b.params || {} }));
-        return { id: s.id, name: s.name, x: s.x, y: s.y, w: s.w || 48, h: s.h || 48, rotation: s.rotation || 0, dataUrl, moveBlocks };
+        return { id: s.id, name: s.name, x: s.x, y: s.y, w: s.w || 48, h: s.h || 48, rotation: s.rotation ?? 90, dataUrl, moveBlocks };
       });
 
       const whiteBgCode = `ctx.fillStyle='#ffffff';ctx.fillRect(0,0,W,H);`;
@@ -1892,7 +1858,6 @@ function monitorBodyDetectionBlockParams(sprites){
   // Get blocks from React state instead
   const spritesState = sprites; // This is the game loop SPRITES, not React state
   if(!spritesState||!spritesState[0]||!spritesState[0].blocks){
-    console.log('[Body] DEBUG: No blocks in SPRITES');
     return;
   }
   console.log('[Body] monitorBodyDetectionBlockParams: Found', spritesState[0].blocks.length, 'blocks in game state');
@@ -1961,7 +1926,8 @@ function drawSprites(){
     if(!img||!img.complete)return;
     ctx.save();
     ctx.translate(s.x+s.w/2,s.y+s.h/2);
-    if(s.rotation)ctx.rotate((s.rotation-90)*Math.PI/180);
+    const rot = s.rotation ?? 90;
+    if(rot !== 90) ctx.rotate((rot-90)*Math.PI/180);
     ctx.drawImage(img,-s.w/2,-s.h/2,s.w,s.h);
     ctx.restore();
   });
@@ -2108,15 +2074,15 @@ loadImages(function(){
     return () => window.removeEventListener('keydown', handler);
   }, [sprites, background]);
 
-  // Resize canvas — retina backing store in editor; native pixels in fullscreen
+  // Resize canvas — retina backing store in editor and fullscreen
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    const dpr = Math.min(window.devicePixelRatio || 1, 3);
     if (stageFs) {
-      canvas.width  = window.innerWidth;
-      canvas.height = window.innerHeight;
+      canvas.width  = Math.round(window.innerWidth * dpr);
+      canvas.height = Math.round(window.innerHeight * dpr);
     } else {
-      const dpr = Math.min(window.devicePixelRatio || 1, 3);
       canvas.width  = Math.round(STAGE_W * dpr);
       canvas.height = Math.round(STAGE_H * dpr);
     }
@@ -2290,7 +2256,12 @@ loadImages(function(){
       const ghost = Math.max(0, Math.min(100, effects.ghost || 0));
       ctx.save();
       ctx.translate(sprite.x + sprite.w / 2, sprite.y + sprite.h / 2);
-      if (playing) applyCanvasRotationStyle(ctx, sprite);
+      // Apply rotation in both editor and play mode
+      if (playing) {
+        applyCanvasRotationStyle(ctx, sprite);
+      } else if (sprite.rotation != null && sprite.rotation !== 90) {
+        ctx.rotate((sprite.rotation - 90) * Math.PI / 180);
+      }
       ctx.filter = buildEffectFilter(effects);
       const prevAlpha = ctx.globalAlpha;
       if (ghost > 0) ctx.globalAlpha = prevAlpha * (1 - ghost / 100);
@@ -2316,7 +2287,7 @@ loadImages(function(){
         ctx.strokeRect(sprite.x - 3, sprite.y - 3, sprite.w + 6, sprite.h + 6);
         ctx.setLineDash([]);
 
-        // Resize handles
+        // Resize handles (corners)
         const handleSize = 8;
         const handles = [
           { x: sprite.x - handleSize, y: sprite.y - handleSize },
@@ -2329,6 +2300,23 @@ loadImages(function(){
         ctx.strokeStyle = '#fff';
         ctx.lineWidth = 1;
         handles.forEach(h => ctx.strokeRect(h.x, h.y, handleSize * 2, handleSize * 2));
+
+        // Rotation handle (top-middle, with line)
+        const rotHandleY = sprite.y - 25;
+        const rotHandleCx = sprite.x + sprite.w / 2;
+        ctx.strokeStyle = '#6366f1';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(rotHandleCx, sprite.y - 3);
+        ctx.lineTo(rotHandleCx, rotHandleY + 6);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(rotHandleCx, rotHandleY, 6, 0, Math.PI * 2);
+        ctx.fillStyle = '#6366f1';
+        ctx.fill();
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 1;
+        ctx.stroke();
       }
 
       const bubbleCx = sprite.x + sprite.w / 2;
@@ -4390,6 +4378,12 @@ loadImages(function(){
 
   const getResizeHandle = (sprite, x, y) => {
     const handleSize = 8;
+    // Check rotation handle first (circle at top-middle)
+    const rotHandleY = sprite.y - 25;
+    const rotHandleCx = sprite.x + sprite.w / 2;
+    const rotDist = Math.sqrt((x - rotHandleCx) ** 2 + (y - rotHandleY) ** 2);
+    if (rotDist <= 10) return 'rotate';
+    
     const checks = [
       { name: 'tl', x: sprite.x - handleSize, y: sprite.y - handleSize, w: handleSize * 2, h: handleSize * 2 },
       { name: 'tr', x: sprite.x + sprite.w - handleSize, y: sprite.y - handleSize, w: handleSize * 2, h: handleSize * 2 },
@@ -4468,9 +4462,18 @@ loadImages(function(){
     const selectedObj = selected ? sprites.find(s => s.id === selected) : null;
     const clicked = [...sprites].reverse().find(s => x >= s.x && x <= s.x + s.w && y >= s.y && y <= s.y + s.h);
 
-    // Check selected sprite resize handles first (corners can be outside body bounds)
+    // Check selected sprite resize/rotate handles first (can be outside body bounds)
     if (selectedObj) {
       const handle = getResizeHandle(selectedObj, x, y);
+      if (handle === 'rotate') {
+        // Start rotation
+        const cx = selectedObj.x + selectedObj.w / 2;
+        const cy = selectedObj.y + selectedObj.h / 2;
+        const startAngle = Math.atan2(y - cy, x - cx) * 180 / Math.PI;
+        setRotatingSprite(selected);
+        setRotateStart({ startAngle, startRotation: selectedObj.rotation || 90 });
+        return;
+      }
       if (handle) {
         setResizingSprite(selected);
         setResizeHandle(handle);
@@ -4493,43 +4496,80 @@ loadImages(function(){
     mouseRef.current = pos;
     const { x, y } = pos;
 
+    // Handle rotation
+    if (rotatingSprite && rotateStart) {
+      setSprites(prev => prev.map(s => {
+        if (s.id !== rotatingSprite) return s;
+        const cx = s.x + s.w / 2;
+        const cy = s.y + s.h / 2;
+        const currentAngle = Math.atan2(y - cy, x - cx) * 180 / Math.PI;
+        const deltaAngle = currentAngle - rotateStart.startAngle;
+        let newRotation = rotateStart.startRotation + deltaAngle;
+        // Normalize to 0-360
+        while (newRotation < 0) newRotation += 360;
+        while (newRotation >= 360) newRotation -= 360;
+        return { ...s, rotation: newRotation };
+      }));
+      return;
+    }
+
     if (resizingSprite && resizeStart) {
       const dx = x - resizeStart.x;
       const dy = y - resizeStart.y;
       const minSize = 20;
       setSprites(prev => prev.map(s => {
         if (s.id !== resizingSprite) return s;
+        const aspect = resizeStart.w / resizeStart.h;
         let newW = resizeStart.w;
         let newH = resizeStart.h;
         let newX = resizeStart.baseX ?? s.x;
         let newY = resizeStart.baseY ?? s.y;
 
-        if (resizeHandle.includes('r')) newW = Math.max(minSize, resizeStart.w + dx);
-        if (resizeHandle.includes('l')) {
-          newW = Math.max(minSize, resizeStart.w - dx);
-          newX = s.x + (resizeStart.w - newW);
-        }
-        if (resizeHandle.includes('b')) newH = Math.max(minSize, resizeStart.h + dy);
-        if (resizeHandle.includes('t')) {
-          newH = Math.max(minSize, resizeStart.h - dy);
-          newY = s.y + (resizeStart.h - newH);
+        // Use diagonal distance for proportional scaling from corners
+        const diag = (dx + dy) / 2;
+        
+        if (resizeHandle === 'br') {
+          // Bottom-right: grow with positive dx/dy
+          newW = Math.max(minSize, resizeStart.w + diag);
+          newH = newW / aspect;
+        } else if (resizeHandle === 'bl') {
+          // Bottom-left: grow with negative dx, positive dy
+          newW = Math.max(minSize, resizeStart.w + (-dx + dy) / 2);
+          newH = newW / aspect;
+          newX = resizeStart.baseX + (resizeStart.w - newW);
+        } else if (resizeHandle === 'tr') {
+          // Top-right: grow with positive dx, negative dy
+          newW = Math.max(minSize, resizeStart.w + (dx - dy) / 2);
+          newH = newW / aspect;
+          newY = resizeStart.baseY + (resizeStart.h - newH);
+        } else if (resizeHandle === 'tl') {
+          // Top-left: grow with negative dx/dy
+          newW = Math.max(minSize, resizeStart.w - diag);
+          newH = newW / aspect;
+          newX = resizeStart.baseX + (resizeStart.w - newW);
+          newY = resizeStart.baseY + (resizeStart.h - newH);
         }
 
-        newX = Math.max(0, Math.min(STAGE_W - minSize, newX));
-        newY = Math.max(0, Math.min(STAGE_H - minSize, newY));
-        newW = Math.max(minSize, Math.min(STAGE_W - newX, newW));
-        newH = Math.max(minSize, Math.min(STAGE_H - newY, newH));
+        // Enforce minimum size
+        if (newW < minSize) { newW = minSize; newH = minSize / aspect; }
+        if (newH < minSize) { newH = minSize; newW = minSize * aspect; }
+        
+        // Keep at least 20px visible on stage
+        newX = Math.max(-newW + 20, Math.min(STAGE_W - 20, newX));
+        newY = Math.max(-newH + 20, Math.min(STAGE_H - 20, newY));
         return { ...s, x: newX, y: newY, w: newW, h: newH };
       }));
       return;
     }
 
     if (!draggingSprite || isPlaying) return;
-    setSprites(prev => prev.map(s => s.id === draggingSprite ? {
-      ...s,
-      x: Math.max(0, Math.min(STAGE_W - s.w, x - dragOffset.x)),
-      y: Math.max(0, Math.min(STAGE_H - s.h, y - dragOffset.y)),
-    } : s));
+    setSprites(prev => prev.map(s => {
+      if (s.id !== draggingSprite) return s;
+      // Allow sprites off stage but keep at least 20px visible
+      const newX = Math.max(-s.w + 20, Math.min(STAGE_W - 20, x - dragOffset.x));
+      const newY = Math.max(-s.h + 20, Math.min(STAGE_H - 20, y - dragOffset.y));
+      return { ...s, x: newX, y: newY };
+    }));
   };
 
   const handleCanvasMouseUp = () => {
@@ -4539,6 +4579,8 @@ loadImages(function(){
     setResizingSprite(null);
     setResizeHandle(null);
     setResizeStart(null);
+    setRotatingSprite(null);
+    setRotateStart(null);
   };
 
   /* ─── Sprite management ─── */
@@ -4617,7 +4659,7 @@ loadImages(function(){
         id: Date.now(), name, svgKey: null, category: 'Custom',
         customImage: dataUrl,
         x: STAGE_W / 2 - w / 2, y: STAGE_H / 2 - h / 2,
-        w, h, rotation: 0, visible: true, color: null, layer: 1,
+        w, h, rotation: 90, visible: true, color: null, layer: 1,
         blocks: [],
         initialVars: {},
       };
@@ -5074,7 +5116,7 @@ loadImages(function(){
                     y: 200,
                     w: 48,
                     h: 48,
-                    rotation: 0,
+                    rotation: 90,
                     visible: true,
                     color: null,
                     layer: 1,
@@ -5208,6 +5250,11 @@ loadImages(function(){
                 <input className="input" type="number" value={selectedSprite.w}
                   onChange={(e) => { const v = Math.max(8, +e.target.value); setSprites(prev => prev.map(s => s.id === selected ? { ...s, w: v, h: v } : s)); imgCacheRef.current = {}; }}
                   style={{ width: 40, fontSize: 11, padding: '2px 4px' }} />
+                <button
+                  onClick={() => setSprites(prev => prev.map(s => s.id === selected ? { ...s, x: STAGE_W / 2 - s.w / 2, y: STAGE_H / 2 - s.h / 2 } : s))}
+                  style={{ padding: '2px 6px', fontSize: 10, borderRadius: 4, border: 'none', background: 'var(--accent)', color: '#fff', cursor: 'pointer' }}
+                  title="Center sprite on stage"
+                >Center</button>
               </div>
             )}
           </div>
@@ -5321,8 +5368,8 @@ loadImages(function(){
                     onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--accent-primary)'; e.currentTarget.style.transform = 'scale(1.05)'; }}
                     onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-color)'; e.currentTarget.style.transform = 'scale(1)'; }}
                   >
-                    <SpriteThumb svgKey={item.name} customImage={item.customImage} size={72} />
-                    <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-primary)' }}>{item.name}</span>
+                    <SpriteThumb svgKey={item.name} customImage={item.customImage} size={140} />
+                    <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>{item.name}</span>
                   </button>
                 ))}
               </div>

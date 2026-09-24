@@ -1,0 +1,222 @@
+{
+  "robots": [
+    {
+      "id": "rover",
+      "name": "Rover",
+      "family": "kart",
+      "color": "#ff7f69"
+    },
+    {
+      "id": "scout",
+      "name": "Scout",
+      "family": "kart",
+      "color": "#64d9c0"
+    },
+    {
+      "id": "crawler",
+      "name": "Crawler",
+      "family": "kart",
+      "color": "#a99bef"
+    },
+    {
+      "id": "tank",
+      "name": "Tank",
+      "family": "kart",
+      "color": "#ffc65b"
+    },
+    {
+      "id": "stealth",
+      "name": "Stealth Rover",
+      "family": "kart",
+      "color": "#7897ce"
+    },
+    {
+      "id": "miningbot",
+      "name": "Mining Bot",
+      "family": "kart",
+      "color": "#edaa69"
+    },
+    {
+      "id": "securitybot",
+      "name": "Security Bot",
+      "family": "kart",
+      "color": "#65bfff"
+    },
+    {
+      "id": "farmbot",
+      "name": "Farm Bot",
+      "family": "kart",
+      "color": "#8ad580"
+    },
+    {
+      "id": "spider",
+      "name": "Spider",
+      "family": "adventure",
+      "color": "#b398ec"
+    },
+    {
+      "id": "droid",
+      "name": "Droid",
+      "family": "adventure",
+      "color": "#75cbe8"
+    },
+    {
+      "id": "mech",
+      "name": "Mech",
+      "family": "adventure",
+      "color": "#e38fba"
+    },
+    {
+      "id": "drone",
+      "name": "Drone",
+      "family": "flight",
+      "color": "#84cfe9"
+    },
+    {
+      "id": "racedrone",
+      "name": "Race Drone",
+      "family": "flight",
+      "color": "#f98d9c"
+    },
+    {
+      "id": "rescuedrone",
+      "name": "Rescue Drone",
+      "family": "flight",
+      "color": "#ffb47a"
+    },
+    {
+      "id": "helicopter",
+      "name": "Helicopter",
+      "family": "flight",
+      "color": "#f5db62"
+    },
+    {
+      "id": "hoverbot",
+      "name": "Hover Bot",
+      "family": "kart",
+      "color": "#6ee3d4"
+    },
+    {
+      "id": "hoverracer",
+      "name": "Hover Racer",
+      "family": "kart",
+      "color": "#c18fff"
+    },
+    {
+      "id": "submarine",
+      "name": "Submarine",
+      "family": "flight",
+      "color": "#ffd168"
+    },
+    {
+      "id": "deepseabot",
+      "name": "Deep Sea Bot",
+      "family": "flight",
+      "color": "#6bbfc4"
+    },
+    {
+      "id": "robotarm",
+      "name": "Robot Arm",
+      "family": "adventure",
+      "color": "#e7b28d"
+    },
+    {
+      "id": "factorybot",
+      "name": "Factory Bot",
+      "family": "adventure",
+      "color": "#a1c4ef"
+    },
+    {
+      "id": "spacerover",
+      "name": "Space Rover",
+      "family": "kart",
+      "color": "#c5d7ff"
+    },
+    {
+      "id": "legobot",
+      "name": "Lego Bot",
+      "family": "adventure",
+      "color": "#ffb254"
+    },
+    {
+      "id": "battlebot",
+      "name": "Battle Bot",
+      "family": "adventure",
+      "color": "#ba93d9"
+    },
+    {
+      "id": "striker",
+      "name": "Striker",
+      "family": "football",
+      "color": "#67b5ff"
+    },
+    {
+      "id": "footballbot",
+      "name": "Football Bot",
+      "family": "football",
+      "color": "#619fff"
+    },
+    {
+      "id": "blaster",
+      "name": "Blaster",
+      "family": "adventure",
+      "color": "#ff976f"
+    },
+    {
+      "id": "ninja",
+      "name": "Ninja",
+      "family": "adventure",
+      "color": "#667de3"
+    },
+    {
+      "id": "berserker",
+      "name": "Berserker",
+      "family": "adventure",
+      "color": "#e77a84"
+    },
+    {
+      "id": "medbot",
+      "name": "Medic Bot",
+      "family": "adventure",
+      "color": "#ededf2"
+    },
+    {
+      "id": "firebot",
+      "name": "Fire Bot",
+      "family": "kart",
+      "color": "#fa6d65"
+    },
+    {
+      "id": "jetplane",
+      "name": "Jet Plane",
+      "family": "flight",
+      "color": "#ffce5d"
+    },
+    {
+      "id": "steathjet",
+      "name": "Stealth Jet",
+      "family": "flight",
+      "color": "#879dbd"
+    },
+    {
+      "id": "aerobat",
+      "name": "Aerobat",
+      "family": "flight",
+      "color": "#f190c6"
+    },
+    {
+      "id": "birdbot",
+      "name": "Bird Bot",
+      "family": "flight",
+      "color": "#a7d56d"
+    },
+    {
+      "id": "custom",
+      "name": "Custom Robot",
+      "family": "adventure",
+      "color": "#b799f5"
+    }
+  ],
+  "worlds": 10,
+  "total": 360
+}

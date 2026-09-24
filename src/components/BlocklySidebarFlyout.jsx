@@ -2,6 +2,7 @@ import React, { useLayoutEffect, useRef } from 'react';
 import Blockly from 'blockly';
 import 'blockly/blocks';
 import { defineBytebuddiesBlocks } from '../utils/blocklySetup';
+import { patchBlocklyToolbox, safeOpenFirstToolboxCategory } from '../utils/blocklyToolboxSafe.js';
 import { emitAddSidebarBlock } from '../utils/blockLibraryEvents';
 import { toolboxBlockJsonForLibraryEntry, resolveBlocklyTypeForLibraryLabel } from '../utils/blocklyToolboxEntries';
 import { BLOCKLY_TYPE_TO_SIDEBAR_NAME } from '../data/sharedBlocklyToolbox';
@@ -47,6 +48,7 @@ export default function BlocklySidebarFlyout({ categories = [] }) {
       theme: Blockly.Themes.Zelos,
     });
     workspaceRef.current = ws;
+    patchBlocklyToolbox(ws);
 
     const bumpSize = () => {
       try {
@@ -62,20 +64,13 @@ export default function BlocklySidebarFlyout({ categories = [] }) {
     setTimeout(bumpSize, 80);
     setTimeout(bumpSize, 400);
 
-    // Open first category so blocks are visible immediately (PictoBlox-style palette).
+    let cancelled = false;
     const openFirstCategory = () => {
-      try {
-        const tb = ws.getToolbox?.();
-        const items = tb?.getToolboxItems?.() || [];
-        if (items.length > 0 && typeof tb.selectItem === 'function') {
-          tb.selectItem(items[0]);
-        }
-      } catch (e) {
-        /* ignore */
-      }
+      if (cancelled || ws.isDisposed) return;
+      safeOpenFirstToolboxCategory(ws);
     };
-    setTimeout(openFirstCategory, 120);
-    setTimeout(openFirstCategory, 450);
+    const t1 = setTimeout(openFirstCategory, 120);
+    const t2 = setTimeout(openFirstCategory, 450);
     const ro = typeof ResizeObserver !== 'undefined' && hostRef.current
       ? new ResizeObserver(() => bumpSize())
       : null;
@@ -102,6 +97,9 @@ export default function BlocklySidebarFlyout({ categories = [] }) {
     ws.addChangeListener(onChange);
 
     return () => {
+      cancelled = true;
+      clearTimeout(t1);
+      clearTimeout(t2);
       window.removeEventListener('resize', bumpSize);
       if (ro) ro.disconnect();
       ws.removeChangeListener(onChange);

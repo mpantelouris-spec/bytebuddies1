@@ -8,6 +8,8 @@
     "dev": "node scripts/build-universal-hex.mjs && node scripts/build-boot-hex.mjs && vite",
     "dev:clean": "rm -rf node_modules/.vite && node scripts/build-universal-hex.mjs && node scripts/build-boot-hex.mjs && vite --force",
     "build": "node scripts/build-universal-hex.mjs && node scripts/build-boot-hex.mjs && node scripts/build-bluetooth-hex.mjs && vite build",
+    "postbuild": "node scripts/verify-dist-index.mjs && node scripts/write-bb-entry.mjs",
+    "deploy:vps": "node scripts/deploy-vps.mjs",
     "build:boot-hex": "node scripts/build-boot-hex.mjs",
     "preview": "vite preview",
     "desktop": "electron .",
@@ -16,7 +18,16 @@
     "build:makecode-ble": "cd ble_compile && npx makecode build && cp built/binary.hex ../public/microbit-v2-cutebot-ble.hex",
     "dev:hex": "node build-hex-server.mjs",
     "smoke:game-builder": "node scripts/game-builder-smoke.mjs",
+    "verify:blocks": "node scripts/verify-all-coding-blocks.mjs",
+    "test:blocks": "node scripts/test-block-exec.mjs && node scripts/test-flappy-block-runtime.mjs && node scripts/verify-flappy-blocks.mjs && node scripts/verify-all-coding-blocks.mjs && node scripts/verify-robot-block-palettes.mjs && node scripts/game-builder-smoke.mjs",
     "smoke:vrd": "node scripts/vrd-smoke.mjs",
+    "smoke:football": "node scripts/football-smoke.mjs",
+    "smoke:coderacer": "node scripts/coderacer-smoke.mjs",
+    "proof:football": "node scripts/football-proof-pack.mjs",
+    "prebuild:courses": "node scripts/prebuildCourses.mjs",
+    "sync:chassis-modes": "node scripts/build-chassis-mode-catalog.mjs && node scripts/sync-chassis-game-modes.mjs && node scripts/generate-game-mode-specs.mjs",
+    "verify:courses": "node scripts/verify-core-courses.mjs",
+    "verify:studio": "node scripts/verify-studio.mjs",
     "test:vrd": "node scripts/run-vrd-test-plan.mjs",
     "test:e2e:vrd": "SKIP_VRD_WEBSERVER=1 playwright test tests/e2e/vrd.spec.js",
     "test:e2e:vrd:http": "node scripts/vrd-e2e-http.mjs",
@@ -44,11 +55,13 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "three": "^0.160.0",
-    "tone": "^15.1.22"
+    "tone": "^15.1.22",
+    "zustand": "^5.0.14"
   },
   "devDependencies": {
     "@babel/preset-env": "^7.29.5",
     "@babel/preset-react": "^7.28.5",
+    "@babel/preset-typescript": "^8.0.1",
     "@playwright/test": "^1.49.1",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
@@ -59,6 +72,7 @@
     "electron": "^33.2.1",
     "jest": "^30.4.2",
     "jest-environment-jsdom": "^30.4.1",
+    "typescript": "^7.0.2",
     "vite": "^5.0.0"
   }
 }

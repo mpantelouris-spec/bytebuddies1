@@ -218,9 +218,8 @@
 .blocklyScrollbarKnob { fill: #30363d !important; }
 .blocklyScrollbarBackground { fill: #161b22 !important; }
 
-/* ─── Blockly toolbox polish ─── */
+/* ─── Blockly toolbox polish (global fallbacks — panel rules in LiveLabGame.css win) ─── */
 .blocklyToolboxCategory { border-radius: 6px; }
-.blocklyToolboxDiv { background: #0d1117 !important; border-right: 1px solid #21262d !important; }
 .blocklyFlyout { fill: #161b22 !important; }
 .blocklyFlyoutBackground { fill: #161b22 !important; opacity: 1 !important; }
 
@@ -332,17 +331,69 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* Live Lab 3D viewport */
+/* Live Lab 3D viewport — canvas fills panel; renderer uses setSize(w,h,false) */
 .ll-sim-wrap {
   position: absolute;
   inset: 0;
-  min-height: 200px;
+  min-height: 0;
+}
+
+/* CodeRacer: toolbar is a real flex row — canvas must NOT cover it (was inset:0 over toolbar) */
+.bb-center-viewport--coderacer {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.bb-center-viewport--coderacer .ll-sim-wrap {
+  position: relative !important;
+  inset: auto !important;
+  top: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  left: auto !important;
+  flex: 1 1 0;
+  min-height: 0;
+  width: 100%;
+  z-index: 1;
+}
+
+.bb-center-viewport--coderacer .bb-viewport-toolbar {
+  flex: 0 0 auto;
+  z-index: 60;
+  position: relative;
+  pointer-events: auto;
 }
 .ll-sim-wrap canvas,
 canvas.ll-sim-canvas {
   display: block !important;
   width: 100% !important;
   height: 100% !important;
+  max-width: none !important;
+  max-height: none !important;
+  /* WebGL canvas must not steal clicks from HUD / Simulate / level-select overlays */
+  pointer-events: none !important;
+}
+
+/* Cinematic grade for AAA biome tracks (GPU-safe — no EffectComposer) */
+canvas.ll-sim-canvas.ll-sim-biome-grade {
+  filter: saturate(1.08) contrast(1.04) brightness(1.0);
+}
+
+/* Crystal Cavern Run — build stamp overlay so cache/deploy is verifiable */
+.ll-sim-wrap.ll-sim-crystal-cavern::after {
+  content: 'Crystal Cavern · ' attr(data-build-stamp);
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 4;
+  font: 600 10px/1.2 'JetBrains Mono', ui-monospace, monospace;
+  color: #00ffff;
+  background: rgba(10, 14, 39, 0.82);
+  border: 1px solid rgba(0, 255, 255, 0.35);
+  border-radius: 4px;
+  padding: 3px 7px;
+  pointer-events: none;
 }
 
 /* ─── Game UI buttons ─── */
@@ -453,7 +504,27 @@ canvas.ll-sim-canvas {
   100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
 }
 
-/* ─── Playful Blockly workspace ─── */
-.blocklyToolboxCategoryLabel { font-weight: 800 !important; }
-.blocklyTreeRow { border-radius: 8px !important; margin: 2px 4px !important; }
-.blocklyFlyoutBackground { fill: #141a24 !important; }
+/* ─── Playful Blockly workspace (scoped — do not show duplicate category text) ─── */
+.blockly-code-panel:not(:has(.bb-flappy-blockly)) .blocklyToolboxDiv {
+  width: 52px !important;
+  min-width: 52px !important;
+  max-width: 52px !important;
+  background: #0d1117 !important;
+  border-right: 1px solid #21262d !important;
+}
+
+.blockly-code-panel:not(:has(.bb-flappy-blockly)) .blocklyTreeLabel,
+.blockly-code-panel:not(:has(.bb-flappy-blockly)) .blocklyToolboxCategoryLabel {
+  display: block !important;
+  font-size: 20px !important;
+  line-height: 1 !important;
+  text-align: center !important;
+  width: auto !important;
+  opacity: 1 !important;
+}
+
+.blockly-code-panel .blocklyToolboxCategory { border-radius: 6px; }
+.blockly-code-panel .blocklyTreeRow { border-radius: 8px !important; margin: 2px 4px !important; }
+.blockly-code-panel .blocklyFlyoutBackground { fill: #141a24 !important; }
+.blockly-code-panel .blocklyFlyoutLabel text { fill: #7dd3fc !important; }
+.blockly-code-panel .scratch-block-count { font-size: 11px; opacity: 0.85; white-space: nowrap; }
