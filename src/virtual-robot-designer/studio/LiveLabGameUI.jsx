@@ -1660,6 +1660,37 @@ export function GameLevelSelect({ courses, currentId, robotName, robotType, chas
                         },
                     ))}
                   </div>
+                  {isCarChassis(chassisId) && onSelectBiomeTrack && (
+                    <>
+                      <SectionHead
+                        icon="🛸"
+                        title="Bonus race track"
+                        subtitle="Race your rover through space"
+                        color="#aa44ff"
+                      />
+                      <div className="gls-card-grid gls-card-grid--compact">
+                        <MissionHeroCard
+                          key="cosmic-skyway"
+                          robotName={robotName}
+                          gradient="linear-gradient(135deg,#1e1b4b,#7a2cff,#06b6d4)"
+                          metaColor="#AA44FF"
+                          isSel={currentArenaType === 'star_station_01'}
+                          onSelect={() => onSelectBiomeTrack({ arenaType: 'star_station_01' })}
+                          onClose={onClose}
+                          course={{
+                          id: 'star_station_01',
+                          arenaType: 'star_station_01',
+                          icon: '🛸',
+                          name: 'Cosmic Skyway',
+                          environmentName: 'Cosmic Skyway',
+                          shortName: 'Cosmic Skyway',
+                          color: '#AA44FF',
+                          tagline: 'Bonus · Twisting space highway past a wormhole, asteroids and a blue planet',
+                        }}
+                        />
+                      </div>
+                    </>
+                  )}
                 </section>
               )}
             </>
