@@ -272,6 +272,15 @@ function makeRoadTexture(style = 'asphalt') {
       ctx.fill();
     }
     paintCenterStripe(ctx, '#ffffff', 5, [28, 22]);
+  } else if (style === 'cosmic_metal') {
+    ctx.fillStyle = '#1c1e26'; ctx.fillRect(0, 0, 512, 512);
+    speckle(ctx, 900, 0.05);
+    ctx.strokeStyle = 'rgba(8,9,14,0.9)'; ctx.lineWidth = 2;
+    for (let y = 0; y < 512; y += 64) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(512, y); ctx.stroke(); }
+    for (let x = 128; x < 512; x += 128) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, 512); ctx.stroke(); }
+    ctx.fillStyle = '#33e6ff'; ctx.fillRect(20, 0, 10, 512);
+    ctx.fillStyle = '#ff9a2e'; ctx.fillRect(482, 0, 10, 512);
+    paintCenterStripe(ctx, '#ffd9a0', 4, [26, 22]);
   } else if (style === 'meadow_gravel') {
     ctx.fillStyle = '#c4956a'; ctx.fillRect(0, 0, 512, 512);
     for (let i = 0; i < 2000; i++) {
@@ -330,6 +339,7 @@ function roadMaterialParams(style) {
     frost_ice: { roughness: 0.06, metalness: 0.68, emissive: 0x88ddff, emi: 0.62 },
     ruins_moss: { roughness: 0.72, metalness: 0.1, emissive: 0x88aa44, emi: 0.35 },
     stardust_violet: { roughness: 0.1, metalness: 0.6, emissive: 0xaa44ff, emi: 0.85 },
+    cosmic_metal: { roughness: 0.32, metalness: 0.75, emissive: 0x000000, emi: 0 },
     meadow_gravel: { roughness: 0.82, metalness: 0.08, emissive: 0xffdd88, emi: 0.25 },
     metro_black: { roughness: 0.5, metalness: 0.35, emissive: 0xffff00, emi: 0.45 },
   };
@@ -346,6 +356,7 @@ const FLAT_ROAD_COLORS = {
   frost_ice: 0xd0e8f8,
   ruins_moss: 0x6a7a58,
   stardust_violet: 0x4a1888,
+  cosmic_metal: 0x1c1e26,
   metro_black: 0x4a4a4a,
   asphalt: 0x4a4e56,
   desert_sand: 0xd4b896,
@@ -365,6 +376,7 @@ const FLAT_STRIPE_COLORS = {
   frost_ice: '#4488cc',
   ruins_moss: '#ffd700',
   stardust_violet: '#dda0ff',
+  cosmic_metal: '#ffd9a0',
   metro_black: '#ffff00',
   meadow_gravel: '#ffffff',
 };

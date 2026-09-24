@@ -66,17 +66,9 @@ export function installTrackEnvironment(scene, arenaType, renderer) {
 
   if (spec.isCosmicBiome || arenaType === 'star_station_01') {
     if (!scene.getObjectByName('cosmic-skyway-fill')) {
-      const fill = new THREE.AmbientLight(0x8a8acc, 0.55);
+      const fill = new THREE.AmbientLight(0xa0a4b8, 0.45);
       fill.name = 'cosmic-skyway-fill';
       scene.add(fill);
-      const wormholeGlow = new THREE.PointLight(0xaa66ff, 2.8, 220, 1.2);
-      wormholeGlow.position.set(0, 35, -70);
-      wormholeGlow.name = 'cosmic-wormhole-glow';
-      scene.add(wormholeGlow);
-      const sunBurst = new THREE.PointLight(0xff9944, 2.2, 280, 1.1);
-      sunBurst.position.set(50, 42, -100);
-      sunBurst.name = 'cosmic-galaxy-glow';
-      scene.add(sunBurst);
       scene.userData._cosmicFillLights = true;
     }
   }

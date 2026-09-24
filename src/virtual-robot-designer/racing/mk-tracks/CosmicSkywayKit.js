@@ -4,6 +4,7 @@
  * giant neon loop rings and distant neon highways. Canvas textures only, no image files.
  */
 import * as THREE from 'three';
+import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 const TAU = Math.PI * 2;
 
@@ -45,12 +46,12 @@ function nebulaSkyTexture() {
     ctx.fillRect(0, 0, w, h);
     ctx.globalCompositeOperation = 'lighter';
     const clouds = [
-      [0.18, 0.32, 0.22, 'rgba(120,50,220,0.20)'],
-      [0.3, 0.45, 0.18, 'rgba(70,40,200,0.18)'],
-      [0.62, 0.3, 0.2, 'rgba(160,60,230,0.16)'],
-      [0.78, 0.4, 0.16, 'rgba(255,110,60,0.12)'],
-      [0.9, 0.35, 0.14, 'rgba(90,60,220,0.16)'],
-      [0.45, 0.62, 0.2, 'rgba(40,70,190,0.14)'],
+      [0.18, 0.36, 0.22, 'rgba(110,50,210,0.11)'],
+      [0.3, 0.48, 0.18, 'rgba(60,40,190,0.10)'],
+      [0.62, 0.34, 0.2, 'rgba(140,60,220,0.09)'],
+      [0.8, 0.42, 0.14, 'rgba(230,110,70,0.06)'],
+      [0.9, 0.38, 0.14, 'rgba(80,60,210,0.09)'],
+      [0.45, 0.62, 0.2, 'rgba(40,70,190,0.08)'],
     ];
     clouds.forEach(([cx, cy, cr, col]) => {
       for (let i = 0; i < 26; i++) {
@@ -214,22 +215,40 @@ function buildPlanet() {
     }),
   );
   g.add(atmo);
-  const sun = new THREE.DirectionalLight(0xfff4e0, 1.4);
+  const sun = new THREE.DirectionalLight(0xfff4e0, 0.5);
   sun.position.set(-200, 120, 100);
   sun.target = surface;
   g.add(sun);
   return g;
 }
 
-function asteroidGeometry(seed) {
+/** Bumps depend only on vertex direction, so vertices shared between triangles stay welded. */
+export function asteroidGeometry(seed) {
   const r = rand(seed);
-  const geo = new THREE.IcosahedronGeometry(1, 2);
+  const craters = Array.from({ length: 6 }, () => ({
+    d: new THREE.Vector3(r() - 0.5, r() - 0.5, r() - 0.5).normalize(),
+    size: 0.35 + r() * 0.35,
+    depth: 0.08 + r() * 0.12,
+  }));
+  const f = [1 + r() * 2, 1 + r() * 2, 1 + r() * 2];
+  const base = new THREE.IcosahedronGeometry(1, 4);
+  base.deleteAttribute('normal');
+  base.deleteAttribute('uv');
+  const geo = mergeVertices(base);
   const p = geo.attributes.position;
   const v = new THREE.Vector3();
   for (let i = 0; i < p.count; i++) {
-    v.fromBufferAttribute(p, i);
-    const k = 0.75 + r() * 0.45 + Math.sin(v.x * 3 + seed) * 0.08;
+    v.fromBufferAttribute(p, i).normalize();
+    let k = 1
+      + 0.18 * Math.sin(v.x * 2.1 * f[0] + seed) * Math.cos(v.y * 1.7 * f[1])
+      + 0.1 * Math.sin(v.z * 3.3 * f[2] + seed * 2)
+      + 0.05 * Math.sin((v.x + v.y + v.z) * 9);
+    craters.forEach((c) => {
+      const dist = v.distanceTo(c.d);
+      if (dist < c.size) k -= c.depth * (1 - (dist / c.size) ** 2);
+    });
     v.multiplyScalar(k);
+    v.y *= 0.8;
     p.setXYZ(i, v.x, v.y, v.z);
   }
   geo.computeVertexNormals();
@@ -240,7 +259,7 @@ function buildAsteroidBelt(cx, cz, count = 90) {
   const g = new THREE.Group();
   g.name = 'cosmic-asteroid-belt';
   const r = rand(99);
-  const mat = new THREE.MeshStandardMaterial({ color: 0x7a6e62, roughness: 0.95, metalness: 0.05, flatShading: true });
+  const mat = new THREE.MeshStandardMaterial({ color: 0x6e6258, roughness: 0.92, metalness: 0.05 });
   const geos = [1, 2, 3, 4].map(asteroidGeometry);
   const per = Math.ceil(count / geos.length);
   geos.forEach((geo) => {
@@ -340,12 +359,12 @@ export function installCosmicSkyway(world, bounds) {
   g.add(wormhole);
 
   const burst = buildGalaxyBurst();
-  burst.position.set(cx + 150, 60, cz - 220);
+  burst.position.set(cx + 115, 62, cz - 250);
   burst.lookAt(cx + 54, 10, cz);
   g.add(burst);
 
   const planet = buildPlanet();
-  planet.position.set(cx + 200, -95, cz - 40);
+  planet.position.set(cx + 150, -95, cz - 170);
   g.add(planet);
 
   g.add(buildAsteroidBelt(cx, cz));

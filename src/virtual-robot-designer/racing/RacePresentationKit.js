@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { asteroidGeometry } from './mk-tracks/CosmicSkywayKit.js';
 
 function mat(color, roughness = 0.72, extras = {}) {
   return new THREE.MeshStandardMaterial({
@@ -131,11 +132,9 @@ function neonGate(halfWidth = 4) {
   return g;
 }
 
-function asteroid(size = 1) {
-  const rock = new THREE.Mesh(
-    new THREE.DodecahedronGeometry(size, 1),
-    mat(0x6b6259, 0.95, { flatShading: true }),
-  );
+function asteroid(size = 1, seed = 1) {
+  const rock = new THREE.Mesh(asteroidGeometry(seed), mat(0x6e6258, 0.92));
+  rock.scale.setScalar(size);
   rock.rotation.set(Math.random() * 3, Math.random() * 3, Math.random() * 3);
   rock.castShadow = true;
   return rock;
@@ -199,7 +198,7 @@ function installCosmicPresentation(scene, curve, root, origin, fwd, right, angle
 
   for (let i = 0; i < 10; i += 1) {
     const side = i % 2 ? 1 : -1;
-    const rock = asteroid(1.2 + (i % 3) * 0.9);
+    const rock = asteroid(1.2 + (i % 3) * 0.9, 10 + i);
     rock.position.copy(origin)
       .addScaledVector(fwd, 10 + i * 6)
       .addScaledVector(right, side * (halfWidth + 7 + (i % 3) * 4));

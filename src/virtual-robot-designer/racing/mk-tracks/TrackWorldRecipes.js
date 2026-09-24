@@ -102,14 +102,10 @@ export const TRACK_WORLD_RECIPES = {
     vista: 'lava',
   },
   star_station_01: {
-    scatter: ['dome', 'satellite', 'dome'],
+    scatter: [],
     scatterStep: 0.13,
     scatterOffset: 13,
-    buildings: [
-      { type: 'habitat_dome', t: 0.2, side: -1, off: 22 },
-      { type: 'habitat_dome', t: 0.52, side: 1, off: 24 },
-      { type: 'glass_deck', t: 0.36, side: 0, off: 0 },
-    ],
+    buildings: [],
     animals: [],
     vista: 'cosmic',
   },

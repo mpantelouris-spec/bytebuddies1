@@ -131,7 +131,7 @@ export function makeRoadPBRMaterial(roadStyle) {
     clearcoat: params.clearcoat ?? 0.45,
     clearcoatRoughness: roadStyle === 'crystal_obsidian' ? 0.05 : 0.12,
     normalScale: new THREE.Vector2(0.35, 0.35),
-    envMapIntensity: roadStyle === 'crystal_obsidian' ? 1.2 : 0.85,
+    envMapIntensity: roadStyle === 'crystal_obsidian' ? 1.2 : (roadStyle === 'cosmic_metal' ? 0.25 : 0.85),
     side: THREE.FrontSide,
     polygonOffset: true,
     polygonOffsetFactor: -4,
@@ -215,7 +215,8 @@ const ROAD_PBR_PARAMS = {
   cyber_navy: { roughnessDry: 0.03, roughnessWet: 0.02, wetCoverage: 0.35, metalness: 0.78, emissive: 0xff00ff, emissiveIntensity: 0.65, clearcoat: 0.9 },
   frost_ice: { roughnessDry: 0.06, metalness: 0.55, emissive: 0x88ddff, emissiveIntensity: 0.4, clearcoat: 0.95 },
   ruins_moss: { roughnessDry: 0.72, metalness: 0.1, emissive: 0x446622, emissiveIntensity: 0.15, clearcoat: 0.15 },
-  stardust_violet: { roughnessDry: 0.35, metalness: 0.7, emissive: 0x000000, emissiveIntensity: 0, clearcoat: 0.5 },
+  stardust_violet: { roughnessDry: 0.1, metalness: 0.75, emissive: 0xaa44ff, emissiveIntensity: 0.35, clearcoat: 0.7 },
+  cosmic_metal: { roughnessDry: 0.5, metalness: 0.3, emissive: 0x000000, emissiveIntensity: 0, clearcoat: 0.25 },
   meadow_gravel: { roughnessDry: 0.78, metalness: 0.05, emissive: 0x000000, emissiveIntensity: 0, clearcoat: 0.1 },
   metro_black: { roughnessDry: 0.55, roughnessWet: 0.02, wetCoverage: 0.28, metalness: 0.35, emissive: 0xffff00, emissiveIntensity: 0.12, clearcoat: 0.35 },
   candy_pink: { roughnessDry: 0.35, metalness: 0.1, emissive: 0xff69b4, emissiveIntensity: 0.25, clearcoat: 0.4 },
@@ -321,8 +322,13 @@ const ROAD_ALBEDO_BUILDERS = {
     }
   },
   stardust_violet(ctx) {
+    baseAsphalt(ctx, 123, 47, 190, 0.1);
+    centerDash(ctx, '#FFFFFF', 6, [22, 16]);
+    edgePaint(ctx, 'rgba(200,150,255,0.5)');
+  },
+  cosmic_metal(ctx) {
     const S = canvasSz(ctx);
-    baseAsphalt(ctx, 62, 66, 78, 0.12);
+    baseAsphalt(ctx, 30, 32, 42, 0.1);
     ctx.strokeStyle = 'rgba(20,22,30,0.9)';
     ctx.lineWidth = 2;
     for (let y = 0; y < S; y += S / 8) {

@@ -182,7 +182,6 @@ const PLAY_LAYERS = {
   },
   star_station_01(world, curve, hw, finishT) {
     world.add(buildWideCheckeredStart(curve, hw, finishT));
-    world.add(buildLaneStrips(curve, hw, 0xaa44ff, 0.65, 24));
     stdCpBoost(world, curve, hw, 'star_station_01', false, finishT);
   },
   fairy_glen_01(world, curve, hw, finishT) {

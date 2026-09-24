@@ -41,8 +41,7 @@ export function buildRealGameWorld(scene, curve, world, bounds, arenaType, finis
   world.userData.trackPerfBudget = perf;
   scene.userData.trackRoadSegments = perf.roadSegments;
 
-  const cup = isCupTrack(arenaType);
-  scene.userData.useReferenceBackdrop = false;
+  const cup = isCupTrack(arenaType);  scene.userData.useReferenceBackdrop = false;
   scene.userData.trackLoading = false;
   scene.userData.sceneryPopulated = false;
   world.userData.sceneryPopulated = false;
@@ -53,16 +52,20 @@ export function buildRealGameWorld(scene, curve, world, bounds, arenaType, finis
   } catch (err) {
     console.warn('[RealGameWorld] environment failed', arenaType, err);
   }
+  // Cosmic Skyway ships its own full scenery kit; the generic station props clutter the view.
+  const cosmic = arenaType === 'star_station_01';
   buildTrackWorld(world, curve, hw, bounds, arenaType, perf, scene, finishT);
   scene.userData.trackBounds = bounds;
   installMK8PlayDressing(world, curve, hw, arenaType, { qualityTier: perf.tier });
-  if (cup) {
+  if (cup && !cosmic) {
     installCupReferenceQuality(scene, world, curve, hw, bounds, arenaType, finishT);
   }
 
-  scatterTrackProps(world, curve, hw, bounds, arenaType, finishT, perf, scene);
-  placeHeroLandmarks(world, curve, hw, arenaType, finishT);
-  installMK8HeroLandmarks(world, curve, hw, bounds, arenaType, finishT);
+  if (!cosmic) {
+    scatterTrackProps(world, curve, hw, bounds, arenaType, finishT, perf, scene);
+    placeHeroLandmarks(world, curve, hw, arenaType, finishT);
+    installMK8HeroLandmarks(world, curve, hw, bounds, arenaType, finishT);
+  }
 
   const startGltfEnrich = () => {
     enrichTrackWorldGltf(world, curve, hw, arenaType, perf, scene, finishT)
@@ -75,7 +78,9 @@ export function buildRealGameWorld(scene, curve, world, bounds, arenaType, finis
       });
   };
 
-  if (cup) {
+  if (cosmic) {
+    world.userData.awaitGltfScenery = false;
+  } else if (cup) {
     world.userData.deferGltfEnrich = true;
     world.userData.awaitGltfScenery = false;
     const later = typeof requestIdleCallback === 'function'

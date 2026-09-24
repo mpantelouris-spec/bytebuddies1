@@ -89,7 +89,6 @@ export function installTrackSky(scene, bounds, arenaType) {
 
   if (arenaType === 'star_station_01') {
     addStarfield(scene, bounds, r * 0.85);
-    addNebula(scene, bounds);
   }
   if (arenaType === 'frost_peak_01') addAurora(scene, bounds);
   if (arenaType === 'thunder_ridge_01') addStormClouds(scene, bounds);

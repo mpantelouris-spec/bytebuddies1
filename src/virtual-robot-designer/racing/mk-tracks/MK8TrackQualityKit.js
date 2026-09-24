@@ -475,8 +475,8 @@ const BIOME_DRESSING = {
     twinGold: false, dashed: true, curbHeight: 0.62, emi: 0.45, slab: 0x2f2f2f, slabAccent: 0x4a3020,
   },
   star_station_01: {
-    moss: 0x1a0840, lip: 0xff8844, flower: 0xaa44ff, lane: 0xffaa44, edge: 0x00e8ff,
-    twinGold: true, dashed: false, emi: 0.78, slab: 0x2a1858, slabAccent: 0x3a2888,
+    moss: 0x14161e, lip: 0xff9a2e, flower: 0x33e6ff, lane: 0xff9a2e, edge: 0x33e6ff,
+    twinGold: false, dashed: false, emi: 0.6, slab: 0x1c1e28, slabAccent: 0x262a36,
   },
   fairy_glen_01: {
     moss: 0x8fd456, lip: 0xff69b4, flower: 0xffd700, lane: 0xff69b4, edge: 0x7cb342,

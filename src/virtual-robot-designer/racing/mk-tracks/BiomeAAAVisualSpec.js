@@ -74,10 +74,10 @@ export const BIOME_AAA_SPECS = {
   },
   star_station_01: {
     palette: { primary: '#AA44FF', secondary: '#00FFFF', accent: '#FF8844', fog: 0x4a2878 },
-    keyLight: 0xfff0e8, fillLight: 0x8866ff, rimLight: 0x44eeff, ambient: 0x5a4088,
-    ground: 0x0a0818, roadStyle: 'stardust_violet',
+    keyLight: 0xfff0e8, fillLight: 0x6a7088, rimLight: 0x44eeff, ambient: 0x2a2c3a,
+    ground: 0x0a0818, roadStyle: 'cosmic_metal',
     lightingTemp: 'cosmic-skyway', atmosphere: 'neon-space-highway', fogDensity: 0.0012,
-    post: { ...BASE_POST, bloom: 0.58, gradeCss: 'saturate(1.35) contrast(1.05) brightness(1.18)' },
+    post: { ...BASE_POST, bloom: 0.45, gradeCss: 'saturate(1.2) contrast(1.12) brightness(1.02)' },
     underground: false,
     isCosmicBiome: true,
     mood: 'Cosmic Skyway — neon highway past wormhole and planet',
