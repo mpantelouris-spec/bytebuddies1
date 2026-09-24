@@ -527,24 +527,6 @@ function addThemedAtmosphere(world, arenaType, bounds) {
   }
 
   if (arenaType === 'star_station_01') {
-    const count = 200;
-    const positions = new Float32Array(count * 3);
-    for (let i = 0; i < count; i++) {
-      const theta = Math.random() * Math.PI * 2;
-      const phi = Math.random() * Math.PI * 0.55;
-      const r = 70;
-      positions[i * 3] = bounds.cx + Math.cos(theta) * Math.sin(phi) * r;
-      positions[i * 3 + 1] = 8 + Math.cos(phi) * r * 0.55;
-      positions[i * 3 + 2] = bounds.cz + Math.sin(theta) * Math.sin(phi) * r;
-    }
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    const stars = new THREE.Points(
-      geo,
-      new THREE.PointsMaterial({ color: 0xffffff, size: 0.45, transparent: true, opacity: 0.9, depthWrite: false }),
-    );
-    stars.name = 'star-station-starfield';
-    world.add(stars);
     installCosmicSkyway(world, bounds);
   }
 

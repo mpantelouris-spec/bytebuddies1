@@ -36,7 +36,7 @@ function glow(ctx, x, y, r, stops) {
 }
 
 function nebulaSkyTexture() {
-  return canvasTex(2048, 1024, (ctx, w, h) => {
+  return canvasTex(1024, 512, (ctx, w, h) => {
     const r = rand(7);
     const bg = ctx.createLinearGradient(0, 0, 0, h);
     bg.addColorStop(0, '#04030c');
@@ -54,13 +54,13 @@ function nebulaSkyTexture() {
       [0.45, 0.62, 0.2, 'rgba(40,70,190,0.08)'],
     ];
     clouds.forEach(([cx, cy, cr, col]) => {
-      for (let i = 0; i < 26; i++) {
+      for (let i = 0; i < 12; i++) {
         const x = (cx + (r() - 0.5) * cr) * w;
         const y = (cy + (r() - 0.5) * cr * 0.8) * h;
         glow(ctx, x, y, (0.03 + r() * 0.07) * w, [[0, col], [1, 'rgba(0,0,0,0)']]);
       }
     });
-    for (let i = 0; i < 5000; i++) {
+    for (let i = 0; i < 2200; i++) {
       const b = r();
       ctx.fillStyle = `rgba(255,255,255,${0.25 + b * 0.75})`;
       const s = b > 0.985 ? 2.2 : b > 0.9 ? 1.4 : 0.8;
@@ -162,15 +162,15 @@ function buildWormhole() {
   const g = new THREE.Group();
   g.name = 'cosmic-wormhole';
   const tex = wormholeTexture();
-  for (let i = 0; i < 3; i++) {
-    const disc = new THREE.Mesh(new THREE.CircleGeometry(22 - i * 4, 64), additive(tex, 0.95 - i * 0.2));
+  for (let i = 0; i < 2; i++) {
+    const disc = new THREE.Mesh(new THREE.CircleGeometry(22 - i * 4, 40), additive(tex, 0.95 - i * 0.2));
     disc.position.z = -i * 3;
     disc.userData.spin = (i % 2 ? -1 : 1) * (0.25 + i * 0.15);
     g.add(disc);
   }
-  const frame = new THREE.Mesh(new THREE.TorusGeometry(24, 2.4, 16, 72), metal(0x1f232c));
+  const frame = new THREE.Mesh(new THREE.TorusGeometry(24, 2.4, 12, 48), metal(0x1f232c));
   g.add(frame);
-  const segs = 24;
+  const segs = 12;
   for (let i = 0; i < segs; i++) {
     const a = (i / segs) * TAU;
     const lamp = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.6, 0.6), neon(i % 2 ? 0x33e6ff : 0xff9a2e));
@@ -178,7 +178,7 @@ function buildWormhole() {
     lamp.rotation.z = a;
     g.add(lamp);
   }
-  const rim = new THREE.Mesh(new THREE.TorusGeometry(21.6, 0.25, 8, 72), neon(0x9d6bff));
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(21.6, 0.25, 6, 48), neon(0x9d6bff));
   rim.position.z = 1.5;
   g.add(rim);
   return g;
@@ -200,7 +200,7 @@ function buildPlanet() {
   const g = new THREE.Group();
   g.name = 'cosmic-planet';
   const surface = new THREE.Mesh(
-    new THREE.SphereGeometry(90, 64, 48),
+    new THREE.SphereGeometry(90, 32, 24),
     new THREE.MeshStandardMaterial({
       map: planetTexture(), emissive: 0x0c2a66, emissiveIntensity: 0.5, roughness: 0.8, fog: false,
     }),
@@ -208,17 +208,13 @@ function buildPlanet() {
   surface.userData.spin = 0.01;
   g.add(surface);
   const atmo = new THREE.Mesh(
-    new THREE.SphereGeometry(95, 64, 48),
+    new THREE.SphereGeometry(95, 32, 24),
     new THREE.MeshBasicMaterial({
       color: 0x66ccff, transparent: true, opacity: 0.22, blending: THREE.AdditiveBlending,
       side: THREE.BackSide, depthWrite: false, fog: false,
     }),
   );
   g.add(atmo);
-  const sun = new THREE.DirectionalLight(0xfff4e0, 0.5);
-  sun.position.set(-200, 120, 100);
-  sun.target = surface;
-  g.add(sun);
   return g;
 }
 
@@ -231,7 +227,7 @@ export function asteroidGeometry(seed) {
     depth: 0.08 + r() * 0.12,
   }));
   const f = [1 + r() * 2, 1 + r() * 2, 1 + r() * 2];
-  const base = new THREE.IcosahedronGeometry(1, 4);
+  const base = new THREE.IcosahedronGeometry(1, 2);
   base.deleteAttribute('normal');
   base.deleteAttribute('uv');
   const geo = mergeVertices(base);
@@ -255,12 +251,12 @@ export function asteroidGeometry(seed) {
   return geo;
 }
 
-function buildAsteroidBelt(cx, cz, count = 90) {
+function buildAsteroidBelt(cx, cz, count = 48) {
   const g = new THREE.Group();
   g.name = 'cosmic-asteroid-belt';
   const r = rand(99);
   const mat = new THREE.MeshStandardMaterial({ color: 0x6e6258, roughness: 0.92, metalness: 0.05 });
-  const geos = [1, 2, 3, 4].map(asteroidGeometry);
+  const geos = [1, 2, 3].map(asteroidGeometry);
   const per = Math.ceil(count / geos.length);
   geos.forEach((geo) => {
     const inst = new THREE.InstancedMesh(geo, mat, per);
@@ -281,7 +277,8 @@ function buildAsteroidBelt(cx, cz, count = 90) {
       );
       inst.setMatrixAt(i, m);
     }
-    inst.castShadow = true;
+    inst.castShadow = false;
+    inst.frustumCulled = true;
     g.add(inst);
   });
   return g;
@@ -291,14 +288,14 @@ function buildAsteroidBelt(cx, cz, count = 90) {
 function buildNeonLoop(radius = 26) {
   const g = new THREE.Group();
   g.name = 'cosmic-neon-loop';
-  const ribbon = new THREE.Mesh(new THREE.TorusGeometry(radius, 1.6, 8, 96), metal(0x262a34));
+  const ribbon = new THREE.Mesh(new THREE.TorusGeometry(radius, 1.6, 6, 48), metal(0x262a34));
   ribbon.scale.z = 3.2;
   g.add(ribbon);
   [-1, 1].forEach((side) => {
-    const edge = new THREE.Mesh(new THREE.TorusGeometry(radius + 0.1, 0.22, 6, 96), neon(side < 0 ? 0x33e6ff : 0xff9a2e));
+    const edge = new THREE.Mesh(new THREE.TorusGeometry(radius + 0.1, 0.22, 6, 48), neon(side < 0 ? 0x33e6ff : 0xff9a2e));
     edge.position.z = side * 5;
     g.add(edge);
-    const inner = new THREE.Mesh(new THREE.TorusGeometry(radius - 1.7, 0.14, 6, 96), neon(0x33e6ff));
+    const inner = new THREE.Mesh(new THREE.TorusGeometry(radius - 1.7, 0.14, 6, 48), neon(0x33e6ff));
     inner.position.z = side * 4.2;
     g.add(inner);
   });
@@ -310,11 +307,11 @@ function buildDistantHighway(points) {
   const curve = new THREE.CatmullRomCurve3(points.map((p) => new THREE.Vector3(...p)));
   const g = new THREE.Group();
   g.name = 'cosmic-distant-highway';
-  const deck = new THREE.Mesh(new THREE.TubeGeometry(curve, 120, 3, 4, false), metal(0x22262f));
+  const deck = new THREE.Mesh(new THREE.TubeGeometry(curve, 48, 3, 4, false), metal(0x22262f));
   deck.scale.y = 0.35;
   g.add(deck);
   [-1, 1].forEach((side) => {
-    const pts = curve.getSpacedPoints(120).map((p, i, arr) => {
+    const pts = curve.getSpacedPoints(48).map((p, i, arr) => {
       const next = arr[Math.min(i + 1, arr.length - 1)];
       const prev = arr[Math.max(i - 1, 0)];
       const tan = next.clone().sub(prev).normalize();
@@ -322,7 +319,7 @@ function buildDistantHighway(points) {
       return p.clone().addScaledVector(n, side * 3).add(new THREE.Vector3(0, 0.9, 0));
     });
     const strip = new THREE.Mesh(
-      new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 120, 0.28, 5, false),
+      new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 48, 0.28, 4, false),
       neon(side < 0 ? 0x33e6ff : 0xff9a2e),
     );
     g.add(strip);
@@ -332,7 +329,7 @@ function buildDistantHighway(points) {
 
 function buildNebulaDome(cx, cz) {
   const dome = new THREE.Mesh(
-    new THREE.SphereGeometry(820, 48, 24),
+    new THREE.SphereGeometry(820, 32, 16),
     new THREE.MeshBasicMaterial({ map: nebulaSkyTexture(), side: THREE.BackSide, fog: false, depthWrite: false, toneMapped: false }),
   );
   dome.name = 'cosmic-nebula-dome';
@@ -381,18 +378,22 @@ export function installCosmicSkyway(world, bounds) {
   g.add(buildDistantHighway([
     [cx - 160, 30, cz - 120], [cx - 60, 45, cz - 160], [cx + 60, 35, cz - 190], [cx + 180, 55, cz - 170],
   ]));
-  g.add(buildDistantHighway([
-    [cx + 120, 20, cz + 150], [cx + 20, 38, cz + 180], [cx - 120, 26, cz + 160], [cx - 200, 44, cz + 80],
-  ]));
+
+  const spinners = [];
+  g.traverse((o) => {
+    if (o.userData.spin) spinners.push(o);
+  });
+  g.userData.cosmicSpinners = spinners;
 
   world.add(g);
   world.userData.cosmicSkyway = g;
 }
 
 export function animateCosmicSkyway(world, time) {
-  const g = world?.userData?.cosmicSkyway;
-  if (!g) return;
-  g.traverse((o) => {
-    if (o.userData.spin) o.rotation.z = time * o.userData.spin;
-  });
+  const spinners = world?.userData?.cosmicSkyway?.userData?.cosmicSpinners;
+  if (!spinners?.length) return;
+  for (let i = 0; i < spinners.length; i++) {
+    const o = spinners[i];
+    o.rotation.z = time * o.userData.spin;
+  }
 }

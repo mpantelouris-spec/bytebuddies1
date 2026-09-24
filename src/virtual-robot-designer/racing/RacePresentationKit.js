@@ -136,12 +136,12 @@ function asteroid(size = 1, seed = 1) {
   const rock = new THREE.Mesh(asteroidGeometry(seed), mat(0x6e6258, 0.92));
   rock.scale.setScalar(size);
   rock.rotation.set(Math.random() * 3, Math.random() * 3, Math.random() * 3);
-  rock.castShadow = true;
+  rock.castShadow = false;
   return rock;
 }
 
 /** Continuous low metal walls with glowing strips, cyan on the left and orange on the right. */
-function buildNeonWalls(curve, halfWidth, samples = 320) {
+function buildNeonWalls(curve, halfWidth, samples = 96) {
   const g = new THREE.Group();
   g.name = 'cosmic-neon-walls';
   const wallGeo = new THREE.BoxGeometry(0.45, 0.9, 1);
@@ -182,7 +182,6 @@ function buildNeonWalls(curve, halfWidth, samples = 320) {
       strips[side].setMatrixAt(i, m);
     });
   }
-  walls.castShadow = true;
   g.add(walls, strips[-1], strips[1]);
   return g;
 }
@@ -196,7 +195,7 @@ function installCosmicPresentation(scene, curve, root, origin, fwd, right, angle
 
   root.add(buildNeonWalls(curve, halfWidth));
 
-  for (let i = 0; i < 10; i += 1) {
+  for (let i = 0; i < 4; i += 1) {
     const side = i % 2 ? 1 : -1;
     const rock = asteroid(1.2 + (i % 3) * 0.9, 10 + i);
     rock.position.copy(origin)

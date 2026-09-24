@@ -10147,11 +10147,17 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
     }
     // ── Quality tier — cup races use sharper defaults on school laptops ──
     const _biomeRaceEarly = _isBiomeTrackEarly && _isRaceArena(arenaType, challenge, robotConfig?.chassisId);
-    let _qTier = _biomeRaceEarly ? detectCupTrackQualityTier() : detectQualityTier();
+    const _isCosmicSkyway = arenaType === 'star_station_01'
+      || challenge?.arenaType === 'star_station_01'
+      || challenge?.id === 'star_station_01';
+    let _qTier = _biomeRaceEarly && !_isCosmicSkyway
+      ? detectCupTrackQualityTier()
+      : detectQualityTier();
     try {
       const savedTier = localStorage.getItem('bb_quality_tier');
       if (savedTier === 'low' || savedTier === 'medium' || savedTier === 'high') _qTier = savedTier;
     } catch { /* ignore */ }
+    if (_isCosmicSkyway && _qTier === 'high') _qTier = 'medium';
     const _q     = QUALITY_PRESETS[_qTier];
     // Rainbow Road needs bloom for the MK neon glass look; other races stay direct-render for FPS.
     const _rainbowArenaIds = new Set(['rainbow_road', 'street_grand_prix', 'circuit_sprint', 'racing_circuit']);
@@ -10177,11 +10183,13 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
       || challenge?.physics === 'flight_3dof'
       || challenge?.environmentId === 'sky_aerial';
     const _isMissionVisualEarly = !!(challenge?.isChassisMode || challenge?.isRobotMission);
-    const _usePostProcessing = _isBiomeTrack
-      ? _q.postProcessing
-      : _isAerialArenaEarly
-        ? (_qTier !== 'low')
-        : (isRaceCourse || isFootballCourseEarly ? false : _q.postProcessing);
+    const _usePostProcessing = _isCosmicSkyway
+      ? false
+      : _isBiomeTrack
+        ? _q.postProcessing
+        : _isAerialArenaEarly
+          ? (_qTier !== 'low')
+          : (isRaceCourse || isFootballCourseEarly ? false : _q.postProcessing);
     const _aerialPixelRatio = Math.min(
       window.devicePixelRatio || 1,
       _qTier === 'high' ? 2.0 : (_qTier === 'medium' ? 1.5 : 1.0),
@@ -10189,9 +10197,11 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
     const _racePixelRatio = isRaceCourse
       ? Math.min(
         window.devicePixelRatio,
-        _biomeRace
-          ? (_qTier === 'high' ? 2.0 : 1.5)
-          : (_isBiomeTrack ? _q.pixelRatio : (_qTier === 'high' ? 1.5 : 1.0)),
+        _isCosmicSkyway
+          ? 1.15
+          : _biomeRace
+            ? (_qTier === 'high' ? 2.0 : 1.5)
+            : (_isBiomeTrack ? _q.pixelRatio : (_qTier === 'high' ? 1.5 : 1.0)),
       )
       : isFootballCourseEarly
         ? Math.min(window.devicePixelRatio || 1, isFifaFootballEarly ? 1.0 : (_qTier === 'high' ? 1.25 : _qTier === 'low' ? 1.0 : 1.1))
@@ -10217,7 +10227,7 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
       })
       : createSimWebGLRenderer({
       antialias: isRaceCourse || isFootballCourseEarly || _isAerialArenaEarly || (!_isBiomeTrack && _q.shadowEnabled),
-      lowPower: _qTier === 'low' && !isFootballCourseEarly,
+      lowPower: (_qTier === 'low' && !isFootballCourseEarly) || _isCosmicSkyway,
       canvas: (() => {
         const c = document.createElement('canvas');
         c.className = 'll-sim-canvas';

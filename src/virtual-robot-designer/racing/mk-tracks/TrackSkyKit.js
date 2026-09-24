@@ -87,9 +87,7 @@ export function installTrackSky(scene, bounds, arenaType) {
   scene.userData.trackSkyDome = dome;
   scene.userData.customSky = true;
 
-  if (arenaType === 'star_station_01') {
-    addStarfield(scene, bounds, r * 0.85);
-  }
+  // Cosmic Skyway kit provides its own nebula dome + stars — skip extra point cloud.
   if (arenaType === 'frost_peak_01') addAurora(scene, bounds);
   if (arenaType === 'thunder_ridge_01') addStormClouds(scene, bounds);
   if (arenaType === 'sunset_cove_01') addVolumetricClouds(scene, bounds);
