@@ -10615,7 +10615,7 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
         const underground = scene.userData.biomeAAASpec?.underground
           || arenaType === 'neon_metro_01'
           || arenaType === 'lava_foundry_01';
-        renderer.toneMappingExposure = arenaType === 'star_station_01' ? 1.42
+        renderer.toneMappingExposure = arenaType === 'star_station_01' ? 1.2
           : (underground ? 1.1 : 1.08);
       } else {
         const expCap = nightMkArenas.has(mkArena) ? 1.32 : (scene.userData.mkThemedTrack ? 1.48 : 1.25);
@@ -12053,7 +12053,7 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
         const underground = arenaType === 'crystal_palace_01'
           || arenaType === 'cyber_boulevard_01'
           || scene.userData.biomeAAASpec?.underground;
-        renderer.toneMappingExposure = arenaType === 'star_station_01' ? 1.42
+        renderer.toneMappingExposure = arenaType === 'star_station_01' ? 1.2
           : (underground ? 1.1 : 1.08);
       }
       } catch(err){ console.warn('[SimCanvas tick]',err); }

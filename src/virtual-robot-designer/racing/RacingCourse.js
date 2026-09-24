@@ -425,6 +425,7 @@ export function buildRacingCourse(scene, zoneConfig) {
   });
   installRacePresentation(scene, curve, {
     halfWidth,
+    theme: mkTrack?.arenaType || worldId,
     spawn: gridSpawn,
     startT: gridSpawn.trackT ?? racing.spawnT ?? racing.finishT ?? 0,
   });

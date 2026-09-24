@@ -66,7 +66,7 @@ export function installTrackEnvironment(scene, arenaType, renderer) {
 
   if (spec.isCosmicBiome || arenaType === 'star_station_01') {
     if (!scene.getObjectByName('cosmic-skyway-fill')) {
-      const fill = new THREE.AmbientLight(0x8a6acc, 0.72);
+      const fill = new THREE.AmbientLight(0x8a8acc, 0.55);
       fill.name = 'cosmic-skyway-fill';
       scene.add(fill);
       const wormholeGlow = new THREE.PointLight(0xaa66ff, 2.8, 220, 1.2);

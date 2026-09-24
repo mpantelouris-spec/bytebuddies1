@@ -12,7 +12,7 @@ const SKY_PRESETS = {
   jungle_ruins_01: { top: '#5dade2', mid: '#8fbc8f', horizon: '#c8e8a0', fog: 0xa8d090 },
   frost_peak_01: { top: '#e8f4ff', mid: '#b8ddf0', horizon: '#d0e8f8', fog: 0xd8eef8 },
   lava_foundry_01: { top: '#4a1808', mid: '#882200', horizon: '#ff6a20', fog: 0x662200 },
-  star_station_01: { top: '#1a0a48', mid: '#5a28a8', horizon: '#ff9a4a', fog: 0x4a2878 },
+  star_station_01: { top: '#03020a', mid: '#140c34', horizon: '#2e1a5e', fog: 0x120a2c },
   fairy_glen_01: { top: '#7ec8ff', mid: '#fff4b0', horizon: '#c8f080', fog: 0xd0ecc0 },
   thunder_ridge_01: { top: '#6a90c8', mid: '#9ab4d0', horizon: '#d0dce8', fog: 0xb0c4d8 },
 };

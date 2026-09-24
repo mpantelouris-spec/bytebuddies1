@@ -529,16 +529,16 @@ function addCosmicSkywayVista(world, bounds) {
   wormhole.add(core);
   const frame = new THREE.Mesh(new THREE.TorusGeometry(18.5, 1.6, 10, 48), pbrMat(0x2a2f3a, { emi: 0.05, roughness: 0.4, metalness: 0.9 }));
   wormhole.add(frame);
-  wormhole.position.set(cx - 8, 28, cz - 58);
+  wormhole.position.set(cx + 30, 30, cz - 95);
   wormhole.lookAt(cx, 12, cz);
   g.add(wormhole);
 
   const planet = new THREE.Mesh(
     new THREE.SphereGeometry(70, 48, 32),
-    new THREE.MeshStandardMaterial({ color: 0x2a6fd6, emissive: 0x0b2a66, emissiveIntensity: 0.6, roughness: 0.8 }),
+    new THREE.MeshStandardMaterial({ color: 0x3a86ff, emissive: 0x1a4aa0, emissiveIntensity: 0.9, roughness: 0.7, fog: false }),
   );
   planet.name = 'cosmic-planet';
-  planet.position.set(cx + 70, -95, cz + 60);
+  planet.position.set(cx + 130, -60, cz - 70);
   g.add(planet);
   const atmo = new THREE.Mesh(new THREE.SphereGeometry(74, 48, 32), glowMat(0x66ccff, 0.18));
   atmo.position.copy(planet.position);
@@ -555,7 +555,7 @@ function addCosmicSkywayVista(world, bounds) {
     ray.rotation.z = (i / 12) * Math.PI;
     burst.add(ray);
   }
-  burst.position.set(cx + 35, 38, cz - 72);
+  burst.position.set(cx + 95, 48, cz - 130);
   burst.lookAt(cx, 12, cz);
   g.add(burst);
 

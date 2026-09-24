@@ -112,10 +112,82 @@ function centerDashes(curve, samples = 160) {
   return group;
 }
 
+function neonGate(halfWidth = 4) {
+  const g = new THREE.Group();
+  g.name = 'cosmic-neon-gate';
+  const span = Math.max(halfWidth * 2.2, 9);
+  const hull = mat(0x2a2e38, 0.35, { metalness: 0.85 });
+  const cyan = new THREE.MeshBasicMaterial({ color: 0x33e6ff });
+  const orange = new THREE.MeshBasicMaterial({ color: 0xff9a2e });
+  const arch = new THREE.Mesh(new THREE.TorusGeometry(span / 2, 0.55, 10, 40, Math.PI), hull);
+  arch.position.y = 0.6;
+  g.add(arch);
+  const inner = new THREE.Mesh(new THREE.TorusGeometry(span / 2 - 0.6, 0.12, 8, 40, Math.PI), cyan);
+  inner.position.set(0, 0.6, 0.35);
+  g.add(inner);
+  const outer = new THREE.Mesh(new THREE.TorusGeometry(span / 2 + 0.6, 0.1, 8, 40, Math.PI), orange);
+  outer.position.set(0, 0.6, 0.35);
+  g.add(outer);
+  return g;
+}
+
+function asteroid(size = 1) {
+  const rock = new THREE.Mesh(
+    new THREE.DodecahedronGeometry(size, 1),
+    mat(0x6b6259, 0.95, { flatShading: true }),
+  );
+  rock.rotation.set(Math.random() * 3, Math.random() * 3, Math.random() * 3);
+  rock.castShadow = true;
+  return rock;
+}
+
+function lightPylon(color) {
+  const g = new THREE.Group();
+  const post = new THREE.Mesh(new THREE.BoxGeometry(0.35, 1.1, 0.35), mat(0x23262e, 0.4, { metalness: 0.8 }));
+  post.position.y = 0.55;
+  g.add(post);
+  const lamp = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.18, 0.5), new THREE.MeshBasicMaterial({ color }));
+  lamp.position.y = 1.15;
+  g.add(lamp);
+  return g;
+}
+
+function installCosmicPresentation(scene, curve, root, origin, fwd, right, angle, halfWidth) {
+  const gate = neonGate(halfWidth);
+  gate.scale.setScalar(1.4);
+  gate.position.copy(origin).addScaledVector(fwd, 18);
+  gate.rotation.y = angle;
+  root.add(gate);
+
+  for (let i = 2; i < 200; i += 3) {
+    const t = i / 200;
+    const p = curve.getPointAt(t);
+    const tan = curve.getTangentAt(t).normalize();
+    const n = new THREE.Vector3(-tan.z, 0, tan.x).normalize();
+    [-1, 1].forEach((side) => {
+      const pylon = lightPylon(side < 0 ? 0x33e6ff : 0xff9a2e);
+      pylon.position.copy(p).addScaledVector(n, side * (halfWidth + 0.5));
+      pylon.rotation.y = Math.atan2(tan.x, tan.z);
+      root.add(pylon);
+    });
+  }
+
+  for (let i = 0; i < 10; i += 1) {
+    const side = i % 2 ? 1 : -1;
+    const rock = asteroid(1.2 + (i % 3) * 0.9);
+    rock.position.copy(origin)
+      .addScaledVector(fwd, 10 + i * 6)
+      .addScaledVector(right, side * (halfWidth + 7 + (i % 3) * 4));
+    rock.position.y = origin.y + 3 + (i % 4) * 2.2;
+    root.add(rock);
+  }
+}
+
 export function installRacePresentation(scene, curve, {
   halfWidth = 4,
   spawn = null,
   startT = 0,
+  theme = null,
 } = {}) {
   if (scene.userData.racePresentationRoot) {
     scene.remove(scene.userData.racePresentationRoot);
@@ -136,6 +208,14 @@ export function installRacePresentation(scene, curve, {
     : new THREE.Vector3(p0.x, p0.y, p0.z);
   const fwd = new THREE.Vector3(Math.sin(angle), 0, Math.cos(angle));
   const right = new THREE.Vector3(fwd.z, 0, -fwd.x);
+
+  if (theme === 'star_station_01') {
+    installCosmicPresentation(scene, curve, root, origin, fwd, right, angle, halfWidth);
+    scene.add(root);
+    scene.userData.racePresentationRoot = root;
+    scene.userData.racePresentation = 'cosmic-skyway';
+    return;
+  }
 
   const finish = balloonArch(halfWidth);
   finish.scale.setScalar(1.55);
