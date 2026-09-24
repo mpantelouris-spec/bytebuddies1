@@ -141,15 +141,72 @@ function asteroid(size = 1) {
   return rock;
 }
 
-function lightPylon(color) {
+/** Continuous low metal walls with glowing strips, cyan on the left and orange on the right. */
+function buildNeonWalls(curve, halfWidth, samples = 320) {
   const g = new THREE.Group();
-  const post = new THREE.Mesh(new THREE.BoxGeometry(0.35, 1.1, 0.35), mat(0x23262e, 0.4, { metalness: 0.8 }));
-  post.position.y = 0.55;
-  g.add(post);
-  const lamp = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.18, 0.5), new THREE.MeshBasicMaterial({ color }));
-  lamp.position.y = 1.15;
-  g.add(lamp);
+  g.name = 'cosmic-neon-walls';
+  const wallGeo = new THREE.BoxGeometry(0.45, 0.9, 1);
+  const stripGeo = new THREE.BoxGeometry(0.12, 0.14, 1);
+  const wallMat = mat(0x2b2f3a, 0.35, { metalness: 0.85 });
+  const walls = new THREE.InstancedMesh(wallGeo, wallMat, samples * 2);
+  const strips = {
+    [-1]: new THREE.InstancedMesh(stripGeo, new THREE.MeshBasicMaterial({ color: 0x33e6ff }), samples),
+    [1]: new THREE.InstancedMesh(stripGeo, new THREE.MeshBasicMaterial({ color: 0xff9a2e }), samples),
+  };
+  const m = new THREE.Matrix4();
+  const q = new THREE.Quaternion();
+  const s = new THREE.Vector3();
+  const pos = new THREE.Vector3();
+  const up = new THREE.Vector3(0, 1, 0);
+  let w = 0;
+  for (let i = 0; i < samples; i += 1) {
+    const t0 = i / samples;
+    const t1 = (i + 1) / samples;
+    const a = curve.getPointAt(t0);
+    const b = curve.getPointAt(t1 % 1);
+    const seg = b.clone().sub(a);
+    const len = seg.length();
+    const dir = seg.normalize();
+    const n = new THREE.Vector3().crossVectors(up, dir).normalize();
+    const basis = new THREE.Matrix4().makeBasis(n, new THREE.Vector3().crossVectors(dir, n), dir);
+    q.setFromRotationMatrix(basis);
+    const mid = a.clone().add(b).multiplyScalar(0.5);
+    [-1, 1].forEach((side) => {
+      pos.copy(mid).addScaledVector(n, -side * (halfWidth + 0.35));
+      pos.y += 0.45;
+      s.set(1, 1, len * 1.04);
+      m.compose(pos, q, s);
+      walls.setMatrixAt(w, m);
+      w += 1;
+      pos.y += 0.42;
+      m.compose(pos, q, s);
+      strips[side].setMatrixAt(i, m);
+    });
+  }
+  walls.castShadow = true;
+  g.add(walls, strips[-1], strips[1]);
   return g;
+}
+
+/** The reference artwork on a curved far screen framing the view from the start line. */
+function buildArtBackdrop(origin, fwd, angle) {
+  const radius = 260;
+  const arc = Math.PI * 0.62;
+  const height = radius * arc * (459 / 819);
+  const geo = new THREE.CylinderGeometry(radius, radius, height, 48, 1, true, -arc / 2, arc);
+  geo.scale(-1, 1, 1);
+  const tex = new THREE.TextureLoader().load(`${import.meta.env.BASE_URL}assets/tracks/star_station_01/cosmic_skyway_backdrop.png`);
+  if (THREE.SRGBColorSpace) tex.colorSpace = THREE.SRGBColorSpace;
+  const screen = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
+    map: tex, side: THREE.DoubleSide, fog: false, depthWrite: false, toneMapped: false,
+  }));
+  screen.name = 'cosmic-art-backdrop';
+  screen.renderOrder = -20;
+  screen.frustumCulled = false;
+  screen.position.copy(origin).addScaledVector(fwd, 20);
+  screen.position.y = origin.y + height * 0.22;
+  screen.rotation.y = angle;
+  return screen;
 }
 
 function installCosmicPresentation(scene, curve, root, origin, fwd, right, angle, halfWidth) {
@@ -159,18 +216,8 @@ function installCosmicPresentation(scene, curve, root, origin, fwd, right, angle
   gate.rotation.y = angle;
   root.add(gate);
 
-  for (let i = 2; i < 200; i += 3) {
-    const t = i / 200;
-    const p = curve.getPointAt(t);
-    const tan = curve.getTangentAt(t).normalize();
-    const n = new THREE.Vector3(-tan.z, 0, tan.x).normalize();
-    [-1, 1].forEach((side) => {
-      const pylon = lightPylon(side < 0 ? 0x33e6ff : 0xff9a2e);
-      pylon.position.copy(p).addScaledVector(n, side * (halfWidth + 0.5));
-      pylon.rotation.y = Math.atan2(tan.x, tan.z);
-      root.add(pylon);
-    });
-  }
+  root.add(buildNeonWalls(curve, halfWidth));
+  root.add(buildArtBackdrop(origin, fwd, angle));
 
   for (let i = 0; i < 10; i += 1) {
     const side = i % 2 ? 1 : -1;
