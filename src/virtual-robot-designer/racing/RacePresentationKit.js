@@ -188,27 +188,6 @@ function buildNeonWalls(curve, halfWidth, samples = 320) {
   return g;
 }
 
-/** The reference artwork on a curved far screen framing the view from the start line. */
-function buildArtBackdrop(origin, fwd, angle) {
-  const radius = 260;
-  const arc = Math.PI * 0.62;
-  const height = radius * arc * (459 / 819);
-  const geo = new THREE.CylinderGeometry(radius, radius, height, 48, 1, true, -arc / 2, arc);
-  geo.scale(-1, 1, 1);
-  const tex = new THREE.TextureLoader().load(`${import.meta.env.BASE_URL}assets/tracks/star_station_01/cosmic_skyway_backdrop.png`);
-  if (THREE.SRGBColorSpace) tex.colorSpace = THREE.SRGBColorSpace;
-  const screen = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
-    map: tex, side: THREE.DoubleSide, fog: false, depthWrite: false, toneMapped: false,
-  }));
-  screen.name = 'cosmic-art-backdrop';
-  screen.renderOrder = -20;
-  screen.frustumCulled = false;
-  screen.position.copy(origin).addScaledVector(fwd, 20);
-  screen.position.y = origin.y + height * 0.22;
-  screen.rotation.y = angle;
-  return screen;
-}
-
 function installCosmicPresentation(scene, curve, root, origin, fwd, right, angle, halfWidth) {
   const gate = neonGate(halfWidth);
   gate.scale.setScalar(1.4);
@@ -217,7 +196,6 @@ function installCosmicPresentation(scene, curve, root, origin, fwd, right, angle
   root.add(gate);
 
   root.add(buildNeonWalls(curve, halfWidth));
-  root.add(buildArtBackdrop(origin, fwd, angle));
 
   for (let i = 0; i < 10; i += 1) {
     const side = i % 2 ? 1 : -1;
