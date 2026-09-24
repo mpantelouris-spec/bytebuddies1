@@ -3,6 +3,7 @@
  * Simulates 4K detail via 1024px tiling + anisotropy (WebGL-safe).
  */
 import * as THREE from 'three';
+import { getActiveCosmicTheme, cosmicHex } from './CosmicSkywayRegistry.js';
 
 let _pbrTexSize = 1024;
 
@@ -328,7 +329,8 @@ const ROAD_ALBEDO_BUILDERS = {
   },
   cosmic_metal(ctx) {
     const S = canvasSz(ctx);
-    baseAsphalt(ctx, 30, 32, 42, 0.1);
+    const theme = getActiveCosmicTheme();
+    baseAsphalt(ctx, ...theme.road, 0.1);
     ctx.strokeStyle = 'rgba(20,22,30,0.9)';
     ctx.lineWidth = 2;
     for (let y = 0; y < S; y += S / 8) {
@@ -337,9 +339,9 @@ const ROAD_ALBEDO_BUILDERS = {
     for (let x = S / 4; x < S; x += S / 4) {
       ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, S); ctx.stroke();
     }
-    ctx.fillStyle = '#33e6ff';
+    ctx.fillStyle = cosmicHex(theme.left);
     ctx.fillRect(S * 0.04, 0, S * 0.025, S);
-    ctx.fillStyle = '#ff9a2e';
+    ctx.fillStyle = cosmicHex(theme.right);
     ctx.fillRect(S * 0.935, 0, S * 0.025, S);
   },
   meadow_gravel(ctx) {

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { asteroidGeometry } from './mk-tracks/CosmicSkywayKit.js';
-import { isCosmicSkywayArena } from './mk-tracks/CosmicSkywayRegistry.js';
+import { isCosmicSkywayArena, getCosmicTheme } from './mk-tracks/CosmicSkywayRegistry.js';
 
 function mat(color, roughness = 0.72, extras = {}) {
   return new THREE.MeshStandardMaterial({
@@ -114,13 +114,13 @@ function centerDashes(curve, samples = 160) {
   return group;
 }
 
-function neonGate(halfWidth = 4) {
+function neonGate(halfWidth = 4, theme = getCosmicTheme('star_station_01')) {
   const g = new THREE.Group();
   g.name = 'cosmic-neon-gate';
   const span = Math.max(halfWidth * 2.2, 9);
-  const hull = mat(0x2a2e38, 0.35, { metalness: 0.85 });
-  const cyan = new THREE.MeshBasicMaterial({ color: 0x33e6ff });
-  const orange = new THREE.MeshBasicMaterial({ color: 0xff9a2e });
+  const hull = mat(theme.frame, 0.35, { metalness: 0.85 });
+  const cyan = new THREE.MeshBasicMaterial({ color: theme.left });
+  const orange = new THREE.MeshBasicMaterial({ color: theme.right });
   const arch = new THREE.Mesh(new THREE.TorusGeometry(span / 2, 0.55, 10, 40, Math.PI), hull);
   arch.position.y = 0.6;
   g.add(arch);
@@ -133,8 +133,8 @@ function neonGate(halfWidth = 4) {
   return g;
 }
 
-function asteroid(size = 1, seed = 1) {
-  const rock = new THREE.Mesh(asteroidGeometry(seed), mat(0x6e6258, 0.92));
+function asteroid(size = 1, seed = 1, color = 0x6e6258) {
+  const rock = new THREE.Mesh(asteroidGeometry(seed), mat(color, 0.92));
   rock.scale.setScalar(size);
   rock.rotation.set(Math.random() * 3, Math.random() * 3, Math.random() * 3);
   rock.castShadow = false;
@@ -142,16 +142,16 @@ function asteroid(size = 1, seed = 1) {
 }
 
 /** Continuous low metal walls with glowing strips, cyan on the left and orange on the right. */
-function buildNeonWalls(curve, halfWidth, samples = 96) {
+function buildNeonWalls(curve, halfWidth, theme, samples = 96) {
   const g = new THREE.Group();
   g.name = 'cosmic-neon-walls';
   const wallGeo = new THREE.BoxGeometry(0.45, 0.9, 1);
   const stripGeo = new THREE.BoxGeometry(0.12, 0.14, 1);
-  const wallMat = mat(0x2b2f3a, 0.35, { metalness: 0.85 });
+  const wallMat = mat(theme.frame, 0.35, { metalness: 0.85 });
   const walls = new THREE.InstancedMesh(wallGeo, wallMat, samples * 2);
   const strips = {
-    [-1]: new THREE.InstancedMesh(stripGeo, new THREE.MeshBasicMaterial({ color: 0x33e6ff }), samples),
-    [1]: new THREE.InstancedMesh(stripGeo, new THREE.MeshBasicMaterial({ color: 0xff9a2e }), samples),
+    [-1]: new THREE.InstancedMesh(stripGeo, new THREE.MeshBasicMaterial({ color: theme.left }), samples),
+    [1]: new THREE.InstancedMesh(stripGeo, new THREE.MeshBasicMaterial({ color: theme.right }), samples),
   };
   const m = new THREE.Matrix4();
   const q = new THREE.Quaternion();
@@ -187,18 +187,116 @@ function buildNeonWalls(curve, halfWidth, samples = 96) {
   return g;
 }
 
-function installCosmicPresentation(scene, curve, root, origin, fwd, right, angle, halfWidth) {
-  const gate = neonGate(halfWidth);
+function trackFrame(curve, t) {
+  const tt = ((t % 1) + 1) % 1;
+  const p = curve.getPointAt(tt);
+  const tan = curve.getTangentAt(tt).normalize();
+  const n = new THREE.Vector3(-tan.z, 0, tan.x).normalize();
+  return { p, tan, n, rot: Math.atan2(tan.x, tan.z) };
+}
+
+/** Full neon hoops the road passes through, alternating the theme's two colors. */
+function buildRingGates(curve, halfWidth, theme, count, startT) {
+  const g = new THREE.Group();
+  g.name = 'cosmic-ring-gates';
+  const radius = halfWidth * 1.9;
+  const hull = mat(theme.frame, 0.35, { metalness: 0.85 });
+  const hoopGeo = new THREE.TorusGeometry(radius, 0.45, 8, 40);
+  const glowGeo = new THREE.TorusGeometry(radius - 0.55, 0.14, 6, 40);
+  const glowMats = [theme.left, theme.right].map((c) => new THREE.MeshBasicMaterial({ color: c }));
+  for (let i = 0; i < count; i += 1) {
+    const f = trackFrame(curve, startT + 0.12 + (i / count) * 0.84);
+    const ring = new THREE.Group();
+    ring.add(new THREE.Mesh(hoopGeo, hull));
+    const glowRing = new THREE.Mesh(glowGeo, glowMats[i % 2]);
+    glowRing.position.z = 0.3;
+    ring.add(glowRing);
+    ring.position.set(f.p.x, f.p.y + radius * 0.42, f.p.z);
+    ring.rotation.y = f.rot;
+    g.add(ring);
+  }
+  return g;
+}
+
+/** Tall neon beacon pylons on both shoulders. */
+function buildBeacons(curve, halfWidth, theme, count, startT) {
+  const g = new THREE.Group();
+  g.name = 'cosmic-beacons';
+  const postGeo = new THREE.CylinderGeometry(0.18, 0.28, 7, 8);
+  const capGeo = new THREE.OctahedronGeometry(0.7);
+  const barGeo = new THREE.BoxGeometry(0.12, 5.2, 0.12);
+  const post = mat(theme.frame, 0.35, { metalness: 0.85 });
+  const glows = [theme.left, theme.right].map((c) => new THREE.MeshBasicMaterial({ color: c }));
+  for (let i = 0; i < count; i += 1) {
+    const f = trackFrame(curve, startT + 0.06 + (i / count) * 0.92);
+    [-1, 1].forEach((side) => {
+      const b = new THREE.Group();
+      const mesh = new THREE.Mesh(postGeo, post);
+      mesh.position.y = 3.5;
+      b.add(mesh);
+      const bar = new THREE.Mesh(barGeo, glows[side < 0 ? 0 : 1]);
+      bar.position.set(0, 3.8, 0.22);
+      b.add(bar);
+      const cap = new THREE.Mesh(capGeo, glows[(i + (side < 0 ? 0 : 1)) % 2]);
+      cap.position.y = 7.6;
+      b.add(cap);
+      b.position.copy(f.p).addScaledVector(f.n, -side * (halfWidth + 1.6));
+      b.rotation.y = f.rot;
+      g.add(b);
+    });
+  }
+  return g;
+}
+
+/** Floating rocks just off both shoulders, all the way round the lap. */
+function buildTrackRocks(curve, halfWidth, count, color, startT) {
+  const g = new THREE.Group();
+  g.name = 'cosmic-track-rocks';
+  const geos = [21, 22, 23].map(asteroidGeometry);
+  const material = mat(color, 0.92);
+  const per = Math.ceil(count / geos.length);
+  const m = new THREE.Matrix4();
+  const q = new THREE.Quaternion();
+  const e = new THREE.Euler();
+  let k = 0;
+  geos.forEach((geo, gi) => {
+    const inst = new THREE.InstancedMesh(geo, material, per);
+    for (let i = 0; i < per; i += 1, k += 1) {
+      const f = trackFrame(curve, startT + 0.08 + (k / count) * 0.9);
+      const side = k % 2 ? 1 : -1;
+      const s = 0.9 + ((k * 7) % 5) * 0.55;
+      const pos = f.p.clone().addScaledVector(f.n, side * (halfWidth + 5 + ((k * 3) % 4) * 3));
+      pos.y += 1.5 + ((k * 5) % 6) * 1.4 - (gi === 2 ? 3 : 0);
+      e.set(k * 0.7, k * 1.3, k * 0.4);
+      q.setFromEuler(e);
+      m.compose(pos, q, new THREE.Vector3(s, s * 0.85, s));
+      inst.setMatrixAt(i, m);
+    }
+    g.add(inst);
+  });
+  return g;
+}
+
+function installCosmicPresentation(scene, curve, root, origin, fwd, right, angle, halfWidth, arenaType, startT) {
+  const theme = getCosmicTheme(arenaType);
+  const gate = neonGate(halfWidth, theme);
   gate.scale.setScalar(1.4);
   gate.position.copy(origin).addScaledVector(fwd, 18);
   gate.rotation.y = angle;
   root.add(gate);
 
-  root.add(buildNeonWalls(curve, halfWidth));
+  root.add(buildNeonWalls(curve, halfWidth, theme));
+
+  const feature = theme.feature;
+  if (feature?.type === 'ringGates') root.add(buildRingGates(curve, halfWidth, theme, feature.count, startT));
+  if (feature?.type === 'beacons') root.add(buildBeacons(curve, halfWidth, theme, feature.count, startT));
+  if (feature?.type === 'trackRocks') {
+    root.add(buildTrackRocks(curve, halfWidth, feature.count, feature.color ?? theme.asteroid, startT));
+  }
 
   for (let i = 0; i < 4; i += 1) {
     const side = i % 2 ? 1 : -1;
-    const rock = asteroid(1.2 + (i % 3) * 0.9, 10 + i);
+    const rock = asteroid(1.2 + (i % 3) * 0.9, 10 + i, theme.asteroid);
     rock.position.copy(origin)
       .addScaledVector(fwd, 10 + i * 6)
       .addScaledVector(right, side * (halfWidth + 7 + (i % 3) * 4));
@@ -234,7 +332,7 @@ export function installRacePresentation(scene, curve, {
   const right = new THREE.Vector3(fwd.z, 0, -fwd.x);
 
   if (isCosmicSkywayArena(theme)) {
-    installCosmicPresentation(scene, curve, root, origin, fwd, right, angle, halfWidth);
+    installCosmicPresentation(scene, curve, root, origin, fwd, right, angle, halfWidth, theme, t0);
     scene.add(root);
     scene.userData.racePresentationRoot = root;
     scene.userData.racePresentation = 'cosmic-skyway';

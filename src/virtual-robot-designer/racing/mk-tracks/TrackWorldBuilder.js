@@ -528,7 +528,7 @@ function addThemedAtmosphere(world, arenaType, bounds) {
   }
 
   if (isCosmicSkywayArena(arenaType)) {
-    installCosmicSkyway(world, bounds, getCosmicSkywayVariant(arenaType));
+    installCosmicSkyway(world, bounds, getCosmicSkywayVariant(arenaType), arenaType);
   }
 
   if (arenaType === 'thunder_ridge_01') {

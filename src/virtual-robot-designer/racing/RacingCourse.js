@@ -27,6 +27,7 @@ import { buildRoverModeProps } from './RoverModeProps.js';
 import { getMKTrack, buildMKZoneConfig, MK_ARENA_TYPES } from './mk-tracks/MKTrackRegistry.js';
 import { initScenePerfBudget } from './mk-tracks/TrackPerformanceKit.js';
 import { BIOME_ARENA_TYPES } from './mk-tracks/BiomeTrackRegistry.js';
+import { setActiveCosmicArena } from './mk-tracks/CosmicSkywayRegistry.js';
 import { resnapMarkedProps } from './mk-tracks/TrackGroundSnap.js';
 import { populateTrackScenery } from './mk-tracks/TrackWorldBuilder.js';
 import { enrichTrackWorldGltf } from './mk-tracks/TrackGltfScatter.js';
@@ -203,6 +204,7 @@ export function buildRacingCourse(scene, zoneConfig) {
   const racing = zoneConfig.racing;
   const worldId = zoneConfig.arenaType || zoneConfig.id;
   const mkTrack = zoneConfig.mkTrack || getMKTrack(worldId);
+  setActiveCosmicArena(mkTrack?.arenaType || worldId);
   const isRainbow = RAINBOW_CIRCUIT_IDS.has(worldId) || mkTrack?.isRainbow;
   const isProCircuit = PRO_CIRCUIT_IDS.has(worldId);
   const qp = scene.userData?.qualityPreset || {};

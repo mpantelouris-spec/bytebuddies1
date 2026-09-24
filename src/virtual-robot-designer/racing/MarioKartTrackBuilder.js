@@ -8,6 +8,7 @@ import { buildProfessionalCircuitWaypoints } from './ProfessionalRainbowTrack.js
 import { FLAT_ROAD_BASE_Y } from './RacingRaceLogic.js';
 import { makeBiomeRoadTexture } from './mk-tracks/BiomeAAARoadTextures.js';
 import { makeRoadPBRMaterial, TRACK_GEOMETRY_SPEC } from './mk-tracks/PBRMaterialKit.js';
+import { getActiveCosmicTheme, cosmicHex } from './mk-tracks/CosmicSkywayRegistry.js';
 
 export { TRACK_GEOMETRY_SPEC };
 
@@ -278,8 +279,9 @@ function makeRoadTexture(style = 'asphalt') {
     ctx.strokeStyle = 'rgba(8,9,14,0.9)'; ctx.lineWidth = 2;
     for (let y = 0; y < 512; y += 64) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(512, y); ctx.stroke(); }
     for (let x = 128; x < 512; x += 128) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, 512); ctx.stroke(); }
-    ctx.fillStyle = '#33e6ff'; ctx.fillRect(20, 0, 10, 512);
-    ctx.fillStyle = '#ff9a2e'; ctx.fillRect(482, 0, 10, 512);
+    const cosmic = getActiveCosmicTheme();
+    ctx.fillStyle = cosmicHex(cosmic.left); ctx.fillRect(20, 0, 10, 512);
+    ctx.fillStyle = cosmicHex(cosmic.right); ctx.fillRect(482, 0, 10, 512);
     paintCenterStripe(ctx, '#ffd9a0', 4, [26, 22]);
   } else if (style === 'meadow_gravel') {
     ctx.fillStyle = '#c4956a'; ctx.fillRect(0, 0, 512, 512);

@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { placeAtTrack } from '../GameWorldBuilder.js';
 import { pbrMat } from './BiomeAAAKit.js';
 import { getTrackStandard } from './CodeRacerTrackStandards.js';
-import { isCosmicSkywayArena } from './CosmicSkywayRegistry.js';
+import { isCosmicSkywayArena, getCosmicTheme } from './CosmicSkywayRegistry.js';
 import { buildSurfShack, buildMiningCartProp, buildTransitBreakRoom } from './TrackStoryKit.js';
 import { buildResearchHut } from './VolcanoHeroKit.js';
 import { buildHoloBillboard } from './CyberCityHeroKit.js';
@@ -491,8 +491,10 @@ const BIOME_DRESSING = {
 
 /** MK8 play-layer dressing — lane markings + edge glow; kerbs from MarioKartTrackBuilder only on cup tracks. */
 export function installMK8PlayDressing(world, curve, hw, arenaType, opts = {}) {
-  const cfg = BIOME_DRESSING[arenaType]
-    || (isCosmicSkywayArena(arenaType) ? BIOME_DRESSING.star_station_01 : null);
+  const cosmicTheme = isCosmicSkywayArena(arenaType) ? getCosmicTheme(arenaType) : null;
+  const cfg = cosmicTheme
+    ? { ...BIOME_DRESSING.star_station_01, lane: cosmicTheme.lane, lip: cosmicTheme.right, edge: cosmicTheme.left, flower: cosmicTheme.left }
+    : BIOME_DRESSING[arenaType];
   if (!cfg) return;
   const tier = opts.qualityTier || 'medium';
   const cupIds = new Set([
