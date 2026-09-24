@@ -157,54 +157,40 @@ function cosmicStadium(rx, rz, n, power, y0, yWave) {
 export const COSMIC_NEBULA_RING_SPLINE = cosmicStadium(50, 42, 36, 3.2, 11, 4);
 export const COSMIC_WORMHOLE_RUN_SPLINE = cosmicFigure8(54, 44, 30, 9, 7, 0.28);
 export const COSMIC_ASTEROID_BELT_SPLINE = loop(58, 46, 32, (t) => 10 + Math.sin(t * Math.PI * 4) * 2.5);
-export const COSMIC_TWIN_LOOP_SPLINE = cosmicFigure8(58, 44, 14, 8, 0.22);
+export const COSMIC_TWIN_LOOP_SPLINE = cosmicFigure8(58, 58, 44, 10, 7, 0.22);
 export const COSMIC_SUPERNOVA_SPLINE = buildF1Circuit(44, 62, 40, 5.2).map((p, i, arr) => ({
   ...p,
   y: 12 + Math.sin((i / arr.length) * Math.PI * 2) * 3.5,
 }));
+/** Egg-shaped loop: wide sweeping arc on one side, tighter hairpin on the other, big climb. */
 export const COSMIC_COMET_ARC_SPLINE = (() => {
   const pts = [];
-  for (let i = 0; i < 40; i++) {
-    const t = i / 39;
-    const a = -Math.PI * 0.35 + t * Math.PI * 1.35;
+  const n = 40;
+  for (let i = 0; i < n; i++) {
+    const a = Math.PI / 2 + (i / n) * Math.PI * 2;
     pts.push({
-      x: Math.cos(a) * 62,
-      y: 8 + Math.sin(t * Math.PI) * 10,
-      z: Math.sin(a) * 48 - 12,
-    });
-  }
-  for (let i = 0; i < 16; i++) {
-    const t = i / 15;
-    pts.push({
-      x: 62 - t * 124,
-      y: 18 - t * 6,
-      z: -12 + t * 24,
-    });
-  }
-  for (let i = 0; i < 14; i++) {
-    const t = i / 13;
-    pts.push({
-      x: -62 + t * 48,
-      y: 12 - t * 4,
-      z: 12 - t * 52,
+      x: 58 * Math.cos(a),
+      y: 10 + 6 * Math.sin(a),
+      z: 40 * Math.sin(a) - 10 * Math.cos(2 * a),
     });
   }
   return pts;
 })();
-export const COSMIC_ORBIT_CROSS_SPLINE = cosmicFigure8(52, 38, 16, 10, 0.18);
+export const COSMIC_ORBIT_CROSS_SPLINE = cosmicFigure8(56, 66, 30, 10, 8, 0.18);
+/** Three-lobed flower loop with a climb and dip on every lobe. */
 export const COSMIC_PULSAR_SPIRAL_SPLINE = (() => {
   const pts = [];
-  for (let i = 0; i < 48; i++) {
-    const t = i / 48;
-    const a = Math.PI / 2 + t * Math.PI * 2 * 1.35;
-    const rad = 38 + t * 18;
+  const n = 60;
+  for (let i = 0; i < n; i++) {
+    const a = Math.PI / 2 + (i / n) * Math.PI * 2;
+    const rad = 48 + 9 * Math.cos(3 * a);
     pts.push({
       x: Math.cos(a) * rad,
-      y: 6 + t * 14 + Math.sin(a * 3) * 2,
-      z: Math.sin(a) * rad * 0.85,
+      y: 10 + 5 * Math.sin(3 * a),
+      z: Math.sin(a) * rad * 0.9,
     });
   }
   return pts;
 })();
 export const COSMIC_VOID_OVAL_SPLINE = loop(50, 44, 30, (t) => 9 + Math.cos(t * Math.PI * 2) * 4);
-export const COSMIC_EVENT_HORIZON_SPLINE = cosmicFigure8(48, 34, 12, 9, 0.32);
+export const COSMIC_EVENT_HORIZON_SPLINE = cosmicFigure8(52, 44, 34, 9, 6.5, 0.32);

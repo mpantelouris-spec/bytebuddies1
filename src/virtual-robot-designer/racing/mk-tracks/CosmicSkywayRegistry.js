@@ -161,9 +161,9 @@ export function getCosmicSkywayVariant(arenaType) {
   const a = (idx / all.length) * Math.PI * 2;
   const b = idx * 0.61;
   return {
-    wormhole: { x: 10 + Math.cos(a) * 35, y: 40 + (idx % 4) * 3, z: -150 + Math.sin(a) * 25 },
-    burst: { x: 115 + Math.cos(b) * 40, y: 58 + (idx % 3) * 5, z: -250 + Math.sin(b) * 30 },
-    planet: { x: 150 + Math.sin(a) * 35, y: -95 + (idx % 2) * 12, z: -170 + Math.cos(a) * 28 },
+    wormhole: { x: 10 + Math.sin(a) * 30, y: 42 + (idx % 4) * 3, z: -150 + Math.sin(a * 2) * 20 },
+    burst: { x: 115 + Math.sin(b) * 40, y: 62 - (idx % 3) * 4, z: -250 + Math.sin(b * 1.7) * 30 },
+    planet: { x: 150 + Math.sin(a) * 30, y: -95 + (idx % 2) * 12, z: -170 + Math.sin(a * 1.5) * 25 },
     loopA: { x: 95, y: 28, z: -70, ry: Math.PI / 2.4 + idx * 0.08 },
     loopB: { x: -100, y: 24, z: 40, ry: -Math.PI / 3 - idx * 0.06 },
     asteroidSeed: 90 + idx * 17,

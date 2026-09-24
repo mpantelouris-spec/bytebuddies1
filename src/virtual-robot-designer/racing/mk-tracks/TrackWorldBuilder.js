@@ -12,7 +12,7 @@ import { snapPropToRoad } from './TrackGroundSnap.js';
 import { trackHasBundledAssets } from './TrackAssetManifest.js';
 import { isCupTrack, blocksLaunchDriveLane } from './CodeRacerTrackStandards.js';
 import { pbrMat } from './BiomeAAAKit.js';
-import { installCosmicSkyway, animateCosmicSkyway } from './CosmicSkywayKit.js';
+import { installCosmicSkyway, animateCosmicSkyway, alignCosmicSkywayToStart } from './CosmicSkywayKit.js';
 import { getCosmicSkywayVariant, isCosmicSkywayArena } from './CosmicSkywayRegistry.js';
 import {
   buildPalmTree, buildBeachHut, buildTikiTorch, buildBeachUmbrella,
@@ -589,6 +589,9 @@ export function buildTrackWorld(world, curve, hw, bounds, arenaType, perf, scene
   }
   if (finishT != null && recipe.vista && !useBackdrop) {
     alignVistaToStart(world, curve, finishT, hw, recipe);
+  }
+  if (isCosmicSkywayArena(arenaType)) {
+    alignCosmicSkywayToStart(world, curve, finishT ?? 0);
   }
 
   world.userData.trackRecipe = arenaType;

@@ -10,6 +10,7 @@ import {
   CAR_MODE_TRACK_LABELS,
   getCarModeArenaId,
 } from '../racing/mk-tracks/MKTrackRegistry.js';
+import { isCosmicSkywayArena } from '../racing/mk-tracks/CosmicSkywayRegistry.js';
 
 /** Wheeled racers on biome kart tracks */
 export const CAR_CHASSIS_IDS = new Set([
@@ -51,6 +52,7 @@ const EXTRA_CAR_RACING_ARENAS = new Set([
 export function isCarRacingArenaType(arenaType) {
   if (!arenaType) return false;
   return BIOME_TRACKS.some((t) => t.arenaType === arenaType || t.id === arenaType)
+    || isCosmicSkywayArena(arenaType)
     || EXTRA_CAR_RACING_ARENAS.has(arenaType);
 }
 

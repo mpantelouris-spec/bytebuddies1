@@ -392,9 +392,44 @@ export function installCosmicSkyway(world, bounds, variant = null) {
     if (o.userData.spin) spinners.push(o);
   });
   g.userData.cosmicSpinners = spinners;
+  g.userData.heroes = { wormhole, burst, planet, loopA, loopB, variant: v };
 
   world.add(g);
   world.userData.cosmicSkyway = g;
+}
+
+/**
+ * Re-anchor the hero vista to the start line so every layout opens on the wormhole,
+ * galaxy burst and planet. Offsets are (ahead, right) in the start frame; the variant's
+ * x/z deltas from the original layout add per-track variety.
+ */
+export function alignCosmicSkywayToStart(world, curve, finishT = 0) {
+  const g = world?.userData?.cosmicSkyway;
+  const h = g?.userData?.heroes;
+  if (!h || !curve) return;
+  const t = ((finishT % 1) + 1) % 1;
+  const p = curve.getPointAt(t);
+  const tan = curve.getTangentAt(t);
+  const fwd = new THREE.Vector3(tan.x, 0, tan.z).normalize();
+  const right = new THREE.Vector3(-fwd.z, 0, fwd.x);
+  const v = h.variant;
+  const dx = (key, base) => (v[key].x - base);
+  const dz = (key, base) => (v[key].z - base);
+  const at = (ahead, side, y) => new THREE.Vector3(p.x, y, p.z)
+    .addScaledVector(fwd, ahead)
+    .addScaledVector(right, side);
+  const look = new THREE.Vector3(p.x, p.y + 4, p.z);
+
+  h.wormhole.position.copy(at(150 - dz('wormhole', -150), -44 + dx('wormhole', 10), h.variant.wormhole.y));
+  h.wormhole.lookAt(look);
+  h.burst.position.copy(at(250 - dz('burst', -250), 61 + dx('burst', 115), h.variant.burst.y));
+  h.burst.lookAt(look);
+  h.planet.position.copy(at(170 - dz('planet', -170), 96 + dx('planet', 150), h.variant.planet.y));
+  const turn = Math.atan2(fwd.x, fwd.z) - Math.PI;
+  h.loopA.position.copy(at(70, 41, h.variant.loopA.y));
+  h.loopA.rotation.y = turn + h.variant.loopA.ry;
+  h.loopB.position.copy(at(-40, -154, h.variant.loopB.y));
+  h.loopB.rotation.y = turn + h.variant.loopB.ry;
 }
 
 export function animateCosmicSkyway(world, time) {

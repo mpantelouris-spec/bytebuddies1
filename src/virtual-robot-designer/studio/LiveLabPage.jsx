@@ -101,7 +101,7 @@ import {
   buildMKTrackArena,
 } from './CircuitSprintArena.js';
 import { MK_ARENA_TYPES } from '../racing/mk-tracks/MKTrackRegistry.js';
-import { BIOME_ARENA_TYPES, getBiomeTrack, isCosmicSkywayArena } from '../racing/mk-tracks/BiomeTrackRegistry.js';
+import { BIOME_ARENA_TYPES, getBiomeTrack, isCosmicSkywayArena, COSMIC_SKYWAY_ARENA_IDS } from '../racing/mk-tracks/BiomeTrackRegistry.js';
 import { isCupTrack } from '../racing/mk-tracks/CodeRacerTrackStandards.js';
 import { getBiomeCssGrade } from '../racing/mk-tracks/BiomeAAAVisualSpec.js';
 import { getTrackSkyPreset } from '../racing/mk-tracks/TrackSkyKit.js';
@@ -8429,6 +8429,7 @@ const RACE_COURSE_IDS = new Set([
   'sunset_cove_01', 'candy_carnival_01', 'neon_metro_01', 'cloud_citadel_01',
   'jungle_ruins_01', 'frost_peak_01', 'lava_foundry_01', 'star_station_01',
   'fairy_glen_01', 'thunder_ridge_01',
+  ...COSMIC_SKYWAY_ARENA_IDS,
 ]);
 
 function _isRaceArena(arenaType, challenge, chassisId) {
@@ -8541,6 +8542,10 @@ function buildSmartArena(scene,arenaType,challenge,robotConfig=null){
     finalizeMissionArenaVisuals(scene, arenaType, challenge);
     spawnMissionBanner(scene, challenge, arenaType);
     scene.userData.arenaType = arenaType;
+    return;
+  }
+  if (isCosmicSkywayArena(arenaType)) {
+    buildMKTrackArena(scene, arenaType);
     return;
   }
   switch(arenaType){
@@ -10184,7 +10189,7 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
       || challenge?.environmentId === 'sky_aerial';
     const _isMissionVisualEarly = !!(challenge?.isChassisMode || challenge?.isRobotMission);
     const _usePostProcessing = _isCosmicSkyway
-      ? false
+      ? _qTier !== 'low'
       : _isBiomeTrack
         ? _q.postProcessing
         : _isAerialArenaEarly
@@ -10198,7 +10203,7 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
       ? Math.min(
         window.devicePixelRatio,
         _isCosmicSkyway
-          ? 1.15
+          ? (_qTier === 'low' ? 1.0 : 1.5)
           : _biomeRace
             ? (_qTier === 'high' ? 2.0 : 1.5)
             : (_isBiomeTrack ? _q.pixelRatio : (_qTier === 'high' ? 1.5 : 1.0)),
@@ -10227,7 +10232,7 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
       })
       : createSimWebGLRenderer({
       antialias: isRaceCourse || isFootballCourseEarly || _isAerialArenaEarly || (!_isBiomeTrack && _q.shadowEnabled),
-      lowPower: (_qTier === 'low' && !isFootballCourseEarly) || _isCosmicSkyway,
+      lowPower: _qTier === 'low' && !isFootballCourseEarly,
       canvas: (() => {
         const c = document.createElement('canvas');
         c.className = 'll-sim-canvas';

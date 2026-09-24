@@ -2,6 +2,7 @@
  * BiomeWorldBuilder.js — Ten premium 3D CodeRacer environments.
  */
 import { buildAAAWorld } from './BiomeAAAWorlds.js';
+import { isCosmicSkywayArena } from './CosmicSkywayRegistry.js';
 
 const BIOME_ARENAS = [
   'sunset_cove_01', 'candy_carnival_01', 'neon_metro_01', 'cloud_citadel_01',
@@ -18,5 +19,5 @@ export function buildBiomeWorld(scene, curve, root, mkTrack, opts = {}) {
 }
 
 export function isBiomeArena(arenaType) {
-  return BIOME_ARENAS.includes(arenaType);
+  return BIOME_ARENAS.includes(arenaType) || isCosmicSkywayArena(arenaType);
 }
