@@ -500,6 +500,91 @@ function addCyanGrid(world, bounds) {
   world.add(g);
 }
 
+function glowMat(color, opacity = 1) {
+  return new THREE.MeshBasicMaterial({
+    color, transparent: opacity < 1, opacity, side: THREE.DoubleSide, depthWrite: opacity >= 1, fog: false,
+  });
+}
+
+/** Wormhole, asteroid belt, planet below and galaxy burst for the cosmic skyway. */
+function addCosmicSkywayVista(world, bounds) {
+  const g = new THREE.Group();
+  g.name = 'cosmic-skyway-vista';
+  const { cx, cz } = bounds;
+
+  const wormhole = new THREE.Group();
+  wormhole.name = 'cosmic-wormhole';
+  [0x7a2cff, 0x9d4dff, 0xc07bff, 0xe6c8ff].forEach((color, i) => {
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(16 - i * 3.4, 1.1 - i * 0.15, 12, 64), glowMat(color, 0.85 - i * 0.1));
+    ring.position.z = -i * 2.5;
+    wormhole.add(ring);
+  });
+  const core = new THREE.Mesh(new THREE.CircleGeometry(5, 32), glowMat(0xffffff, 0.9));
+  core.position.z = -10;
+  wormhole.add(core);
+  const frame = new THREE.Mesh(new THREE.TorusGeometry(18.5, 1.6, 10, 48), pbrMat(0x2a2f3a, { emi: 0.05, roughness: 0.4, metalness: 0.9 }));
+  wormhole.add(frame);
+  wormhole.position.set(cx - 30, 30, cz - 85);
+  wormhole.lookAt(cx, 12, cz);
+  g.add(wormhole);
+
+  const planet = new THREE.Mesh(
+    new THREE.SphereGeometry(70, 48, 32),
+    new THREE.MeshStandardMaterial({ color: 0x2a6fd6, emissive: 0x0b2a66, emissiveIntensity: 0.6, roughness: 0.8 }),
+  );
+  planet.name = 'cosmic-planet';
+  planet.position.set(cx + 70, -95, cz + 60);
+  g.add(planet);
+  const atmo = new THREE.Mesh(new THREE.SphereGeometry(74, 48, 32), glowMat(0x66ccff, 0.18));
+  atmo.position.copy(planet.position);
+  g.add(atmo);
+
+  const burst = new THREE.Group();
+  burst.name = 'cosmic-galaxy-burst';
+  burst.add(new THREE.Mesh(new THREE.CircleGeometry(6, 32), glowMat(0xfff2c0, 0.95)));
+  [[0xffa040, 14, 0.45], [0xff5aa8, 24, 0.25], [0x8a4dff, 36, 0.15]].forEach(([color, r, o]) => {
+    burst.add(new THREE.Mesh(new THREE.CircleGeometry(r, 32), glowMat(color, o)));
+  });
+  for (let i = 0; i < 12; i++) {
+    const ray = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 60), glowMat(0xffd08a, 0.35));
+    ray.rotation.z = (i / 12) * Math.PI;
+    burst.add(ray);
+  }
+  burst.position.set(cx + 60, 45, cz - 110);
+  burst.lookAt(cx, 12, cz);
+  g.add(burst);
+
+  const rockMat = pbrMat(0x5a5048, { roughness: 0.95, metalness: 0.1 });
+  const rockGeo = new THREE.DodecahedronGeometry(1, 1);
+  const count = 60;
+  const rocks = new THREE.InstancedMesh(rockGeo, rockMat, count);
+  rocks.name = 'prop-instanced-asteroids';
+  const m = new THREE.Matrix4();
+  const q = new THREE.Quaternion();
+  const e = new THREE.Euler();
+  for (let i = 0; i < count; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const r = 75 + Math.random() * 40;
+    const s = 1.5 + Math.random() * 4;
+    e.set(Math.random() * 3, Math.random() * 3, Math.random() * 3);
+    q.setFromEuler(e);
+    m.compose(
+      new THREE.Vector3(cx + Math.cos(a) * r, 4 + Math.random() * 30, cz + Math.sin(a) * r),
+      q,
+      new THREE.Vector3(s, s * (0.7 + Math.random() * 0.5), s),
+    );
+    rocks.setMatrixAt(i, m);
+  }
+  g.add(rocks);
+
+  const nebula = new THREE.Mesh(new THREE.PlaneGeometry(160, 60), glowMat(0x6a2cc8, 0.12));
+  nebula.position.set(cx - 70, 40, cz - 90);
+  nebula.lookAt(cx, 20, cz);
+  g.add(nebula);
+
+  world.add(g);
+}
+
 function addThemedAtmosphere(world, arenaType, bounds) {
   if (arenaType === 'frost_peak_01') {
     const aurora = new THREE.Group();
@@ -539,6 +624,7 @@ function addThemedAtmosphere(world, arenaType, bounds) {
     );
     stars.name = 'star-station-starfield';
     world.add(stars);
+    addCosmicSkywayVista(world, bounds);
   }
 
   if (arenaType === 'thunder_ridge_01') {

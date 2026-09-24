@@ -91,8 +91,23 @@ export const FROST_PEAK_SPLINE = loop(46, 40, 24, (t) => 8 - t * 5);
 /** Mode 7 — Lava Foundry: compact stadium */
 export const LAVA_FOUNDRY_SPLINE = stadium(36, 30, 28, 2.8, 0);
 
-/** Mode 8 — Star Station: orbital ring */
-export const STAR_STATION_SPLINE = loop(46, 44, 24, 8);
+/**
+ * Mode 8 — Star Station: cosmic skyway figure-8. The two lobes meet at the
+ * centre 12 units apart vertically, so one half flies over the other.
+ */
+export const STAR_STATION_SPLINE = (() => {
+  const pts = [];
+  const n = 56;
+  for (let i = 0; i < n; i++) {
+    const a = Math.PI / 2 + (i / n) * 2 * Math.PI;
+    pts.push({
+      x: 54 * Math.sin(a),
+      y: 8 + 6 * Math.cos(a) + Math.sin(2 * a) * 1.2,
+      z: 40 * Math.sin(2 * a),
+    });
+  }
+  return pts;
+})();
 
 /** Mode 10 — Thunder Ridge: flowing oval with a mild pinch (still C2-smooth) */
 export const THUNDER_RIDGE_SPLINE = (() => {

@@ -90,9 +90,10 @@ export const BIOME_TRACKS = [
     story: '🔥 Lava Foundry — Molten rivers, gear arch, steam vents, crane hooks.',
     biome: 'lava_foundry', underground: true,
   }),
-  track('star_station_01', 'Star Station Ring', '🛸', '#AA44FF', 4, 'Hard', 'star_station', 'stardust_violet', STAR_STATION_SPLINE, {
-    laps: 2, targetTime: 165, checkpointTs: [0.2, 0.4, 0.6, 0.8],
-    story: '🛸 Star Station — Habitat domes, glass floor, Earth below, airlock arch. Orbital ring.',
+  track('star_station_01', 'Cosmic Skyway', '🛸', '#AA44FF', 4, 'Hard', 'star_station', 'stardust_violet', STAR_STATION_SPLINE, {
+    laps: 2, targetTime: 185, checkpointTs: [0.2, 0.4, 0.6, 0.8],
+    trackShape: 'figure-8',
+    story: '🛸 Cosmic Skyway — Twisting neon highway that flies over itself, past a purple wormhole, asteroid belt and a blue planet below.',
     biome: 'star_station', isCosmicBiome: true, underground: true,
   }),
   track('fairy_glen_01', 'Fairy Glen Gardens', '🧚', '#7CFC00', 4, 'Hard', 'fairy_glen', 'garden_green', FAIRY_GLEN_SPLINE, {
