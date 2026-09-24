@@ -215,7 +215,7 @@ const ROAD_PBR_PARAMS = {
   cyber_navy: { roughnessDry: 0.03, roughnessWet: 0.02, wetCoverage: 0.35, metalness: 0.78, emissive: 0xff00ff, emissiveIntensity: 0.65, clearcoat: 0.9 },
   frost_ice: { roughnessDry: 0.06, metalness: 0.55, emissive: 0x88ddff, emissiveIntensity: 0.4, clearcoat: 0.95 },
   ruins_moss: { roughnessDry: 0.72, metalness: 0.1, emissive: 0x446622, emissiveIntensity: 0.15, clearcoat: 0.15 },
-  stardust_violet: { roughnessDry: 0.1, metalness: 0.75, emissive: 0xaa44ff, emissiveIntensity: 0.35, clearcoat: 0.7 },
+  stardust_violet: { roughnessDry: 0.08, metalness: 0.65, emissive: 0xcc66ff, emissiveIntensity: 0.55, clearcoat: 0.85 },
   meadow_gravel: { roughnessDry: 0.78, metalness: 0.05, emissive: 0x000000, emissiveIntensity: 0, clearcoat: 0.1 },
   metro_black: { roughnessDry: 0.55, roughnessWet: 0.02, wetCoverage: 0.28, metalness: 0.35, emissive: 0xffff00, emissiveIntensity: 0.12, clearcoat: 0.35 },
   candy_pink: { roughnessDry: 0.35, metalness: 0.1, emissive: 0xff69b4, emissiveIntensity: 0.25, clearcoat: 0.4 },
@@ -321,9 +321,10 @@ const ROAD_ALBEDO_BUILDERS = {
     }
   },
   stardust_violet(ctx) {
-    baseAsphalt(ctx, 123, 47, 190, 0.1);
-    centerDash(ctx, '#FFFFFF', 6, [22, 16]);
-    edgePaint(ctx, 'rgba(200,150,255,0.5)');
+    baseAsphalt(ctx, 88, 42, 168, 0.08);
+    centerDash(ctx, '#FFE8A8', 6, [22, 16]);
+    edgePaint(ctx, 'rgba(255,140,60,0.85)');
+    edgePaint(ctx, 'rgba(0,230,255,0.45)');
   },
   meadow_gravel(ctx) {
     const S = canvasSz(ctx);

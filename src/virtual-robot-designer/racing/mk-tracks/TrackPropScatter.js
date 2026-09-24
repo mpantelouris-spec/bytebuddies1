@@ -59,10 +59,9 @@ const SCATTER_CONFIG = {
     vista: () => buildLavaRiver(16, 32),
   },
   star_station_01: {
-    step: 0.1,
-    offset: 13,
-    props: ['dome', 'dome'],
-    vista: () => buildEarthSphere(45),
+    step: 0.14,
+    offset: 16,
+    props: ['satellite', 'dome'],
   },
   fairy_glen_01: {
     step: 0.085,

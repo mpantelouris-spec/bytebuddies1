@@ -405,6 +405,11 @@ function addGroundDisc(world, arenaType, recipe, bounds) {
     return;
   }
 
+  if (recipe?.vista === 'cosmic' || (recipe?.vista === 'earth' && arenaType === 'star_station_01')) {
+    addThemedAtmosphere(world, arenaType, bounds);
+    return;
+  }
+
   if (recipe?.vista === 'earth') {
     const deck = new THREE.Mesh(
       new THREE.CircleGeometry(52, 36),
@@ -524,7 +529,7 @@ function addCosmicSkywayVista(world, bounds) {
   wormhole.add(core);
   const frame = new THREE.Mesh(new THREE.TorusGeometry(18.5, 1.6, 10, 48), pbrMat(0x2a2f3a, { emi: 0.05, roughness: 0.4, metalness: 0.9 }));
   wormhole.add(frame);
-  wormhole.position.set(cx - 30, 30, cz - 85);
+  wormhole.position.set(cx - 8, 28, cz - 58);
   wormhole.lookAt(cx, 12, cz);
   g.add(wormhole);
 
@@ -550,7 +555,7 @@ function addCosmicSkywayVista(world, bounds) {
     ray.rotation.z = (i / 12) * Math.PI;
     burst.add(ray);
   }
-  burst.position.set(cx + 60, 45, cz - 110);
+  burst.position.set(cx + 35, 38, cz - 72);
   burst.lookAt(cx, 12, cz);
   g.add(burst);
 

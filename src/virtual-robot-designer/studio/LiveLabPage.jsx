@@ -10614,9 +10614,9 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
       if (isBiomeRace) {
         const underground = scene.userData.biomeAAASpec?.underground
           || arenaType === 'neon_metro_01'
-          || arenaType === 'lava_foundry_01'
-          || arenaType === 'star_station_01';
-        renderer.toneMappingExposure = underground ? 1.1 : 1.08;
+          || arenaType === 'lava_foundry_01';
+        renderer.toneMappingExposure = arenaType === 'star_station_01' ? 1.42
+          : (underground ? 1.1 : 1.08);
       } else {
         const expCap = nightMkArenas.has(mkArena) ? 1.32 : (scene.userData.mkThemedTrack ? 1.48 : 1.25);
         renderer.toneMappingExposure = Math.min(renderer.toneMappingExposure, expCap);
@@ -12053,7 +12053,8 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
         const underground = arenaType === 'crystal_palace_01'
           || arenaType === 'cyber_boulevard_01'
           || scene.userData.biomeAAASpec?.underground;
-        renderer.toneMappingExposure = underground ? 1.1 : 1.08;
+        renderer.toneMappingExposure = arenaType === 'star_station_01' ? 1.42
+          : (underground ? 1.1 : 1.08);
       }
       } catch(err){ console.warn('[SimCanvas tick]',err); }
       try { renderFrame(); } catch (renderErr) { console.warn('[SimCanvas render]', renderErr); }

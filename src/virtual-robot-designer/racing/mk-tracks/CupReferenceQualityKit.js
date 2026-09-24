@@ -345,7 +345,20 @@ function buildForeground(cfg, side) {
     pipe.add(mesh(new THREE.TorusGeometry(2.2, 0.55, 8, 18, Math.PI), m, side * 2.1, 10, 0));
     return pipe;
   }
-  const g = buildPlinth(cfg, 5, cfg.kind === 'citadel' || cfg.kind === 'station');
+  if (cfg.kind === 'station') {
+    const g = new THREE.Group();
+    const rock = material(0x6a6058, { roughness: 0.9, metalness: 0.12 });
+    const neon = material(cfg.accent, { emissive: cfg.accent, emissiveIntensity: 1.1, roughness: 0.2 });
+    const portal = material(cfg.hero, { emissive: cfg.hero, emissiveIntensity: 0.95, roughness: 0.15 });
+    g.add(mesh(new THREE.DodecahedronGeometry(1.8, 0), rock, side * 1.2, 1.4, 0.6));
+    g.add(mesh(new THREE.DodecahedronGeometry(1.2, 0), rock, side * 2.4, 2.6, -0.4));
+    const ring = mesh(new THREE.TorusGeometry(2.8, 0.28, 10, 32), portal, 0, 4.2, 0);
+    ring.rotation.x = Math.PI / 2;
+    g.add(ring);
+    g.add(mesh(new THREE.TorusGeometry(3.4, 0.12, 8, 32), neon, 0, 4.2, 0.15));
+    return g;
+  }
+  const g = buildPlinth(cfg, 5, cfg.kind === 'citadel');
   const trunk = material(cfg.dark, { roughness: 0.78 });
   const crown = material(cfg.ground, { roughness: 0.72, clearcoat: 0.2 });
   g.add(mesh(new THREE.CylinderGeometry(0.5, 0.8, 5.5, 9), trunk, 0, 3, 0));
@@ -510,19 +523,36 @@ export function installCupReferenceQuality(scene, world, curve, hw, bounds, aren
     addLayer(skyline, `background-${i}`, 46 + i * 14, side * (hw + 20 + i * 5), 8);
   });
 
-  // Puffy layered sky masses keep the horizon dimensional and match the
-  // supplied blue-sky/golden-horizon quality reference.
-  [-1, 1, -1].forEach((side, i) => {
-    const cloud = buildCloudBank(cfg, i);
-    addLayer(cloud, `sky-cloud-${i}`, 34 + i * 19, side * (7 + i * 5), 4);
-    cloud.position.y += 13 + i * 3.5;
-    cloud.traverse((obj) => {
-      if (obj.isMesh) {
-        obj.castShadow = false;
-        obj.receiveShadow = false;
+  if (cfg.kind === 'station') {
+    [-1, 0, 1].forEach((side, i) => {
+      const neb = new THREE.Group();
+      const nebMat = material(i === 1 ? cfg.hero : cfg.accent, {
+        emissive: i === 1 ? 0xff8844 : cfg.accent,
+        emissiveIntensity: 0.55,
+        transparent: true,
+        opacity: 0.35,
+        roughness: 1,
+        clearcoat: 0,
+      });
+      for (let p = 0; p < 4; p++) {
+        addOrb(neb, nebMat, (p - 1.5) * 2.2, Math.sin(p) * 0.6, (p % 2) * 0.8, 4 + p, 2.2, 3.5);
       }
+      addLayer(neb, `sky-nebula-${i}`, 40 + i * 22, side * (hw + 16 + i * 4), 6);
+      neb.position.y += 18 + i * 4;
     });
-  });
+  } else {
+    [-1, 1, -1].forEach((side, i) => {
+      const cloud = buildCloudBank(cfg, i);
+      addLayer(cloud, `sky-cloud-${i}`, 34 + i * 19, side * (7 + i * 5), 4);
+      cloud.position.y += 13 + i * 3.5;
+      cloud.traverse((obj) => {
+        if (obj.isMesh) {
+          obj.castShadow = false;
+          obj.receiveShadow = false;
+        }
+      });
+    });
+  }
 
   // Atmospheric depth cards are translucent geometry, never flat image backdrops.
   const hazeMat = material(cfg.atmospheric, {

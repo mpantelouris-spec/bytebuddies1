@@ -202,11 +202,9 @@ export function setupRaceEnvironment(scene, { space = false } = {}) {
   const ctx = canvas.getContext('2d');
   const grad = ctx.createLinearGradient(0, 0, 0, 128);
   if (space) {
-    // For space courses: near-black environment so the purple env map doesn't
-    // wash the scene. The cosmic track lights provide all the ambient colour.
-    grad.addColorStop(0, '#050208');
-    grad.addColorStop(0.5, '#080415');
-    grad.addColorStop(1, '#030108');
+    grad.addColorStop(0, '#2a1068');
+    grad.addColorStop(0.45, '#6a28a8');
+    grad.addColorStop(1, '#ff9a55');
   } else {
     grad.addColorStop(0, '#b8e0ff');
     grad.addColorStop(0.5, '#ffe0f0');
@@ -219,7 +217,7 @@ export function setupRaceEnvironment(scene, { space = false } = {}) {
   scene.environment = tex;
   // Space courses: very low env intensity — we don't want the env map
   // competing with the neon track colours.
-  scene.environmentIntensity = space ? 0.04 : 0.8;
+  scene.environmentIntensity = space ? 0.52 : 0.8;
   return tex;
 }
 

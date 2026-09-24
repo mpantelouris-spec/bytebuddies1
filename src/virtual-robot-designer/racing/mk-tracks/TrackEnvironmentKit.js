@@ -45,8 +45,10 @@ function installCanvasEnv(scene, arenaType) {
   tex.mapping = THREE.EquirectangularReflectionMapping;
   if (THREE.SRGBColorSpace) tex.colorSpace = THREE.SRGBColorSpace;
   scene.environment = tex;
-  const underground = getBiomeAAASpec(arenaType)?.underground;
-  scene.environmentIntensity = underground ? 0.28 : 0.52;
+  const spec = getBiomeAAASpec(arenaType);
+  const underground = spec?.underground;
+  const cosmic = spec?.isCosmicBiome || arenaType === 'star_station_01';
+  scene.environmentIntensity = cosmic ? 0.55 : (underground ? 0.28 : 0.52);
 }
 
 export function installTrackEnvironment(scene, arenaType, renderer) {
@@ -61,6 +63,23 @@ export function installTrackEnvironment(scene, arenaType, renderer) {
   }
 
   installTrackLights(scene, spec);
+
+  if (spec.isCosmicBiome || arenaType === 'star_station_01') {
+    if (!scene.getObjectByName('cosmic-skyway-fill')) {
+      const fill = new THREE.AmbientLight(0x8a6acc, 0.72);
+      fill.name = 'cosmic-skyway-fill';
+      scene.add(fill);
+      const wormholeGlow = new THREE.PointLight(0xaa66ff, 2.8, 220, 1.2);
+      wormholeGlow.position.set(0, 35, -70);
+      wormholeGlow.name = 'cosmic-wormhole-glow';
+      scene.add(wormholeGlow);
+      const sunBurst = new THREE.PointLight(0xff9944, 2.2, 280, 1.1);
+      sunBurst.position.set(50, 42, -100);
+      sunBurst.name = 'cosmic-galaxy-glow';
+      scene.add(sunBurst);
+      scene.userData._cosmicFillLights = true;
+    }
+  }
 
   const preset = getTrackSkyPreset(arenaType);
   if (!scene.fog) {

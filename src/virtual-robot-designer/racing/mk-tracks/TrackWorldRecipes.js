@@ -111,7 +111,7 @@ export const TRACK_WORLD_RECIPES = {
       { type: 'glass_deck', t: 0.36, side: 0, off: 0 },
     ],
     animals: [],
-    vista: 'earth',
+    vista: 'cosmic',
   },
   fairy_glen_01: {
     scatter: ['daisy', 'toadstool', 'lollipop_tree', 'daisy'],

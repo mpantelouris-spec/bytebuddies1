@@ -12,7 +12,7 @@ const SKY_PRESETS = {
   jungle_ruins_01: { top: '#5dade2', mid: '#8fbc8f', horizon: '#c8e8a0', fog: 0xa8d090 },
   frost_peak_01: { top: '#e8f4ff', mid: '#b8ddf0', horizon: '#d0e8f8', fog: 0xd8eef8 },
   lava_foundry_01: { top: '#4a1808', mid: '#882200', horizon: '#ff6a20', fog: 0x662200 },
-  star_station_01: { top: '#120428', mid: '#2a1058', horizon: '#3a2080', fog: 0x1a0840 },
+  star_station_01: { top: '#1a0a48', mid: '#5a28a8', horizon: '#ff9a4a', fog: 0x4a2878 },
   fairy_glen_01: { top: '#7ec8ff', mid: '#fff4b0', horizon: '#c8f080', fog: 0xd0ecc0 },
   thunder_ridge_01: { top: '#6a90c8', mid: '#9ab4d0', horizon: '#d0dce8', fog: 0xb0c4d8 },
 };
@@ -48,7 +48,9 @@ export function installTrackSky(scene, bounds, arenaType) {
   const preset = getTrackSkyPreset(arenaType);
   const bg = hex(preset.horizon);
   scene.background = bg;
-  scene.fog = new THREE.Fog(preset.fog ?? bg.getHex(), 70, 340);
+  const fogNear = arenaType === 'star_station_01' ? 95 : 70;
+  const fogFar = arenaType === 'star_station_01' ? 420 : 340;
+  scene.fog = new THREE.Fog(preset.fog ?? bg.getHex(), fogNear, fogFar);
 
   const r = 900;
   const geo = new THREE.SphereGeometry(r, 32, 20);
