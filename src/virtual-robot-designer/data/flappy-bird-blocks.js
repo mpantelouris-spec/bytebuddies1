@@ -27,8 +27,6 @@
  * Loop blocks remain available for optional advanced play.
  */
 
-import { UNIVERSAL_EVENTS_CATEGORY } from './universal-event-blocks.js';
-
 export const FLAPPY_COURSE_IDS = new Set(['flappy_bird', 'robo_wrecker']);
 
 export function isFlappyBirdCourse(courseKey, arenaType) {
@@ -46,8 +44,35 @@ export const FLAPPY_STARTER_SCRIPT = [
  * Course-scoped scratch block library for Flappy BirdBot.
  * Only blocks listed here appear when flappy_bird is the active course.
  */
+// Condition dropdowns shared by the "if" and "wait until" blocks
+const READINGS = [
+  ['bird height', 'bird_height'], ['gap centre', 'gap_center'], ['distance to pipe', 'pipe_dist'],
+  ['gap size', 'gap_size'], ['score', 'score'], ['high score', 'high_score'], ['time alive', 'time_alive'],
+  ['myVar', 'var'],
+];
+const COMPARE_TO = [['number →', 'num'], ['gap centre', 'gap_center'], ['bird height', 'bird_height'], ['distance to pipe', 'pipe_dist'], ['score', 'score'], ['myVar', 'var']];
+const conditionParams = (withOp = true, a = 'bird_height', b = 'gap_center', n = 10) => [
+  { key: 'a', type: 'dropdown', label: '', def: a, options: READINGS },
+  ...(withOp ? [{ key: 'op', type: 'dropdown', label: '', def: 'lt', options: [['<', 'lt'], ['>', 'gt'], ['=', 'eq']] }] : []),
+  { key: 'b', type: 'dropdown', label: '', def: b, options: COMPARE_TO },
+  { key: 'n', label: '', def: n },
+];
+
 export const FLAPPY_BLOCK_LIBRARY = {
-  Events: UNIVERSAL_EVENTS_CATEGORY,
+  // Only the events that happen in Flappy Bird
+  Events: {
+    label: 'Events', color: '#ef4444', icon: '⚡',
+    blocks: [
+      { id: 'when_start', label: 'When START clicked', icon: '▶️' },
+      { id: 'when_spacebar', label: 'When spacebar clicked', icon: '⌨️' },
+      { id: 'when_key', label: 'When key pressed', icon: '⌨️', params: [{ key: 'key', type: 'dropdown', label: '', def: 'up', options: [['space', 'space'], ['up arrow', 'up'], ['down arrow', 'down'], ['left arrow', 'left'], ['right arrow', 'right']] }] },
+      { id: 'when_timer', label: 'When timer reaches', icon: '⏱️', params: [{ key: 'seconds', label: 's', def: 5 }] },
+      { id: 'when_sensor', label: 'When pipe is close', icon: '📡' },
+      { id: 'when_gap_passed', label: 'When gap passed', icon: '🎯' },
+      { id: 'when_collision', label: 'When bird crashes', icon: '💥' },
+      { id: 'when_game_over', label: 'When game over', icon: '🛑' },
+    ],
+  },
   Movement: {
     label: 'Movement', color: '#3b82f6', icon: '🚀',
     blocks: [
@@ -67,54 +92,57 @@ export const FLAPPY_BLOCK_LIBRARY = {
       { id: 'repeat', label: 'Repeat', icon: '🔁', params: [{ key: 'times', label: '×', def: 5 }] },
       { id: 'repeat_until', label: 'Repeat until game over', icon: '🔂' },
       { id: 'forever', label: 'Forever loop', icon: '∞' },
+      { id: 'end', label: 'End loop / if', icon: '⏹' },
       { id: 'wait', label: 'Wait', icon: '⏸️', params: [{ key: 'seconds', label: 's', def: 1 }] },
+      { id: 'wait_until', label: 'Wait until', icon: '⏳', params: conditionParams(true, 'bird_height', 'gap_center') },
       { id: 'break_loop', label: 'Break out of loop', icon: '↩️' },
     ],
   },
   Sensors: {
     label: 'Sensors', color: '#10b981', icon: '👁',
     blocks: [
-      { id: 'distance_to_pipe', label: 'Distance to next pipe', icon: '📏' },
-      { id: 'bird_height', label: 'Height of bird', icon: '📊' },
-      { id: 'gap_center_height', label: 'Gap center height', icon: '🎯' },
-      { id: 'is_falling', label: 'Is falling?', icon: '⬇️' },
-      { id: 'num_pipe_dist', label: 'Pipe distance (value)', icon: '📏' },
-      { id: 'num_bird_height', label: 'Bird height (value)', icon: '📊' },
-      { id: 'num_gap_center', label: 'Gap center (value)', icon: '🎯' },
-      { id: 'is_falling_bool', label: 'Is falling? (true/false)', icon: '⬇️' },
+      { id: 'distance_to_pipe', label: 'Show distance to pipe', icon: '📏' },
+      { id: 'bird_height', label: 'Show bird height', icon: '📊' },
+      { id: 'gap_center_height', label: 'Show gap centre', icon: '🎯' },
+      { id: 'gap_size', label: 'Show gap size', icon: '↕️' },
+      { id: 'is_falling', label: 'Show if falling', icon: '⬇️' },
+      { id: 'time_alive', label: 'Show time alive', icon: '⏱️' },
     ],
   },
   Logic: {
     label: 'Logic', color: '#8b5cf6', icon: '🧠',
     blocks: [
-      { id: 'if_then', label: 'If condition then', icon: '❓' },
-      { id: 'if_else', label: 'If / else', icon: '↔️' },
-      { id: 'if_gt', label: 'If value > value', icon: '>' },
-      { id: 'if_lt', label: 'If value < value', icon: '<' },
-      { id: 'if_eq', label: 'If value = value', icon: '=' },
+      { id: 'if_then', label: 'If', icon: '❓', params: conditionParams(true) },
+      { id: 'if_falling', label: 'If bird is falling', icon: '⬇️' },
+      { id: 'if_gt', label: 'If >', icon: '>', params: conditionParams(false, 'pipe_dist', 'num', 3) },
+      { id: 'if_lt', label: 'If <', icon: '<', params: conditionParams(false, 'bird_height', 'gap_center') },
+      { id: 'if_eq', label: 'If =', icon: '=', params: conditionParams(false, 'score', 'num', 10) },
+      { id: 'else', label: 'Else', icon: '↔️' },
+      { id: 'end', label: 'End if / loop', icon: '⏹' },
     ],
   },
   Variables: {
     label: 'Variables', color: '#06b6d4', icon: '📦',
     blocks: [
-      { id: 'read_score', label: 'Score (read)', icon: '⭐' },
-      { id: 'read_high_score', label: 'High Score (read)', icon: '🏆' },
-      { id: 'num_score', label: 'Score (value)', icon: '⭐' },
-      { id: 'num_high_score', label: 'High Score (value)', icon: '🏆' },
+      { id: 'create_var', label: 'Create variable', icon: '📦', params: [{ key: 'name', label: '', def: 'myVar' }] },
       { id: 'set_var', label: 'Set variable to', icon: '=', params: [{ key: 'name', label: '', def: 'myVar' }, { key: 'value', label: '', def: 0 }] },
       { id: 'change_var', label: 'Change variable by', icon: '+', params: [{ key: 'name', label: '', def: 'myVar' }, { key: 'value', label: '', def: 1 }] },
-      { id: 'create_var', label: 'Create variable', icon: '📦', params: [{ key: 'name', label: '', def: 'myVar' }] },
-      { id: 'get_var', label: 'Get variable', icon: '📦', params: [{ key: 'name', label: '', def: 'myVar' }] },
+      { id: 'show_variable', label: 'Show variable on screen', icon: '👀', params: [{ key: 'name', label: '', def: 'myVar' }] },
+      { id: 'hide_variable', label: 'Hide variable', icon: '🙈', params: [{ key: 'name', label: '', def: 'myVar' }] },
+      { id: 'get_var', label: 'Say variable value', icon: '💬', params: [{ key: 'name', label: '', def: 'myVar' }] },
+      { id: 'read_score', label: 'Say score', icon: '⭐' },
+      { id: 'read_high_score', label: 'Say high score', icon: '🏆' },
     ],
   },
   GameControl: {
     label: 'Game Control', color: '#ec4899', icon: '🎮',
     blocks: [
       { id: 'show_score', label: 'Show score', icon: '📺' },
+      { id: 'hide_score', label: 'Hide score', icon: '🙈' },
       { id: 'restart_game', label: 'Restart game', icon: '🔄' },
-      { id: 'pause', label: 'Pause', icon: '⏱️', params: [{ key: 'seconds', label: 's', def: 1 }] },
+      { id: 'pause', label: 'Pause game', icon: '⏱️', params: [{ key: 'seconds', label: 's', def: 1 }] },
       { id: 'show_message', label: 'Show message', icon: '💬', params: [{ key: 'text', label: '', def: 'Nice!' }] },
-      { id: 'play_sound', label: 'Play sound', icon: '🔊', params: [{ key: 'sound', label: '', def: 'beep' }] },
+      { id: 'play_sound', label: 'Play sound', icon: '🔊', params: [{ key: 'sound', type: 'dropdown', label: '', def: 'beep', options: [['beep', 'beep'], ['flap', 'flap'], ['score', 'score'], ['crash', 'collision'], ['game over', 'game_over'], ['win', 'win']] }] },
     ],
   },
 };

@@ -7,6 +7,35 @@ import {
   COURSE_LENGTHS, TRACK_CATEGORIES, LEVELS_PER_TRACK,
 } from '../data/robot-tracks.js';
 import { GameProgress, fmtTime, fmtDist, LVL_THRESH } from '../services/game-progress.js';
+import { ARCADE_GAMES } from '../arcade/games/index.js';
+import { loadProgress } from '../arcade/engine.js';
+
+/** Robot Arcade — the four arcade robots, each with its own game and 10 levels. */
+function ArcadeStrip({ onPlay }) {
+  if (!onPlay) return null;
+  return (
+    <div style={{ padding: '14px 20px 0' }}>
+      <div style={{ fontSize: 15, fontWeight: 900, color: '#111', marginBottom: 8 }}>🕹️ Robot Arcade <span style={{ fontSize: 12, color: '#6b7280', fontWeight: 700 }}>· new game modes</span></div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: 10 }}>
+        {[...Object.entries(ARCADE_GAMES), ['arenaquest', { id: 'arenaquest', title: 'Arena Quest', emoji: '🏟️', color: '#14b8a6', blurb: 'Tile adventures — plus every arena you build in Create!', levels: { length: 10 } }]].map(([chassisId, g]) => {
+          const stars = Object.values(loadProgress(g.id)).reduce((a, b) => a + b, 0);
+          return (
+            <button key={chassisId} type="button" onClick={() => onPlay(chassisId)}
+              style={{ textAlign: 'left', cursor: 'pointer', border: `2px solid ${g.color}55`, borderRadius: 14, padding: '12px 14px',
+                background: `linear-gradient(135deg, ${g.color}22, #fff)`, display: 'flex', gap: 10, alignItems: 'flex-start', fontFamily: 'inherit' }}>
+              <span style={{ fontSize: 30 }}>{g.emoji}</span>
+              <span>
+                <span style={{ display: 'block', fontWeight: 900, fontSize: 14, color: '#111' }}>{g.title}</span>
+                <span style={{ display: 'block', fontSize: 11.5, color: '#4b5563', lineHeight: 1.35, marginTop: 2 }}>{g.blurb}</span>
+                <span style={{ display: 'block', fontSize: 11, fontWeight: 800, color: '#b45309', marginTop: 4 }}>⭐ {stars}/{g.levels.length * 3} · {g.levels.length} levels</span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 function loadRobotName() {
   try {
@@ -76,7 +105,7 @@ function LevelCard({ level, track, robotName, onStart, compact }) {
   );
 }
 
-export default function ChallengesPage({ onStartChallenge, robotName: robotNameProp }) {
+export default function ChallengesPage({ onStartChallenge, onPlayArcade, robotName: robotNameProp }) {
   const robotName = robotNameProp || loadRobotName();
   const [tab, setTab] = useState('tracks');
   const [selectedTrack, setSelectedTrack] = useState(ROBOT_TRACKS[0].id);
@@ -183,6 +212,8 @@ export default function ChallengesPage({ onStartChallenge, robotName: robotNameP
           </select>
         </div>
       </div>
+
+      <ArcadeStrip onPlay={onPlayArcade} />
 
       <div style={{ flex: 1, display: 'grid', gridTemplateColumns: tab === 'tracks' ? '260px 1fr 240px' : '1fr 240px', gap: 14, padding: 14, minHeight: 0, overflow: 'hidden' }}>
         {/* Track sidebar (tracks tab only) */}

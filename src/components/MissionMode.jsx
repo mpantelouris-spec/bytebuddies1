@@ -1,1236 +1,542 @@
-import React, { useState, useEffect, useRef } from 'react';
+/**
+ * MissionMode — story missions where your code drives a live scene.
+ *
+ * Hub (worlds) → campaign map (5 missions on a route) → mission cockpit
+ * (briefing + objectives · code · live scene + mission log) → success.
+ */
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useUser } from '../contexts/UserContext';
-import { runPython } from '../utils/pythonRunner';
-import AppMode from '../utils/AppMode';
+import { CAMPAIGNS, genPyFromBlocks } from './missions/missionData.js';
+import { PLANS, checkObjectives } from './missions/missionPlans.js';
+import { SOLUTIONS } from './missions/missionSolutions.js';
+import MissionScene, { CAMPAIGN_BG, Rocket, Sub } from './missions/MissionScenes.jsx';
+import { MissionBlockEditor, CertificateModal } from './missions/legacyParts.jsx';
+import { runPython as runSkulpt } from './learn/CodingLab/TextCodingLab.jsx';
+import { runPython as runSubset } from '../utils/pythonRunner';
+import DotBot from './learn/art/DotBot.jsx';
+import { readWork, recordWork } from '../utils/workLog.js';
 
-const CAMPAIGNS = [
-  {
-    id: 'space',
-    title: 'Space Explorer',
-    emoji: '🚀',
-    tagline: 'Master sequences & loops across the galaxy',
-    color: '#6366f1',
-    glow: 'rgba(99,102,241,0.4)',
-    bg: 'linear-gradient(135deg, #0a0a2e 0%, #1a1a4e 50%, #0f0f3a 100%)',
-    concept: 'Sequences & Loops',
-    difficulty: 'Beginner',
-    xpTotal: 500,
-    missions: [
-      { id: 'space-1', title: 'Launch Sequence', emoji: '🔥', story: 'Captain! The launch computer is offline. Mission control needs you to manually program the engine sequence before the window closes.', challenge: 'Create a sequence of at least 5 blocks that fires the rocket: countdown → ignite engines → release clamps → go!', xp: 75, hint: 'Use the "repeat" and "print" blocks to build your countdown.' },
-      { id: 'space-2', title: 'Orbit Calculator', emoji: '🌍', story: 'You\'ve escaped Earth\'s atmosphere! Now you need to set the perfect orbit around the planet.', challenge: 'Use a loop to make your rocket orbit the planet exactly 3 times, adjusting speed at each pass.', xp: 100, hint: 'Use "repeat 3 times" with print blocks inside it.' },
-      { id: 'space-3', title: 'Asteroid Field', emoji: '☄️', story: 'Danger! A field of asteroids is dead ahead. You\'ll need quick reactions to survive.', challenge: 'Write code that checks "if touching asteroid → dodge left". Add a score counter for each asteroid dodged.', xp: 100, hint: 'Use if blocks from Control and a variable to track your score.' },
-      { id: 'space-4', title: 'Space Beacon', emoji: '📡', story: 'You\'ve found a distress beacon from a lost probe! You need to decode it and broadcast the reply.', challenge: 'Use a function to handle different beacon signals. Call it with at least 2 different signals.', xp: 125, hint: 'Define a function with a parameter, then call it multiple times.' },
-      { id: 'space-5', title: 'Safe Landing', emoji: '🏆', story: 'The mission is complete. Now guide your ship through re-entry and land safely.', challenge: 'Build a full landing sequence using sequences, loops, conditions AND functions — all four concepts!', xp: 100, hint: 'Combine all the concepts from previous missions into one final program.' },
-    ],
-  },
-  {
-    id: 'ocean',
-    title: 'Ocean Deep',
-    emoji: '🌊',
-    tagline: 'Explore the deep sea with conditions & events',
-    color: '#0ea5e9',
-    glow: 'rgba(14,165,233,0.4)',
-    bg: 'linear-gradient(135deg, #001a2e 0%, #003a5c 50%, #001f3f 100%)',
-    concept: 'Conditions & Events',
-    difficulty: 'Intermediate',
-    xpTotal: 600,
-    missions: [
-      { id: 'ocean-1', title: 'Dive Protocol', emoji: '🤿', story: 'The submarine systems are ready. Pressure increases with depth — your code must adapt.', challenge: 'Program the submarine to dive in stages: surface → 10m → 50m → 200m, checking pressure at each depth.', xp: 80, hint: 'Use variables for depth and if/else to check thresholds.' },
-      { id: 'ocean-2', title: 'Coral Maze', emoji: '🪸', story: 'The coral reef is beautiful — but deadly to your sub. Navigate through without touching the walls.', challenge: 'Use if to detect coral and change direction. Make the sub navigate the whole maze without stopping.', xp: 120, hint: 'Use a repeat loop and if to dodge coral obstacles.' },
-      { id: 'ocean-3', title: 'Shark Alert', emoji: '🦈', story: 'The sonar just lit up. Sharks in the area! Trigger 3 simultaneous responses.', challenge: 'When a shark is detected, trigger 3 functions: sound the alarm, flash the lights, and send a radio message.', xp: 120, hint: 'Define 3 functions and call them all inside an if block.' },
-      { id: 'ocean-4', title: 'Treasure Grid', emoji: '💎', story: 'Ancient treasure is scattered on an 8×8 grid. Your robot arm needs to scan every square.', challenge: 'Use nested loops to scan every square of an 8×8 grid. Count how many treasures you find.', xp: 150, hint: 'Use two repeat loops — one inside the other — to cover a grid.' },
-      { id: 'ocean-5', title: 'Surface!', emoji: '🏆', story: 'The oxygen supply is running low. Emergency ascent!', challenge: 'Build a full escape sequence — use a while loop, track oxygen, and surface before time runs out.', xp: 130, hint: 'Use a while loop with oxygen as the condition.' },
-    ],
-  },
-  {
-    id: 'city',
-    title: 'City Builder',
-    emoji: '🏙️',
-    tagline: 'Build a thriving city with variables & data',
-    color: '#f59e0b',
-    glow: 'rgba(245,158,11,0.4)',
-    bg: 'linear-gradient(135deg, #1a1200 0%, #3d2a00 50%, #1f1800 100%)',
-    concept: 'Variables & Data',
-    difficulty: 'Intermediate',
-    xpTotal: 650,
-    missions: [
-      { id: 'city-1', title: 'Blueprint', emoji: '📐', story: 'You\'ve been appointed lead engineer! Set up the city variables before anything can be built.', challenge: 'Create 4 variables: population (100), budget (50000), happiness (75), days (0). Display them all.', xp: 80, hint: 'Use set variable blocks for each one, then print them.' },
-      { id: 'city-2', title: 'Build the Roads', emoji: '🛣️', story: 'The citizens need roads! Each road costs money but increases happiness.', challenge: 'Loop 5 times: each iteration deduct 2000 from budget, add 3 to happiness, print the new values.', xp: 120, hint: 'Use change variable blocks inside a repeat loop.' },
-      { id: 'city-3', title: 'Power Grid', emoji: '⚡', story: 'The city needs power across 4 districts.', challenge: 'Loop through 4 districts: if power < 50 → add power and deduct from budget. Report total cost.', xp: 130, hint: 'Use a repeat loop and if to check each district.' },
-      { id: 'city-4', title: 'Population Boom', emoji: '📈', story: 'Your city is growing fast! Track growth over 10 days.', challenge: 'Simulate 10 days: each day population increases by 5% if happiness > 70, or by 1% if not.', xp: 160, hint: 'Use set population to int(population * 1.05) inside if/else inside a loop.' },
-      { id: 'city-5', title: 'Grand Opening', emoji: '🏆', story: 'The mayor is arriving! Show off all your city\'s stats.', challenge: 'Build a report that displays all variables and calculates a "City Score" = (happiness × 10) + (population / 10).', xp: 160, hint: 'Create a city_score variable and calculate it from your other variables.' },
-    ],
-  },
-  {
-    id: 'cyber',
-    title: 'Cyber Quest',
-    emoji: '⚡',
-    tagline: 'Master functions & AI to save the network',
-    color: '#10b981',
-    glow: 'rgba(16,185,129,0.4)',
-    bg: 'linear-gradient(135deg, #001a0e 0%, #003320 50%, #001a0e 100%)',
-    concept: 'Functions & AI',
-    difficulty: 'Advanced',
-    xpTotal: 750,
-    missions: [
-      { id: 'cyber-1', title: 'Debug Protocol', emoji: '🐛', story: 'The network is riddled with bugs! Write a fix function for each bug type.', challenge: 'Create a function called fixBug that takes a bug type as input. Call it 5 times with different inputs.', xp: 100, hint: 'Define a function with a parameter, then call it 5 times.' },
-      { id: 'cyber-2', title: 'Pattern Lock', emoji: '🔐', story: 'The security vault uses a pattern lock. Crack the formula to unlock the door.', challenge: 'Write a function that generates the sequence: 2, 4, 8, 16, 32.', xp: 140, hint: 'Each step multiplies by 2. Use a loop inside your function.' },
-      { id: 'cyber-3', title: 'Neural Guard', emoji: '🤖', story: 'The base AI has gone rogue! Train a new classifier to recognise safe vs threat signals.', challenge: 'Classify 5 different inputs as "safe" or "threat". For each "threat" trigger a lockdown function.', xp: 160, hint: 'Use a classify function with "if result = threat → call lockdown()" pattern.' },
-      { id: 'cyber-4', title: 'Data Heist', emoji: '💾', story: 'The enemy has stolen the city\'s data! Decrypt it using recursive function calls.', challenge: 'Write a recursive function "decrypt" that calls itself until it reaches the base case.', xp: 200, hint: 'Recursion: a function that calls itself. Use if count > 0 → call decrypt(count - 1).' },
-      { id: 'cyber-5', title: 'System Victory', emoji: '🏆', story: 'Run the final diagnostic — a function that calls all your previous functions.', challenge: 'Write a "runDiagnostic" function that calls fixBug, decrypt, and lockdown in order.', xp: 150, hint: 'Your final function should call all the functions you wrote in earlier missions.' },
-    ],
-  },
-];
+const PROGRESS_KEY = 'bb-mission-progress';
+const STARS_KEY = 'bb-mission-stars';
+const load = (k, d) => { try { return JSON.parse(localStorage.getItem(k) || '') || d; } catch { return d; } };
+const FONT = '"Nunito", "Inter", system-ui, sans-serif';
 
-const MISSION_CHECKS = {
-  'space-1': {
-    starter: `# 🔥 Launch Sequence\n# Print each step of your rocket launch\nprint("Systems check...")\nprint("Fuel loading...")\n# Add at least 3 more launch steps below!\n`,
-    check: (code, out) => {
-      if (out.includes('Error')) return { ok: false, msg: 'Fix the error in your code first!' };
-      const lines = out.split('\n').filter(l => l.trim());
-      if (lines.length < 5) return { ok: false, msg: `Need at least 5 steps! You have ${lines.length}. Add more print() statements.` };
-      return { ok: true, msg: '🚀 Launch sequence confirmed! Rocket is away!' };
-    },
-  },
-  'space-2': {
-    starter: `# 🌍 Orbit Calculator\n# Use a loop to orbit the planet exactly 3 times\nfor orbit in range(3):\n    print(f"Orbit {orbit + 1}/3 - adjusting speed...")\n`,
-    check: (code, out) => {
-      if (out.includes('Error')) return { ok: false, msg: 'Fix the error first!' };
-      if (!code.includes('for') && !code.includes('while')) return { ok: false, msg: 'Use a loop! Try: for orbit in range(3):' };
-      const lines = out.split('\n').filter(l => l.trim());
-      if (lines.length < 3) return { ok: false, msg: 'Make your loop run at least 3 times!' };
-      return { ok: true, msg: '🌍 Perfect orbit! 3 laps around the planet complete!' };
-    },
-  },
-  'space-3': {
-    starter: `# ☄️ Asteroid Field\nscore = 0\nfor i in range(5):\n    asteroid = True  # simulate detection\n    if asteroid:\n        print(f"Asteroid {i+1}! Dodging...")\n        score += 1\n    else:\n        print("Clear...")\nprint(f"Final score: {score}")\n`,
-    check: (code, out) => {
-      if (out.includes('Error')) return { ok: false, msg: 'Fix the error first!' };
-      if (!code.includes('if')) return { ok: false, msg: 'Use an if statement to detect asteroids!' };
-      if (!code.includes('score')) return { ok: false, msg: 'Add a score variable to track dodges!' };
-      return { ok: true, msg: '☄️ Asteroid field cleared! Great flying!' };
-    },
-  },
-  'space-4': {
-    starter: `# 📡 Space Beacon\ndef respond_to_signal(signal):\n    if signal == "SOS":\n        print("SOS received - sending rescue coordinates!")\n    elif signal == "PING":\n        print("PING - sending PONG!")\n    else:\n        print(f"Unknown signal: {signal}")\n\nrespond_to_signal("SOS")\nrespond_to_signal("PING")\nrespond_to_signal("DATA")\n`,
-    check: (code, out) => {
-      if (out.includes('Error')) return { ok: false, msg: 'Fix the error first!' };
-      if (!code.includes('def')) return { ok: false, msg: 'Define a function to handle signals!' };
-      const lines = out.split('\n').filter(l => l.trim());
-      if (lines.length < 2) return { ok: false, msg: 'Call your function with at least 2 different signals!' };
-      return { ok: true, msg: '📡 Beacon decoded! Signal response system working!' };
-    },
-  },
-  'space-5': {
-    starter: `# 🏆 Safe Landing - use ALL concepts!\ndef check_altitude(alt):\n    if alt > 1000:\n        return "descending"\n    elif alt > 100:\n        return "approach"\n    else:\n        return "landing"\n\naltitude = 5000\nfor step in range(5):\n    altitude -= 1000\n    status = check_altitude(altitude)\n    print(f"Altitude: {altitude}m | {status}")\nprint("Touchdown!")\n`,
-    check: (code, out) => {
-      if (out.includes('Error')) return { ok: false, msg: 'Fix the error first!' };
-      if (!code.includes('for') && !code.includes('while')) return { ok: false, msg: 'Missing a loop (for/while)!' };
-      if (!code.includes('if')) return { ok: false, msg: 'Missing an if statement!' };
-      if (!code.includes('def')) return { ok: false, msg: 'Missing a function (def)!' };
-      return { ok: true, msg: '🏆 Safe landing! You used loops, conditions AND functions!' };
-    },
-  },
-  'ocean-1': {
-    starter: `# 🤿 Dive Protocol\ndepth = 0\nlife_support = 100\nfor target in [10, 50, 200]:\n    depth = target\n    if depth > 100:\n        life_support -= 10\n        print(f"Depth: {depth}m - Adjusting life support: {life_support}%")\n    else:\n        print(f"Depth: {depth}m - Systems nominal")\n`,
-    check: (code, out) => {
-      if (out.includes('Error')) return { ok: false, msg: 'Fix the error first!' };
-      if (!code.includes('depth')) return { ok: false, msg: 'Create a depth variable!' };
-      if (!code.includes('if')) return { ok: false, msg: 'Use if to check pressure at each depth!' };
-      const lines = out.split('\n').filter(l => l.trim());
-      if (lines.length < 3) return { ok: false, msg: 'Dive through all 3 depth stages!' };
-      return { ok: true, msg: '🤿 Dive complete! All depths reached safely!' };
-    },
-  },
-  'ocean-2': {
-    starter: `# 🪸 Coral Maze\nposition = 0\nfor step in range(8):\n    if position >= 5:\n        print(f"Step {step+1}: Coral! Dodging...")\n        position = 0\n    else:\n        print(f"Step {step+1}: Moving forward...")\n        position += 1\nprint("Maze complete!")\n`,
-    check: (code, out) => {
-      if (out.includes('Error')) return { ok: false, msg: 'Fix the error first!' };
-      if (!code.includes('if')) return { ok: false, msg: 'Use if to detect and dodge coral!' };
-      if (!out.includes('complete') && !out.includes('done') && !out.includes('Clear')) return { ok: false, msg: 'Navigate to the end of the maze!' };
-      return { ok: true, msg: '🪸 Coral maze navigated! No scratches on the sub!' };
-    },
-  },
-  'ocean-3': {
-    starter: `# 🦈 Shark Alert!\ndef sound_alarm():\n    print("ALARM SOUNDING!")\ndef flash_lights():\n    print("LIGHTS FLASHING!")\ndef radio_surface():\n    print("Radioing surface: SHARK DETECTED!")\n\nshark_detected = True\nif shark_detected:\n    sound_alarm()\n    flash_lights()\n    radio_surface()\n`,
-    check: (code, out) => {
-      if (out.includes('Error')) return { ok: false, msg: 'Fix the error first!' };
-      const fns = (code.match(/def /g) || []).length;
-      if (fns < 3) return { ok: false, msg: `Create 3 functions (alarm, lights, radio). You have ${fns}.` };
-      const lines = out.split('\n').filter(l => l.trim());
-      if (lines.length < 3) return { ok: false, msg: 'All 3 events must trigger!' };
-      return { ok: true, msg: '🦈 Shark alert handled! All 3 systems triggered!' };
-    },
-  },
-  'ocean-4': {
-    starter: `# 💎 Treasure Grid - scan an 8x8 grid!\ntreasure_count = 0\nfor row in range(8):\n    for col in range(8):\n        if (row + col) % 7 == 0:\n            treasure_count += 1\n            print(f"Treasure at ({row},{col})!")\nprint(f"Total treasures: {treasure_count}")\n`,
-    check: (code, out) => {
-      if (out.includes('Error')) return { ok: false, msg: 'Fix the error first!' };
-      const forCount = (code.match(/for /g) || []).length;
-      if (forCount < 2) return { ok: false, msg: 'Use nested loops — a for loop INSIDE another for loop!' };
-      if (!out.includes('Total') && !out.includes('count') && !out.includes('found')) return { ok: false, msg: 'Display your total treasure count!' };
-      return { ok: true, msg: '💎 Grid fully scanned! Treasure hunt complete!' };
-    },
-  },
-  'ocean-5': {
-    starter: `# 🏆 Surface! Emergency ascent!\noxygen = 60\ndepth = 200\nwhile oxygen > 0 and depth > 0:\n    oxygen -= 5\n    depth -= 30\n    if depth < 0:\n        depth = 0\n    print(f"Depth: {depth}m | Oxygen: {oxygen}s")\n    if depth == 0:\n        break\nif depth == 0:\n    print("SURFACED! You made it!")\n`,
-    check: (code, out) => {
-      if (out.includes('Error')) return { ok: false, msg: 'Fix the error first!' };
-      if (!code.includes('while') && !code.includes('for')) return { ok: false, msg: 'Use a loop for the ascent!' };
-      if (!out.toLowerCase().includes('surface') && !out.toLowerCase().includes('surfaced') && !out.includes('made it')) return { ok: false, msg: "Make sure your sub reaches the surface!" };
-      return { ok: true, msg: '🌊 Surfaced safely! You escaped in time!' };
-    },
-  },
-  'city-1': {
-    starter: `# 📐 City Blueprint\npopulation = 100\nbudget = 50000\nhappiness = 75\ndays = 0\nprint(f"Population: {population}")\nprint(f"Budget: {budget}")\nprint(f"Happiness: {happiness}%")\nprint(f"Day: {days}")\n`,
-    check: (code, out) => {
-      if (out.includes('Error')) return { ok: false, msg: 'Fix the error first!' };
-      if (!code.includes('population') || !code.includes('budget') || !code.includes('happiness')) return { ok: false, msg: 'Create all 4 variables: population, budget, happiness, days!' };
-      const lines = out.split('\n').filter(l => l.trim());
-      if (lines.length < 4) return { ok: false, msg: 'Display all 4 variables!' };
-      return { ok: true, msg: '📐 Blueprint complete! City variables all set!' };
-    },
-  },
-  'city-2': {
-    starter: `# 🛣️ Build the Roads!\nbudget = 50000\nhappiness = 75\nfor road in range(5):\n    budget -= 2000\n    happiness += 3\n    if budget < 0:\n        print("Budget depleted!")\n        break\n    print(f"Road {road+1} built | Budget: {budget} | Happiness: {happiness}%")\n`,
-    check: (code, out) => {
-      if (out.includes('Error')) return { ok: false, msg: 'Fix the error first!' };
-      if (!code.includes('for') && !code.includes('while')) return { ok: false, msg: 'Use a loop to build 5 roads!' };
-      if (!code.includes('budget')) return { ok: false, msg: 'Deduct from budget each iteration!' };
-      return { ok: true, msg: '🛣️ Roads built! The city is connected!' };
-    },
-  },
-  'city-3': {
-    starter: `# ⚡ Power Grid\ndistricts = [40, 80, 30, 90]\nbudget = 50000\ntotal_cost = 0\nfor i in range(len(districts)):\n    if districts[i] < 50:\n        districts[i] += 20\n        total_cost += 5000\n        print(f"District {i+1}: Powered up | Cost: 5000")\n    else:\n        print(f"District {i+1}: Power OK ({districts[i]})")\nprint(f"Total cost: {total_cost}")\n`,
-    check: (code, out) => {
-      if (out.includes('Error')) return { ok: false, msg: 'Fix the error first!' };
-      if (!code.includes('[')) return { ok: false, msg: 'Use a list for the 4 districts!' };
-      if (!code.includes('if')) return { ok: false, msg: 'Check power levels with if!' };
-      return { ok: true, msg: '⚡ Power grid stable! All districts online!' };
-    },
-  },
-  'city-4': {
-    starter: `# 📈 Population Boom!\npopulation = 100\nhappiness = 75\nfor day in range(10):\n    if happiness > 70:\n        population = int(population * 1.05)\n    else:\n        population = int(population * 1.01)\n    print(f"Day {day+1}: Population {population}")\nprint(f"Final population: {population}")\n`,
-    check: (code, out) => {
-      if (out.includes('Error')) return { ok: false, msg: 'Fix the error first!' };
-      if (!code.includes('for') && !code.includes('while')) return { ok: false, msg: 'Use a loop to simulate the days!' };
-      if (!code.includes('population')) return { ok: false, msg: 'Track the population variable!' };
-      const nums = out.split('\n').filter(l => l.trim()).filter(l => /\d+/.test(l));
-      if (nums.length < 5) return { ok: false, msg: 'Run through at least 5 days and print population each time!' };
-      return { ok: true, msg: '📈 Population boom! The city is thriving!' };
-    },
-  },
-  'city-5': {
-    starter: `# 🏆 Grand Opening!\npopulation = 350\nbudget = 30000\nhappiness = 90\ncity_score = (happiness * 10) + (population // 10)\nprint("=== CITY REPORT ===")\nprint(f"Population: {population}")\nprint(f"Budget: {budget}")\nprint(f"Happiness: {happiness}%")\nprint(f"CITY SCORE: {city_score}")\nprint("FIREWORKS! Grand opening!")\n`,
-    check: (code, out) => {
-      if (out.includes('Error')) return { ok: false, msg: 'Fix the error first!' };
-      if (!code.includes('score') && !code.includes('Score')) return { ok: false, msg: 'Calculate a city score!' };
-      if (!out.includes('Score') && !out.includes('score')) return { ok: false, msg: 'Display your city score!' };
-      return { ok: true, msg: '🏆 Grand opening complete! The mayor is impressed!' };
-    },
-  },
-  'cyber-1': {
-    starter: `# 🐛 Debug Protocol\ndef fixBug(bug_type):\n    if bug_type == "memory":\n        print("Fixing memory leak...")\n    elif bug_type == "network":\n        print("Patching network...")\n    elif bug_type == "syntax":\n        print("Correcting syntax...")\n    else:\n        print(f"Fixing {bug_type} bug...")\n    print(f"{bug_type} bug fixed!")\n\nfixBug("memory")\nfixBug("network")\nfixBug("syntax")\nfixBug("logic")\nfixBug("runtime")\n`,
-    check: (code, out) => {
-      if (out.includes('Error')) return { ok: false, msg: 'Fix the error first!' };
-      if (!code.includes('def fixBug') && !code.includes('def fix_bug')) return { ok: false, msg: 'Create a function called fixBug!' };
-      const calls = (code.match(/fixBug|fix_bug/g) || []).length - 1;
-      if (calls < 5) return { ok: false, msg: `Call fixBug at least 5 times! You have ${calls}.` };
-      return { ok: true, msg: '🐛 All bugs squashed! Network systems repaired!' };
-    },
-  },
-  'cyber-2': {
-    starter: `# 🔐 Pattern Lock\ndef generate_sequence(steps):\n    result = 1\n    for i in range(steps):\n        result *= 2\n        print(result)\n\ngenerate_sequence(5)  # Should print: 2, 4, 8, 16, 32\n`,
-    check: (code, out) => {
-      if (out.includes('Error')) return { ok: false, msg: 'Fix the error first!' };
-      if (!code.includes('def')) return { ok: false, msg: 'Write the sequence inside a function!' };
-      if (!code.includes('for') && !code.includes('while')) return { ok: false, msg: 'Use a loop inside your function!' };
-      const nums = out.split('\n').filter(l => l.trim()).filter(l => /^\d+$/.test(l.trim()));
-      if (nums.length < 3) return { ok: false, msg: 'Your function should print at least 3 numbers in the sequence!' };
-      return { ok: true, msg: '🔐 Pattern cracked! Vault unlocked!' };
-    },
-  },
-  'cyber-3': {
-    starter: `# 🤖 Neural Guard\ndef lockdown():\n    print("LOCKDOWN INITIATED")\ndef classify(signal):\n    if signal % 2 != 0:\n        return "threat"\n    return "safe"\n\nsignals = [10, 7, 4, 13, 6]\nfor s in signals:\n    result = classify(s)\n    print(f"Signal {s}: {result}")\n    if result == "threat":\n        lockdown()\n`,
-    check: (code, out) => {
-      if (out.includes('Error')) return { ok: false, msg: 'Fix the error first!' };
-      if (!code.includes('def')) return { ok: false, msg: 'Define a classify function and a lockdown function!' };
-      if (!out.toLowerCase().includes('lockdown')) return { ok: false, msg: 'Your lockdown must trigger for threats!' };
-      return { ok: true, msg: '🤖 Neural Guard active! All threats neutralised!' };
-    },
-  },
-  'cyber-4': {
-    starter: `# 💾 Recursive Decryption\ndef decrypt(count):\n    if count == 0:\n        print("Decryption complete! Data restored.")\n        return\n    print(f"Peeling layer {count}...")\n    decrypt(count - 1)\n\ndecrypt(5)\n`,
-    check: (code, out) => {
-      if (out.includes('Error')) return { ok: false, msg: 'Fix the error first!' };
-      if (!code.includes('def decrypt')) return { ok: false, msg: 'Write a recursive function called decrypt!' };
-      if (!out.includes('complete') && !out.includes('restored')) return { ok: false, msg: 'Reach the base case — decrypt until count == 0!' };
-      return { ok: true, msg: '💾 Decryption complete! All 5 layers peeled!' };
-    },
-  },
-  'cyber-5': {
-    starter: `# 🏆 System Victory!\ndef fixBug(t): print(f"Fixed {t} bug")\ndef decrypt(n):\n    if n == 0: return\n    decrypt(n-1)\ndef lockdown(): print("Lockdown cleared")\n\ndef runDiagnostic():\n    score = 0\n    print("Running diagnostic...")\n    fixBug("memory"); score += 1\n    decrypt(3); score += 1\n    lockdown(); score += 1\n    print(f"Systems passed: {score}/3")\n    if score == 3:\n        print("ALL SYSTEMS GO! Network secured!")\n\nrunDiagnostic()\n`,
-    check: (code, out) => {
-      if (out.includes('Error')) return { ok: false, msg: 'Fix the error first!' };
-      if (!code.includes('def runDiagnostic')) return { ok: false, msg: 'Write a runDiagnostic function!' };
-      if (!out.includes('passed') && !out.includes('score') && !out.includes('Score')) return { ok: false, msg: 'Your diagnostic should show a score!' };
-      return { ok: true, msg: '🏆 SYSTEM VICTORY! All networks secured! You are a Cyber Master!' };
-    },
-  },
+const WORLD = {
+  space: { badge: '🚀', place: 'the Nova Galaxy', node: '🪐', action: 'Launch', pathBg: '#1e1b4b' },
+  ocean: { badge: '🔱', place: 'the Coral Deep', node: '🫧', action: 'Dive', pathBg: '#082f49' },
+  city: { badge: '🏙️', place: 'Byte City', node: '🏗️', action: 'Build', pathBg: '#431407' },
+  cyber: { badge: '🛡️', place: 'the Grid', node: '🔒', action: 'Hack', pathBg: '#022c22' },
 };
 
-// ── Mission Block Editor ────────────────────────────────────────────────────
-
-const MBLOCK_DEFS = {
-  print:      { label: 'Print',           color: '#10b981', icon: '📢',
-    params: [{ key: 'message', label: 'Value', default: '"Hello!"' }],
-    gen: (p) => {
-      const msg = (p.message || '""').trim();
-      if (/^["']/.test(msg) || /^f["']/.test(msg) || /^[a-zA-Z_][a-zA-Z0-9_.()[\]]*$/.test(msg)) return `print(${msg})`;
-      return `print("${msg}")`;
-    },
-  },
-  repeat:     { label: 'Repeat',          color: '#f59e0b', icon: '🔄',
-    params: [{ key: 'times', label: 'Times', default: '3' }],
-    gen: (p, v) => `for ${v || 'i'} in range(${p.times || '3'}):`, container: true,
-  },
-  while:      { label: 'While',           color: '#f97316', icon: '🔁',
-    params: [{ key: 'cond', label: 'Condition', default: 'x > 0' }],
-    gen: (p) => `while ${p.cond || 'True'}:`, container: true,
-  },
-  if:         { label: 'If',              color: '#8b5cf6', icon: '❓',
-    params: [{ key: 'cond', label: 'Condition', default: 'x > 0' }],
-    gen: (p) => `if ${p.cond || 'True'}:`, container: true,
-  },
-  'var-set':  { label: 'Set Variable',    color: '#0ea5e9', icon: '📦',
-    params: [{ key: 'name', label: 'Name', default: 'x' }, { key: 'value', label: 'Value', default: '0' }],
-    gen: (p) => `${p.name || 'x'} = ${p.value || '0'}`,
-  },
-  'var-change': { label: 'Change Var',   color: '#0284c7', icon: '🔧',
-    params: [{ key: 'name', label: 'Name', default: 'x' }, { key: 'op', label: 'Op', default: '+=' }, { key: 'amount', label: 'By', default: '1' }],
-    gen: (p) => `${p.name || 'x'} ${p.op || '+='} ${p.amount || '1'}`,
-  },
-  'func-def': { label: 'Define Function', color: '#ec4899', icon: '⚡',
-    params: [{ key: 'name', label: 'Name', default: 'myFunc' }, { key: 'args', label: 'Args', default: '' }],
-    gen: (p) => `def ${p.name || 'myFunc'}(${p.args || ''}):`, container: true,
-  },
-  'func-call':{ label: 'Call Function',  color: '#db2777', icon: '📞',
-    params: [{ key: 'name', label: 'Name', default: 'myFunc' }, { key: 'args', label: 'Args', default: '' }],
-    gen: (p) => `${p.name || 'myFunc'}(${p.args || ''})`,
-  },
-  return:     { label: 'Return',          color: '#ef4444', icon: '↩',
-    params: [{ key: 'value', label: 'Value', default: '' }],
-    gen: (p) => p.value ? `return ${p.value}` : 'return',
-  },
-  comment:    { label: 'Comment',         color: '#6b7280', icon: '#',
-    params: [{ key: 'text', label: 'Text', default: 'My note' }],
-    gen: (p) => `# ${p.text || ''}`,
-  },
-};
-
-const MISSION_PALETTE = {
-  'space-1':  ['print', 'comment'],
-  'space-2':  ['repeat', 'print', 'var-set', 'comment'],
-  'space-3':  ['var-set', 'var-change', 'repeat', 'if', 'print', 'comment'],
-  'space-4':  ['func-def', 'func-call', 'if', 'print', 'comment'],
-  'space-5':  ['func-def', 'func-call', 'var-set', 'var-change', 'repeat', 'if', 'return', 'print', 'comment'],
-  'ocean-1':  ['var-set', 'var-change', 'repeat', 'if', 'print', 'comment'],
-  'ocean-2':  ['var-set', 'var-change', 'repeat', 'if', 'print', 'comment'],
-  'ocean-3':  ['func-def', 'func-call', 'var-set', 'if', 'print', 'comment'],
-  'ocean-4':  ['var-set', 'var-change', 'repeat', 'if', 'print', 'comment'],
-  'ocean-5':  ['var-set', 'var-change', 'while', 'if', 'print', 'comment'],
-  'city-1':   ['var-set', 'print', 'comment'],
-  'city-2':   ['var-set', 'var-change', 'repeat', 'if', 'print', 'comment'],
-  'city-3':   ['var-set', 'var-change', 'repeat', 'if', 'print', 'comment'],
-  'city-4':   ['var-set', 'var-change', 'repeat', 'if', 'print', 'comment'],
-  'city-5':   ['var-set', 'var-change', 'print', 'comment'],
-  'cyber-1':  ['func-def', 'func-call', 'if', 'print', 'comment'],
-  'cyber-2':  ['func-def', 'func-call', 'var-set', 'var-change', 'repeat', 'return', 'print', 'comment'],
-  'cyber-3':  ['func-def', 'func-call', 'var-set', 'var-change', 'repeat', 'if', 'return', 'print', 'comment'],
-  'cyber-4':  ['func-def', 'func-call', 'var-set', 'var-change', 'if', 'return', 'print', 'comment'],
-  'cyber-5':  ['func-def', 'func-call', 'var-set', 'var-change', 'print', 'comment'],
-};
-
-function mb(type, indent, params) {
-  return { id: Math.random().toString(36).slice(2), type, indent, params };
-}
-
-const MISSION_STARTERS = {
-  'space-1': [
-    mb('print', 0, { message: '"Systems check..."' }),
-    mb('print', 0, { message: '"Fuel loading..."' }),
-    mb('print', 0, { message: '"Engines ignite!"' }),
-    mb('print', 0, { message: '"Clamps released!"' }),
-    mb('print', 0, { message: '"Liftoff!"' }),
-    mb('comment', 0, { text: 'Add more steps to make a great launch!' }),
-  ],
-  'space-2': [
-    mb('repeat', 0, { times: '3' }),
-    mb('print', 1, { message: 'f"Orbit {i+1}/3 - adjusting speed..."' }),
-    mb('comment', 0, { text: 'You can add more actions inside the loop!' }),
-  ],
-  'space-3': [
-    mb('var-set', 0, { name: 'score', value: '0' }),
-    mb('repeat', 0, { times: '5' }),
-    mb('var-set', 1, { name: 'asteroid', value: 'True' }),
-    mb('if', 1, { cond: 'asteroid' }),
-    mb('print', 2, { message: 'f"Asteroid {i+1}! Dodging..."' }),
-    mb('var-change', 2, { name: 'score', op: '+=', amount: '1' }),
-    mb('print', 0, { message: 'f"Final score: {score}"' }),
-  ],
-  'space-4': [
-    mb('func-def', 0, { name: 'respond_to_signal', args: 'signal' }),
-    mb('if', 1, { cond: 'signal == "SOS"' }),
-    mb('print', 2, { message: '"SOS received - sending rescue coordinates!"' }),
-    mb('if', 1, { cond: 'signal == "PING"' }),
-    mb('print', 2, { message: '"PING - sending PONG!"' }),
-    mb('func-call', 0, { name: 'respond_to_signal', args: '"SOS"' }),
-    mb('func-call', 0, { name: 'respond_to_signal', args: '"PING"' }),
-    mb('func-call', 0, { name: 'respond_to_signal', args: '"DATA"' }),
-  ],
-  'space-5': [
-    mb('func-def', 0, { name: 'check_altitude', args: 'alt' }),
-    mb('if', 1, { cond: 'alt > 1000' }),
-    mb('return', 2, { value: '"descending"' }),
-    mb('return', 1, { value: '"landing"' }),
-    mb('var-set', 0, { name: 'altitude', value: '5000' }),
-    mb('repeat', 0, { times: '5' }),
-    mb('var-change', 1, { name: 'altitude', op: '-=', amount: '1000' }),
-    mb('var-set', 1, { name: 'status', value: 'check_altitude(altitude)' }),
-    mb('print', 1, { message: 'f"Altitude: {altitude}m | {status}"' }),
-    mb('print', 0, { message: '"Touchdown!"' }),
-  ],
-  'ocean-1': [
-    mb('var-set', 0, { name: 'depth', value: '0' }),
-    mb('var-set', 0, { name: 'life_support', value: '100' }),
-    mb('repeat', 0, { times: '3' }),
-    mb('var-change', 1, { name: 'depth', op: '+=', amount: '70' }),
-    mb('if', 1, { cond: 'depth > 100' }),
-    mb('var-change', 2, { name: 'life_support', op: '-=', amount: '10' }),
-    mb('print', 2, { message: 'f"Depth: {depth}m - Adjusting life support: {life_support}%"' }),
-    mb('if', 1, { cond: 'depth <= 100' }),
-    mb('print', 2, { message: 'f"Depth: {depth}m - Systems nominal"' }),
-  ],
-  'ocean-2': [
-    mb('var-set', 0, { name: 'position', value: '0' }),
-    mb('repeat', 0, { times: '8' }),
-    mb('if', 1, { cond: 'position >= 5' }),
-    mb('print', 2, { message: 'f"Step {i+1}: Coral! Dodging..."' }),
-    mb('var-set', 2, { name: 'position', value: '0' }),
-    mb('if', 1, { cond: 'position < 5' }),
-    mb('print', 2, { message: 'f"Step {i+1}: Moving forward..."' }),
-    mb('var-change', 2, { name: 'position', op: '+=', amount: '1' }),
-    mb('print', 0, { message: '"Maze complete!"' }),
-  ],
-  'ocean-3': [
-    mb('func-def', 0, { name: 'sound_alarm', args: '' }),
-    mb('print', 1, { message: '"ALARM SOUNDING!"' }),
-    mb('func-def', 0, { name: 'flash_lights', args: '' }),
-    mb('print', 1, { message: '"LIGHTS FLASHING!"' }),
-    mb('func-def', 0, { name: 'radio_surface', args: '' }),
-    mb('print', 1, { message: '"Radioing surface: SHARK DETECTED!"' }),
-    mb('var-set', 0, { name: 'shark_detected', value: 'True' }),
-    mb('if', 0, { cond: 'shark_detected' }),
-    mb('func-call', 1, { name: 'sound_alarm', args: '' }),
-    mb('func-call', 1, { name: 'flash_lights', args: '' }),
-    mb('func-call', 1, { name: 'radio_surface', args: '' }),
-  ],
-  'ocean-4': [
-    mb('var-set', 0, { name: 'treasure_count', value: '0' }),
-    mb('repeat', 0, { times: '8' }),
-    mb('repeat', 1, { times: '8' }),
-    mb('if', 2, { cond: 'treasure_count < 3' }),
-    mb('var-change', 3, { name: 'treasure_count', op: '+=', amount: '1' }),
-    mb('print', 3, { message: 'f"Treasure found! Total: {treasure_count}"' }),
-    mb('print', 0, { message: 'f"Total treasures: {treasure_count}"' }),
-  ],
-  'ocean-5': [
-    mb('var-set', 0, { name: 'oxygen', value: '60' }),
-    mb('var-set', 0, { name: 'depth', value: '200' }),
-    mb('while', 0, { cond: 'oxygen > 0 and depth > 0' }),
-    mb('var-change', 1, { name: 'oxygen', op: '-=', amount: '5' }),
-    mb('var-change', 1, { name: 'depth', op: '-=', amount: '30' }),
-    mb('if', 1, { cond: 'depth < 0' }),
-    mb('var-set', 2, { name: 'depth', value: '0' }),
-    mb('print', 0, { message: '"SURFACED! You made it!"' }),
-  ],
-  'city-1': [
-    mb('var-set', 0, { name: 'population', value: '100' }),
-    mb('var-set', 0, { name: 'budget', value: '50000' }),
-    mb('var-set', 0, { name: 'happiness', value: '75' }),
-    mb('var-set', 0, { name: 'days', value: '0' }),
-    mb('print', 0, { message: 'f"Population: {population}"' }),
-    mb('print', 0, { message: 'f"Budget: {budget}"' }),
-    mb('print', 0, { message: 'f"Happiness: {happiness}%"' }),
-    mb('print', 0, { message: 'f"Day: {days}"' }),
-  ],
-  'city-2': [
-    mb('var-set', 0, { name: 'budget', value: '50000' }),
-    mb('var-set', 0, { name: 'happiness', value: '75' }),
-    mb('repeat', 0, { times: '5' }),
-    mb('var-change', 1, { name: 'budget', op: '-=', amount: '2000' }),
-    mb('var-change', 1, { name: 'happiness', op: '+=', amount: '3' }),
-    mb('if', 1, { cond: 'budget < 0' }),
-    mb('print', 2, { message: '"Budget depleted!"' }),
-    mb('print', 1, { message: 'f"Road {i+1} built | Budget: {budget} | Happiness: {happiness}%"' }),
-  ],
-  'city-3': [
-    mb('var-set', 0, { name: 'districts', value: '[40, 80, 30, 90]' }),
-    mb('var-set', 0, { name: 'total_cost', value: '0' }),
-    mb('var-set', 0, { name: 'power_needed', value: '50' }),
-    mb('repeat', 0, { times: '4' }),
-    mb('if', 1, { cond: 'i < 2' }),
-    mb('var-change', 2, { name: 'total_cost', op: '+=', amount: '5000' }),
-    mb('print', 2, { message: 'f"District {i+1}: Powered up | Cost: 5000"' }),
-    mb('print', 0, { message: 'f"Total cost: {total_cost}"' }),
-  ],
-  'city-4': [
-    mb('var-set', 0, { name: 'population', value: '100' }),
-    mb('var-set', 0, { name: 'happiness', value: '75' }),
-    mb('repeat', 0, { times: '10' }),
-    mb('if', 1, { cond: 'happiness > 70' }),
-    mb('var-set', 2, { name: 'population', value: 'int(population * 1.05)' }),
-    mb('if', 1, { cond: 'happiness <= 70' }),
-    mb('var-set', 2, { name: 'population', value: 'int(population * 1.01)' }),
-    mb('print', 1, { message: 'f"Day {i+1}: Population {population}"' }),
-    mb('print', 0, { message: 'f"Final population: {population}"' }),
-  ],
-  'city-5': [
-    mb('var-set', 0, { name: 'population', value: '350' }),
-    mb('var-set', 0, { name: 'budget', value: '30000' }),
-    mb('var-set', 0, { name: 'happiness', value: '90' }),
-    mb('var-set', 0, { name: 'city_score', value: '(happiness * 10) + (population // 10)' }),
-    mb('print', 0, { message: '"=== CITY REPORT ==="' }),
-    mb('print', 0, { message: 'f"Population: {population}"' }),
-    mb('print', 0, { message: 'f"Budget: {budget}"' }),
-    mb('print', 0, { message: 'f"Happiness: {happiness}%"' }),
-    mb('print', 0, { message: 'f"CITY SCORE: {city_score}"' }),
-    mb('print', 0, { message: '"FIREWORKS! Grand opening!"' }),
-  ],
-  'cyber-1': [
-    mb('func-def', 0, { name: 'fixBug', args: 'bug_type' }),
-    mb('if', 1, { cond: 'bug_type == "memory"' }),
-    mb('print', 2, { message: '"Fixing memory leak..."' }),
-    mb('if', 1, { cond: 'bug_type == "network"' }),
-    mb('print', 2, { message: '"Patching network..."' }),
-    mb('print', 1, { message: 'f"{bug_type} bug fixed!"' }),
-    mb('func-call', 0, { name: 'fixBug', args: '"memory"' }),
-    mb('func-call', 0, { name: 'fixBug', args: '"network"' }),
-    mb('func-call', 0, { name: 'fixBug', args: '"syntax"' }),
-    mb('func-call', 0, { name: 'fixBug', args: '"logic"' }),
-    mb('func-call', 0, { name: 'fixBug', args: '"runtime"' }),
-  ],
-  'cyber-2': [
-    mb('func-def', 0, { name: 'generate_sequence', args: 'steps' }),
-    mb('var-set', 1, { name: 'result', value: '1' }),
-    mb('repeat', 1, { times: 'steps' }),
-    mb('var-change', 2, { name: 'result', op: '*=', amount: '2' }),
-    mb('print', 2, { message: 'result' }),
-    mb('func-call', 0, { name: 'generate_sequence', args: '5' }),
-  ],
-  'cyber-3': [
-    mb('func-def', 0, { name: 'lockdown', args: '' }),
-    mb('print', 1, { message: '"LOCKDOWN INITIATED"' }),
-    mb('func-def', 0, { name: 'classify', args: 'signal' }),
-    mb('if', 1, { cond: 'signal > 10' }),
-    mb('return', 2, { value: '"threat"' }),
-    mb('return', 1, { value: '"safe"' }),
-    mb('repeat', 0, { times: '5' }),
-    mb('var-set', 1, { name: 'sig', value: 'i * 3 + 4' }),
-    mb('var-set', 1, { name: 'result', value: 'classify(sig)' }),
-    mb('print', 1, { message: 'f"Signal {sig}: {result}"' }),
-    mb('if', 1, { cond: 'result == "threat"' }),
-    mb('func-call', 2, { name: 'lockdown', args: '' }),
-  ],
-  'cyber-4': [
-    mb('func-def', 0, { name: 'decrypt', args: 'count' }),
-    mb('if', 1, { cond: 'count == 0' }),
-    mb('print', 2, { message: '"Decryption complete! Data restored."' }),
-    mb('return', 2, { value: '' }),
-    mb('print', 1, { message: 'f"Peeling layer {count}..."' }),
-    mb('func-call', 1, { name: 'decrypt', args: 'count - 1' }),
-    mb('func-call', 0, { name: 'decrypt', args: '5' }),
-  ],
-  'cyber-5': [
-    mb('func-def', 0, { name: 'fixBug', args: 't' }),
-    mb('print', 1, { message: 'f"Fixed {t} bug"' }),
-    mb('func-def', 0, { name: 'decrypt', args: 'n' }),
-    mb('if', 1, { cond: 'n == 0' }),
-    mb('return', 2, { value: '' }),
-    mb('func-call', 1, { name: 'decrypt', args: 'n - 1' }),
-    mb('func-def', 0, { name: 'lockdown', args: '' }),
-    mb('print', 1, { message: '"Lockdown cleared"' }),
-    mb('func-def', 0, { name: 'runDiagnostic', args: '' }),
-    mb('var-set', 1, { name: 'score', value: '0' }),
-    mb('print', 1, { message: '"Running diagnostic..."' }),
-    mb('func-call', 1, { name: 'fixBug', args: '"memory"' }),
-    mb('var-change', 1, { name: 'score', op: '+=', amount: '1' }),
-    mb('func-call', 1, { name: 'decrypt', args: '3' }),
-    mb('var-change', 1, { name: 'score', op: '+=', amount: '1' }),
-    mb('func-call', 1, { name: 'lockdown', args: '' }),
-    mb('var-change', 1, { name: 'score', op: '+=', amount: '1' }),
-    mb('print', 1, { message: 'f"Systems passed: {score}/3"' }),
-    mb('func-call', 0, { name: 'runDiagnostic', args: '' }),
-  ],
-};
-
-function genPyFromBlocks(blocks) {
-  if (!blocks.length) return '# Add blocks from the palette!\n';
-  const loopVars = ['i', 'j', 'k', 'n'];
-  const lines = [];
-  for (let idx = 0; idx < blocks.length; idx++) {
-    const block = blocks[idx];
-    const def = MBLOCK_DEFS[block.type];
-    if (!def) continue;
-    const indent = block.indent || 0;
-    const pad = '    '.repeat(indent);
-    const loopVar = loopVars[indent] || 'x';
-    lines.push(pad + def.gen(block.params || {}, loopVar));
-    if (def.container) {
-      const nextIndent = idx + 1 < blocks.length ? (blocks[idx + 1].indent || 0) : -1;
-      if (nextIndent <= indent) lines.push(pad + '    pass');
-    }
-  }
-  return lines.join('\n');
-}
-
-const MB_BTN = {
-  background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)',
-  borderRadius: 4, color: 'rgba(255,255,255,0.7)', cursor: 'pointer',
-  fontSize: 11, padding: '2px 5px', lineHeight: 1.4,
-};
-
-function MissionBlockEditor({ missionId, campColor, blocks, setBlocks }) {
-  const [showCode, setShowCode] = useState(false);
-  const available = MISSION_PALETTE[missionId] || Object.keys(MBLOCK_DEFS);
-
-  const addBlock = (type) => {
-    const def = MBLOCK_DEFS[type];
-    const params = {};
-    (def.params || []).forEach(p => { params[p.key] = p.default; });
-    setBlocks(prev => [...prev, { id: Math.random().toString(36).slice(2), type, indent: 0, params }]);
-  };
-
-  const updateParam = (id, key, val) =>
-    setBlocks(prev => prev.map(b => b.id === id ? { ...b, params: { ...b.params, [key]: val } } : b));
-
-  const moveBlock = (idx, dir) => setBlocks(prev => {
-    const arr = [...prev];
-    const nIdx = idx + dir;
-    if (nIdx < 0 || nIdx >= arr.length) return arr;
-    [arr[idx], arr[nIdx]] = [arr[nIdx], arr[idx]];
-    return arr;
-  });
-
-  const changeIndent = (idx, delta) =>
-    setBlocks(prev => prev.map((b, i) => i === idx ? { ...b, indent: Math.max(0, Math.min(4, (b.indent || 0) + delta)) } : b));
-
-  const removeBlock = (id) => setBlocks(prev => prev.filter(b => b.id !== id));
-
+function Starfield() {
+  const stars = useMemo(() => Array.from({ length: 70 }, (_, i) => ({ x: (i * 137.5) % 100, y: (i * 61.8) % 100, s: (i % 3) + 1, d: (i % 5) + 2 })), []);
   return (
-    <div
-      style={{
-        background: `${campColor}12`,
-        border: `1px solid ${campColor}3d`,
-        borderRadius: 14,
-        padding: 10,
-      }}
-    >
-      <div style={{ display: 'flex', gap: 10, minHeight: 180 }}>
-        {/* Palette */}
-        <div
-          style={{
-            width: 148,
-            flexShrink: 0,
-            background: 'rgba(255,255,255,0.06)',
-            borderRadius: 12,
-            padding: '10px 8px',
-            border: '1px solid rgba(255,255,255,0.14)',
-          }}
-        >
-          <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8, paddingLeft: 2 }}>Blocks</div>
-          {available.map(type => {
-            const def = MBLOCK_DEFS[type];
-            if (!def) return null;
-            return (
-              <button key={type} onClick={() => addBlock(type)} style={{
-                width: '100%', textAlign: 'left', padding: '6px 8px',
-                background: def.color + '22', border: `1px solid ${def.color}44`,
-                borderRadius: 7, color: '#fff', cursor: 'pointer',
-                fontSize: 11, fontWeight: 600, marginBottom: 4,
-                display: 'flex', alignItems: 'center', gap: 5,
-              }}>
-                <span>{def.icon}</span>{def.label}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Workspace */}
-        <div
-          style={{
-            flex: 1,
-            background: 'rgba(255,255,255,0.05)',
-            borderRadius: 12,
-            padding: 10,
-            minHeight: 180,
-            border: '1px solid rgba(255,255,255,0.14)',
-          }}
-        >
-          {blocks.length === 0 && (
-            <div style={{ color: 'rgba(255,255,255,0.2)', fontSize: 13, textAlign: 'center', marginTop: 60 }}>
-              ← Click blocks on the left to add them!
-            </div>
-          )}
-          {blocks.map((block, idx) => {
-            const def = MBLOCK_DEFS[block.type];
-            if (!def) return null;
-            return (
-              <div key={block.id} style={{
-                marginLeft: (block.indent || 0) * 20,
-                marginBottom: 3,
-                background: def.color + '18',
-                border: `1px solid ${def.color}45`,
-                borderLeft: `3px solid ${def.color}`,
-                borderRadius: 7,
-                padding: '5px 8px',
-                display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap',
-              }}>
-                <span style={{ fontSize: 12 }}>{def.icon}</span>
-                <span style={{ fontSize: 11, fontWeight: 700, color: def.color, minWidth: 72, flexShrink: 0 }}>{def.label}</span>
-                {(def.params || []).map(param => (
-                  <div key={param.key} style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                    <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', flexShrink: 0 }}>{param.label}:</span>
-                    <input
-                      value={block.params?.[param.key] ?? param.default}
-                      onChange={e => updateParam(block.id, param.key, e.target.value)}
-                      style={{
-                        width: ['message', 'cond', 'value'].includes(param.key) ? 130 : 52,
-                        background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.15)',
-                        borderRadius: 4, color: '#e2e8f0', fontSize: 10, padding: '2px 5px',
-                        fontFamily: 'monospace', outline: 'none',
-                      }}
-                    />
-                  </div>
-                ))}
-                <div style={{ marginLeft: 'auto', display: 'flex', gap: 2, flexShrink: 0 }}>
-                  <button onClick={() => changeIndent(idx, 1)} title="Indent right" style={MB_BTN}>→</button>
-                  <button onClick={() => changeIndent(idx, -1)} title="Indent left" style={MB_BTN}>←</button>
-                  <button onClick={() => moveBlock(idx, -1)} title="Move up" style={MB_BTN}>↑</button>
-                  <button onClick={() => moveBlock(idx, 1)} title="Move down" style={MB_BTN}>↓</button>
-                  <button onClick={() => removeBlock(block.id)} title="Delete" style={{ ...MB_BTN, color: '#f87171' }}>✕</button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Code preview */}
-      <details style={{ marginTop: 8 }} onToggle={e => setShowCode(e.target.open)}>
-        <summary style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, cursor: 'pointer', userSelect: 'none', padding: '4px 0' }}>
-          🐍 See the Python code your blocks generate
-        </summary>
-        <pre style={{
-          marginTop: 6, background: 'rgba(10,18,58,0.65)', border: '1px solid rgba(255,255,255,0.16)',
-          borderRadius: 8, padding: '10px 14px', color: '#86efac',
-          fontFamily: 'monospace', fontSize: 11, lineHeight: 1.7, overflowX: 'auto', margin: '6px 0 0',
-        }}>{genPyFromBlocks(blocks)}</pre>
-      </details>
+    <div aria-hidden style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }}>
+      {stars.map((st, i) => (
+        <span key={i} style={{ position: 'absolute', left: `${st.x}%`, top: `${st.y}%`, width: st.s, height: st.s, borderRadius: '50%', background: '#fff', opacity: 0.6, animation: `mm-twinkle ${st.d}s ${i * 0.1}s infinite` }} />
+      ))}
     </div>
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-
-function CertificateModal({ campaign, studentName, onClose }) {
-  const canvasRef = useRef(null);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    const W = 800, H = 560;
-    canvas.width = W; canvas.height = H;
-    const bg = ctx.createLinearGradient(0, 0, W, H);
-    bg.addColorStop(0, '#0f0f1a'); bg.addColorStop(1, '#1a1a3e');
-    ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
-    ctx.strokeStyle = campaign.color; ctx.lineWidth = 4;
-    ctx.strokeRect(20, 20, W - 40, H - 40);
-    ctx.strokeStyle = campaign.color + '40'; ctx.lineWidth = 1;
-    ctx.strokeRect(28, 28, W - 56, H - 56);
-    const corners = [[40,40],[W-40,40],[40,H-40],[W-40,H-40]];
-    corners.forEach(([x,y]) => {
-      const g = ctx.createRadialGradient(x,y,0,x,y,30);
-      g.addColorStop(0, campaign.color + '60'); g.addColorStop(1, 'transparent');
-      ctx.fillStyle = g; ctx.fillRect(x-30,y-30,60,60);
-    });
-    ctx.fillStyle = campaign.color; ctx.font = 'bold 14px Inter, Arial'; ctx.textAlign = 'center';
-    ctx.fillText('BYTEBUDDIES', W / 2, 72);
-    ctx.fillStyle = 'rgba(255,255,255,0.15)'; ctx.font = '11px Inter, Arial';
-    ctx.fillText('CERTIFICATE OF ACHIEVEMENT', W / 2, 92);
-    ctx.strokeStyle = campaign.color + '60'; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(180, 105); ctx.lineTo(W - 180, 105); ctx.stroke();
-    ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.font = '15px Georgia, serif';
-    ctx.fillText('This certifies that', W / 2, 145);
-    const nameGrad = ctx.createLinearGradient(200, 0, W - 200, 0);
-    nameGrad.addColorStop(0, '#818cf8'); nameGrad.addColorStop(1, '#c084fc');
-    ctx.fillStyle = nameGrad; ctx.font = 'bold 44px Georgia, serif';
-    ctx.fillText(studentName, W / 2, 205);
-    const nameW = ctx.measureText(studentName).width;
-    ctx.strokeStyle = campaign.color + '80'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(W/2 - nameW/2, 215); ctx.lineTo(W/2 + nameW/2, 215); ctx.stroke();
-    ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.font = '15px Georgia, serif';
-    ctx.fillText('has successfully completed the', W / 2, 255);
-    ctx.fillStyle = '#fff'; ctx.font = 'bold 28px Inter, Arial';
-    ctx.fillText(`${campaign.emoji}  ${campaign.title} Campaign`, W / 2, 295);
-    ctx.fillStyle = campaign.color + 'cc'; ctx.font = '13px Inter, Arial';
-    ctx.fillText(`Mastering: ${campaign.concept}`, W / 2, 320);
-    ctx.strokeStyle = 'rgba(255,255,255,0.1)'; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(100, 345); ctx.lineTo(W - 100, 345); ctx.stroke();
-    const stats = [
-      ['5 Missions', 'Completed'],
-      [campaign.xpTotal + ' XP', 'Earned'],
-      [new Date().toLocaleDateString('en-GB', {day:'numeric',month:'long',year:'numeric'}), 'Date'],
-    ];
-    stats.forEach(([val, label], i) => {
-      const x = 200 + i * 200;
-      ctx.fillStyle = '#fff'; ctx.font = 'bold 16px Inter, Arial'; ctx.fillText(val, x, 385);
-      ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.font = '11px Inter, Arial'; ctx.fillText(label, x, 402);
-    });
-    ctx.fillStyle = campaign.color + '20';
-    ctx.beginPath(); ctx.arc(W/2, 470, 44, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = campaign.color; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.arc(W/2, 470, 44, 0, Math.PI * 2); ctx.stroke();
-    ctx.font = '30px Arial'; ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
-    ctx.fillText('🏆', W/2, 482);
-    ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.font = '10px Inter, Arial';
-    ctx.fillText('bytebuddies.technology', W / 2, 530);
-  }, []);
-
-  const download = () => {
-    const canvas = canvasRef.current;
-    const link = document.createElement('a');
-    link.download = `ByteBuddies_${CAMPAIGNS.find(c=>c.id===campaign.id)?.title?.replace(/ /g,'_')}_Certificate.png`;
-    link.href = canvas.toDataURL('image/png');
-    link.click();
-  };
-
+function Ring({ pct, color, size = 64, children }) {
+  const r = size / 2 - 5; const c = 2 * Math.PI * r;
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
-      onClick={onClose}>
-      <div style={{ background: 'var(--bg-secondary)', borderRadius: 20, padding: 28, maxWidth: 860, width: '100%', border: `1px solid ${campaign.color}40` }}
-        onClick={e => e.stopPropagation()}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <h2 style={{ margin: 0, color: '#fff', fontSize: 18, fontWeight: 700 }}>🏆 Campaign Complete!</h2>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 20, cursor: 'pointer' }}>✕</button>
-        </div>
-        <canvas ref={canvasRef} style={{ width: '100%', borderRadius: 12, display: 'block' }} />
-        <div style={{ display: 'flex', gap: 12, marginTop: 16, justifyContent: 'flex-end' }}>
-          <button onClick={onClose} style={{ padding: '10px 20px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 8, color: 'var(--text-primary)', cursor: 'pointer', fontWeight: 600 }}>Close</button>
-          <button onClick={download} style={{ padding: '10px 24px', background: campaign.color, border: 'none', borderRadius: 8, color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: 14 }}>
-            ⬇️ Download Certificate
-          </button>
-        </div>
-      </div>
+    <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
+      <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
+        <circle cx={size / 2} cy={size / 2} r={r} stroke="rgba(255,255,255,0.15)" strokeWidth="6" fill="none" />
+        <circle cx={size / 2} cy={size / 2} r={r} stroke={color} strokeWidth="6" fill="none" strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - pct)} style={{ transition: 'stroke-dashoffset .8s' }} />
+      </svg>
+      <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', fontWeight: 900, fontSize: 14, color: '#fff' }}>{children}</div>
     </div>
   );
 }
 
-export default function MissionMode({ onNavigate }) {
+function WorldArt({ id }) {
+  const Bg = CAMPAIGN_BG[id];
+  return (
+    <svg viewBox="0 0 400 260" width="100%" height="100%" preserveAspectRatio="xMidYMid slice" style={{ display: 'block' }}>
+      <style>{'@keyframes ms-twinkle{0%,100%{opacity:.25}50%{opacity:1}}@keyframes ms-bubble{0%{transform:translateY(0);opacity:.8}100%{transform:translateY(-120px);opacity:0}}@keyframes ms-swim{0%{transform:translateX(-60px)}100%{transform:translateX(460px)}}@keyframes ms-flame{0%,100%{transform:scaleY(1)}50%{transform:scaleY(1.35)}}@keyframes mm-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}'}</style>
+      <Bg depth={0.4} night={id === 'city'} />
+      {id === 'space' && (<>
+        <circle cx="300" cy="90" r="46" fill="#f97316" /><ellipse cx="300" cy="90" rx="74" ry="14" fill="none" stroke="#fdba74" strokeWidth="5" />
+        <g style={{ animation: 'mm-float 3s ease-in-out infinite' }}><Rocket x={120} y={150} flame rot={30} scale={1.3} /></g>
+      </>)}
+      {id === 'ocean' && (<g style={{ animation: 'mm-float 4s ease-in-out infinite' }}><Sub x={200} y={140} lights /></g>)}
+      {id === 'city' && [[20, 50, 120], [80, 40, 170], [130, 56, 100], [196, 44, 200], [250, 60, 140], [320, 50, 110]].map(([x, w, h], i) => (
+        <g key={i}><rect x={x} y={234 - h} width={w} height={h} fill={['#4338ca', '#0e7490', '#7c3aed', '#be185d', '#0369a1', '#4f46e5'][i]} />
+          {Array.from({ length: Math.floor(h / 20) * 2 }, (_, k) => <rect key={k} x={x + 8 + (k % 2) * (w / 2)} y={240 - h + Math.floor(k / 2) * 20} width="8" height="9" fill="#fde047" opacity={(k + i) % 3 ? 0.9 : 0.25} />)}</g>
+      ))}
+      {id === 'cyber' && (<g transform="translate(200 130)" style={{ animation: 'mm-float 3s ease-in-out infinite' }}>
+        <path d="M-34 -10 V -36 a34 34 0 0 1 68 0 V -10" fill="none" stroke="#34d399" strokeWidth="10" />
+        <rect x="-50" y="-12" width="100" height="74" rx="12" fill="#064e3b" stroke="#34d399" strokeWidth="3" />
+        <circle cy="16" r="10" fill="#34d399" /><rect x="-4" y="18" width="8" height="22" rx="3" fill="#34d399" />
+      </g>)}
+    </svg>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+/** #missions/<campaign>/<mission> deep links (used by classroom assignments). */
+function routeFrom(subPath) {
+  const [cid, mid] = String(subPath || '').split('/');
+  const c = CAMPAIGNS.find((x) => x.id === cid);
+  if (!c) return { campId: null, missionId: null };
+  return { campId: c.id, missionId: c.missions.some((m) => m.id === mid) ? mid : null };
+}
+
+export default function MissionMode({ subPath = '' }) {
   const { user, addXP } = useUser();
-  const [progress, setProgress] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('bb-mission-progress') || '{}'); } catch { return {}; }
-  });
-  const [activeCampaign, setActiveCampaign] = useState(null);
-  const [activeMission, setActiveMission] = useState(null);
+  const [progress, setProgress] = useState(() => load(PROGRESS_KEY, {}));
+  const [stars, setStars] = useState(() => load(STARS_KEY, {}));
+  const [campId, setCampId] = useState(() => routeFrom(subPath).campId);
+  const [missionId, setMissionId] = useState(() => routeFrom(subPath).missionId);
+
+  useEffect(() => {
+    const r = routeFrom(subPath);
+    if (r.campId) { setCampId(r.campId); setMissionId(r.missionId); }
+  }, [subPath]);
   const [showCert, setShowCert] = useState(null);
-  const [justCompleted, setJustCompleted] = useState(null);
-  const [missionBlocks, setMissionBlocks] = useState([]);
-  const [missionOutput, setMissionOutput] = useState([]);
-  const [missionResult, setMissionResult] = useState(null);
 
   useEffect(() => {
-    if (activeMission) {
-      setMissionBlocks([]);
-      setMissionOutput([]);
-      setMissionResult(null);
-    }
-  }, [activeMission?.id]);
-
-  // Allow scrolling on mission/campaign detail pages
-  useEffect(() => {
-    if (activeMission || activeCampaign) {
-      document.documentElement.classList.add('whitepaper-open');
-      window.scrollTo(0, 0);
-    } else {
-      document.documentElement.classList.remove('whitepaper-open');
-    }
+    document.documentElement.classList.add('whitepaper-open');
     return () => document.documentElement.classList.remove('whitepaper-open');
-  }, [activeMission, activeCampaign]);
+  }, []);
+  useEffect(() => { window.scrollTo(0, 0); }, [campId, missionId]);
 
-  const save = (newProgress) => {
-    setProgress(newProgress);
-    localStorage.setItem('bb-mission-progress', JSON.stringify(newProgress));
+  const camp = CAMPAIGNS.find((c) => c.id === campId);
+  const doneIn = (cid) => progress[cid]?.completed || [];
+  const isDone = (cid, mid) => doneIn(cid).includes(mid);
+  const unlocked = (c, i) => i === 0 || isDone(c.id, c.missions[i - 1].id);
+  const totalDone = CAMPAIGNS.reduce((s, c) => s + doneIn(c.id).length, 0);
+  const totalXP = CAMPAIGNS.reduce((s, c) => s + c.missions.filter((m) => isDone(c.id, m.id)).reduce((a, m) => a + m.xp, 0), 0);
+  const totalStars = Object.values(stars).reduce((a, b) => a + b, 0);
+
+  const complete = (c, m, earned) => {
+    setStars((prev) => {
+      const next = { ...prev, [m.id]: Math.max(prev[m.id] || 0, earned) };
+      localStorage.setItem(STARS_KEY, JSON.stringify(next));
+      return next;
+    });
+    if (isDone(c.id, m.id)) return;
+    const completed = [...doneIn(c.id), m.id];
+    const campaignComplete = completed.length >= c.missions.length;
+    const next = { ...progress, [c.id]: { completed, campaignComplete } };
+    setProgress(next);
+    localStorage.setItem(PROGRESS_KEY, JSON.stringify(next));
+    addXP?.(m.xp);
+    if (campaignComplete) setTimeout(() => setShowCert(c), 2600);
   };
 
-  const getCampaignProgress = (cid) => progress[cid] || { completed: [] };
-  const isMissionDone = (cid, mid) => getCampaignProgress(cid).completed.includes(mid);
-  const isMissionUnlocked = (campaign, missionIdx) => {
-    if (missionIdx === 0) return true;
-    return isMissionDone(campaign.id, campaign.missions[missionIdx - 1].id);
-  };
+  const shell = (inner, bg = 'radial-gradient(ellipse at top, #1e1b4b 0%, #0b0f24 55%, #050712 100%)') => (
+    <div style={{ position: 'relative', minHeight: '100%', width: '100%', background: bg, color: '#fff', fontFamily: FONT, overflowX: 'hidden' }}>
+      <style>{`
+        @keyframes mm-twinkle { 0%,100% { opacity: .2 } 50% { opacity: .9 } }
+        @keyframes mm-float { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-8px) } }
+        @keyframes mm-pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(250,204,21,.6) } 70% { box-shadow: 0 0 0 16px rgba(250,204,21,0) } }
+        @keyframes mm-in { from { opacity: 0; transform: translateY(14px) } to { opacity: 1; transform: none } }
+        @keyframes mm-pop { 0% { transform: scale(.6); opacity: 0 } 70% { transform: scale(1.08) } 100% { transform: scale(1); opacity: 1 } }
+        @keyframes mm-confetti { to { transform: translateY(110vh) rotate(720deg); } }
+        .mm-card { transition: transform .2s, box-shadow .2s; }
+        .mm-card:hover { transform: translateY(-6px); }
+        .mm-btn { transition: transform .12s, filter .12s; }
+        .mm-btn:hover { filter: brightness(1.1); } .mm-btn:active { transform: scale(.97); }
+        .mm-cockpit { display: grid; grid-template-columns: minmax(260px, 330px) minmax(0, 1fr) minmax(320px, 440px); gap: 16px; }
+        @media (max-width: 1180px) { .mm-cockpit { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .mm-cockpit > :first-child { grid-column: 1 / -1; } }
+        @media (max-width: 760px) { .mm-cockpit { grid-template-columns: 1fr; } }
+      `}</style>
+      <Starfield />
+      <div style={{ position: 'relative' }}>{inner}</div>
+      {showCert && <CertificateModal campaign={showCert} studentName={user?.name || user?.displayName || 'Coder'} onClose={() => setShowCert(null)} />}
+    </div>
+  );
 
-  const completeM = (campaign, mission) => {
-    const cp = getCampaignProgress(campaign.id);
-    if (cp.completed.includes(mission.id)) return;
-    const newCompleted = [...cp.completed, mission.id];
-    const campaignComplete = newCompleted.length >= campaign.missions.length;
-    const updated = { ...progress, [campaign.id]: { completed: newCompleted, campaignComplete } };
-    save(updated);
-    addXP(mission.xp);
-    setJustCompleted(mission.id);
-    setTimeout(() => setJustCompleted(null), 2000);
-    if (campaignComplete) setTimeout(() => setShowCert(campaign), 800);
-  };
-
-  const runAndCheck = (camp, mission) => {
-    const check = MISSION_CHECKS[mission.id];
-    if (!check) return;
-    const code = genPyFromBlocks(missionBlocks);
-    const { output, errors } = runPython(code);
-    const outStr = [...output, ...errors].join('\n');
-    setMissionOutput([...output.map(t => ({ type: 'output', text: t })), ...errors.map(t => ({ type: 'error', text: t }))]);
-    const result = check.check(code, outStr);
-    setMissionResult(result);
-    if (result.ok) {
-      setTimeout(() => completeM(camp, mission), 600);
-    }
-  };
-
-  const totalXP = CAMPAIGNS.reduce((sum, c) => {
-    const cp = getCampaignProgress(c.id);
-    return sum + c.missions.filter(m => cp.completed.includes(m.id)).reduce((s, m) => s + m.xp, 0);
-  }, 0);
-  const totalDone = CAMPAIGNS.reduce((sum, c) => sum + getCampaignProgress(c.id).completed.length, 0);
-  const totalMissions = CAMPAIGNS.reduce((sum, c) => sum + c.missions.length, 0);
-
-  // MISSION DETAIL VIEW
-  if (activeMission && activeCampaign) {
-    const camp = activeCampaign;
-    const mission = activeMission;
-    const mIdx = camp.missions.findIndex(m => m.id === mission.id);
-    const done = isMissionDone(camp.id, mission.id);
-    return (
-      <div
-        style={{
-          width: '100%',
-          minHeight: '100%',
-          backgroundColor: '#0b102f',
-          backgroundImage: camp.bg,
-          backgroundRepeat: 'no-repeat',
-          backgroundSize: 'cover',
-          padding: '32px 0',
-        }}
-      >
-      <div style={{ maxWidth: 800, margin: '0 auto', padding: '0 24px' }}>
-        <button onClick={() => setActiveMission(null)} style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 8, padding: '8px 16px', color: '#fff', cursor: 'pointer', marginBottom: 24, fontSize: 13, fontWeight: 600 }}>
-          ← Back to {camp.title}
-        </button>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-          <span style={{ background: camp.color + '30', border: `1px solid ${camp.color}60`, borderRadius: 8, padding: '4px 12px', fontSize: 12, color: camp.color, fontWeight: 700 }}>
-            Mission {mIdx + 1} of {camp.missions.length}
-          </span>
-          {done && <span style={{ background: '#10b98130', border: '1px solid #10b98160', borderRadius: 8, padding: '4px 12px', fontSize: 12, color: '#10b981', fontWeight: 700 }}>✅ Completed</span>}
-        </div>
-
-        <h1 style={{ fontSize: 32, fontWeight: 800, color: '#fff', margin: '0 0 6px', display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span style={{ fontSize: 36 }}>{mission.emoji}</span> {mission.title}
-        </h1>
-        <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, margin: '0 0 28px' }}>+{mission.xp} XP on completion</p>
-
-        {/* Story */}
-        <div style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 16, padding: 24, marginBottom: 20 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: camp.color, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>📖 Mission Briefing</div>
-          <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: 15, lineHeight: 1.8, margin: 0 }}>{mission.story}</p>
-        </div>
-
-        {/* Challenge */}
-        <div style={{ background: camp.color + '12', border: `1px solid ${camp.color}40`, borderRadius: 16, padding: 24, marginBottom: 20 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: camp.color, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>🎯 Your Challenge</div>
-          <p style={{ color: '#fff', fontSize: 15, lineHeight: 1.8, margin: 0 }}>{mission.challenge}</p>
-        </div>
-
-        {/* Hint */}
-        <details style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: '14px 20px', marginBottom: 20, cursor: 'pointer' }}>
-          <summary style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, fontWeight: 600, listStyle: 'none', userSelect: 'none' }}>
-            💡 Need a hint? (click to reveal)
-          </summary>
-          <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13, marginTop: 12, marginBottom: 0, lineHeight: 1.7 }}>{mission.hint}</p>
-        </details>
-
-        {/* Block Editor */}
-        {MISSION_CHECKS[mission.id] && (
-          <div style={{ marginBottom: 24 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>
-              🧩 Build Your Code
-            </div>
-            <MissionBlockEditor
-              missionId={mission.id}
-              campColor={camp.color}
-              blocks={missionBlocks}
-              setBlocks={setMissionBlocks}
-            />
-
-            {/* Run button */}
-            <button
-              onClick={() => runAndCheck(camp, mission)}
-              disabled={done}
-              style={{
-                marginTop: 10, padding: '11px 28px',
-                background: done ? '#10b981' : camp.color,
-                border: 'none', borderRadius: 10, color: '#fff',
-                cursor: done ? 'default' : 'pointer', fontWeight: 700, fontSize: 14,
-                boxShadow: done ? 'none' : `0 4px 16px ${camp.glow}`,
-              }}
-            >
-              {done ? '✅ Mission Complete!' : '▶ Run & Check'}
-            </button>
-
-            {/* Output */}
-            {missionOutput.length > 0 && (
-              <div style={{ marginTop: 12, background: '#0a0a14', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '10px 14px', fontFamily: 'monospace', fontSize: 12 }}>
-                <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 1 }}>Output</div>
-                {missionOutput.map((line, i) => (
-                  <div key={i} style={{ color: line.type === 'error' ? '#f87171' : '#86efac', lineHeight: 1.7 }}>{line.text}</div>
-                ))}
-              </div>
-            )}
-
-            {/* Result */}
-            {missionResult && (
-              <div style={{
-                marginTop: 12, padding: '14px 18px', borderRadius: 10, fontWeight: 700, fontSize: 14,
-                background: missionResult.ok ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.12)',
-                border: `1px solid ${missionResult.ok ? '#10b981' : '#ef4444'}60`,
-                color: missionResult.ok ? '#6ee7b7' : '#fca5a5',
-              }}>
-                {missionResult.ok ? '🎉 ' : '❌ '}{missionResult.msg}
-                {missionResult.ok && <span style={{ marginLeft: 12, opacity: 0.7, fontSize: 12 }}>+{mission.xp} XP awarded!</span>}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Bottom actions */}
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-          <button onClick={() => onNavigate('gamebuilder')} style={{ padding: '10px 20px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 10, color: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: 13 }}>
-            🎮 Game Builder
-          </button>
-          <button onClick={() => onNavigate('workspace')} style={{ padding: '10px 20px', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, color: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: 13 }}>
-            💻 Workspace
-          </button>
-          {done && (
-            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, color: '#10b981', fontWeight: 700, fontSize: 15 }}>
-              🏅 Mission Complete!
-            </div>
-          )}
-          {!done && !MISSION_CHECKS[mission.id] && (
-            <button onClick={() => completeM(camp, mission)} style={{ padding: '10px 20px', background: camp.color, border: 'none', borderRadius: 10, color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: 13, marginLeft: 'auto' }}>
-              ✅ Mark as Complete → +{mission.xp} XP
-            </button>
-          )}
-        </div>
-      </div>
-      </div>
+  // ── Mission cockpit ──
+  if (camp && missionId) {
+    const idx = camp.missions.findIndex((m) => m.id === missionId);
+    return shell(
+      <MissionCockpit
+        key={missionId}
+        camp={camp}
+        mission={camp.missions[idx]}
+        index={idx}
+        bestStars={stars[missionId] || 0}
+        onBack={() => setMissionId(null)}
+        onComplete={(earned) => complete(camp, camp.missions[idx], earned)}
+        onNext={idx + 1 < camp.missions.length ? () => setMissionId(camp.missions[idx + 1].id) : null}
+      />,
+      camp.bg,
     );
   }
 
-  // CAMPAIGN VIEW
-  if (activeCampaign) {
-    const camp = activeCampaign;
-    const cp = getCampaignProgress(camp.id);
-    const pct = Math.round((cp.completed.length / camp.missions.length) * 100);
-    return (
-      <div
-        style={{
-          width: '100%',
-          minHeight: '100%',
-          backgroundColor: '#0b102f',
-          backgroundImage: camp.bg,
-          backgroundRepeat: 'no-repeat',
-          backgroundSize: 'cover',
-          padding: '32px 0',
-        }}
-      >
-      <div style={{ maxWidth: 900, margin: '0 auto', padding: '0 24px' }}>
-        <button onClick={() => setActiveCampaign(null)} style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 8, padding: '8px 16px', color: '#fff', cursor: 'pointer', marginBottom: 24, fontSize: 13, fontWeight: 600 }}>
-          ← All Campaigns
-        </button>
+  // ── Campaign map ──
+  if (camp) {
+    return shell(<CampaignMap camp={camp} isDone={isDone} unlocked={unlocked} stars={stars} onBack={() => setCampId(null)} onOpen={setMissionId} />, camp.bg);
+  }
 
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 32, flexWrap: 'wrap', gap: 16 }}>
-          <div>
-            <div style={{ fontSize: 52, marginBottom: 8 }}>{camp.emoji}</div>
-            <h1 style={{ fontSize: 34, fontWeight: 900, color: '#fff', margin: '0 0 6px' }}>{camp.title}</h1>
-            <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 15, margin: '0 0 12px' }}>{camp.tagline}</p>
-            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-              <span style={{ background: camp.color + '20', border: `1px solid ${camp.color}50`, borderRadius: 20, padding: '4px 12px', fontSize: 12, color: camp.color, fontWeight: 700 }}>{camp.concept}</span>
-              <span style={{ background: 'rgba(255,255,255,0.08)', borderRadius: 20, padding: '4px 12px', fontSize: 12, color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>⚔️ {camp.difficulty}</span>
-              <span style={{ background: 'rgba(255,255,255,0.08)', borderRadius: 20, padding: '4px 12px', fontSize: 12, color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>⭐ {camp.xpTotal} XP total</span>
-            </div>
-          </div>
-          <div style={{ textAlign: 'center', minWidth: 120 }}>
-            <div style={{ fontSize: 40, fontWeight: 900, color: camp.color }}>{pct}%</div>
-            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginBottom: 8 }}>{cp.completed.length}/{camp.missions.length} done</div>
-            <div style={{ width: 120, height: 6, background: 'rgba(255,255,255,0.1)', borderRadius: 3 }}>
-              <div style={{ width: `${pct}%`, height: '100%', background: camp.color, borderRadius: 3, transition: 'width 0.5s ease' }} />
-            </div>
-            {cp.campaignComplete && (
-              <button onClick={() => setShowCert(camp)} style={{ marginTop: 12, padding: '8px 14px', background: camp.color, border: 'none', borderRadius: 8, color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: 12 }}>
-                🏆 View Certificate
+  // ── Hub ──
+  const next = CAMPAIGNS.map((c) => ({ c, i: c.missions.findIndex((m) => !isDone(c.id, m.id)) })).find((x) => x.i >= 0);
+  return shell(
+    <div style={{ maxWidth: 1180, margin: '0 auto', padding: '28px 20px 60px' }}>
+      {/* Hero */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 24, alignItems: 'center', marginBottom: 28 }}>
+        <div style={{ animation: 'mm-in .5s' }}>
+          <div style={{ display: 'inline-flex', gap: 8, alignItems: 'center', padding: '6px 14px', borderRadius: 999, background: 'rgba(250,204,21,0.12)', border: '1px solid rgba(250,204,21,0.4)', color: '#fde047', fontWeight: 800, fontSize: 13, letterSpacing: 1 }}>🛰️ MISSION CONTROL</div>
+          <h1 style={{ fontSize: 'clamp(34px, 5vw, 58px)', lineHeight: 1.05, margin: '14px 0 10px', fontWeight: 900 }}>
+            Your code. <span style={{ background: 'linear-gradient(90deg,#fde047,#f472b6,#818cf8)', WebkitBackgroundClip: 'text', color: 'transparent' }}>Real missions.</span>
+          </h1>
+          <p style={{ fontSize: 18, color: 'rgba(255,255,255,0.75)', maxWidth: 620, margin: 0, lineHeight: 1.6 }}>
+            Launch rockets, steer submarines, power up cities and crack cyber vaults. Every mission is a story — and the program you write makes it happen on screen.
+          </p>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 20 }}>
+            {next && (
+              <button type="button" className="mm-btn" onClick={() => { setCampId(next.c.id); setMissionId(next.c.missions[next.i].id); }}
+                style={{ minHeight: 52, padding: '0 24px', borderRadius: 16, border: 'none', background: 'linear-gradient(90deg,#facc15,#f97316)', color: '#1c1917', fontWeight: 900, fontSize: 17, cursor: 'pointer', animation: 'mm-pulse 2.2s infinite' }}>
+                ▶ {totalDone ? 'Continue' : 'Start'}: {next.c.missions[next.i].title}
               </button>
             )}
           </div>
         </div>
-
-        {/* Mission list */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {camp.missions.map((mission, idx) => {
-            const done = isMissionDone(camp.id, mission.id);
-            const unlocked = isMissionUnlocked(camp, idx);
-            return (
-              <div
-                key={mission.id}
-                onClick={() => unlocked && setActiveMission(mission)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 20, padding: '20px 24px',
-                  background: done ? camp.color + '15' : unlocked ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.3)',
-                  border: `1px solid ${done ? camp.color + '50' : unlocked ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.05)'}`,
-                  borderRadius: 14, cursor: unlocked ? 'pointer' : 'default',
-                  opacity: unlocked ? 1 : 0.4,
-                  transition: 'transform 0.15s, border-color 0.15s',
-                }}
-                onMouseEnter={e => { if (unlocked) { e.currentTarget.style.transform = 'translateX(4px)'; e.currentTarget.style.borderColor = camp.color + '70'; }}}
-                onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.borderColor = done ? camp.color + '50' : unlocked ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.05)'; }}
-              >
-                <div style={{ width: 44, height: 44, borderRadius: '50%', background: done ? camp.color : unlocked ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>
-                  {done ? '✅' : unlocked ? mission.emoji : '🔒'}
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 700, fontSize: 16, color: '#fff', marginBottom: 3 }}>
-                    Mission {idx + 1}: {mission.title}
-                  </div>
-                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', lineHeight: 1.5 }}>{mission.story.slice(0, 80)}…</div>
-                </div>
-                <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: done ? '#10b981' : camp.color }}>+{mission.xp} XP</div>
-                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>{done ? 'Earned' : unlocked ? 'Available' : 'Locked'}</div>
-                </div>
-                {unlocked && !done && <div style={{ color: camp.color, fontSize: 18, flexShrink: 0 }}>→</div>}
-              </div>
-            );
-          })}
-        </div>
-
-        {showCert && <CertificateModal campaign={showCert} studentName={user.name} onClose={() => setShowCert(null)} />}
-      </div>
-      </div>
-    );
-  }
-
-  // CAMPAIGN SELECTION (main view)
-  return (
-    <div style={{ padding: '32px 24px', maxWidth: 1100, margin: '0 auto' }}>
-
-      {/* Header */}
-      <div style={{ textAlign: 'center', marginBottom: 48 }}>
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: 100, padding: '6px 18px', fontSize: 13, color: '#818cf8', fontWeight: 600, marginBottom: 20 }}>
-          🗺️ Story-Based Learning
-        </div>
-        <h1 style={{ fontSize: 42, fontWeight: 900, color: 'var(--text-primary)', margin: '0 0 12px', lineHeight: 1.1 }}>
-          Mission Mode
-        </h1>
-        <p style={{ fontSize: 16, color: 'var(--text-muted)', maxWidth: 560, margin: '0 auto 28px', lineHeight: 1.7 }}>
-          Go on epic coding adventures. Each campaign tells a story — you write the code that makes it happen. Unlock badges, earn XP, and collect certificates.
-        </p>
-
-        {/* Global progress */}
-        <div style={{ display: 'inline-flex', gap: 32, background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: 16, padding: '14px 28px' }}>
-          {[
-            { val: totalDone, label: 'Missions Done', color: '#6366f1' },
-            { val: `${totalMissions - totalDone}`, label: 'Remaining', color: '#f59e0b' },
-            { val: `${totalXP.toLocaleString()} XP`, label: 'Total Earned', color: '#10b981' },
-          ].map(s => (
-            <div key={s.label} style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 22, fontWeight: 800, color: s.color }}>{s.val}</div>
-              <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>{s.label}</div>
-            </div>
-          ))}
-        </div>
+        <svg viewBox="-20 -16 140 190" width="170" style={{ animation: 'mm-float 3.2s ease-in-out infinite', filter: 'drop-shadow(0 12px 24px rgba(0,0,0,.5))' }}><DotBot pose="wave" /></svg>
       </div>
 
-      {/* Campaign grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(480px, 1fr))', gap: 20 }}>
-        {CAMPAIGNS.map(camp => {
-          const cp = getCampaignProgress(camp.id);
-          const pct = Math.round((cp.completed.length / camp.missions.length) * 100);
+      {/* Stats */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, marginBottom: 30 }}>
+        {[['🎯', 'Missions', `${totalDone} / 20`], ['⭐', 'Stars', `${totalStars} / 60`], ['⚡', 'Mission XP', totalXP], ['🏅', 'Worlds saved', `${CAMPAIGNS.filter((c) => progress[c.id]?.campaignComplete).length} / 4`]].map(([i, k, v]) => (
+          <div key={k} style={{ padding: '14px 16px', borderRadius: 18, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(6px)' }}>
+            <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', fontWeight: 700 }}>{i} {k}</div>
+            <div style={{ fontSize: 26, fontWeight: 900 }}>{v}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Worlds */}
+      <h2 style={{ fontSize: 24, fontWeight: 900, margin: '0 0 14px' }}>Choose your world</h2>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 16 }}>
+        {CAMPAIGNS.map((c, ci) => {
+          const n = doneIn(c.id).length; const pct = n / c.missions.length;
+          const campStars = c.missions.reduce((a, m) => a + (stars[m.id] || 0), 0);
           return (
-            <div
-              key={camp.id}
-              onClick={() => setActiveCampaign(camp)}
-              style={{
-                background: camp.bg, borderRadius: 20, padding: 28, cursor: 'pointer',
-                border: `1px solid ${camp.color}30`, position: 'relative', overflow: 'hidden',
-                transition: 'transform 0.2s, box-shadow 0.2s',
-              }}
-              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = `0 16px 48px ${camp.glow}`; }}
-              onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'none'; }}
-            >
-              {/* Decorative bg glow */}
-              <div style={{ position: 'absolute', top: -40, right: -40, width: 160, height: 160, borderRadius: '50%', background: camp.color + '15', pointerEvents: 'none' }} />
-
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
-                <div>
-                  <div style={{ fontSize: 44, marginBottom: 10 }}>{camp.emoji}</div>
-                  <h2 style={{ fontSize: 22, fontWeight: 800, color: '#fff', margin: '0 0 4px' }}>{camp.title}</h2>
-                  <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', margin: 0 }}>{camp.tagline}</p>
+            <button key={c.id} type="button" className="mm-card" onClick={() => setCampId(c.id)}
+              style={{ textAlign: 'left', padding: 0, borderRadius: 24, overflow: 'hidden', cursor: 'pointer', border: `2px solid ${c.color}66`, background: '#0b1022', color: '#fff', boxShadow: `0 18px 40px ${c.glow}`, animation: `mm-in .5s ${ci * 0.08}s both`, fontFamily: FONT }}>
+              <div style={{ height: 170, position: 'relative' }}>
+                <WorldArt id={c.id} />
+                <span style={{ position: 'absolute', top: 12, left: 12, padding: '4px 10px', borderRadius: 999, background: 'rgba(0,0,0,0.55)', fontSize: 12, fontWeight: 800 }}>{c.difficulty}</span>
+                {progress[c.id]?.campaignComplete && <span style={{ position: 'absolute', top: 12, right: 12, padding: '4px 10px', borderRadius: 999, background: '#16a34a', fontSize: 12, fontWeight: 900 }}>✓ Saved!</span>}
+              </div>
+              <div style={{ padding: '16px 18px 18px', display: 'flex', gap: 14, alignItems: 'center' }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 22, fontWeight: 900 }}>{c.emoji} {c.title}</div>
+                  <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)', margin: '2px 0 8px' }}>{c.tagline}</div>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 12, fontWeight: 800, padding: '3px 9px', borderRadius: 999, background: `${c.color}33`, color: '#fff' }}>{c.concept}</span>
+                    <span style={{ fontSize: 12, fontWeight: 800, padding: '3px 9px', borderRadius: 999, background: 'rgba(250,204,21,0.15)', color: '#fde047' }}>⭐ {campStars}/15</span>
+                  </div>
                 </div>
-                {cp.campaignComplete && (
-                  <div style={{ background: '#10b981', borderRadius: 12, padding: '6px 12px', fontSize: 12, fontWeight: 700, color: '#fff' }}>🏆 Complete</div>
-                )}
+                <Ring pct={pct} color={c.color}>{n}/5</Ring>
               </div>
-
-              {/* Tags */}
-              <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
-                <span style={{ background: camp.color + '25', border: `1px solid ${camp.color}50`, borderRadius: 20, padding: '3px 10px', fontSize: 11, color: camp.color, fontWeight: 700 }}>{camp.concept}</span>
-                <span style={{ background: 'rgba(255,255,255,0.08)', borderRadius: 20, padding: '3px 10px', fontSize: 11, color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>{camp.difficulty}</span>
-                <span style={{ background: 'rgba(255,255,255,0.08)', borderRadius: 20, padding: '3px 10px', fontSize: 11, color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>5 Missions · {camp.xpTotal} XP</span>
-              </div>
-
-              {/* Mission dots */}
-              <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
-                {camp.missions.map((m, i) => (
-                  <div key={m.id} title={m.title} style={{ flex: 1, height: 4, borderRadius: 2, background: isMissionDone(camp.id, m.id) ? camp.color : 'rgba(255,255,255,0.15)', transition: 'background 0.3s' }} />
-                ))}
-              </div>
-
-              {/* Progress */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.45)', fontWeight: 600 }}>{cp.completed.length}/{camp.missions.length} missions complete</span>
-                <span style={{ fontSize: 14, fontWeight: 800, color: camp.color }}>{pct}%</span>
-              </div>
-            </div>
+            </button>
           );
         })}
       </div>
 
-      {showCert && <CertificateModal campaign={showCert} studentName={user.name} onClose={() => setShowCert(null)} />}
+      {/* Badges */}
+      <h2 style={{ fontSize: 24, fontWeight: 900, margin: '34px 0 14px' }}>Badges</h2>
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+        {[
+          ['🌟', 'First mission', totalDone >= 1],
+          ['🔟', '10 missions', totalDone >= 10],
+          ...CAMPAIGNS.map((c) => [WORLD[c.id].badge, `${c.title} hero`, !!progress[c.id]?.campaignComplete]),
+          ['💯', 'All 60 stars', totalStars >= 60],
+        ].map(([i, k, on]) => (
+          <div key={k} title={k} style={{ width: 104, padding: '12px 8px', borderRadius: 18, textAlign: 'center', background: on ? 'linear-gradient(160deg, rgba(250,204,21,.25), rgba(249,115,22,.15))' : 'rgba(255,255,255,0.04)', border: `1px solid ${on ? '#facc15' : 'rgba(255,255,255,0.1)'}`, opacity: on ? 1 : 0.5 }}>
+            <div style={{ fontSize: 32, filter: on ? 'none' : 'grayscale(1)' }}>{i}</div>
+            <div style={{ fontSize: 12, fontWeight: 800, marginTop: 4 }}>{k}</div>
+          </div>
+        ))}
+      </div>
+    </div>,
+  );
+}
+
+// ── Campaign map ───────────────────────────────────────────────────────────
+function CampaignMap({ camp, isDone, unlocked, stars, onBack, onOpen }) {
+  const firstOpen = camp.missions.findIndex((m, i) => unlocked(camp, i) && !isDone(camp.id, m.id));
+  const [sel, setSel] = useState(firstOpen >= 0 ? firstOpen : 0);
+  const m = camp.missions[sel];
+  const pts = [[90, 330], [270, 230], [470, 300], [650, 170], [830, 90]];
+  const path = `M${pts.map((p) => p.join(' ')).join(' L ')}`;
+  const w = WORLD[camp.id];
+  return (
+    <div style={{ maxWidth: 1180, margin: '0 auto', padding: '22px 20px 60px' }}>
+      <button type="button" className="mm-btn" onClick={onBack} style={backBtn}>← All worlds</button>
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap', margin: '14px 0 16px' }}>
+        <div style={{ flex: 1, minWidth: 260 }}>
+          <div style={{ fontSize: 13, fontWeight: 900, color: camp.color, letterSpacing: 1 }}>{camp.concept.toUpperCase()} · {camp.difficulty.toUpperCase()}</div>
+          <h1 style={{ fontSize: 'clamp(30px, 4vw, 46px)', fontWeight: 900, margin: '4px 0' }}>{camp.emoji} {camp.title}</h1>
+          <p style={{ margin: 0, color: 'rgba(255,255,255,0.75)', fontSize: 17 }}>Five missions across {w.place}. Finish them all to save the world and earn your certificate.</p>
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(280px, 360px)', gap: 18 }} className="mm-mapgrid">
+        <style>{'@media (max-width: 900px) { .mm-mapgrid { grid-template-columns: 1fr !important; } }'}</style>
+        <div style={{ borderRadius: 24, overflow: 'hidden', border: `2px solid ${camp.color}55`, background: 'rgba(0,0,0,0.25)' }}>
+          <svg viewBox="0 0 920 420" width="100%" style={{ display: 'block' }}>
+            <defs>
+              <linearGradient id="mm-route" x1="0" x2="1"><stop offset="0" stopColor={camp.color} /><stop offset="1" stopColor="#facc15" /></linearGradient>
+            </defs>
+            <path d={path} fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="26" strokeLinecap="round" strokeLinejoin="round" />
+            <path d={path} fill="none" stroke="url(#mm-route)" strokeWidth="6" strokeDasharray="2 14" strokeLinecap="round" strokeLinejoin="round" />
+            {pts.map(([x, y], i) => {
+              const mi = camp.missions[i]; const done = isDone(camp.id, mi.id); const open = unlocked(camp, i); const cur = i === sel;
+              return (
+                <g key={mi.id} transform={`translate(${x} ${y})`} style={{ cursor: open ? 'pointer' : 'not-allowed' }} onClick={() => open && setSel(i)}>
+                  {cur && <circle r="56" fill={camp.color} opacity="0.25"><animate attributeName="r" values="46;60;46" dur="2s" repeatCount="indefinite" /></circle>}
+                  <circle r="42" fill={done ? '#16a34a' : open ? camp.color : '#1e293b'} stroke="#fff" strokeWidth={cur ? 5 : 2} strokeOpacity={open ? 0.9 : 0.3} />
+                  <text y="12" textAnchor="middle" fontSize="34" style={{ filter: open ? 'none' : 'grayscale(1)', opacity: open ? 1 : 0.45 }}>{open ? mi.emoji : '🔒'}</text>
+                  <text y="68" textAnchor="middle" fontSize="16" fontWeight="900" fill="#fff" fontFamily={FONT}>{i + 1}. {mi.title}</text>
+                  {done && <text y="-50" textAnchor="middle" fontSize="18">{'⭐'.repeat(stars[mi.id] || 1)}</text>}
+                </g>
+              );
+            })}
+            <text x="880" y="40" textAnchor="end" fontSize="34">🏆</text>
+          </svg>
+        </div>
+
+        <div key={sel} style={{ borderRadius: 24, padding: 20, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.14)', animation: 'mm-in .35s', display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ fontSize: 13, fontWeight: 900, color: camp.color }}>MISSION {sel + 1} OF 5 · +{m.xp} XP</div>
+          <div style={{ fontSize: 26, fontWeight: 900 }}>{m.emoji} {m.title}</div>
+          <p style={{ margin: 0, lineHeight: 1.6, color: 'rgba(255,255,255,0.85)', fontSize: 16 }}>{m.story}</p>
+          <div style={{ fontSize: 14, fontWeight: 800, color: '#fde047' }}>🎯 Goals</div>
+          <ul style={{ margin: 0, paddingLeft: 20, color: 'rgba(255,255,255,0.85)', lineHeight: 1.6 }}>
+            {(PLANS[m.id]?.objectives || []).map((o) => <li key={o.label}>{o.label}</li>)}
+          </ul>
+          <button type="button" className="mm-btn" disabled={!unlocked(camp, sel)} onClick={() => onOpen(m.id)}
+            style={{ marginTop: 'auto', minHeight: 52, borderRadius: 16, border: 'none', background: unlocked(camp, sel) ? `linear-gradient(90deg, ${camp.color}, #facc15)` : '#334155', color: '#0b1022', fontWeight: 900, fontSize: 18, cursor: unlocked(camp, sel) ? 'pointer' : 'not-allowed' }}>
+            {isDone(camp.id, m.id) ? '↻ Play again' : unlocked(camp, sel) ? `▶ Start mission` : '🔒 Finish the mission before'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
 
-// starter blocks data
-const starterBlocks = [{ id: 'countdown', label: 'countdown', icon: '⏱️', output: 'Countdown: 3... 2... 1...', uid: 1 }, { id: 'systems', label: 'systems check', icon: '✓', output: 'Systems check complete', uid: 2 }];
+// ── Mission cockpit ───────────────────────────────────────────────────────
+function MissionCockpit({ camp, mission, index, bestStars, onBack, onComplete, onNext }) {
+  const plan = PLANS[mission.id];
+  const saveKey = `bb-mission-code-${mission.id}`;
+  const [mode, setMode] = useState('python');
+  const [code, setCode] = useState(() => { try { return localStorage.getItem(saveKey) || plan.starter; } catch { return plan.starter; } });
+  const [blocks, setBlocks] = useState([]);
+  const [lines, setLines] = useState([]);
+  const [shown, setShown] = useState(0);
+  const [error, setError] = useState('');
+  const [running, setRunning] = useState(false);
+  const [goals, setGoals] = useState(() => plan.objectives.map((o) => ({ label: o.label, ok: false })));
+  const [result, setResult] = useState(null); // 'win' | 'try'
+  const [attempts, setAttempts] = useState(0);
+  const [hintsUsed, setHintsUsed] = useState(0);
+  const [sawAnswer, setSawAnswer] = useState(false);
+  const [earned, setEarned] = useState(0);
+  const [runKey, setRunKey] = useState(0);
+  const [briefOpen, setBriefOpen] = useState(true);
+  const logRef = useRef(null);
+  const timers = useRef([]);
 
-// other component logic continues...
+  useEffect(() => { try { localStorage.setItem(saveKey, code); } catch { /* ignore */ } }, [code, saveKey]);
+  useEffect(() => () => timers.current.forEach(clearTimeout), []);
+  useEffect(() => { logRef.current?.scrollTo(0, 99999); }, [shown]);
+
+  const program = mode === 'blocks' ? genPyFromBlocks(blocks) : code;
+  const hints = [mission.hint, ...plan.objectives.map((o) => `Goal check: ${o.label}.`)];
+
+  const run = async () => {
+    if (running) return;
+    timers.current.forEach(clearTimeout); timers.current = [];
+    setRunning(true); setError(''); setResult(null); setLines([]); setShown(0); setRunKey((k) => k + 1);
+    let text = ''; let err = '';
+    try {
+      const r = await runSkulpt(program, () => {});
+      text = r.text || ''; err = r.ok ? '' : r.error;
+    } catch {
+      const r = runSubset(program); // offline fallback
+      text = r.output.join('\n'); err = r.errors.join(' ');
+    }
+    const out = text.split('\n').map((s) => s.trim()).filter(Boolean);
+    setLines(out);
+    setAttempts((a) => a + 1);
+    const checks = checkObjectives(mission.id, program, text);
+    const step = Math.max(160, Math.min(450, 2600 / Math.max(1, out.length)));
+    out.forEach((_, i) => timers.current.push(setTimeout(() => setShown(i + 1), (i + 1) * step)));
+    timers.current.push(setTimeout(() => {
+      setRunning(false);
+      setGoals(checks);
+      const won = !err && checks.every((g) => g.ok);
+      const s = won ? (sawAnswer ? 1 : hintsUsed > 1 || attempts >= 3 ? 2 : 3) : 0;
+      const prev = readWork(`mission:${mission.id}`);
+      recordWork(`mission:${mission.id}`, {
+        type: 'mission', title: `${camp.title}: ${mission.title}`, mode, code: program.slice(0, 6000),
+        output: out.slice(0, 40), error: err || '', goals: checks.map((g) => ({ label: g.label, ok: !!g.ok })),
+        attempts: (prev?.attempts || 0) + 1, hintsUsed, sawAnswer,
+        stars: Math.max(s, prev?.stars || 0), passed: won || !!prev?.passed,
+        ...(won ? { completedAt: new Date().toISOString() } : {}),
+      });
+      if (err) { setError(err); setResult('try'); return; }
+      if (won) {
+        setEarned(s); setResult('win'); onComplete(s);
+      } else setResult('try');
+    }, (out.length + 1) * step + 200));
+  };
+
+  const visible = lines.slice(0, shown);
+  const win = result === 'win';
+
+  return (
+    <div style={{ maxWidth: 1500, margin: '0 auto', padding: '18px 18px 50px' }}>
+      {/* Top bar */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
+        <button type="button" className="mm-btn" onClick={onBack} style={backBtn}>← Map</button>
+        <div style={{ flex: 1, minWidth: 220 }}>
+          <div style={{ fontSize: 12, fontWeight: 900, color: camp.color, letterSpacing: 1 }}>{camp.title.toUpperCase()} · MISSION {index + 1} OF 5</div>
+          <div style={{ fontSize: 26, fontWeight: 900 }}>{mission.emoji} {mission.title}</div>
+        </div>
+        <div style={{ display: 'flex', gap: 6 }}>{[0, 1, 2, 3, 4].map((i) => <span key={i} style={{ width: 34, height: 8, borderRadius: 4, background: i < index ? '#22c55e' : i === index ? camp.color : 'rgba(255,255,255,0.15)' }} />)}</div>
+        <span style={{ padding: '6px 12px', borderRadius: 999, background: 'rgba(250,204,21,0.15)', color: '#fde047', fontWeight: 900 }}>+{mission.xp} XP {bestStars ? `· ${'⭐'.repeat(bestStars)}` : ''}</span>
+      </div>
+
+      <div className="mm-cockpit">
+        {/* Briefing + goals */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={panel}>
+            <button type="button" onClick={() => setBriefOpen((o) => !o)} style={{ all: 'unset', cursor: 'pointer', display: 'flex', gap: 12, alignItems: 'flex-start', width: '100%' }}>
+              <svg viewBox="-10 -12 120 186" width="56" style={{ flexShrink: 0 }}><DotBot pose={win ? 'cheer' : running ? 'point' : 'wave'} /></svg>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 12, fontWeight: 900, color: camp.color, letterSpacing: 1 }}>MISSION CONTROL · DOT</div>
+                {briefOpen && <p style={{ margin: '6px 0 0', lineHeight: 1.6, fontSize: 15, color: 'rgba(255,255,255,0.9)' }}>{mission.story}</p>}
+              </div>
+            </button>
+          </div>
+          <div style={panel}>
+            <div style={{ fontSize: 13, fontWeight: 900, color: '#fde047', marginBottom: 10 }}>🎯 MISSION GOALS</div>
+            {goals.map((g, i) => (
+              <div key={g.label} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '8px 10px', borderRadius: 12, marginBottom: 6, background: g.ok ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.04)', border: `1px solid ${g.ok ? 'rgba(34,197,94,0.5)' : 'rgba(255,255,255,0.08)'}`, transition: 'all .3s', animation: g.ok ? `mm-pop .4s ${i * 0.12}s both` : undefined }}>
+                <span style={{ width: 22, height: 22, borderRadius: 7, flexShrink: 0, display: 'grid', placeItems: 'center', background: g.ok ? '#22c55e' : 'rgba(255,255,255,0.12)', fontSize: 13, fontWeight: 900 }}>{g.ok ? '✓' : i + 1}</span>
+                <span style={{ fontSize: 15, lineHeight: 1.4, fontWeight: 700 }}>{g.label}</span>
+              </div>
+            ))}
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
+              <button type="button" className="mm-btn" disabled={hintsUsed >= hints.length} onClick={() => setHintsUsed((h) => h + 1)} style={smallBtn('#fde047')}>💡 Hint {hintsUsed ? `${hintsUsed}/${hints.length}` : ''}</button>
+              <button type="button" className="mm-btn" onClick={() => { setMode('python'); setCode(SOLUTIONS[mission.id]); setSawAnswer(true); }} style={smallBtn('#c4b5fd')}>👀 Show me</button>
+              <button type="button" className="mm-btn" onClick={() => { setCode(plan.starter); setBlocks([]); setLines([]); setResult(null); }} style={smallBtn('#94a3b8')}>↺ Reset</button>
+            </div>
+            {hintsUsed > 0 && (
+              <ol style={{ margin: '10px 0 0', paddingLeft: 20, color: '#fef3c7', fontSize: 14, lineHeight: 1.5 }}>
+                {hints.slice(0, hintsUsed).map((h, i) => <li key={i}>{h}</li>)}
+              </ol>
+            )}
+          </div>
+        </div>
+
+        {/* Code */}
+        <div style={{ ...panel, display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <div style={{ fontSize: 13, fontWeight: 900, letterSpacing: 1, flex: 1 }}>💻 YOUR CODE</div>
+            <div role="tablist" style={{ display: 'flex', background: 'rgba(0,0,0,0.3)', borderRadius: 12, padding: 3 }}>
+              {[['python', '🐍 Python'], ['blocks', '🧩 Blocks']].map(([k, t]) => (
+                <button key={k} type="button" role="tab" aria-selected={mode === k} onClick={() => setMode(k)}
+                  style={{ border: 'none', borderRadius: 9, padding: '7px 14px', fontWeight: 800, cursor: 'pointer', background: mode === k ? camp.color : 'transparent', color: '#fff', fontFamily: FONT }}>{t}</button>
+              ))}
+            </div>
+          </div>
+          {mode === 'python' ? (
+            <CodeBox code={code} setCode={setCode} onRun={run} />
+          ) : (
+            <MissionBlockEditor missionId={mission.id} campColor={camp.color} blocks={blocks} setBlocks={setBlocks} />
+          )}
+          <button type="button" className="mm-btn" onClick={run} disabled={running}
+            style={{ minHeight: 56, borderRadius: 16, border: 'none', cursor: running ? 'wait' : 'pointer', fontWeight: 900, fontSize: 19, fontFamily: FONT, color: '#0b1022', background: `linear-gradient(90deg, ${camp.color}, #facc15)`, boxShadow: `0 8px 24px ${camp.glow}`, opacity: running ? 0.7 : 1 }}>
+            {running ? '⏳ Running…' : `▶ ${plan.action || WORLD[camp.id].action}!`}
+          </button>
+          <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>Tip: Ctrl/⌘ + Enter runs · Tab adds 4 spaces</div>
+        </div>
+
+        {/* Viewer */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 }}>
+          <div style={{ ...panel, padding: 8 }}>
+            <MissionScene scene={plan.scene} lines={visible} done={win && !running} failed={result === 'try' && !running} runKey={runKey} />
+          </div>
+          <div style={{ ...panel, padding: 0, overflow: 'hidden' }}>
+            <div style={{ padding: '8px 14px', fontSize: 12, fontWeight: 900, letterSpacing: 1, background: 'rgba(0,0,0,0.35)', display: 'flex', justifyContent: 'space-between' }}>
+              <span>📡 MISSION LOG</span><span style={{ color: running ? '#fde047' : '#22c55e' }}>{running ? '● LIVE' : lines.length ? '● DONE' : '○ READY'}</span>
+            </div>
+            <div ref={logRef} style={{ height: 170, overflowY: 'auto', padding: '10px 14px', fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 14, lineHeight: 1.6, background: 'rgba(2,6,23,0.6)' }}>
+              {!lines.length && !error && <span style={{ color: 'rgba(255,255,255,0.4)' }}>Press ▶ to run your program. What it prints appears here — and in the scene above.</span>}
+              {visible.map((l, i) => <div key={i} style={{ color: '#86efac', animation: 'mm-in .25s' }}><span style={{ color: 'rgba(255,255,255,0.35)' }}>&gt; </span>{l}</div>)}
+              {error && !running && <div style={{ color: '#fca5a5', marginTop: 6 }}>🐞 {error}</div>}
+            </div>
+          </div>
+          {result === 'try' && !running && (
+            <div role="status" style={{ ...panel, borderColor: 'rgba(245,158,11,0.6)', background: 'rgba(245,158,11,0.12)' }}>
+              <b style={{ color: '#fde68a' }}>Nearly there!</b> {error ? 'Fix the bug above, then run again.' : `Still to do: ${goals.filter((g) => !g.ok).map((g) => g.label).join(' · ')}`}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {win && !running && <WinOverlay camp={camp} mission={mission} stars={earned} onNext={onNext} onMap={onBack} onStay={() => setResult(null)} />}
+    </div>
+  );
+}
+
+function CodeBox({ code, setCode, onRun }) {
+  const lines = code.split('\n');
+  return (
+    <div style={{ display: 'flex', borderRadius: 14, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.15)', background: '#0b1022', minHeight: 320 }}>
+      <div aria-hidden style={{ padding: '12px 8px', fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 15, lineHeight: 1.6, color: '#475569', textAlign: 'right', userSelect: 'none', background: 'rgba(255,255,255,0.03)' }}>
+        {lines.map((_, i) => <div key={i}>{i + 1}</div>)}
+      </div>
+      <textarea aria-label="Python code" value={code} spellCheck={false} autoCapitalize="off" autoCorrect="off"
+        onChange={(e) => setCode(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Tab') {
+            e.preventDefault();
+            const el = e.target; const s = el.selectionStart;
+            setCode(code.slice(0, s) + '    ' + code.slice(el.selectionEnd));
+            requestAnimationFrame(() => { el.selectionStart = el.selectionEnd = s + 4; });
+          } else if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); onRun(); }
+        }}
+        style={{ flex: 1, background: 'transparent', color: '#e2e8f0', border: 'none', outline: 'none', resize: 'vertical', padding: 12, fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 15, lineHeight: 1.6, whiteSpace: 'pre', tabSize: 4, minHeight: 320 }} />
+    </div>
+  );
+}
+
+function WinOverlay({ camp, mission, stars, onNext, onMap, onStay }) {
+  const bits = useMemo(() => Array.from({ length: 50 }, (_, i) => ({ x: (i * 37) % 100, d: 1.8 + (i % 5) * 0.4, e: ['🎉', '⭐', '✨', '🟡', '🟣', '🔷'][i % 6], delay: (i % 10) * 0.12 })), []);
+  return (
+    <div role="dialog" aria-label="Mission complete" style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(2,6,23,0.72)', display: 'grid', placeItems: 'center', padding: 16, backdropFilter: 'blur(4px)' }}>
+      {bits.map((b, i) => <span key={i} aria-hidden style={{ position: 'fixed', top: -30, left: `${b.x}%`, fontSize: 22, animation: `mm-confetti ${b.d}s ${b.delay}s linear forwards` }}>{b.e}</span>)}
+      <div style={{ width: 'min(520px, 100%)', borderRadius: 28, padding: '28px 24px', textAlign: 'center', background: `linear-gradient(160deg, ${camp.color}, #0b1022 70%)`, border: '2px solid rgba(255,255,255,0.25)', boxShadow: `0 30px 80px ${camp.glow}`, animation: 'mm-pop .5s' }}>
+        <svg viewBox="-20 -16 140 190" width="110" style={{ animation: 'mm-float 2s ease-in-out infinite' }}><DotBot pose="cheer" /></svg>
+        <div style={{ fontSize: 14, fontWeight: 900, letterSpacing: 2, color: '#fde047' }}>MISSION COMPLETE</div>
+        <div style={{ fontSize: 30, fontWeight: 900, margin: '4px 0 6px' }}>{mission.emoji} {mission.title}</div>
+        <div style={{ fontSize: 46, letterSpacing: 6 }}>{[1, 2, 3].map((n) => <span key={n} style={{ opacity: n <= stars ? 1 : 0.2, display: 'inline-block', animation: n <= stars ? `mm-pop .4s ${0.3 + n * 0.25}s both` : undefined }}>⭐</span>)}</div>
+        <div style={{ fontSize: 22, fontWeight: 900, color: '#fde047', margin: '6px 0 4px' }}>+{mission.xp} XP</div>
+        <div style={{ fontSize: 15, color: 'rgba(255,255,255,0.8)', marginBottom: 18 }}>
+          {stars === 3 ? 'Flawless! Mission control is amazed.' : stars === 2 ? 'Great work! Try with fewer hints for 3 stars.' : 'Done! Now try it yourself without “Show me” for more stars.'}
+        </div>
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+          {onNext
+            ? <button type="button" className="mm-btn" onClick={onNext} style={{ ...bigBtn, background: '#facc15', color: '#1c1917' }}>Next mission →</button>
+            : <button type="button" className="mm-btn" onClick={onMap} style={{ ...bigBtn, background: '#facc15', color: '#1c1917' }}>🏆 World saved!</button>}
+          <button type="button" className="mm-btn" onClick={onMap} style={{ ...bigBtn, background: 'rgba(255,255,255,0.15)', color: '#fff' }}>Map</button>
+          <button type="button" className="mm-btn" onClick={onStay} style={{ ...bigBtn, background: 'transparent', color: '#fff', border: '1px solid rgba(255,255,255,0.3)' }}>Keep coding</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const panel = { borderRadius: 20, padding: 16, background: 'rgba(15,23,42,0.72)', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(8px)' };
+const backBtn = { minHeight: 42, padding: '0 16px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.25)', background: 'rgba(255,255,255,0.08)', color: '#fff', fontWeight: 800, cursor: 'pointer', fontFamily: FONT };
+const smallBtn = (c) => ({ minHeight: 38, padding: '0 12px', borderRadius: 10, border: `1px solid ${c}66`, background: `${c}1a`, color: c, fontWeight: 800, cursor: 'pointer', fontFamily: FONT, fontSize: 14 });
+const bigBtn = { minHeight: 50, padding: '0 22px', borderRadius: 14, border: 'none', fontWeight: 900, fontSize: 17, cursor: 'pointer', fontFamily: FONT };

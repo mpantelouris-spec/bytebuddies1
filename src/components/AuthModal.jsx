@@ -179,16 +179,12 @@ function validateClassCode(code) {
   return classes.find(c => c.inviteCode === code.toUpperCase().trim()) || null;
 }
 
-export default function AuthModal({ onClose, initialRole }) {
-  const { login, setUser, updateRole, isLoggedIn, logout, user } = useUser();
+export default function AuthModal({ onClose, initialRole, initialMode = 'login' }) {
+  const { login, isLoggedIn, logout, user } = useUser();
 
-  console.log('[AuthModal] initialRole=', initialRole, 'user.role=', user?.role, 'isLoggedIn=', isLoggedIn);
-  const savedRole = !initialRole ? (user?.role || null) : null;
-  const startStep = isLoggedIn ? 'account' : (initialRole || savedRole ? 'signin' : 'role');
-
-  const [authStep, setAuthStep] = useState(startStep);
-  const [selectedRole, setSelectedRole] = useState(initialRole || savedRole || null);
-  const [mode, setMode] = useState('login');
+  const [authStep, setAuthStep] = useState(isLoggedIn ? 'account' : 'role');
+  const [selectedRole, setSelectedRole] = useState(null);
+  const [mode, setMode] = useState(initialMode === 'signup' ? 'signup' : 'login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
@@ -199,13 +195,16 @@ export default function AuthModal({ onClose, initialRole }) {
   const [showGooglePicker, setShowGooglePicker] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
 
-  // Ensure initialRole always wins over any cached user role
+  // Never inherit a leftover teacher/student role from a previous account.
   useEffect(() => {
-    if (initialRole) {
-      setSelectedRole(initialRole);
-      if (!isLoggedIn) setAuthStep('signin');
+    if (isLoggedIn) {
+      setAuthStep('account');
+      return;
     }
-  }, [initialRole]); // eslint-disable-line
+    setAuthStep('role');
+    setSelectedRole(null);
+    if (initialMode === 'signup') setMode('signup');
+  }, [initialRole, initialMode]); // eslint-disable-line
 
   const handleRoleSelect = (role) => {
     setSelectedRole(role);
@@ -213,9 +212,12 @@ export default function AuthModal({ onClose, initialRole }) {
   };
 
   const finishLogin = (userData, role, classId) => {
-    const r = role || selectedRole;
-    if (r) updateRole(r);
-    if (userData) setUser(prev => ({ ...prev, ...userData, classroomId: classId || prev.classroomId }));
+    const r = role || selectedRole || 'student';
+    login({
+      ...(userData || {}),
+      role: r,
+      classroomId: classId || userData?.classroomId || null,
+    });
   };
 
   const validateTeacherEmail = (emailAddr) => {
@@ -229,11 +231,17 @@ export default function AuthModal({ onClose, initialRole }) {
   // Called after sign-in if student — shows class code step
   const proceedAfterSignIn = (userData) => {
     if (selectedRole === 'student') {
+      finishLogin(userData, 'student');
+      // Arrived from a class link (e.g. Google Classroom) — the Classroom page joins them.
+      if (/[?&]join=/.test(window.location.hash)) {
+        setSuccess('Signed in! Taking you to your class…');
+        setTimeout(() => onClose(), 600);
+        return;
+      }
       setPendingUserData(userData);
       setAuthStep('classCode');
     } else {
-      finishLogin(userData);
-      login();
+      finishLogin(userData, selectedRole || 'teacher');
       setSuccess('Signed in successfully!');
       setTimeout(() => onClose(), 800);
     }
@@ -252,7 +260,6 @@ export default function AuthModal({ onClose, initialRole }) {
     };
     addStudentToClass(matched.id, studentData);
     finishLogin(pendingUserData, 'student', matched.id);
-    login();
     setSuccess(`Joined ${matched.name}! Welcome to ByteBuddies 🎉`);
     setTimeout(() => onClose(), 1000);
   };
@@ -457,9 +464,9 @@ export default function AuthModal({ onClose, initialRole }) {
                 </button>
                 <button
                   style={{ fontSize: 13, color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'center' }}
-                  onClick={() => { setAuthStep('signin'); setError(''); }}
+                  onClick={onClose}
                 >
-                  ← Back
+                  I don't have a code yet — skip for now
                 </button>
               </>
             )}

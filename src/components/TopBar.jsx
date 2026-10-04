@@ -95,14 +95,13 @@ export default function TopBar({ currentPage, onNavigate, onExport, onAuth }) {
         {pages.map(p => (
           <button
             key={p.id}
-            className={`topbar-nav-btn ${currentPage === p.id ? 'active' : ''}`}
+            className={`topbar-nav-btn ${currentPage === p.id ? 'active' : ''} ${p.highlight && currentPage !== p.id ? 'topbar-nav-btn--highlight' : ''}`}
             onClick={() => onNavigate(p.id)}
-            style={p.highlight && currentPage !== p.id ? { color: '#818cf8', position: 'relative' } : {}}
           >
             <span style={{marginRight: 4}}>{p.icon}</span>
             {p.label}
             {p.highlight && currentPage !== p.id && (
-              <span style={{ position: 'absolute', top: -4, right: -4, width: 7, height: 7, borderRadius: '50%', background: '#6366f1' }} />
+              <span className="topbar-nav-dot" />
             )}
           </button>
         ))}

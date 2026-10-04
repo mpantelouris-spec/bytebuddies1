@@ -415,11 +415,13 @@ export function createRaceMover(config) {
   const spawn = computeRaceSpawn(curve, finishT, { spawnBack, spawnTOffset, spawnT, spawnPosition, track3D });
   const startPt = curve.getPointAt(finishT);
 
-  const finishPos = { x: startPt.x, z: startPt.z, radius: finishRadius };
+  // Gates span the whole road so hugging the kerb still counts
+  const gateRadius = Math.max(4.2, halfWidth + 2);
+  const finishPos = { x: startPt.x, z: startPt.z, radius: Math.max(finishRadius, gateRadius) };
 
   const gateMeshes = checkpointTs.map((t, i) => {
     const p = curve.getPointAt(t);
-    return { x: p.x, z: p.z, radius: 4.2, index: i };
+    return { x: p.x, z: p.z, radius: gateRadius, index: i };
   });
 
   const padPositions = boostTs.map((t) => {

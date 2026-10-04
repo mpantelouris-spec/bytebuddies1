@@ -18,7 +18,7 @@ const THEMES = {
   },
   candy_carnival_01: {
     kind: 'carnival', hero: 0xff6faf, accent: 0xffd85a, dark: 0x7652aa,
-    ground: 0x91cf67, atmospheric: 0xffc9e3,
+    ground: 0x91cf67, atmospheric: 0xcdeeff,
   },
   neon_metro_01: {
     kind: 'metro', hero: 0xff38cf, accent: 0x21e8ff, dark: 0x101329,

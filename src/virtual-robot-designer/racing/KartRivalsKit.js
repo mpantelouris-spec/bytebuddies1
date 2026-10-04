@@ -1,77 +1,20 @@
 import * as THREE from 'three';
+import { buildMKKart } from './MKKartModel.js';
 
 const RIVALS = [
-  { name: 'Nova', color: 0xff4f8b, accent: 0xffd45c, lane: -0.42, speed: 0.105 },
-  { name: 'Bolt', color: 0x38c8ff, accent: 0x243b8f, lane: 0.18, speed: 0.098 },
-  { name: 'Mica', color: 0xa7e64f, accent: 0x5d42bd, lane: 0.56, speed: 0.091 },
+  { name: 'Nova', color: 0xff4f8b, accent: 0xffd45c, style: 'bubble', driver: 'dome', eyes: 0xff9be0, lane: -0.42, speed: 0.105 },
+  { name: 'Bolt', color: 0x38c8ff, accent: 0x243b8f, style: 'speedster', driver: 'boxy', eyes: 0x9dffb0, lane: 0.18, speed: 0.098 },
+  { name: 'Mica', color: 0xa7e64f, accent: 0x5d42bd, style: 'buggy', driver: 'helmet', eyes: 0xffe066, lane: 0.56, speed: 0.091 },
 ];
 
 function makeRivalKart(def, index) {
-  const group = new THREE.Group();
+  const group = buildMKKart({
+    body: def.color, accent: def.accent, style: def.style, driver: def.driver, eyes: def.eyes, number: index + 2,
+  });
   group.name = `rival-kart-${def.name.toLowerCase()}`;
   group.userData.isKartRival = true;
   group.userData.rivalName = def.name;
-
-  const body = new THREE.Mesh(
-    new THREE.BoxGeometry(1.45, 0.42, 2.05),
-    new THREE.MeshStandardMaterial({ color: def.color, roughness: 0.6, metalness: 0.12 }),
-  );
-  body.position.y = 0.48;
-  body.castShadow = true;
-  group.add(body);
-
-  const nose = new THREE.Mesh(
-    new THREE.BoxGeometry(1.08, 0.24, 0.5),
-    new THREE.MeshStandardMaterial({ color: def.accent, roughness: 0.5 }),
-  );
-  nose.position.set(0, 0.69, -0.67);
-  nose.rotation.x = -0.08;
-  group.add(nose);
-
-  const canopy = new THREE.Mesh(
-    new THREE.SphereGeometry(0.52, 16, 8, 0, Math.PI * 2, 0, Math.PI * 0.58),
-    new THREE.MeshStandardMaterial({ color: 0x172241, emissive: def.color, emissiveIntensity: 0.16, roughness: 0.25, metalness: 0.25 }),
-  );
-  canopy.scale.set(1, 0.72, 1.18);
-  canopy.position.set(0, 0.83, 0.2);
-  group.add(canopy);
-
-  const visor = new THREE.Mesh(
-    new THREE.BoxGeometry(0.62, 0.11, 0.08),
-    new THREE.MeshBasicMaterial({ color: 0xf8fbff }),
-  );
-  visor.position.set(0, 0.9, -0.33);
-  group.add(visor);
-
-  [-1, 1].forEach((side) => {
-    const wheel = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.24, 0.24, 0.18, 12),
-      new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.82 }),
-    );
-    wheel.rotation.z = Math.PI / 2;
-    wheel.position.set(side * 0.76, 0.29, 0.47);
-    group.add(wheel);
-    const rear = wheel.clone();
-    rear.position.z = -0.55;
-    group.add(rear);
-  });
-
-  const flag = new THREE.Mesh(
-    new THREE.BoxGeometry(0.04, 0.72, 0.04),
-    new THREE.MeshBasicMaterial({ color: def.accent }),
-  );
-  flag.position.set(0, 1.32, 0.62);
-  group.add(flag);
-  const pennant = new THREE.Mesh(
-    new THREE.BufferGeometry().setFromPoints([
-      new THREE.Vector3(0, 0.36, 0), new THREE.Vector3(0.52, 0.19, 0), new THREE.Vector3(0, 0, 0),
-    ]),
-    new THREE.LineBasicMaterial({ color: def.accent }),
-  );
-  pennant.position.copy(flag.position);
-  group.add(pennant);
-
-  group.scale.setScalar(0.9 + index * 0.025);
+  group.scale.setScalar(1.15);
   return group;
 }
 

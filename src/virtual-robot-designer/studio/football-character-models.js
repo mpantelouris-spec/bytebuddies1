@@ -1,14 +1,12 @@
 /**
- * Mini FIFA footballers — human kit silhouettes, not boxing mechs.
- * Shirt / shorts / socks / boots. No visors. No combat gloves (keeper yellow only).
+ * Cute visor football robots — ByteBuddies look (round head, big eyes), orange vs blue.
  */
 import * as THREE from 'three';
 import { TEAM_PRESETS } from '../data/football-robot-types.js';
 import { attachFootballRig } from './football-rig.js';
 
-const SKINS = ['#e8b896', '#9c6644'];
-const HAIRS = ['#2a1a12', '#6b3f24', '#171717'];
-const EYE = '#1f2937';
+const EYE_WHITE = '#f8fbff';
+const EYE_PUPIL = '#0f172a';
 
 function matStd(color, metalness = 0.08, roughness = 0.62) {
   return new THREE.MeshStandardMaterial({
@@ -72,17 +70,17 @@ function kitFor(teamColor, play, jerseyNumber = 9) {
   const team = TEAM_PRESETS[teamColor] || TEAM_PRESETS.green;
   const isBlue = teamColor === 'blue';
   const isKeeper = play === 'goalkeeper';
-  const skin = SKINS[Math.abs(Number(jerseyNumber) || 0) % SKINS.length];
-  const hair = HAIRS[Math.abs(Number(jerseyNumber) || 0) % HAIRS.length];
+  const body = isKeeper ? '#eab308' : (isBlue ? '#3b82f6' : '#f97316');
+  const dark = isKeeper ? '#7c2d12' : (isBlue ? '#1e3a8a' : '#9a3412');
   return {
     team,
-    jersey: isKeeper ? '#eab308' : (isBlue ? '#2563eb' : '#16a34a'),
-    shorts: isKeeper ? '#111827' : '#f8fafc',
-    socks: isKeeper ? '#111827' : (isBlue ? '#2563eb' : '#16a34a'),
-    boot: team.boot || '#111827',
-    hand: isKeeper ? '#facc15' : skin,
-    skin,
-    hair,
+    jersey: body,
+    shorts: dark,
+    socks: body,
+    boot: '#111827',
+    hand: isKeeper ? '#facc15' : body,
+    visor: isBlue ? '#7dd3fc' : '#ffedd5',
+    accent: isBlue ? '#93c5fd' : '#fdba74',
     isKeeper,
     isBlue,
   };
@@ -156,50 +154,64 @@ export function buildFootballPlayer(config = {}) {
   torsoGrp.name = 'Torso_Group';
   g.add(torsoGrp);
 
-  const pelvis = mesh(new THREE.SphereGeometry(0.12, 10, 8), matStd(c.shorts));
-  pelvis.position.y = 0.02;
+  const pelvis = mesh(new THREE.SphereGeometry(0.16, 12, 10), matStd(c.shorts, 0.18, 0.42));
+  pelvis.position.y = 0.04;
   torsoGrp.add(pelvis);
 
-  const shorts = mesh(new THREE.CylinderGeometry(0.2, 0.22, 0.24, 10), matStd(c.shorts, 0.05, 0.6));
-  shorts.position.y = 0.12;
-  shorts.userData.isKitLayer = true;
-  torsoGrp.add(shorts);
+  const body = mesh(new THREE.SphereGeometry(0.34, 16, 14), matStd(c.jersey, 0.22, 0.38));
+  body.scale.set(0.92, 1.05, 0.82);
+  body.position.y = 0.48;
+  body.userData.isKitLayer = true;
+  torsoGrp.add(body);
 
-  const shirt = mesh(new THREE.CylinderGeometry(0.22, 0.24, 0.48, 10), matStd(c.jersey, 0.06, 0.52));
-  shirt.position.y = 0.46;
-  shirt.userData.isKitLayer = true;
-  torsoGrp.add(shirt);
-
-  [-1, 1].forEach((sign) => {
-    const collar = mesh(new THREE.BoxGeometry(0.12, 0.025, 0.025), matStd('#f8fafc', 0.1, 0.45));
-    collar.position.set(sign * 0.045, 0.69, 0.205);
-    collar.rotation.z = sign * 0.52;
-    torsoGrp.add(collar);
-  });
+  const chestPlate = mesh(new THREE.CircleGeometry(0.16, 16), matStd(c.accent, 0.35, 0.28));
+  chestPlate.position.set(0, 0.52, 0.27);
+  torsoGrp.add(chestPlate);
 
   const headGrp = new THREE.Group();
   headGrp.name = 'Head_Group';
   headGrp.position.y = 0.92;
   torsoGrp.add(headGrp);
 
-  const neck = mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.1, 8), matStd(c.skin, 0.04, 0.55));
-  neck.position.y = -0.08;
+  const neck = mesh(new THREE.CylinderGeometry(0.08, 0.1, 0.08, 10), matStd(c.jersey, 0.2, 0.4));
+  neck.position.y = -0.06;
   headGrp.add(neck);
 
-  const head = mesh(new THREE.SphereGeometry(0.15, 14, 12), matStd(c.skin, 0.04, 0.52));
-  head.position.y = 0.08;
+  const head = mesh(new THREE.SphereGeometry(0.28, 18, 16), matStd(c.jersey, 0.18, 0.32));
+  head.position.y = 0.18;
   headGrp.add(head);
 
-  const hair = mesh(new THREE.SphereGeometry(0.156, 12, 10, 0, Math.PI * 2, 0, Math.PI * 0.55), matStd(c.hair, 0.05, 0.7));
-  hair.position.y = 0.12;
-  hair.rotation.x = 0.15;
-  headGrp.add(hair);
+  const visor = mesh(
+    new THREE.SphereGeometry(0.24, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.62),
+    new THREE.MeshStandardMaterial({
+      color: new THREE.Color(c.visor),
+      emissive: new THREE.Color(c.visor),
+      emissiveIntensity: 0.22,
+      metalness: 0.45,
+      roughness: 0.18,
+    }),
+  );
+  visor.position.set(0, 0.16, 0.06);
+  visor.rotation.x = 0.35;
+  headGrp.add(visor);
 
-  [-0.045, 0.045].forEach((x) => {
-    const eye = mesh(new THREE.SphereGeometry(0.018, 8, 6), matStd(EYE, 0.05, 0.4));
-    eye.position.set(x, 0.09, 0.11);
-    headGrp.add(eye);
+  [-0.08, 0.08].forEach((x) => {
+    const white = mesh(new THREE.SphereGeometry(0.075, 12, 10), matStd(EYE_WHITE, 0.05, 0.28));
+    white.position.set(x, 0.2, 0.2);
+    white.scale.set(0.85, 1.05, 0.55);
+    headGrp.add(white);
+    const pupil = mesh(new THREE.SphereGeometry(0.038, 10, 8), matStd(EYE_PUPIL, 0.05, 0.35));
+    pupil.position.set(x, 0.2, 0.24);
+    pupil.scale.set(0.7, 1, 0.5);
+    headGrp.add(pupil);
   });
+
+  const earL = mesh(new THREE.SphereGeometry(0.07, 8, 8), matStd(c.accent, 0.25, 0.4));
+  earL.position.set(-0.26, 0.16, 0);
+  headGrp.add(earL);
+  const earR = earL.clone();
+  earR.position.x = 0.26;
+  headGrp.add(earR);
 
   const armGrps = [];
   [[-0.29, 'left', 0], [0.29, 'right', 1]].forEach(([x, side, si]) => {
@@ -208,26 +220,22 @@ export function buildFootballPlayer(config = {}) {
     armGrp.position.set(x, 0.62, 0);
     torsoGrp.add(armGrp);
 
-    const sleeve = mesh(new THREE.CylinderGeometry(0.055, 0.06, 0.22, 8), matStd(c.jersey));
+    const sleeve = mesh(new THREE.CylinderGeometry(0.07, 0.08, 0.22, 8), matStd(c.jersey, 0.2, 0.38));
     sleeve.position.y = -0.1;
     armGrp.add(sleeve);
-    const sleeveTrim = mesh(new THREE.TorusGeometry(0.06, 0.012, 6, 10), matStd('#f8fafc', 0.05, 0.5));
-    sleeveTrim.rotation.x = Math.PI / 2;
-    sleeveTrim.position.y = -0.205;
-    armGrp.add(sleeveTrim);
 
     const forearmGrp = new THREE.Group();
     forearmGrp.name = `${side}_forearm`;
     forearmGrp.position.y = -0.22;
     armGrp.add(forearmGrp);
 
-    const forearm = mesh(new THREE.CylinderGeometry(0.045, 0.05, 0.22, 8), matStd(c.skin, 0.04, 0.55));
+    const forearm = mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.22, 8), matStd(c.jersey, 0.2, 0.4));
     forearm.position.y = -0.1;
     forearmGrp.add(forearm);
 
     const hand = mesh(
-      c.isKeeper ? new THREE.BoxGeometry(0.14, 0.12, 0.09) : new THREE.SphereGeometry(0.055, 10, 8),
-      matStd(c.hand, 0.05, 0.5),
+      c.isKeeper ? new THREE.BoxGeometry(0.16, 0.14, 0.1) : new THREE.SphereGeometry(0.07, 10, 8),
+      matStd(c.hand, 0.12, 0.4),
     );
     hand.position.set(0, -0.24, 0.01);
     forearmGrp.add(hand);
@@ -249,7 +257,7 @@ export function buildFootballPlayer(config = {}) {
     const thighGrp = new THREE.Group();
     thighGrp.name = 'thigh_pivot';
     hipGrp.add(thighGrp);
-    const thigh = mesh(new THREE.CylinderGeometry(0.08, 0.09, THIGH_LEN, 8), matStd(c.shorts));
+    const thigh = mesh(new THREE.CylinderGeometry(0.09, 0.1, THIGH_LEN, 8), matStd(c.shorts, 0.18, 0.42));
     thigh.position.y = -THIGH_LEN / 2;
     thighGrp.add(thigh);
 
@@ -258,14 +266,10 @@ export function buildFootballPlayer(config = {}) {
     shinGrp.position.y = -THIGH_LEN;
     thighGrp.add(shinGrp);
 
-    const sock = mesh(new THREE.CylinderGeometry(0.065, 0.075, SHIN_LEN, 8), matStd(c.socks));
+    const sock = mesh(new THREE.CylinderGeometry(0.075, 0.085, SHIN_LEN, 8), matStd(c.socks, 0.18, 0.4));
     sock.position.y = -SHIN_LEN / 2;
     sock.userData.isKitLayer = true;
     shinGrp.add(sock);
-    const sockFold = mesh(new THREE.TorusGeometry(0.073, 0.014, 6, 10), matStd('#f8fafc', 0.03, 0.62));
-    sockFold.rotation.x = Math.PI / 2;
-    sockFold.position.y = -0.035;
-    shinGrp.add(sockFold);
 
     const ankleGrp = new THREE.Group();
     ankleGrp.name = 'ankle_pivot';
@@ -310,13 +314,11 @@ export function buildFootballPlayer(config = {}) {
     variant: 'football',
   };
 
-  if (play === 'defender') g.scale.set(1.18, 1.08, 1.16);
-  else if (play === 'midfielder') g.scale.set(1.04, 1.08, 1.04);
-  else if (c.isKeeper) g.scale.set(1.14, 1.1, 1.12);
-  else g.scale.set(0.98, 1.14, 0.98);
+  if (play === 'defender') g.scale.set(1.22, 1.16, 1.2);
+  else if (play === 'midfielder') g.scale.set(1.12, 1.14, 1.12);
+  else if (c.isKeeper) g.scale.set(1.2, 1.18, 1.18);
+  else g.scale.set(1.14, 1.2, 1.14);
 
-  const tags = { defender: 'DEF', midfielder: 'MID', striker: 'ST', goalkeeper: 'GK' };
-  g.add(makeNameplate(`#${jerseyNum}  ${tags[play] || 'ST'}`, teamColor === 'blue' ? '#93c5fd' : '#86efac'));
   attachFootballRig(g, { team: c.team, jerseyNum });
   return g;
 }
@@ -338,111 +340,25 @@ function tintMeshMaterial(mat, colorHex, { emissive = null, emissiveIntensity = 
   }
 }
 
-/** User-built striker — human footballer with builder colours + cyber legs (not a rover on the pitch). */
+/** User striker — same cute visor robot as teammates, in team orange. */
 export function buildUserStrikerFootballer(builderCfg = {}) {
-  const primary = builderCfg.primaryColor || '#ff8c00';
-  const accent = builderCfg.accentColor || '#22d3ee';
   const jerseyNumber = builderCfg.jerseyNumber || 9;
   const name = builderCfg.name || 'My Robot';
-
   const player = buildFootballPlayer({
     teamColor: 'green',
     jerseyNumber,
-    playstyle: 'striker',
+    playstyle: builderCfg.playstyle || 'striker',
   });
   player.name = name.slice(0, 16);
-
-  player.traverse((o) => {
-    if (!o.isMesh || !o.material) return;
-    const mats = Array.isArray(o.material) ? o.material : [o.material];
-    mats.forEach((m) => {
-      if (o.userData?.isKitLayer || o.name?.includes('shirt') || (o.parent?.name === 'torsoGrp')) {
-        tintMeshMaterial(m, primary, { emissive: primary, emissiveIntensity: 0.08 });
-      }
-      if (o.userData?.isJerseyPlate) {
-        tintMeshMaterial(m, '#ffffff');
-      }
-    });
-  });
-
-  const rig = player.userData?.rig;
-  if (rig?.legGrps) {
-    rig.legGrps.forEach((leg) => {
-      const shinGrp = leg.shinGrp;
-      if (!shinGrp) return;
-      const cyber = mesh(
-        new THREE.BoxGeometry(0.11, 0.2, 0.09),
-        matStd(accent, 0.55, 0.35),
-      );
-      cyber.position.set(0, -0.12, 0.04);
-      cyber.userData.isCyberLeg = true;
-      shinGrp.add(cyber);
-      const glow = mesh(
-        new THREE.BoxGeometry(0.08, 0.14, 0.04),
-        new THREE.MeshStandardMaterial({
-          color: new THREE.Color(accent),
-          emissive: new THREE.Color(accent),
-          emissiveIntensity: 0.42,
-          metalness: 0.4,
-          roughness: 0.3,
-        }),
-      );
-      glow.position.set(0, -0.1, 0.1);
-      glow.userData.isCyberGlow = true;
-      shinGrp.add(glow);
-    });
-  }
-
   player.userData.isUserFootballStriker = true;
   player.userData.isUserBuilderStriker = true;
   player.userData.footballKitApplied = true;
-  player.userData.builderPrimary = primary;
-  player.userData.builderAccent = accent;
-
-  const band = new THREE.Mesh(
-    new THREE.TorusGeometry(0.15, 0.028, 8, 16),
-    new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.4 }),
-  );
-  band.rotation.z = Math.PI / 2;
-  band.position.set(0.24, 0.55, 0);
-  band.userData.isCaptainBand = true;
-  const attach = rig?.torsoGrp || player;
-  attach.add(band);
-
   return player;
 }
 
-/** Full kit overlay for custom builder meshes AND captain band on #9. */
-export function applyFootballTeamKit(root, { teamColor = 'green', jerseyNumber = 9 } = {}) {
+export function applyFootballTeamKit(root) {
   if (!root) return root;
-  if (root.userData?.footballKitApplied) return root;
   root.userData.footballKitApplied = true;
-
-  if (root.userData?.isUserBuilderStriker || (root.userData?.isUserFootballStriker && root.userData?.isFootballPlayer)) {
-    return root;
-  }
-
-  if (!root.userData?.isFootballPlayer && !root.userData?.isFootballBot) {
-    root.traverse((o) => {
-      if (!o.isMesh || !o.material) return;
-      const mats = Array.isArray(o.material) ? o.material : [o.material];
-      mats.forEach((m) => {
-        if (m.emissiveIntensity > 0.4) m.emissiveIntensity = 0;
-      });
-    });
-    addFootballKitLayers(root, { teamColor, jerseyNumber, playstyle: 'striker' });
-    root.add(makeNameplate(`#${jerseyNumber}  ST`, '#86efac'));
-  }
-
-  const band = new THREE.Mesh(
-    new THREE.TorusGeometry(0.15, 0.028, 8, 16),
-    new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.4 }),
-  );
-  band.rotation.z = Math.PI / 2;
-  band.position.set(0.24, 0.55, 0);
-  band.userData.isCaptainBand = true;
-  const attach = root.userData?.rig?.torsoGrp || root;
-  attach.add(band);
   return root;
 }
 

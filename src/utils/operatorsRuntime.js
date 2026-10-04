@@ -87,6 +87,9 @@ function paramFromValue(node, fields, key, fallback) {
 }
 
 function evalParam(val, evaluateNested, sprite, coerce = coerceNum, fallback = 0) {
+  if (val && typeof val === 'object' && val.type) {
+    return coerce(evaluateNested(val, sprite), fallback);
+  }
   if (val && typeof val === 'object' && val._nested) {
     return coerce(evaluateNested(val._nested, sprite), fallback);
   }
@@ -150,8 +153,12 @@ export function evaluateOperatorBlock(block, sprite, evaluateNested) {
         evalParam(p.value, evaluateNested, sprite),
       );
     case 'logic-compare': {
-      const a = evalParam(p.left, evaluateNested, sprite);
-      const b = evalParam(p.right, evaluateNested, sprite);
+      const rawA = evalParam(p.left, evaluateNested, sprite, (v) => v, 0);
+      const rawB = evalParam(p.right, evaluateNested, sprite, (v) => v, 0);
+      const isNum = (v) => typeof v === 'number' || (String(v ?? '').trim() !== '' && Number.isFinite(Number(v)));
+      const numeric = isNum(rawA) && isNum(rawB);
+      const a = numeric ? Number(rawA) : String(rawA ?? '').toLowerCase();
+      const b = numeric ? Number(rawB) : String(rawB ?? '').toLowerCase();
       const op = String(p.op || '=');
       switch (op) {
         case '>':
@@ -246,8 +253,48 @@ export function applyMathOp(op, val) {
   }
 }
 
-/** Map Blockly operator workspace node → evaluator block (with nested inputs). */
-export function blocklyNodeToEvaluatorBlock(node) {
+/** Operator field → evaluator param, used when a reporter is plugged into `<FIELD>_SLOT`. */
+const OPERATOR_SLOT_PARAMS = {
+  NUM1: 'a',
+  NUM2: 'b',
+  FROM: 'min',
+  TO: 'max',
+  NUM: 'value',
+  LETTER: 'letter',
+  STRING: 'text',
+};
+const SLOT_SHADOW_TYPES = new Set(['text', 'math_number']);
+
+function operatorSlotParam(evalType, field) {
+  if (field === 'OPERAND1' || field === 'OPERAND2') {
+    const side = field === 'OPERAND1' ? 'left' : 'right';
+    return evalType === 'logic-and' || evalType === 'logic-or' ? `_${side}` : side;
+  }
+  if (field === 'OPERAND') return '_value';
+  if (field === 'STRING1') return evalType === 'text-contains' ? 'text' : 'a';
+  if (field === 'STRING2') return evalType === 'text-contains' ? 'search' : 'b';
+  return OPERATOR_SLOT_PARAMS[field] || null;
+}
+
+/**
+ * Map Blockly operator workspace node → evaluator block (with nested inputs).
+ * @param {Function} [convertNested] maps a plugged-in reporter node to an evaluator block
+ */
+export function blocklyNodeToEvaluatorBlock(node, convertNested = null) {
+  const out = blocklyOperatorNodeToEvaluatorBlock(node);
+  if (!out || !node?.values) return out;
+  const convert = convertNested || ((n) => blocklyNodeToEvaluatorBlock(n));
+  Object.entries(node.values).forEach(([inputName, child]) => {
+    if (!inputName.endsWith('_SLOT') || !child || SLOT_SHADOW_TYPES.has(child.type)) return;
+    const key = operatorSlotParam(out.type, inputName.slice(0, -5));
+    const nested = key ? convert(child) : null;
+    if (!nested) return;
+    out.params[key] = key.startsWith('_') ? nested : { _nested: nested };
+  });
+  return out;
+}
+
+function blocklyOperatorNodeToEvaluatorBlock(node) {
   if (!node) return { type: 'logic-bool', params: { value: 'false' } };
   const blocklyType = node.type;
   const f = node.fields || {};

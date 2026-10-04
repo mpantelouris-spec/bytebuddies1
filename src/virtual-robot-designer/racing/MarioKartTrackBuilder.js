@@ -422,17 +422,15 @@ function makeKerbTexture(roadStyle = 'asphalt') {
   c.width = 128;
   c.height = 64;
   const ctx = c.getContext('2d');
-  const stripeH = 10;
-  const coastal = roadStyle === 'sunset_coral' || roadStyle === 'candy_pink';
-  for (let y = 0; y < 64; y += stripeH) {
-    const band = Math.floor(y / stripeH);
-    if (coastal) {
-      ctx.fillStyle = band % 2 === 0 ? '#f5f0e8' : '#c8b898';
-    } else {
-      ctx.fillStyle = band % 2 === 0 ? '#ff2a2a' : '#ffffff';
-    }
-    ctx.fillRect(0, y, 128, stripeH);
-  }
+  // Classic kart kerb: red and white blocks alternating ALONG the road (u runs
+  // along the track, so the bands are split on x). One repeat = 2 blocks.
+  ctx.fillStyle = '#e8262c';
+  ctx.fillRect(0, 0, 64, 64);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(64, 0, 64, 64);
+  // Soft bevel so each block reads as a raised kerb
+  ctx.fillStyle = 'rgba(0,0,0,0.12)';
+  ctx.fillRect(0, 56, 128, 8);
   const tex = new THREE.CanvasTexture(c);
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
   tex.repeat.set(1, 1);
@@ -512,13 +510,14 @@ export function buildMarioKartTrack(curve, group, {
       polygonOffsetUnits: -4,
     }));
 
-  const coastal = roadStyle === 'sunset_coral' || roadStyle === 'candy_pink';
   const kerbMat = new THREE.MeshStandardMaterial({
     map: kerbTex,
     roughness: 0.55,
     metalness: 0.04,
-    emissive: coastal ? 0x8a7a60 : 0xff2244,
-    emissiveIntensity: coastal ? 0.04 : 0.22,
+    // A faint warm lift only; a strong red glow turns the white blocks pink
+    emissive: 0x2a0a0a,
+    emissiveIntensity: 0.08,
+    side: THREE.DoubleSide,
   });
   const wallMat = new THREE.MeshStandardMaterial({
     color: roadStyle === 'rainbow' ? 0xaaccff : 0xcccccc,
@@ -526,6 +525,7 @@ export function buildMarioKartTrack(curve, group, {
     emissiveIntensity: roadStyle === 'rainbow' ? 0.35 : 0.05,
     roughness: 0.5,
     metalness: 0.3,
+    side: THREE.DoubleSide,
   });
   const roadVerts = [];
   const roadIdx = [];
@@ -535,6 +535,7 @@ export function buildMarioKartTrack(curve, group, {
   const sideIdx = [];
   const kerbVerts = [];
   const kerbIdx = [];
+  const kerbUvs = [];
   const wallVerts = [];
   const wallIdx = [];
 
@@ -586,7 +587,15 @@ export function buildMarioKartTrack(curve, group, {
         klOut.x, klOut.y, klOut.z, kl.x, kl.y, kl.z,
         krOut.x, krOut.y, krOut.z, kr.x, kr.y, kr.z,
       );
-      kerbIdx.push(kb, kb + 1, kb + 2, kb + 1, kb + 3, kb + 2);
+      const kerbU = t * (curveLen / 3.2); // one red + one white block per 3.2 m
+      kerbUvs.push(kerbU, 0, kerbU, 1, kerbU, 0, kerbU, 1);
+      if (i > 0) {
+        // Join each kerb strip to its own previous cross-section (4 verts back)
+        // instead of bridging the left kerb to the right one across the road.
+        const pk = kb - 4;
+        kerbIdx.push(pk, pk + 1, kb, pk + 1, kb + 1, kb);
+        kerbIdx.push(pk + 2, kb + 2, pk + 3, pk + 3, kb + 2, kb + 3);
+      }
     }
 
     if (walls) {
@@ -599,7 +608,9 @@ export function buildMarioKartTrack(curve, group, {
         const wBase = wallVerts.length / 3;
         wallVerts.push(outer.x, outer.y, outer.z, top.x, top.y, top.z);
         if (i > 0) {
-          const prev = wBase - 2;
+          // Each segment adds 4 verts (left pair, right pair): step back 4 to
+          // reach this side's previous pair, not the opposite wall.
+          const prev = wBase - 4;
           wallIdx.push(prev, prev + 1, wBase, prev + 1, wBase + 1, wBase);
         }
       }
@@ -645,8 +656,10 @@ export function buildMarioKartTrack(curve, group, {
     const kerbGeo = new THREE.BufferGeometry();
     kerbGeo.setAttribute('position', new THREE.Float32BufferAttribute(kerbVerts, 3));
     kerbGeo.setIndex(kerbIdx);
+    kerbGeo.setAttribute('uv', new THREE.Float32BufferAttribute(kerbUvs, 2));
     kerbGeo.computeVertexNormals();
     const kerbMesh = new THREE.Mesh(kerbGeo, kerbMat);
+    kerbMesh.name = 'kart-kerbs';
     kerbMesh.castShadow = true;
     kerbMesh.receiveShadow = true;
     trackGroup.add(kerbMesh);
@@ -658,6 +671,7 @@ export function buildMarioKartTrack(curve, group, {
     wallGeo.setIndex(wallIdx);
     wallGeo.computeVertexNormals();
     const barrierMesh = new THREE.Mesh(wallGeo, wallMat);
+    barrierMesh.name = 'kart-walls';
     barrierMesh.castShadow = true;
     barrierMesh.receiveShadow = true;
     trackGroup.add(barrierMesh);

@@ -26,6 +26,7 @@ export const ROBOT_VISUAL_IDENTITY = {
   factorybot:   { scale: 1.4, simScale: 1.72, primary: '#f97316', accent: '#fbbf24', label: 'Factory Bot' },
   spacerover:   { scale: 1.4, simScale: 1.72, primary: '#94a3b8', accent: '#cbd5e1', label: 'Space Rover' },
   legobot:      { scale: 1.3, simScale: 1.62, primary: '#ef4444', accent: '#fbbf24', label: 'LEGO Bot' },
+  blockbot:     { scale: 1.35, simScale: 1.68, primary: '#4aa8d8', accent: '#5c4033', label: 'Block Crafter' },
   battlebot:    { scale: 1.9, simScale: 2.22, primary: '#1e293b', accent: '#dc2626', label: 'Battle Mech' },
   striker:      { scale: 1.5, simScale: 1.82, primary: '#f97316', accent: '#fb923c', label: 'Boxing Striker' },
   blaster:      { scale: 1.45, simScale: 1.78, primary: '#7c3aed', accent: '#a855f7', label: 'Elemental Blaster' },
@@ -68,12 +69,23 @@ export function applyRobotVisualIdentity(robot, chassisId, context = {}) {
     raceMode = false,
   } = context;
 
+  if (flappyMode) {
+    robot.scale.setScalar(1.15);
+    robot.userData.visualIdentity = vis;
+    return;
+  }
+
   let simScale = vis.simScale;
-  if (flappyMode) simScale = 1.15;
-  else if (footballMode) simScale = 1.45;
+  if (footballMode) simScale = 1.45;
   else if (combatMode) simScale = 1.0;
   else if (raceMode) simScale = 1.0;
 
+  if (robot.userData.isMKKart) {
+    // the kart carries its own paint job; a touch bigger so it reads in the chase cam
+    robot.scale.setScalar(1.2);
+    robot.userData.visualIdentity = vis;
+    return;
+  }
   robot.scale.setScalar(simScale);
   robot.userData.visualIdentity = vis;
 

@@ -11,7 +11,7 @@ const CAMERA_RIGS = {
   chase_close: { camBack: 8.6, camUp: 3.8, lookAhead: 6, lookHeight: 0.8, fov: 54 },
   aerial_chase: { camBack: 10.5, camUp: 5.8, lookAhead: 12, lookHeight: 3, fov: 48 },
   stealth_follow: { camBack: 6.8, camUp: 3, lookAhead: 5, lookHeight: 1, fov: 48 },
-  climber_follow: { camBack: 6.2, camUp: 5.2, lookAhead: 4, lookHeight: 2, fov: 48 },
+  climber_follow: { camBack: 7.4, camUp: 3.6, lookAhead: 7, lookHeight: 1.2, fov: 50 },
   fight_broadcast: { camBack: 0, camUp: 3, lookAhead: 0, lookHeight: 1, fov: 50 },
   side_scroll: { camBack: 0, camUp: 0.55, lookAhead: 0, lookHeight: 0.35, fov: 50 },
   lab_overview: { camBack: 7, camUp: 3.6, lookAhead: 5, lookHeight: 0.5, fov: 50 },
@@ -44,9 +44,9 @@ function aerial() {
     robotScreenFraction: [0.25, 0.3],
   };
 }
-function combat() {
+function combat(rig = 'chase_close') {
   return {
-    camera: 'fight_broadcast', cameraRig: CAMERA_RIGS.fight_broadcast, fogNear: 48, fogFar: 125,
+    camera: 'fight_broadcast', cameraRig: CAMERA_RIGS[rig], fogNear: 48, fogFar: 125,
     lighting: COMBAT_LIGHT, post: { bloom: 0.1, threshold: 0.94, radius: 0.12 },
     robotScreenFraction: [0.25, 0.35],
   };
@@ -55,7 +55,7 @@ function combat() {
 /** One complete numeric row for every non-kart/non-football chassis. */
 export const ROBOT_DEEP_RENDER_SPEC = {
   crawler: { ...ground('rover_wide'), robotScreenFraction: [0.28, 0.32] },
-  tank: combat(),
+  tank: combat('rover_wide'),
   stealth: ground('stealth_follow'),
   miningbot: ground('factory_overview', 28, 95),
   securitybot: ground('chase_close'),
@@ -75,6 +75,7 @@ export const ROBOT_DEEP_RENDER_SPEC = {
   factorybot: ground('factory_overview'),
   spacerover: ground('rover_wide'),
   legobot: ground('rover_wide'),
+  blockbot: ground('rover_wide'),
   battlebot: combat(),
   striker: combat(),
   blaster: combat(),

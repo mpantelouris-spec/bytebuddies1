@@ -15,18 +15,17 @@ export const FOOTBALL_CAM_MODES = {
 };
 
 const PRESETS = {
-  establishing: { x: 30, y: 10.5, z: 0, fov: 48 },
-  broadcast: { x: 29, y: 7.2, z: 0, fov: 42 },
-  coop: { x: 22, y: 14, z: 0, fov: 58 },
-  goal: { fov: 30, pushX: 8.5, pushY: 4.2 },
+  establishing: { x: 7.2, y: 3.4, z: 0, fov: 46 },
+  // FIFA "Tele Broadcast": high in the main stand, side-on, panning with play
+  broadcast: { x: 27, y: 13, z: 0, fov: 34 },
+  coop: { x: 16, y: 10, z: 0, fov: 52 },
+  goal: { fov: 34, pushX: 5.2, pushY: 2.4 },
 };
 
 export function resolveFootballCameraMode(ctx = {}) {
-  if ((ctx.goalFlash || 0) > 0) return FOOTBALL_CAM_MODES.GOAL_REPLAY;
   if (ctx.layoutCam === 'penalty' || ctx.layoutCam === 'keeper') return FOOTBALL_CAM_MODES.PENALTY;
-  if (!ctx.kickoffDone || (ctx.kickoffTimer || 0) > 0.05) return FOOTBALL_CAM_MODES.ESTABLISHING;
+  if ((ctx.goalFlash || 0) > 0) return FOOTBALL_CAM_MODES.GOAL_REPLAY;
   if (ctx.userCamMode === 'coop') return FOOTBALL_CAM_MODES.COOP;
-  if (ctx.layoutCam === 'solo') return FOOTBALL_CAM_MODES.SOLO;
   return FOOTBALL_CAM_MODES.BROADCAST;
 }
 
@@ -115,7 +114,7 @@ export function computeFootballCamera(ctx = {}, ball = {}, preset = {}) {
     camLerp = 0.07;
   } else if (mode === FOOTBALL_CAM_MODES.PENALTY) {
     bx = preset.position?.x ?? 8.8;
-    bz = (preset.position?.z ?? 0) + THREE.MathUtils.clamp(ballZ * 0.12, -2.5, 2.5);
+    bz = (preset.position?.z ?? 0) + (preset.fixedZ ? 0 : THREE.MathUtils.clamp(ballZ * 0.12, -2.5, 2.5));
     camH = preset.position?.y ?? 3.5;
     fov = preset.fov ?? 38;
     const look = preset.lookAt;
@@ -126,21 +125,23 @@ export function computeFootballCamera(ctx = {}, ball = {}, preset = {}) {
     const b = PRESETS.broadcast;
     const flash = ctx.goalFlash || 0;
     const zoom = flash > 0 ? 0.58 : 1;
-    const panX = Math.abs(ballZ) > 7 ? THREE.MathUtils.clamp(ballX * 0.24, -2.8, 2.8) : 0;
-    bx = b.x * zoom;
-    bz = THREE.MathUtils.clamp(ballZ * 0.72 + ballVz * 0.18, -10.5, 10.5) + panX + ballVx * 0.08;
-    camH = b.y * (flash > 0 ? 0.76 : 1) + Math.min(ballY - BALL_CONFIG.groundY, 0.5) * 0.35;
     fov = b.fov;
-    lookX = THREE.MathUtils.clamp(ballX * 0.34 + ballVx * 0.14, -6.5, 6.5);
-    lookY = 0.62 + Math.min(Math.hypot(ballVx, ballVz) * 0.018, 0.22);
-    lookZ = THREE.MathUtils.clamp(ballZ * 0.95 + ballVz * 0.22, -11, 11);
+    lookX = THREE.MathUtils.clamp(ballX + ballVx * 0.14, -17, 17);
+    lookY = 0.85 + Math.min(Math.hypot(ballVx, ballVz) * 0.012, 0.18);
+    lookZ = THREE.MathUtils.clamp(ballZ * 0.92 + ballVz * 0.18, -11, 11);
     if (Number.isFinite(ctx.possessionX) && Number.isFinite(ctx.possessionZ)) {
-      lookX = lookX * 0.45 + ctx.possessionX * 0.55;
-      lookZ = lookZ * 0.45 + ctx.possessionZ * 0.55;
-      lookY = 0.68;
+      lookX = lookX * 0.35 + ctx.possessionX * 0.65;
+      lookZ = lookZ * 0.35 + ctx.possessionZ * 0.65;
+      lookY = 0.9;
     }
-    bx = THREE.MathUtils.clamp(bx, 18, ctx.camMaxX ?? 30);
-    bz = THREE.MathUtils.clamp(bz, ctx.camMinZ ?? -14, ctx.camMaxZ ?? 14);
+    // Camera rides a rail along the touchline, a little behind the ball, and
+    // pushes in slightly (narrower lens) after a goal
+    lookX *= 0.55;
+    lookY = 0.6;
+    bx = b.x;
+    bz = THREE.MathUtils.clamp(lookZ * 0.82, -11, 11);
+    camH = b.y;
+    fov = b.fov * zoom + (1 - zoom) * 20;
   }
 
   return { bx, bz, camH, fov, lookX, lookY, lookZ, camLerp, lookLerp, slowMo, mode };

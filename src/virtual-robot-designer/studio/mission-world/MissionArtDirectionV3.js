@@ -5043,6 +5043,206 @@ export const MISSION_ART_DIRECTION_V3 = {
     "goalDescription": "Emissive gold #fbbf24 burst — golden trophy brick claimed; HUD chime + star pop on success.",
     "mood": "The kid throws their hands up at the end of 'Master Builder' — master builder championship, like they just won the big trophy."
   },
+  "blockbot_grassland_spawn": {
+    "chassisId": "blockbot",
+    "modeNumber": 1,
+    "title": "Grassland Spawn",
+    "environmentId": "industrial",
+    "palette": {
+      "primary": "#4AA8D8",
+      "secondary": "#5EA832",
+      "accent": "#8B6914"
+    },
+    "paletteColors": ["#4AA8D8", "#5EA832", "#8B6914"],
+    "camera": "rover_wide",
+    "cameraDescription": "rover_wide",
+    "lighting": "Bright sky + soft voxel ambient",
+    "scatterRecipe": "toy blocks, trees, lanterns, crystals every 8–12m",
+    "lookDescription": "Bright checker grass blocks under a sunny sky — spawn hut, dirt path, craft bench at the end. Pixel trees and toy block stacks scatter the meadow.",
+    "heroDescription": "Spawn hut, craft bench, grass checker, block trees",
+    "goalDescription": "Emissive green #22c55e goal marker — objective complete; HUD chime + star pop on success.",
+    "mood": "The kid grins at the sunny grass spawn and wants to march straight to the craft bench."
+  },
+  "blockbot_forest_path": {
+    "chassisId": "blockbot",
+    "modeNumber": 2,
+    "title": "Forest Path",
+    "environmentId": "industrial",
+    "palette": {
+      "primary": "#4AA8D8",
+      "secondary": "#5EA832",
+      "accent": "#8B6914"
+    },
+    "paletteColors": ["#4AA8D8", "#5EA832", "#8B6914"],
+    "camera": "rover_wide",
+    "cameraDescription": "rover_wide",
+    "lighting": "Bright sky + soft voxel ambient",
+    "scatterRecipe": "toy blocks, trees, lanterns, crystals every 8–12m",
+    "lookDescription": "Blocky oak canopy over a winding dirt trail — campfire mid-route, workbench at the clearing. Fireflies and leaf particles at dusk tones.",
+    "heroDescription": "Campfire, forest trail, workbench, block trees",
+    "goalDescription": "Emissive green #22c55e goal marker — objective complete; HUD chime + star pop on success.",
+    "mood": "The kid enjoys the cozy forest walk and feels clever at every checkpoint."
+  },
+  "blockbot_village_cobble": {
+    "chassisId": "blockbot",
+    "modeNumber": 3,
+    "title": "Village Cobble",
+    "environmentId": "industrial",
+    "palette": {
+      "primary": "#4AA8D8",
+      "secondary": "#5EA832",
+      "accent": "#8B6914"
+    },
+    "paletteColors": ["#4AA8D8", "#5EA832", "#8B6914"],
+    "camera": "rover_wide",
+    "cameraDescription": "rover_wide",
+    "lighting": "Bright sky + soft voxel ambient",
+    "scatterRecipe": "toy blocks, trees, lanterns, crystals every 8–12m",
+    "lookDescription": "Stone cobble plaza with lantern posts and block houses — fountain lane markers, wooden craft tables. Warm afternoon light.",
+    "heroDescription": "Cobble plaza, lanterns, block towers",
+    "goalDescription": "Emissive green #22c55e goal marker — objective complete; HUD chime + star pop on success.",
+    "mood": "The kid loves exploring the stone village and lighting every lantern."
+  },
+  "blockbot_surface_mine": {
+    "chassisId": "blockbot",
+    "modeNumber": 4,
+    "title": "Surface Mine",
+    "environmentId": "industrial",
+    "palette": {
+      "primary": "#4AA8D8",
+      "secondary": "#5EA832",
+      "accent": "#8B6914"
+    },
+    "paletteColors": ["#4AA8D8", "#5EA832", "#8B6914"],
+    "camera": "rover_wide",
+    "cameraDescription": "rover_wide",
+    "lighting": "Bright sky + soft voxel ambient",
+    "scatterRecipe": "toy blocks, trees, lanterns, crystals every 8–12m",
+    "lookDescription": "Strip mine with stone rails and ore crates — gold and cyan crystal glints on grey stone. Overcast industrial sky.",
+    "heroDescription": "Ore crates, crystal veins, stone path",
+    "goalDescription": "Emissive green #22c55e goal marker — objective complete; HUD chime + star pop on success.",
+    "mood": "The kid feels like a real miner collecting shiny ore along the trail."
+  },
+  "blockbot_desert_ruins": {
+    "chassisId": "blockbot",
+    "modeNumber": 5,
+    "title": "Desert Ruins",
+    "environmentId": "industrial",
+    "palette": {
+      "primary": "#4AA8D8",
+      "secondary": "#5EA832",
+      "accent": "#8B6914"
+    },
+    "paletteColors": ["#4AA8D8", "#5EA832", "#8B6914"],
+    "camera": "rover_wide",
+    "cameraDescription": "rover_wide",
+    "lighting": "Bright sky + soft voxel ambient",
+    "scatterRecipe": "toy blocks, trees, lanterns, crystals every 8–12m",
+    "lookDescription": "Sand block dunes and sandstone pillars — puzzle door and glowing crystal prize. Heat shimmer and golden sun.",
+    "heroDescription": "Sand temple, crystal prize, rock arches",
+    "goalDescription": "Emissive green #22c55e goal marker — objective complete; HUD chime + star pop on success.",
+    "mood": "The kid hunts the desert crystal with explorer excitement."
+  },
+  "blockbot_snowy_peaks": {
+    "chassisId": "blockbot",
+    "modeNumber": 6,
+    "title": "Snowy Peaks",
+    "environmentId": "industrial",
+    "palette": {
+      "primary": "#4AA8D8",
+      "secondary": "#5EA832",
+      "accent": "#8B6914"
+    },
+    "paletteColors": ["#4AA8D8", "#5EA832", "#8B6914"],
+    "camera": "rover_wide",
+    "cameraDescription": "rover_wide",
+    "lighting": "Bright sky + soft voxel ambient",
+    "scatterRecipe": "toy blocks, trees, lanterns, crystals every 8–12m",
+    "lookDescription": "Snow block slopes and pine cubes — ice crystal spire goal, snowy confetti particles. Crisp blue winter sky.",
+    "heroDescription": "Snow blocks, ice crystal, pine cubes",
+    "goalDescription": "Emissive green #22c55e goal marker — objective complete; HUD chime + star pop on success.",
+    "mood": "The kid bundles up for the snowy climb and cheers at the ice spire."
+  },
+  "blockbot_crimson_cavern": {
+    "chassisId": "blockbot",
+    "modeNumber": 7,
+    "title": "Crimson Cavern",
+    "environmentId": "industrial",
+    "palette": {
+      "primary": "#4AA8D8",
+      "secondary": "#5EA832",
+      "accent": "#8B6914"
+    },
+    "paletteColors": ["#4AA8D8", "#5EA832", "#8B6914"],
+    "camera": "rover_wide",
+    "cameraDescription": "rover_wide",
+    "lighting": "Bright sky + soft voxel ambient",
+    "scatterRecipe": "toy blocks, trees, lanterns, crystals every 8–12m",
+    "lookDescription": "Deep red stone cavern with glowing lava pools — ember particles, dark crimson fog. Safe glowing path edges.",
+    "heroDescription": "Lava pools, crimson stone, glow path",
+    "goalDescription": "Emissive green #22c55e goal marker — objective complete; HUD chime + star pop on success.",
+    "mood": "The kid carefully picks the safe path past the glowing pools."
+  },
+  "blockbot_deep_stone_hall": {
+    "chassisId": "blockbot",
+    "modeNumber": 8,
+    "title": "Deep Stone Hall",
+    "environmentId": "industrial",
+    "palette": {
+      "primary": "#4AA8D8",
+      "secondary": "#5EA832",
+      "accent": "#8B6914"
+    },
+    "paletteColors": ["#4AA8D8", "#5EA832", "#8B6914"],
+    "camera": "rover_wide",
+    "cameraDescription": "rover_wide",
+    "lighting": "Bright sky + soft voxel ambient",
+    "scatterRecipe": "toy blocks, trees, lanterns, crystals every 8–12m",
+    "lookDescription": "Underground hall of stone bricks and purple crystal clusters — lantern rows and mine crates. Mystic teal accent glow.",
+    "heroDescription": "Lantern row, diamond crystal, stone hall",
+    "goalDescription": "Emissive green #22c55e goal marker — objective complete; HUD chime + star pop on success.",
+    "mood": "The kid lights each lantern and feels brave in the deep hall."
+  },
+  "blockbot_sky_islands": {
+    "chassisId": "blockbot",
+    "modeNumber": 9,
+    "title": "Sky Islands",
+    "environmentId": "industrial",
+    "palette": {
+      "primary": "#4AA8D8",
+      "secondary": "#5EA832",
+      "accent": "#8B6914"
+    },
+    "paletteColors": ["#4AA8D8", "#5EA832", "#8B6914"],
+    "camera": "rover_wide",
+    "cameraDescription": "rover_wide",
+    "lighting": "Bright sky + soft voxel ambient",
+    "scatterRecipe": "toy blocks, trees, lanterns, crystals every 8–12m",
+    "lookDescription": "Floating grass islands in open sky — cloud props, rainbow star finale high above. Bright blue horizon.",
+    "heroDescription": "Floating islands, sky star, clouds",
+    "goalDescription": "Emissive green #22c55e goal marker — objective complete; HUD chime + star pop on success.",
+    "mood": "The kid gasps at the floating islands and hops toward the sky star."
+  },
+  "blockbot_master_builder_cup": {
+    "chassisId": "blockbot",
+    "modeNumber": 10,
+    "title": "Master Builder Cup",
+    "environmentId": "industrial",
+    "palette": {
+      "primary": "#4AA8D8",
+      "secondary": "#5EA832",
+      "accent": "#8B6914"
+    },
+    "paletteColors": ["#4AA8D8", "#5EA832", "#8B6914"],
+    "camera": "rover_wide",
+    "cameraDescription": "rover_wide",
+    "lighting": "Bright sky + soft voxel ambient",
+    "scatterRecipe": "toy blocks, trees, lanterns, crystals every 8–12m",
+    "lookDescription": "Capstone grass world mixing all biomes — rainbow path, trophy star, confetti and block towers. Celebration finale.",
+    "heroDescription": "Rainbow path, golden star, block towers",
+    "goalDescription": "Emissive gold #fbbf24 burst — golden star claimed; HUD chime + star pop on success.",
+    "mood": "The kid throws their hands up at the Master Builder Cup finale — block-world champion!"
+  },
   "battlebot_mech_combat_duel": {
     "chassisId": "battlebot",
     "modeNumber": 1,

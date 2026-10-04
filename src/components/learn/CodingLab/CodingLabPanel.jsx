@@ -50,43 +50,21 @@ export default function CodingLabPanel({ yr, idx, lesson, color, onComplete, onX
 
   return (
     <div>
-      <div style={{ marginBottom: 16 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 6 }}>
-          <div style={{ fontSize: 18, fontWeight: 800 }}>💻 Coding Lab</div>
-          {config.allowModeSwitch && (
-            <div style={{ display: 'flex', gap: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 10, padding: 3 }}>
-              <button type="button" onClick={() => switchMode('blocks')}
-                style={{ padding: '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12,
-                  background: isBlocks ? color : 'transparent', color: isBlocks ? '#fff' : 'rgba(255,255,255,0.5)' }}>
-                🧩 Blocks
+      {config.allowModeSwitch && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
+          <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)', fontWeight: 700 }}>Code with:</span>
+          <div role="tablist" style={{ display: 'flex', gap: 4, background: 'rgba(255,255,255,0.08)', borderRadius: 12, padding: 4 }}>
+            {[['blocks', '🧩 Blocks'], ['python', '🐍 Python']].map(([m, label]) => (
+              <button key={m} type="button" role="tab" aria-selected={mode === m} onClick={() => switchMode(m)}
+                style={{ minHeight: 38, padding: '0 16px', borderRadius: 9, border: 'none', cursor: 'pointer', fontWeight: 800, fontSize: 14,
+                  background: mode === m ? color : 'transparent', color: mode === m ? '#fff' : 'rgba(255,255,255,0.65)' }}>
+                {label}
               </button>
-              <button type="button" onClick={() => switchMode('python')}
-                style={{ padding: '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12,
-                  background: !isBlocks ? color : 'transparent', color: !isBlocks ? '#fff' : 'rgba(255,255,255,0.5)' }}>
-                🐍 Python
-              </button>
-            </div>
-          )}
+            ))}
+          </div>
+          {config.concept && <span style={{ marginLeft: 'auto', fontSize: 12, color: 'rgba(255,255,255,0.55)' }}>Big idea: <b style={{ color }}>{config.concept}</b></span>}
         </div>
-        <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.45)', marginBottom: 12 }}>
-          {isBlocks
-            ? 'Drag blocks from the toolbox, build your program, and run it in the simulator.'
-            : 'Write Python in the editor, run it, and watch the console output.'}
-          {config.allowModeSwitch && (
-            <span style={{ color: 'rgba(255,255,255,0.3)' }}> — switch modes anytime with the tabs above.</span>
-          )}
-        </div>
-        <div style={{ background: `linear-gradient(135deg, ${color}18, transparent)`,
-          border: `1.5px solid ${color}44`, borderRadius: 14, padding: '16px 18px' }}>
-          <div style={{ fontWeight: 800, fontSize: 12, color, marginBottom: 6 }}>⚡ CODING CHALLENGE</div>
-          <div style={{ fontSize: 14, color: '#e2e8f0', lineHeight: 1.55 }}>{config.challenge}</div>
-          {config.concept && (
-            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 8 }}>
-              CS concept: <strong style={{ color }}>{config.concept}</strong>
-            </div>
-          )}
-        </div>
-      </div>
+      )}
 
       {isBlocks ? (
         <BlockCodingLab key={`blocks-${yr}-${idx}`} config={config} color={color} storageKey={storageKey} onComplete={handleComplete} />
@@ -97,7 +75,7 @@ export default function CodingLabPanel({ yr, idx, lesson, color, onComplete, onX
       {done && (
         <div style={{ marginTop: 16, padding: '12px 16px', background: 'rgba(16,185,129,0.1)',
           border: '1px solid rgba(16,185,129,0.35)', borderRadius: 10, color: '#6ee7b7', fontWeight: 600, fontSize: 13 }}>
-          ✅ Coding challenge complete! +{config.xp || 25} XP earned
+          ✅ Coding challenge complete · +{config.xp || 25} XP
         </div>
       )}
     </div>

@@ -73,54 +73,12 @@ export function buildPremiumHoloRing(majorR, accentCyan = 0x00d4ff, accentGold =
   );
   g.add(holoDisc);
 
-  // Direction chevrons
-  [-1, 1].forEach((s) => {
-    for (let i = 0; i < 3; i++) {
-      const chev = new THREE.Mesh(
-        new THREE.PlaneGeometry(0.7, 0.35),
-        new THREE.MeshBasicMaterial({
-          color: accentCyan, transparent: true, opacity: 0.55,
-          blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
-        }),
-      );
-      chev.position.set(s * 0.15, 0, -0.5 - i * 0.45);
-      chev.rotation.y = s > 0 ? 0 : Math.PI;
-      g.add(chev);
-    }
-  });
-
-  // Particle ring — small glowing orbs orbiting the torus
-  const particleCount = 12;
-  for (let i = 0; i < particleCount; i++) {
-    const orb = new THREE.Mesh(
-      new THREE.SphereGeometry(0.09, 6, 4),
-      new THREE.MeshBasicMaterial({
-        color: accentCyan, transparent: true, opacity: 0.7,
-        blending: THREE.AdditiveBlending, depthWrite: false,
-      }),
-    );
-    const a = (i / particleCount) * Math.PI * 2;
-    orb.position.set(Math.cos(a) * majorR, Math.sin(a) * majorR, 0);
-    orb.userData.orbitAngle = a;
-    orb.userData.orbitR = majorR;
-    g.add(orb);
-  }
-
   const plCyan = new THREE.PointLight(accentCyan, 0.45, majorR * 3);
   g.add(plCyan);
 
   g.userData.cyanMat = cyanMat;
   g.userData.goldMat = goldMat;
   g.userData.holoDisc = holoDisc;
-
-  const strutMat = pbrMat(0x6b7280, { metalness: 0.8, roughness: 0.35, emissive: 0x334155, emi: 0.2 });
-  for (let a = 0; a < 3; a++) {
-    const ang = (a / 3) * Math.PI * 2 + Math.PI / 2;
-    const strut = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.7, 0.16), strutMat);
-    strut.position.set(Math.cos(ang) * majorR, Math.sin(ang) * majorR, 0);
-    strut.rotation.z = ang - Math.PI / 2;
-    g.add(strut);
-  }
 
   return g;
 }
@@ -131,16 +89,12 @@ function buildKidFriendlyRing(majorR, color) {
   const ringMat = pbrMat(color, {
     emissive: color, emi: 0.62, metalness: 0.06, roughness: 0.32,
   });
+  // One clean, slim hoop — a second inner ring doubled every gate on screen
   const ring = new THREE.Mesh(
-    new THREE.TorusGeometry(majorR, Math.max(0.32, majorR * 0.09), 16, 40),
+    new THREE.TorusGeometry(majorR, Math.max(0.18, majorR * 0.045), 16, 48),
     ringMat,
   );
   g.add(ring);
-  const inner = new THREE.Mesh(
-    new THREE.TorusGeometry(majorR * 0.82, Math.max(0.14, majorR * 0.04), 12, 36),
-    pbrMat(0xffffff, { emissive: color, emi: 0.35, transparent: true, opacity: 0.45 }),
-  );
-  g.add(inner);
   const star = new THREE.Mesh(
     new THREE.SphereGeometry(Math.max(0.28, majorR * 0.07), 10, 8),
     pbrMat(0xfbbf24, { emissive: 0xfbbf24, emi: 0.75 }),
@@ -318,7 +272,8 @@ export function placeAerialGates(scene, curve, recipe) {
   const count = gates.count || gates.ringCount || 8;
   const difficulty = Math.max(1, Math.min(10, recipe.difficultyLevel || 1));
   const gateScale = Math.max(0.8, 1.14 - (difficulty - 1) * 0.035);
-  const gateRadius = tier.major * gateScale;
+  // Gates sit ~8 m apart on a short route; at full size they all overlapped on screen
+  const gateRadius = tier.major * gateScale * 0.8; // still wider than the 4 m pass zone
   const colors = recipe.gateColors || {};
 
   if (gates.mode === 'band' || gates.mode === 'mixed' && gates.bandCount) {

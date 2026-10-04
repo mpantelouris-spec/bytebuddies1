@@ -59,7 +59,7 @@ export const BIOME_TRACKS = [
     story: '🏖️ Sunset Cove — breezy coastal loop along the pier and palm-lined bay.',
     biome: 'sunset_cove',
   }),
-  track('candy_carnival_01', 'Candy Carnival Circuit', '🎡', '#FF69B4', 1, 'Beginner', 'candy_carnival', 'candy_pink', CANDY_CARNIVAL_SPLINE, {
+  track('candy_carnival_01', 'Candy Carnival Circuit', '🎡', '#FF69B4', 1, 'Beginner', 'candy_carnival', 'asphalt', CANDY_CARNIVAL_SPLINE, {
     laps: 2, targetTime: 125, checkpointTs: [0.22, 0.48, 0.72, 0.88],
     trackShape: 'figure-8',
     story: '🎡 Candy Carnival — Figure-8 midway circuit through the ferris wheel and candy tents.',

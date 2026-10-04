@@ -44,7 +44,7 @@ const ATTACK_ANIM = {
   heavy_punch: 'cross', heavy_kick: 'heavy_kick', throw: 'cross',
   energy_bolt: 'cross', energy_bolt_amplify: 'cross', uppercut_reversal: 'cross',
   jump_punch: 'jab', jump_kick: 'kick',
-  jab: 'jab', cross: 'cross', hook: 'hook', uppercut: 'cross',
+  jab: 'jab', cross: 'cross', hook: 'hook', uppercut: 'uppercut',
   strong: 'cross', fierce: 'cross', short_kick: 'kick', roundhouse: 'roundhouse',
   light_punch: 'jab', heavy_punch_alias: 'cross', attack: 'jab',
   attack_light: 'jab', attack_heavy: 'cross', combo_3hit: 'cross',

@@ -3,6 +3,7 @@
  * Ensures each robot gets missions that require real logic (not straight-line only).
  */
 import { getCampaignKeyForRobotType } from './robot-mission-campaign.js';
+import { getMissionAction } from './mission-actions.js';
 import { THEMED_COURSE_OBJECTIVES } from './course-objectives-pack.js';
 import { buildChassisModeGameLogic } from './chassis-game-logic.js';
 import { isRaceCourse } from './racing-starter-script.js';
@@ -828,6 +829,20 @@ export function getCourseZoneCount(challenge) {
 
 /** Primary mission progress for the in-game Mission panel */
 export function deriveMissionProgress(challenge, stats = {}, zoneInfo = {}) {
+  // Missions that need an action block count the markers where it was used
+  const act = getMissionAction(challenge);
+  if (act) {
+    const target = stats.missionCheckpointsTotal || (challenge?.modeIndex <= 5 ? 3 : 4);
+    const current = Math.min(target, stats.missionCheckpoint || 0);
+    return { current, target, label: act.verb, pct: Math.min(100, (current / target) * 100) };
+  }
+  // Block Crafter: progress toward each arena's Minecraft-style goal
+  if (challenge?.chassisId === 'blockbot' || String(challenge?.id || '').startsWith('blockbot_')) {
+    const goals = [[3, 'logs'], [1, 'pickaxe'], [10, 'blocks placed'], [5, 'ores'], [1, 'diamond'], [1, 'summit'], [1, 'portal'], [3, 'diamonds'], [1, 'gold block'], [1, 'stone pickaxe']];
+    const [target, label] = goals[Math.max(0, Math.min(9, (Number(challenge.modeIndex) || 1) - 1))];
+    const current = Math.min(target, stats.collected || 0);
+    return { current, target, label, pct: Math.min(100, (current / target) * 100) };
+  }
   if (challenge?.arenaBible && challenge?.arenaType === 'sandbox') {
     const target = stats.missionCheckpointsTotal || challenge.checkpoints || 3;
     const current = Math.min(target, stats.missionCheckpoint || 0);

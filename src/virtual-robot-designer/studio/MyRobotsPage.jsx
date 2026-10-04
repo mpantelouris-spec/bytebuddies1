@@ -5,6 +5,7 @@
 import React, { useState, useCallback } from 'react';
 import { CHASSIS_DATA } from '../services/studio-robot-builder.js';
 import { loadRobotLibrary, filterRobotsByTag } from '../services/studio-robot-store.js';
+import { GameProgress } from '../services/game-progress.js';
 
 const GRAD_PRESETS = [
   ['#FFF3E0', '#FFE0B2'],
@@ -79,7 +80,7 @@ export default function MyRobotsPage({ onEditRobot, onSelectRobot, onTestRobot, 
         {[
           { label: 'Total Robots', value: robots.length, icon: '🤖' },
           { label: 'Total XP Earned', value: robots.reduce((a, r) => a + (r.xp || 0), 0), icon: '⭐' },
-          { label: 'Missions Won', value: 12, icon: '🏆' },
+          { label: 'Missions Won', value: robots.reduce((a, r) => a + GameProgress.getTotalCompletedLevels(r.name), 0), icon: '🏆' },
           { label: 'Parts Used', value: robots.reduce((a, r) => a + (r.sensors?.length || 0) + (r.tools?.length || 0), 0), icon: '🔧' },
         ].map(s => (
           <div

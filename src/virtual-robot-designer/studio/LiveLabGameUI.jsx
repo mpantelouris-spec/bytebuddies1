@@ -2,6 +2,7 @@
  * LiveLabGameUI.jsx — ByteBuddies Custom Block Palette + Game UI
  */
 import React, { useMemo, useState, useCallback, useRef, useEffect } from 'react';
+import { ACTION_BLOCKS, getMissionAction } from '../data/mission-actions.js';
 import PrimaryArenaThumbnail from './PrimaryArenaThumbnail.jsx';
 import { RacingHUD } from '../racing/RacingHUD.jsx';
 import { CodeRacerHUD } from '../racing/CodeRacerHUD.jsx';
@@ -16,6 +17,7 @@ import { pickFeaturedCourses, resolveCourseObjectives, deriveMissionProgress, is
 import { resolveCourseCodeHints, isCupManualTrack, BLOCK_CODE_EXPLAIN } from '../data/course-code-hints.js';
 import { isEventHatBlock } from '../data/flappy-starter-script.js';
 import { FLAPPY_BLOCK_LIBRARY, isFlappyBirdCourse } from '../data/flappy-bird-blocks.js';
+import { CRAFT_BLOCK_LIBRARY, isCraftCourse } from '../data/craft-blocks.js';
 import { FIGHTING_BLOCK_LIBRARY, isFightingCourse, FIGHTING_STARTER_SCRIPT } from '../data/fighting-blocks.js';
 import { FOOTBALL_BLOCK_LIBRARY, isFootballCourse, FOOTBALL_STARTER_SCRIPT, FOOTBALL_ROLE_STARTERS, FOOTBALL_TEAM_ROLES } from '../data/football-blocks.js';
 import { buildRaceBlockLibrary, isRaceCourse } from '../data/racing-blocks.js';
@@ -24,12 +26,16 @@ import { CarRobotTrackGrid } from '../racing/CarRobotTrackGrid.jsx';
 import { getSecurityBotArena } from '../data/securitybot-arenas.js';
 import { getPrimaryRobotDisplay, getPrimaryStudioArena, getStudioRobotGroup, kidSafeText } from '../data/primary-robot-studio.js';
 import { UNIVERSAL_EVENTS_CATEGORY, withUniversalEvents } from '../data/universal-event-blocks.js';
+import SavedCodeMenu, { readAutosave, writeAutosave } from './SavedCodeMenu.jsx';
 import './LiveLabGame.css';
 
 /** Pick block library — course-scoped palettes; Events always universal */
 /** Pick block library — course-scoped palettes; Events always universal */
 export function getBlockLibraryForCourse(courseKey, arenaType) {
-  if (isFlappyBirdCourse(courseKey, arenaType)) return withUniversalEvents(FLAPPY_BLOCK_LIBRARY);
+  // Flappy has its own Events tab: only events that can happen in this game
+  if (isFlappyBirdCourse(courseKey, arenaType)) return FLAPPY_BLOCK_LIBRARY;
+  // Block Crafter: Minecraft-style mining, building and crafting blocks
+  if (isCraftCourse(courseKey, arenaType)) return CRAFT_BLOCK_LIBRARY;
   if (isFootballCourse(courseKey, arenaType)) return withUniversalEvents(FOOTBALL_BLOCK_LIBRARY);
   if (isFightingCourse(courseKey, arenaType) && arenaType === 'robot_fight') return withUniversalEvents(FIGHTING_BLOCK_LIBRARY);
   if (isRaceCourse(courseKey, arenaType) && arenaType !== 'sandbox') return buildRaceBlockLibrary(BLOCK_LIBRARY, arenaType);
@@ -190,6 +196,10 @@ export const BLOCK_LIBRARY = {
       { id:'define_func', label:'Define myFunction', icon:'📝' },
       { id:'call_func',   label:'Call myFunction',   icon:'▶️' },
     ]
+  },
+  Actions: {
+    label: 'Actions', color: '#ec4899', icon: '🧰',
+    blocks: ACTION_BLOCKS,
   },
   Lights: {
     label: 'Lights', color: '#eab308', icon: '💡',
@@ -423,6 +433,12 @@ export function CourseCodeHintsPanel({ hints, defaultOpen = false }) {
   );
 }
 
+/** Show a dropdown setting by its readable label (e.g. "≥ (at least)"), not its internal value. */
+function paramDisplay(param, value) {
+  const opt = param.type === 'dropdown' ? (param.options || []).find(([, v]) => v === value) : null;
+  return opt ? opt[0] : value;
+}
+
 export function CustomCodePanel({ robotType, scriptRef, clearRef, onBlockCountChange, onOpenLevels, activeStepIndex = -1, activeBlockUid = '', isRunning = false, starterScript = null, courseKey = '', arenaType = '', eventsFocusKey = 0, teamSize = 1, matchMode = '', footballScriptsRef = null, footballActiveRoleRef = null, footballExecBotId = null, footballSwitchRoleRef = null, challenge = null }) {
   const blockLibrary = useMemo(
     () => getBlockLibraryForCourse(courseKey, arenaType),
@@ -445,6 +461,9 @@ export function CustomCodePanel({ robotType, scriptRef, clearRef, onBlockCountCh
   const [dragOver, setDragOver]   = useState(null);
   const workspaceRef              = useRef(null);
   const paletteRef                = useRef(null);
+  // Code is kept per robot + mission, so pupils come back to exactly what they built.
+  const saveScope = `lab:${robotType || 'robot'}:${(courseKey || '').split(':')[0] || arenaType || 'lab'}`;
+  const dirtyRef = useRef(false);
 
   const focusEventsCategory = useCallback(() => {
     setActiveCat('Events');
@@ -543,18 +562,38 @@ export function CustomCodePanel({ robotType, scriptRef, clearRef, onBlockCountCh
     if (loadKey === lastStarterSigRef.current) return;
     lastStarterSigRef.current = loadKey;
 
-    const loaded = starterScript
-      .filter((b) => b.id !== 'when_start')
+    const saved = readAutosave(saveScope);
+    const loaded = (saved || starterScript.filter((b) => b.id !== 'when_start'))
       .map((b) => ({ ...b, _uid: uid(), paramValues: { ...(b.paramValues || {}) } }));
     lastCourseKeyRef.current = courseKey;
     syncScriptRef(loaded);
     setScript(loaded);
     setHistory([loaded]);
     setHistIdx(0);
-  }, [starterScript, courseKey, arenaType, syncScriptRef, multiRobotFootball]);
+  }, [starterScript, courseKey, arenaType, syncScriptRef, multiRobotFootball, saveScope]);
+
+  // Missions without starter blocks: bring back the pupil's last program.
+  useEffect(() => {
+    if (multiRobotFootball || starterScript?.length) return;
+    const saved = readAutosave(saveScope);
+    if (!saved?.length) return;
+    const loaded = saved.map((b) => ({ ...b, _uid: uid(), paramValues: { ...(b.paramValues || {}) } }));
+    syncScriptRef(loaded);
+    setScript(loaded);
+    setHistory([loaded]);
+    setHistIdx(0);
+  }, [saveScope, multiRobotFootball]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Autosave after every edit the pupil makes (not when the lab resets the panel).
+  useEffect(() => {
+    if (!dirtyRef.current || multiRobotFootball) return;
+    dirtyRef.current = false;
+    writeAutosave(saveScope, script);
+  }, [script, saveScope, multiRobotFootball]);
 
   // ── History ─────────────────────────────────────────────────────────────
   const commit = useCallback((next) => {
+    dirtyRef.current = true;
     syncScriptRef(next);
     setHistory(h => [...h.slice(0, histIdx + 1), next].slice(-60));
     setHistIdx(i => i + 1);
@@ -562,6 +601,7 @@ export function CustomCodePanel({ robotType, scriptRef, clearRef, onBlockCountCh
   }, [histIdx, syncScriptRef]);
 
   const undo = useCallback(() => {
+    dirtyRef.current = true;
     setHistIdx(i => {
       const n = Math.max(0, i - 1);
       const next = history[n] || [];
@@ -572,6 +612,7 @@ export function CustomCodePanel({ robotType, scriptRef, clearRef, onBlockCountCh
   }, [history, syncScriptRef]);
 
   const redo = useCallback(() => {
+    dirtyRef.current = true;
     setHistIdx(i => {
       const n = Math.min(history.length - 1, i + 1);
       const next = history[n] || [];
@@ -605,6 +646,7 @@ export function CustomCodePanel({ robotType, scriptRef, clearRef, onBlockCountCh
   const removeBlock = useCallback((id) => commit(script.filter(b => b._uid !== id)), [script, commit]);
 
   const updateParam = useCallback((id, key, val, isDropdown = false) => {
+    dirtyRef.current = true;
     setScript(s => {
       const next = s.map(b => b._uid === id ? {
         ...b,
@@ -635,6 +677,10 @@ export function CustomCodePanel({ robotType, scriptRef, clearRef, onBlockCountCh
   }, [dragIdx, script, commit]);
 
   // ── Filtered palette ────────────────────────────────────────────────────
+  // Every robot gets the universal events, except a game that lists its own
+  // (Flappy Bird and Block Crafter only offer events that can happen in them)
+  const ownEvents = isFlappy || isCraftCourse(courseKey, arenaType);
+  const eventsCategory = ownEvents && blockLibrary.Events ? blockLibrary.Events : UNIVERSAL_EVENTS_CATEGORY;
   const filteredCats = useMemo(() => {
     const cats = Object.entries(blockLibrary).filter(([, cat]) => cat && Array.isArray(cat.blocks)).map(([key, cat]) => ({
       key,
@@ -651,9 +697,9 @@ export function CustomCodePanel({ robotType, scriptRef, clearRef, onBlockCountCh
     // Events must always be present for every robot
     const eventsCat = cats.find((c) => c.key === 'Events');
     let result = cats;
-    if (!eventsCat || eventsCat.blocks.length !== UNIVERSAL_EVENTS_CATEGORY.blocks.length) {
+    if (!eventsCat || eventsCat.blocks.length !== eventsCategory.blocks.length) {
       result = cats.filter((c) => c.key !== 'Events');
-      result.unshift({ key: 'Events', ...UNIVERSAL_EVENTS_CATEGORY });
+      result.unshift({ key: 'Events', ...eventsCategory });
     }
 
     if (!search) {
@@ -669,15 +715,15 @@ export function CustomCodePanel({ robotType, scriptRef, clearRef, onBlockCountCh
     }
 
     return result;
-  }, [blockLibrary, paletteRobotGroup, paletteRobotType, search]);
+  }, [blockLibrary, paletteRobotGroup, paletteRobotType, search, eventsCategory]);
 
   const paletteBlocks = useMemo(() => {
     if (search) return filteredCats.flatMap(c => c.blocks.map(b => ({ ...b, catKey: c.key, catColor: c.color })));
     if (activeCat === 'Events' && !search) {
-      return UNIVERSAL_EVENTS_CATEGORY.blocks.map((b) => ({
+      return eventsCategory.blocks.map((b) => ({
         ...b,
         catKey: 'Events',
-        catColor: UNIVERSAL_EVENTS_CATEGORY.color,
+        catColor: eventsCategory.color,
       }));
     }
     const cat = filteredCats.find(c => c.key === activeCat) || filteredCats[0];
@@ -686,7 +732,7 @@ export function CustomCodePanel({ robotType, scriptRef, clearRef, onBlockCountCh
       catKey: b.catKey || cat?.key,
       catColor: b.catColor || cat?.color,
     }));
-  }, [filteredCats, activeCat, search]);
+  }, [filteredCats, activeCat, search, eventsCategory]);
 
   const categoryRail = useMemo(() => {
     const entries = Object.entries(blockLibrary);
@@ -780,7 +826,7 @@ export function CustomCodePanel({ robotType, scriptRef, clearRef, onBlockCountCh
         {categoryRail.map(([key, cat]) => {
           if (!cat) return null;
           const visible = key === 'Events'
-            ? UNIVERSAL_EVENTS_CATEGORY.blocks
+            ? eventsCategory.blocks
             : key === 'All'
               ? cat.blocks || []
               : (cat.blocks || []).filter(b => !b.robotGroups || b.robotGroups.includes(paletteRobotGroup) || b.robotGroups.includes(paletteRobotType));
@@ -831,7 +877,7 @@ export function CustomCodePanel({ robotType, scriptRef, clearRef, onBlockCountCh
             <button
               key={block.presetKey || `${block.id}-${block.catKey || ''}-${block.label}`}
               type="button"
-              className="scratch-pal-block"
+              className={`scratch-pal-block${isEventHatBlock(block.id) ? ' event-hat' : ''}`}
               style={{ '--cat-c': block.catColor || '#555' }}
               onClick={() => addBlock(block.catKey, block)}
               title={block.robotGroups ? `${block.robotGroups[0]} only` : ''}
@@ -842,7 +888,7 @@ export function CustomCodePanel({ robotType, scriptRef, clearRef, onBlockCountCh
                 {block.params?.length > 0 && (
                   <span className="scratch-blk-param">
                     {block.params.map(p => (
-                      <span key={p.key} className="scratch-blk-val">{block.paramValues?.[p.key] ?? p.def}</span>
+                      <span key={p.key} className="scratch-blk-val">{paramDisplay(p, block.paramValues?.[p.key] ?? p.def)}</span>
                     ))}
                   </span>
                 )}
@@ -856,13 +902,22 @@ export function CustomCodePanel({ robotType, scriptRef, clearRef, onBlockCountCh
       {/* ══ RIGHT: WORKSPACE ═══════════════════════════════════════════════ */}
       <div className="scratch-workspace">
         {isFootball && !multiRobotFootball && (
-          <div className="football-solo-hint">Solo mode — you control the kicker only</div>
+          <div className="football-solo-hint">Your code controls your footballer</div>
         )}
         <div className="scratch-ws-toolbar">
           <button className="scratch-tool-btn" onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)">↩</button>
           <button className="scratch-tool-btn" onClick={redo} disabled={!canRedo} title="Redo (Ctrl+Y)">↪</button>
           {script.length > 0 && (
             <button className="scratch-tool-btn scratch-clear-btn" onClick={() => commit([])} title="Clear all">🗑️</button>
+          )}
+          {!multiRobotFootball && (
+            <SavedCodeMenu
+              scope={saveScope}
+              title={kidSafeText(challenge?.name || challenge?.title || 'My program')}
+              blocks={script}
+              disabled={isRunning}
+              onLoad={(blocks) => commit(blocks.map((b) => ({ ...b, _uid: uid(), paramValues: { ...(b.paramValues || {}) } })))}
+            />
           )}
           <div className="scratch-ws-spacer" />
           <span className="scratch-block-count">{script.length} block{script.length !== 1 ? 's' : ''}</span>
@@ -906,7 +961,7 @@ export function CustomCodePanel({ robotType, scriptRef, clearRef, onBlockCountCh
                   <div
                     key={blk._uid}
                     className={`scratch-script-block${isHat ? ' event-hat' : ''}${dragIdx === i ? ' dragging' : ''}${dragOver === i ? ' drag-over' : ''}${isExecuting ? ' executing' : ''}${isCompleted ? ' completed' : ''}`}
-                    style={{ '--cat-c': catColor, '--exec-c': catColor }}
+                    style={{ '--cat-c': catColor, '--exec-c': catColor, zIndex: script.length - i }}
                     draggable
                     onDragStart={e => onDragStart(e, i)}
                     onDragEnter={() => onDragEnter(i)}
@@ -1089,6 +1144,7 @@ export function MissionControlPanel({ challenge, profile, robotConfig, stats, ro
   const accentColor  = challenge?.color || genre.color || '#a78bfa';
 
   const objectives = useMemo(() => {
+    if (challenge?.arenaBible && challenge.objectives?.length) return challenge.objectives;
     if (story?.objectives?.length) return story.objectives;
     return resolveCourseObjectives(challenge, story || {});
   }, [story, challenge]);
@@ -1097,6 +1153,7 @@ export function MissionControlPanel({ challenge, profile, robotConfig, stats, ro
     () => deriveMissionProgress(challenge, stats, zoneInfo),
     [challenge, stats, zoneInfo],
   );
+  const missionAction = useMemo(() => getMissionAction(challenge), [challenge]);
 
   const toObjText = (o) => (typeof o === 'string' ? o : (o?.label || o?.text || ''));
   const primaryObj = toObjText(objectives[0]) || challenge?.winCondition || 'Reach the goal zone';
@@ -1135,6 +1192,13 @@ export function MissionControlPanel({ challenge, profile, robotConfig, stats, ro
         </div>
       </div>
 
+      {missionAction && (
+        <div className="mcp-v2-action-hint">
+          <span className="mcp-v2-action-ico">{missionAction.icon}</span>
+          <span>Use <b>{missionAction.label}</b> at each glowing marker</span>
+        </div>
+      )}
+
       {!compact && (
       <>
       {/* Sub-objectives */}
@@ -1150,22 +1214,13 @@ export function MissionControlPanel({ challenge, profile, robotConfig, stats, ro
         })}
       </ul>
 
-      {/* Action buttons */}
+      {/* Action buttons — only real actions, no dummy Camera/Code/Settings */}
       <div className="mcp-v2-actions">
         {onRestart && (
           <button type="button" className="mcp-v2-btn" onClick={onRestart}>
             <span>↺</span> Restart
           </button>
         )}
-        <button type="button" className="mcp-v2-btn" disabled>
-          <span>📷</span> Camera
-        </button>
-        <button type="button" className="mcp-v2-btn" disabled>
-          <span>&lt;/&gt;</span> Show Code
-        </button>
-        <button type="button" className="mcp-v2-btn" disabled>
-          <span>⚙</span> Settings
-        </button>
       </div>
       </>
       )}
@@ -1273,6 +1328,7 @@ export function StatsBar({ stats, zoneInfo, challenge, arenaType, isRunning, fps
         challenge={challenge}
         theme={stats.raceHudTheme || (challenge?.arenaType === 'sunny_circuit' ? 'sunny_circuit' : challenge?.arenaType === 'volcano_drift' ? 'volcano_drift' : challenge?.arenaType === 'dragon_skyway' ? 'dragon_skyway' : 'rainbow_road')}
         onRestart={onRestart}
+        minimal
       />
     );
   }
@@ -1559,7 +1615,7 @@ export function GameLevelSelect({ courses, currentId, robotName, robotType, chas
           <div className="gls-header-left">
             <span className="gls-title">🎮 Choose Mission</span>
             <span className="gls-sub">
-              {getPrimaryRobotDisplay(chassisId).emoji} {getPrimaryRobotDisplay(chassisId).name} · 10 arenas for {getPrimaryRobotDisplay(chassisId).name}
+              {getPrimaryRobotDisplay(chassisId).emoji} {getPrimaryRobotDisplay(chassisId).name} · {courses.length} arenas for {getPrimaryRobotDisplay(chassisId).name}
             </span>
           </div>
           <div className="gls-header-right">
@@ -1638,7 +1694,7 @@ export function GameLevelSelect({ courses, currentId, robotName, robotType, chas
                 <section className="gls-section">
                   <SectionHead
                     icon="🤖"
-                    title={`10 arenas for ${getPrimaryRobotDisplay(chassisId).name}`}
+                    title={`${courses.length} arenas for ${getPrimaryRobotDisplay(chassisId).name}`}
                     subtitle="Each arena looks different and teaches one coding idea"
                     color="#7c3aed"
                   />

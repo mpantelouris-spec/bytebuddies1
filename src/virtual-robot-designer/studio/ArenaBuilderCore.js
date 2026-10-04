@@ -178,6 +178,7 @@ export function finishChassisOrGoal(scene, challenge, theme, defaultZ, defaultLa
 
 export function buildChassisRoute(scene, challenge, theme) {
   if (!challenge?.isChassisMode) return;
+  if (scene.userData.raceCurve) return; // kart circuits keep only their own road
   if (scene.userData.aerialWorldBuilt && scene.userData._chassisCurve) return;
   if (challenge.physics === 'flight_3dof' && scene.userData._chassisCurve) return;
   const capstone = isCapstoneMode(challenge);

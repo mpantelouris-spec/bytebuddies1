@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { buildThemeGate } from './mk-tracks/ThemeGateKit.js';
 
 function mat(color, roughness = 0.72, extras = {}) {
   return new THREE.MeshStandardMaterial({
@@ -46,6 +47,9 @@ function hayBale() {
   });
   return g;
 }
+
+/** Worlds where beach palms and hay bales belong at the start line. */
+const TROPICAL = /sunset|cove|jungle|beach|tropic/;
 
 function starFace() {
   const g = new THREE.Group();
@@ -116,6 +120,7 @@ export function installRacePresentation(scene, curve, {
   halfWidth = 4,
   spawn = null,
   startT = 0,
+  world = '',
 } = {}) {
   if (scene.userData.racePresentationRoot) {
     scene.remove(scene.userData.racePresentationRoot);
@@ -134,38 +139,53 @@ export function installRacePresentation(scene, curve, {
   const origin = spawn
     ? new THREE.Vector3(spawn.x, spawn.y ?? p0.y, spawn.z)
     : new THREE.Vector3(p0.x, p0.y, p0.z);
-  const fwd = new THREE.Vector3(Math.sin(angle), 0, Math.cos(angle));
-  const right = new THREE.Vector3(fwd.z, 0, -fwd.x);
+  // Place everything along the road itself: a straight line from the start
+  // drifts onto the tarmac wherever the circuit bends.
+  const length = Math.max(curve.getLength(), 1);
+  const along = (dist) => {
+    const t = (((t0 + dist / length) % 1) + 1) % 1;
+    const p = curve.getPointAt(t);
+    const tan = curve.getTangentAt(t).setY(0).normalize();
+    return { p, tan, right: new THREE.Vector3(tan.z, 0, -tan.x), yaw: Math.atan2(tan.x, tan.z) };
+  };
 
-  const finish = balloonArch(halfWidth);
-  finish.scale.setScalar(1.55);
-  finish.position.copy(origin).addScaledVector(fwd, 18);
+  // A gate that belongs to this world (rock arch, snow bridge, castle...) stands
+  // square over the start straight; the beach keeps its balloon arch.
+  const themeGate = buildThemeGate(scene.userData.trackTheme?.id);
+  const finish = themeGate || balloonArch(halfWidth);
+  if (!themeGate) finish.scale.setScalar(1.55);
+  finish.position.copy(origin).addScaledVector(new THREE.Vector3(Math.sin(angle), 0, Math.cos(angle)), 18);
   finish.position.y = origin.y;
   finish.rotation.y = angle;
   root.add(finish);
 
-  root.add(centerDashes(curve));
+  // Painted centre dashes only suit tarmac; boardwalks, dirt and cobbles skip them
+  if (scene.userData.trackTheme?.centreLine !== false) root.add(centerDashes(curve));
 
-  for (let i = 0; i < 8; i += 1) {
-    const along = 5 + i * 4.2;
-    [-1, 1].forEach((side) => {
-      const usePalm = i % 2 === 0;
-      const prop = usePalm ? palm() : hayBale();
-      prop.scale.setScalar(usePalm ? 1.35 : 1.25);
-      prop.position.copy(origin)
-        .addScaledVector(fwd, along)
-        .addScaledVector(right, side * (halfWidth + (usePalm ? 4.8 : 3.4)));
-      prop.position.y = origin.y;
-      prop.rotation.y = angle;
-      root.add(prop);
-    });
+  // Palms and hay bales only suit the beach/jungle worlds; the other worlds
+  // already have their own scenery.
+  // Skipped where the Kenney scenery kit already dresses the world
+  if (!scene.userData.themeScenery && (!world || TROPICAL.test(world))) {
+    for (let i = 0; i < 8; i += 1) {
+      const at = along(5 + i * 4.2);
+      [-1, 1].forEach((side) => {
+        const usePalm = i % 2 === 0;
+        const prop = usePalm ? palm() : hayBale();
+        prop.scale.setScalar(usePalm ? 1.35 : 1.25);
+        prop.position.copy(at.p).addScaledVector(at.right, side * (halfWidth + (usePalm ? 8.5 : 7)));
+        prop.position.y = origin.y;
+        prop.rotation.y = at.yaw;
+        root.add(prop);
+      });
+    }
   }
 
   scene.add(root);
   scene.userData.racePresentationRoot = root;
   scene.userData.racePresentation = 'bright-arcade-circuit';
-  scene.background = new THREE.Color(0x4eb8ef);
-  if (scene.fog) {
+  // Keep the world's own sky (night city, snow, lava); only fill in a missing one.
+  if (!scene.background) scene.background = new THREE.Color(0x4eb8ef);
+  if (scene.fog && !world) {
     scene.fog.color.set(0xa8dff5);
     scene.fog.near = 70;
     scene.fog.far = 240;

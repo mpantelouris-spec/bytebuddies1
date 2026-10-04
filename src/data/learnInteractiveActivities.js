@@ -1,4 +1,5 @@
 // Interactive activities for ByteBuddies Learn World
+import { buildKs2LessonInteractives } from './ks2LessonInteractives.js';
 import { Y3_ACTIVITIES } from './y3Activities.js';
 
 // COURSE_ORDER defined locally to avoid circular dependency
@@ -6640,10 +6641,13 @@ export const LESSON_INTERACTIVES = {
 };
 
 export function getLessonInteractives(yr, lessonIdx) {
+  const ks2 = buildKs2LessonInteractives(yr, lessonIdx);
+  if (ks2.length >= 2) return ks2;
+
   const result = LESSON_INTERACTIVES[yr]?.[lessonIdx];
-  // Ensure we always return an array of valid activities
-  if (!Array.isArray(result)) return [];
-  return result.filter(act => act && typeof act === 'object');
+  if (!Array.isArray(result)) return ks2.length ? ks2 : [];
+  const legacy = result.filter(act => act && typeof act === 'object');
+  return legacy.length >= 2 ? legacy : (ks2.length ? ks2 : legacy);
 }
 
 export function getInteractiveCount() {

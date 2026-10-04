@@ -13,28 +13,26 @@ import { applyPrimaryStudioMeta, isPrimaryStudioChassis, kidSafeText } from './p
 
 export const CHASSIS_MODE_MAP = {
   "rover": [
-    "rover_rover_obstacle_course",
-    "rover_balanced_sprint",
-    "rover_cargo_delivery_relay",
-    "rover_precision_parking_trial",
-    "rover_reverse_driving_challenge",
-    "rover_slalom_weave",
-    "rover_fuel_efficiency_cruise",
-    "rover_tow_truck_pull",
-    "rover_stop_and_go_traffic_drill",
-    "rover_rover_grand_tour"
+    "rover_kart_neon_nitro_nights",
+    "rover_kart_desert_dune_drift",
+    "rover_kart_haunted_hollow_gp",
+    "rover_kart_coral_circuit",
+    "rover_kart_bamboo_thunder_rally",
+    "rover_kart_meteor_mine_madness",
+    "rover_kart_pinwheel_plaza_sprint",
+    "rover_kart_glacial_gorge_gp",
+    "rover_kart_safari_stampede_cup"
   ],
   "scout": [
-    "scout_high_speed_recon_sprint",
-    "scout_speed_trap_blitz",
-    "scout_rapid_target_spotting",
-    "scout_shortcut_navigator",
-    "scout_radar_beacon_chase",
-    "scout_fast_turn_drift",
-    "scout_outrun_the_timer",
-    "scout_scout_patrol_relay",
-    "scout_dynamic_obstacle_dodge",
-    "scout_apex_speed_champion"
+    "scout_kart_neon_nitro_nights",
+    "scout_kart_desert_dune_drift",
+    "scout_kart_haunted_hollow_gp",
+    "scout_kart_coral_circuit",
+    "scout_kart_bamboo_thunder_rally",
+    "scout_kart_meteor_mine_madness",
+    "scout_kart_pinwheel_plaza_sprint",
+    "scout_kart_glacial_gorge_gp",
+    "scout_kart_safari_stampede_cup"
   ],
   "crawler": [
     "crawler_rocky_mountain_climb",
@@ -288,6 +286,18 @@ export const CHASSIS_MODE_MAP = {
     "legobot_robotic_crane_latch",
     "legobot_master_builder_grand_prize"
   ],
+  "blockbot": [
+    "blockbot_grassland_spawn",
+    "blockbot_forest_path",
+    "blockbot_village_cobble",
+    "blockbot_surface_mine",
+    "blockbot_desert_ruins",
+    "blockbot_snowy_peaks",
+    "blockbot_crimson_cavern",
+    "blockbot_deep_stone_hall",
+    "blockbot_sky_islands",
+    "blockbot_master_builder_cup"
+  ],
   "battlebot": [
     "battlebot_mech_combat_duel",
     "battlebot_laser_cannon_target_range",
@@ -447,17 +457,17 @@ export const CHASSIS_MODE_MAP = {
 };
 
 export const CHASSIS_GAME_MODE_BY_ID = {
-  "rover_rover_obstacle_course": {
-    "id": "rover_rover_obstacle_course",
+  "rover_kart_neon_nitro_nights": {
+    "id": "rover_kart_neon_nitro_nights",
     "chassisId": "rover",
     "cat": "racing",
-    "icon": "💎",
-    "name": "Crystal Palace Circuit",
-    "desc": "💎 Crystal Palace — Lime glass track, faceted crystals, crystal arch landmark, sparkle particles.",
-    "shortName": "Crystal Palace Circuit",
-    "tagline": "💎 Crystal Palace — Lime glass track, faceted crystals, crystal arch landmark, sparkle particles.",
+    "icon": "🏖️",
+    "name": "Sunny Shores",
+    "desc": "🏖️ Sunset Cove — breezy coastal loop along the pier and palm-lined bay.",
+    "shortName": "Sunny Shores",
+    "tagline": "🏖️ Sunset Cove — breezy coastal loop along the pier and palm-lined bay.",
     "arenaType": "sunset_cove_01",
-    "color": "#7CFC00",
+    "color": "#FF8C42",
     "obstacles": 4,
     "totalDist": 13,
     "estMinutes": 3,
@@ -468,685 +478,6 @@ export const CHASSIS_GAME_MODE_BY_ID = {
     ],
     "isChassisMode": true,
     "modeIndex": 1,
-    "difficulty": "Tutorial",
-    "modeType": "Training",
-    "programmingConcepts": [
-      "sequential blocks",
-      "variables"
-    ],
-    "starRequirements": {
-      "one": "Complete the objective",
-      "two": "Hit all checkpoints",
-      "three": "Clean run — no penalties"
-    },
-    "rewardBadge": "rover_mode_1",
-    "unlocksNext": "rover_balanced_sprint",
-    "catalogName": "Crystal Palace Circuit",
-    "environmentId": "sunset_cove_01",
-    "environmentName": "Crystal Palace Circuit",
-    "environmentEmoji": "💎",
-    "physics": "racing_spline",
-    "camera": "race_chase",
-    "genre": "racing",
-    "winCondition": "Complete 2 lap(s) around Crystal Palace Circuit",
-    "codeHint": "Use distance sensors: if distanceToObstacle < 1m then Turn(45).",
-    "gameObjectives": [
-      "Complete 2 lap(s)",
-      "Pass all checkpoints",
-      "Finish under 130s"
-    ],
-    "campusMode": {
-      "modeNumber": 1,
-      "name": "Crystal Palace Circuit",
-      "shortName": "Crystal Palace Circuit",
-      "section": "racing_circuit",
-      "camera": "race_chase",
-      "timeLimitSec": 45,
-      "maxCollisions": 0,
-      "desc": "Drive from start to finish without touching any cones or barriers.",
-      "winCondition": "Reach finish line in under 45 seconds with 0 collisions.",
-      "codeHint": "Use distance sensors: if distanceToObstacle < 1m then Turn(45).",
-      "codeTelemetry": "distanceToObstacle < 1m → Turn(45)",
-      "props": [],
-      "objectives": [
-        "Complete 2 lap(s)",
-        "Pass all checkpoints",
-        "Stay on the racing line"
-      ],
-      "starOne": "Finish the course",
-      "starTwo": "Zero collisions",
-      "starThree": "Sub-45s clean run"
-    },
-    "zones": 5,
-    "linkedRaceCourse": "sunset_cove_01",
-    "raceTrackLabel": "Crystal Palace Circuit",
-    "mkTier": "Beginner",
-    "mkDifficulty": 1
-  },
-  "rover_balanced_sprint": {
-    "id": "rover_balanced_sprint",
-    "chassisId": "rover",
-    "cat": "racing",
-    "icon": "🌃",
-    "name": "Neon City Descent",
-    "desc": "🌃 Neon City Descent — Futuristic skyline, holographic billboards, rain, wet asphalt reflections.",
-    "shortName": "Neon City Descent",
-    "tagline": "🌃 Neon City Descent — Futuristic skyline, holographic billboards, rain, wet asphalt reflections.",
-    "arenaType": "candy_carnival_01",
-    "color": "#FF00FF",
-    "obstacles": 5,
-    "totalDist": 16,
-    "estMinutes": 5,
-    "checkpoints": 4,
-    "exclusive": "rover",
-    "rec": [
-      "rover"
-    ],
-    "isChassisMode": true,
-    "modeIndex": 2,
-    "difficulty": "Tutorial",
-    "modeType": "Training",
-    "programmingConcepts": [
-      "variables",
-      "loops"
-    ],
-    "starRequirements": {
-      "one": "Complete the objective",
-      "two": "Hit all checkpoints",
-      "three": "Clean run — no penalties"
-    },
-    "rewardBadge": "rover_mode_2",
-    "unlocksNext": "rover_cargo_delivery_relay",
-    "catalogName": "Neon Cyberpunk Boulevard",
-    "environmentId": "candy_carnival_01",
-    "environmentName": "Neon City Descent",
-    "environmentEmoji": "🌃",
-    "physics": "racing_spline",
-    "camera": "race_chase",
-    "genre": "racing",
-    "winCondition": "Complete 3 lap(s) around Neon City Descent",
-    "codeHint": "if speed < 40 then Throttle(10) else Throttle(-5)",
-    "gameObjectives": [
-      "Complete 3 lap(s)",
-      "Pass all checkpoints",
-      "Finish under 175s"
-    ],
-    "campusMode": {
-      "modeNumber": 2,
-      "name": "Neon City Descent",
-      "shortName": "Neon City Descent",
-      "section": "racing_circuit",
-      "camera": "race_chase",
-      "timeLimitSec": 120,
-      "targetSpeedKmh": 40,
-      "speedToleranceKmh": 2,
-      "desc": "Italian villa estate — race the red asphalt oval past mansions and fountains.",
-      "winCondition": "Complete 2 laps around Luigi Circuit.",
-      "codeHint": "if speed < 40 then Throttle(10) else Throttle(-5)",
-      "codeTelemetry": "speed sensor + throttle control",
-      "props": [],
-      "objectives": [
-        "Complete 3 lap(s)",
-        "Pass all checkpoints",
-        "Stay on the racing line"
-      ],
-      "starOne": "Complete the sprint",
-      "starTwo": "Hit all checkpoints",
-      "starThree": "Clean run — no penalties"
-    },
-    "zones": 5,
-    "linkedRaceCourse": "candy_carnival_01",
-    "raceTrackLabel": "Neon City Descent",
-    "mkTier": "Easy",
-    "mkDifficulty": 2
-  },
-  "rover_cargo_delivery_relay": {
-    "id": "rover_cargo_delivery_relay",
-    "chassisId": "rover",
-    "cat": "racing",
-    "icon": "🌲",
-    "name": "Enchanted Forest Labyrinth",
-    "desc": "🌲 Forest Maze — Giant sculpted trees, leaf particles, temple maze walls, winding labyrinth.",
-    "shortName": "Enchanted Forest Labyrinth",
-    "tagline": "🌲 Forest Maze — Giant sculpted trees, leaf particles, temple maze walls, winding labyrinth.",
-    "arenaType": "neon_metro_01",
-    "color": "#228B22",
-    "obstacles": 6,
-    "totalDist": 19,
-    "estMinutes": 6,
-    "checkpoints": 5,
-    "exclusive": "rover",
-    "rec": [
-      "rover"
-    ],
-    "isChassisMode": true,
-    "modeIndex": 3,
-    "difficulty": "Easy",
-    "modeType": "Training",
-    "programmingConcepts": [
-      "loops",
-      "if/else"
-    ],
-    "starRequirements": {
-      "one": "Finish the mission",
-      "two": "Hit all checkpoints",
-      "three": "Clean run — no penalties"
-    },
-    "rewardBadge": "rover_mode_3",
-    "unlocksNext": "rover_precision_parking_trial",
-    "catalogName": "Enchanted Forest Labyrinth",
-    "environmentId": "neon_metro_01",
-    "environmentName": "Enchanted Forest Labyrinth",
-    "environmentEmoji": "🌲",
-    "physics": "racing_spline",
-    "camera": "race_chase",
-    "genre": "racing",
-    "winCondition": "Complete 2 lap(s) around Enchanted Forest Labyrinth",
-    "codeHint": "Gentle steering through the figure-8 — smooth is fast!",
-    "gameObjectives": [
-      "Complete 2 lap(s)",
-      "Pass all checkpoints",
-      "Finish under 145s"
-    ],
-    "campusMode": {
-      "modeNumber": 3,
-      "name": "Enchanted Forest Labyrinth",
-      "shortName": "Enchanted Forest Labyrinth",
-      "section": "racing_circuit",
-      "camera": "race_chase",
-      "timeLimitSec": 180,
-      "desc": "Pastoral figure-8 through green meadows — gentle 180° turns and grazing cows.",
-      "winCondition": "Complete 1 lap around Moo Moo Meadows.",
-      "codeHint": "Gentle steering through the figure-8 — smooth is fast!",
-      "codeTelemetry": "speed sensor + throttle control",
-      "props": [],
-      "objectives": [
-        "Complete 2 lap(s)",
-        "Pass all checkpoints",
-        "Stay on the racing line"
-      ],
-      "starOne": "Complete the lap",
-      "starTwo": "Hit all checkpoints",
-      "starThree": "Clean run — no penalties"
-    },
-    "zones": 5,
-    "linkedRaceCourse": "neon_metro_01",
-    "raceTrackLabel": "Enchanted Forest Labyrinth",
-    "mkTier": "Easy",
-    "mkDifficulty": 2
-  },
-  "rover_precision_parking_trial": {
-    "id": "rover_precision_parking_trial",
-    "chassisId": "rover",
-    "cat": "racing",
-    "icon": "🌋",
-    "name": "Volcanic Inferno Pass",
-    "desc": "🌋 Volcanic Inferno Pass — Lava river glow, basalt columns, ash clouds, heat shimmer.",
-    "shortName": "Volcanic Inferno Pass",
-    "tagline": "🌋 Volcanic Inferno Pass — Lava river glow, basalt columns, ash clouds, heat shimmer.",
-    "arenaType": "cloud_citadel_01",
-    "color": "#FF4500",
-    "obstacles": 7,
-    "totalDist": 22,
-    "estMinutes": 8,
-    "checkpoints": 6,
-    "exclusive": "rover",
-    "rec": [
-      "rover"
-    ],
-    "isChassisMode": true,
-    "modeIndex": 4,
-    "difficulty": "Easy",
-    "modeType": "Training",
-    "programmingConcepts": [
-      "if/else",
-      "sensors"
-    ],
-    "starRequirements": {
-      "one": "Finish the mission",
-      "two": "Hit all checkpoints",
-      "three": "Clean run — no penalties"
-    },
-    "rewardBadge": "rover_mode_4",
-    "unlocksNext": "rover_reverse_driving_challenge",
-    "catalogName": "Volcanic Magma Canyon",
-    "environmentId": "cloud_citadel_01",
-    "environmentName": "Volcanic Inferno Pass",
-    "environmentEmoji": "🌋",
-    "physics": "racing_spline",
-    "camera": "race_chase",
-    "genre": "racing",
-    "winCondition": "Complete 2 lap(s) around Volcanic Inferno Pass",
-    "codeHint": "Brake before tight turns, boost on straights!",
-    "gameObjectives": [
-      "Complete 2 lap(s)",
-      "Pass all checkpoints",
-      "Finish under 160s"
-    ],
-    "campusMode": {
-      "modeNumber": 4,
-      "name": "Volcanic Inferno Pass",
-      "shortName": "Volcanic Inferno Pass",
-      "section": "racing_circuit",
-      "camera": "race_chase",
-      "timeLimitSec": 200,
-      "desc": "Night floodlit stadium circuit with glossy blue asphalt and grandstands.",
-      "winCondition": "Complete 2 laps around Mario Circuit.",
-      "codeHint": "Brake before tight turns, boost on straights!",
-      "codeTelemetry": "speed sensor + throttle control",
-      "props": [],
-      "objectives": [
-        "Complete 2 lap(s)",
-        "Pass all checkpoints",
-        "Stay on the racing line"
-      ],
-      "starOne": "Complete 2 laps",
-      "starTwo": "Hit all checkpoints",
-      "starThree": "Clean run — no penalties"
-    },
-    "zones": 5,
-    "linkedRaceCourse": "cloud_citadel_01",
-    "raceTrackLabel": "Volcanic Inferno Pass",
-    "mkTier": "Intermediate",
-    "mkDifficulty": 3
-  },
-  "rover_reverse_driving_challenge": {
-    "id": "rover_reverse_driving_challenge",
-    "chassisId": "rover",
-    "cat": "racing",
-    "icon": "❄️",
-    "name": "Ice Cavern Descent",
-    "desc": "❄️ Ice Cavern — Translucent ice crystals, frost sparkles, slippery descent.",
-    "shortName": "Ice Cavern Descent",
-    "tagline": "❄️ Ice Cavern — Translucent ice crystals, frost sparkles, slippery descent.",
-    "arenaType": "jungle_ruins_01",
-    "color": "#5DADE2",
-    "obstacles": 8,
-    "totalDist": 25,
-    "estMinutes": 8,
-    "checkpoints": 7,
-    "exclusive": "rover",
-    "rec": [
-      "rover"
-    ],
-    "isChassisMode": true,
-    "modeIndex": 5,
-    "difficulty": "Medium",
-    "modeType": "Mission",
-    "programmingConcepts": [
-      "sensors",
-      "events"
-    ],
-    "starRequirements": {
-      "one": "Finish the mission",
-      "two": "Hit all checkpoints",
-      "three": "Clean run — no penalties"
-    },
-    "rewardBadge": "rover_mode_5",
-    "unlocksNext": "rover_slalom_weave",
-    "catalogName": "Ice Cavern Descent",
-    "environmentId": "jungle_ruins_01",
-    "environmentName": "Ice Cavern Descent",
-    "environmentEmoji": "❄️",
-    "physics": "racing_spline",
-    "camera": "race_chase",
-    "genre": "racing",
-    "winCondition": "Complete 2 lap(s) around Ice Cavern Descent",
-    "codeHint": "Drive(-30) and rearDistance < 0.5m → Brake()",
-    "gameObjectives": [
-      "Complete 2 lap(s)",
-      "Pass all checkpoints",
-      "Finish under 185s"
-    ],
-    "campusMode": {
-      "modeNumber": 5,
-      "name": "Ice Cavern Descent",
-      "shortName": "Ice Cavern Descent",
-      "section": "racing_circuit",
-      "camera": "race_chase",
-      "timeLimitSec": 30,
-      "desc": "Drive through the illuminated tunnel entirely in reverse gear.",
-      "winCondition": "Complete tunnel backward in under 30s without hitting walls.",
-      "codeHint": "Drive(-30) and rearDistance < 0.5m → Brake()",
-      "codeTelemetry": "reverse gear + rear sensor",
-      "props": [],
-      "objectives": [
-        "Complete 2 lap(s)",
-        "Pass all checkpoints",
-        "Stay on the racing line"
-      ],
-      "starOne": "Complete tunnel",
-      "starTwo": "No wall hits",
-      "starThree": "Sub-30s reverse run"
-    },
-    "zones": 5,
-    "linkedRaceCourse": "jungle_ruins_01",
-    "raceTrackLabel": "Ice Cavern Descent",
-    "mkTier": "Intermediate",
-    "mkDifficulty": 3
-  },
-  "rover_slalom_weave": {
-    "id": "rover_slalom_weave",
-    "chassisId": "rover",
-    "cat": "racing",
-    "icon": "🐚",
-    "name": "Underwater Temple Ruins",
-    "desc": "🐚 Underwater Temple Ruins — Sunken columns, coral growth, god-rays, caustic light.",
-    "shortName": "Underwater Temple Ruins",
-    "tagline": "🐚 Underwater Temple Ruins — Sunken columns, coral growth, god-rays, caustic light.",
-    "arenaType": "frost_peak_01",
-    "color": "#40E0D0",
-    "obstacles": 9,
-    "totalDist": 28,
-    "estMinutes": 10,
-    "checkpoints": 8,
-    "exclusive": "rover",
-    "rec": [
-      "rover"
-    ],
-    "isChassisMode": true,
-    "modeIndex": 6,
-    "difficulty": "Medium",
-    "modeType": "Mission",
-    "programmingConcepts": [
-      "events",
-      "functions"
-    ],
-    "starRequirements": {
-      "one": "Finish the mission",
-      "two": "Beat the time target",
-      "three": "Clean run — no penalties"
-    },
-    "rewardBadge": "rover_mode_6",
-    "unlocksNext": "rover_fuel_efficiency_cruise",
-    "catalogName": "Underwater Temple",
-    "environmentId": "frost_peak_01",
-    "environmentName": "Underwater Temple Ruins",
-    "environmentEmoji": "🐚",
-    "physics": "racing_spline",
-    "camera": "race_chase",
-    "genre": "racing",
-    "winCondition": "Complete 2 lap(s) around Underwater Temple Ruins",
-    "codeHint": "if color == RED then SteerLeft() else SteerRight()",
-    "gameObjectives": [
-      "Complete 2 lap(s)",
-      "Pass all checkpoints",
-      "Finish under 150s"
-    ],
-    "campusMode": {
-      "modeNumber": 6,
-      "name": "Underwater Temple Ruins",
-      "shortName": "Underwater Temple Ruins",
-      "section": "racing_circuit",
-      "camera": "race_chase",
-      "timeLimitSec": 45,
-      "desc": "Weave around 10 pylons — red on LEFT, blue on RIGHT.",
-      "winCondition": "Pass all 10 pylons on the correct side without knocking any over.",
-      "codeHint": "if color == RED then SteerLeft() else SteerRight()",
-      "codeTelemetry": "color sensor + steering",
-      "props": [],
-      "objectives": [
-        "Complete 2 lap(s)",
-        "Pass all checkpoints",
-        "Stay on the racing line"
-      ],
-      "starOne": "Pass all pylons",
-      "starTwo": "Correct weave pattern",
-      "starThree": "Flawless slalom"
-    },
-    "zones": 5,
-    "linkedRaceCourse": "frost_peak_01",
-    "raceTrackLabel": "Underwater Temple Ruins",
-    "mkTier": "Intermediate",
-    "mkDifficulty": 3
-  },
-  "rover_fuel_efficiency_cruise": {
-    "id": "rover_fuel_efficiency_cruise",
-    "chassisId": "rover",
-    "cat": "racing",
-    "icon": "☁️",
-    "name": "Sky Island Circuit",
-    "desc": "☁️ Sky Island — Floating platforms, rope bridges, cloud wisps, golden sparkles.",
-    "shortName": "Sky Island Circuit",
-    "tagline": "☁️ Sky Island — Floating platforms, rope bridges, cloud wisps, golden sparkles.",
-    "arenaType": "lava_foundry_01",
-    "color": "#87CEEB",
-    "obstacles": 10,
-    "totalDist": 31,
-    "estMinutes": 10,
-    "checkpoints": 8,
-    "exclusive": "rover",
-    "rec": [
-      "rover"
-    ],
-    "isChassisMode": true,
-    "modeIndex": 7,
-    "difficulty": "Medium",
-    "modeType": "Mission",
-    "programmingConcepts": [
-      "functions",
-      "state machines"
-    ],
-    "starRequirements": {
-      "one": "Finish the mission",
-      "two": "Beat the time target",
-      "three": "Clean run — no penalties"
-    },
-    "rewardBadge": "rover_mode_7",
-    "unlocksNext": "rover_tow_truck_pull",
-    "catalogName": "Sky Island Circuit",
-    "environmentId": "lava_foundry_01",
-    "environmentName": "Sky Island Circuit",
-    "environmentEmoji": "☁️",
-    "physics": "racing_spline",
-    "camera": "race_chase",
-    "genre": "racing",
-    "winCondition": "Complete 2 lap(s) around Sky Island Circuit",
-    "codeHint": "Throttle(0) on downhill slopes to coast and save power.",
-    "gameObjectives": [
-      "Complete 2 lap(s)",
-      "Pass all checkpoints",
-      "Finish under 125s"
-    ],
-    "campusMode": {
-      "modeNumber": 7,
-      "name": "Sky Island Circuit",
-      "shortName": "Sky Island Circuit",
-      "section": "racing_circuit",
-      "camera": "race_chase",
-      "energyStart": 100,
-      "energyMinFinish": 15,
-      "desc": "Complete one full lap while conserving battery energy.",
-      "winCondition": "Cross finish with at least 15 Energy Units remaining.",
-      "codeHint": "Throttle(0) on downhill slopes to coast and save power.",
-      "codeTelemetry": "energy meter + coasting",
-      "props": [],
-      "objectives": [
-        "Complete 2 lap(s)",
-        "Pass all checkpoints",
-        "Stay on the racing line"
-      ],
-      "starOne": "Finish the lap",
-      "starTwo": "25+ energy remaining",
-      "starThree": "40+ energy remaining"
-    },
-    "zones": 5,
-    "linkedRaceCourse": "lava_foundry_01",
-    "raceTrackLabel": "Sky Island Circuit",
-    "mkTier": "Beginner",
-    "mkDifficulty": 1
-  },
-  "rover_tow_truck_pull": {
-    "id": "rover_tow_truck_pull",
-    "chassisId": "rover",
-    "cat": "racing",
-    "icon": "🏜️",
-    "name": "Desert Dunes Race",
-    "desc": "🏜️ Desert Dunes — Sand displacement hills, sandstone pillars, dust sparkles.",
-    "shortName": "Desert Dunes Race",
-    "tagline": "🏜️ Desert Dunes — Sand displacement hills, sandstone pillars, dust sparkles.",
-    "arenaType": "star_station_01",
-    "color": "#FFD700",
-    "obstacles": 11,
-    "totalDist": 34,
-    "estMinutes": 12,
-    "checkpoints": 8,
-    "exclusive": "rover",
-    "rec": [
-      "rover"
-    ],
-    "isChassisMode": true,
-    "modeIndex": 8,
-    "difficulty": "Hard",
-    "modeType": "Mission",
-    "programmingConcepts": [
-      "state machines",
-      "timing"
-    ],
-    "starRequirements": {
-      "one": "Finish the mission",
-      "two": "Beat the time target",
-      "three": "Clean run — no penalties"
-    },
-    "rewardBadge": "rover_mode_8",
-    "unlocksNext": "rover_stop_and_go_traffic_drill",
-    "catalogName": "Desert Dunes Race",
-    "environmentId": "star_station_01",
-    "environmentName": "Desert Dunes Race",
-    "environmentEmoji": "🏜️",
-    "physics": "racing_spline",
-    "camera": "race_chase",
-    "genre": "racing",
-    "winCondition": "Complete 2 lap(s) around Desert Dunes Race",
-    "codeHint": "SetTorque(HIGH) for low-gear high-torque pulling.",
-    "gameObjectives": [
-      "Complete 2 lap(s)",
-      "Pass all checkpoints",
-      "Finish under 135s"
-    ],
-    "campusMode": {
-      "modeNumber": 8,
-      "name": "Desert Dunes Race",
-      "shortName": "Desert Dunes Race",
-      "section": "racing_circuit",
-      "camera": "race_chase",
-      "timeLimitSec": 50,
-      "desc": "Tow a heavy trailer through the banked S-curve section.",
-      "winCondition": "Cross finish line with trailer attached in under 50 seconds.",
-      "codeHint": "SetTorque(HIGH) for low-gear high-torque pulling.",
-      "codeTelemetry": "high-torque motor control",
-      "props": [],
-      "objectives": [
-        "Complete 2 lap(s)",
-        "Pass all checkpoints",
-        "Stay on the racing line"
-      ],
-      "starOne": "Finish with trailer",
-      "starTwo": "Sub-50s pull",
-      "starThree": "No trailer detach"
-    },
-    "zones": 5,
-    "linkedRaceCourse": "star_station_01",
-    "raceTrackLabel": "Desert Dunes Race",
-    "mkTier": "Easy",
-    "mkDifficulty": 2
-  },
-  "rover_stop_and_go_traffic_drill": {
-    "id": "rover_stop_and_go_traffic_drill",
-    "chassisId": "rover",
-    "cat": "racing",
-    "icon": "🌙",
-    "name": "Moonlight Cavern",
-    "desc": "🌙 Moonlight Cavern — Bioluminescent ore, purple glow, floating spore orbs.",
-    "shortName": "Moonlight Cavern",
-    "tagline": "🌙 Moonlight Cavern — Bioluminescent ore, purple glow, floating spore orbs.",
-    "arenaType": "fairy_glen_01",
-    "color": "#8A2BE2",
-    "obstacles": 12,
-    "totalDist": 37,
-    "estMinutes": 12,
-    "checkpoints": 8,
-    "exclusive": "rover",
-    "rec": [
-      "rover"
-    ],
-    "isChassisMode": true,
-    "modeIndex": 9,
-    "difficulty": "Hard",
-    "modeType": "Mission",
-    "programmingConcepts": [
-      "timing",
-      "optimization"
-    ],
-    "starRequirements": {
-      "one": "Finish the mission",
-      "two": "Beat the time target",
-      "three": "Perfect mastery run"
-    },
-    "rewardBadge": "rover_mode_9",
-    "unlocksNext": "rover_rover_grand_tour",
-    "catalogName": "Moonlight Cavern",
-    "environmentId": "fairy_glen_01",
-    "environmentName": "Moonlight Cavern",
-    "environmentEmoji": "🌙",
-    "physics": "racing_spline",
-    "camera": "race_chase",
-    "genre": "racing",
-    "winCondition": "Complete 2 lap(s) around Moonlight Cavern",
-    "codeHint": "if signal == RED then Brake()",
-    "gameObjectives": [
-      "Complete 2 lap(s)",
-      "Pass all checkpoints",
-      "Finish under 165s"
-    ],
-    "campusMode": {
-      "modeNumber": 9,
-      "name": "Moonlight Cavern",
-      "shortName": "Moonlight Cavern",
-      "section": "racing_circuit",
-      "camera": "race_chase",
-      "trafficViolationsMax": 0,
-      "desc": "Obey 4 traffic lights — stop on red, go on green.",
-      "winCondition": "Pass all 4 signals with zero traffic violations.",
-      "codeHint": "if signal == RED then Brake()",
-      "codeTelemetry": "traffic light optical sensor",
-      "props": [],
-      "objectives": [
-        "Complete 2 lap(s)",
-        "Pass all checkpoints",
-        "Stay on the racing line"
-      ],
-      "starOne": "Pass all signals",
-      "starTwo": "Zero violations",
-      "starThree": "Fastest legal run"
-    },
-    "zones": 5,
-    "linkedRaceCourse": "fairy_glen_01",
-    "raceTrackLabel": "Moonlight Cavern",
-    "mkTier": "Hard",
-    "mkDifficulty": 4
-  },
-  "rover_rover_grand_tour": {
-    "id": "rover_rover_grand_tour",
-    "chassisId": "rover",
-    "cat": "racing",
-    "icon": "✨",
-    "name": "Magick Forest Spirals",
-    "desc": "✨ Magick Forest — Twisted trees, glowing rune sparkles, spiral enchanted path.",
-    "shortName": "Magick Forest Spirals",
-    "tagline": "✨ Magick Forest — Twisted trees, glowing rune sparkles, spiral enchanted path.",
-    "arenaType": "thunder_ridge_01",
-    "color": "#7CFC00",
-    "obstacles": 14,
-    "totalDist": 40,
-    "estMinutes": 15,
-    "checkpoints": 8,
-    "exclusive": "rover",
-    "rec": [
-      "rover"
-    ],
-    "isChassisMode": true,
-    "modeIndex": 10,
     "difficulty": "Expert",
     "modeType": "Mission",
     "programmingConcepts": [
@@ -1160,24 +491,24 @@ export const CHASSIS_GAME_MODE_BY_ID = {
     },
     "rewardBadge": "rover_master",
     "unlocksNext": null,
-    "catalogName": "Magick Forest Spirals",
-    "environmentId": "thunder_ridge_01",
-    "environmentName": "Magick Forest Spirals",
-    "environmentEmoji": "✨",
+    "catalogName": "Neon Nitro Nights",
+    "environmentId": "sunset_cove_01",
+    "environmentName": "Sunny Shores",
+    "environmentEmoji": "🏖️",
     "physics": "racing_spline",
     "camera": "race_chase",
     "genre": "racing",
-    "winCondition": "Complete 2 lap(s) around Magick Forest Spirals",
+    "winCondition": "Complete 2 lap(s) around Sunny Shores",
     "codeHint": "Integrate speed control, obstacle dodging, and cornering logic.",
     "gameObjectives": [
       "Complete 2 lap(s)",
       "Pass all checkpoints",
-      "Finish under 195s"
+      "Finish under 120s"
     ],
     "campusMode": {
-      "modeNumber": 10,
-      "name": "Magick Forest Spirals",
-      "shortName": "Magick Forest Spirals",
+      "modeNumber": 11,
+      "name": "Sunny Shores",
+      "shortName": "Sunny Shores",
       "section": "racing_circuit",
       "camera": "race_chase",
       "laps": 3,
@@ -1197,22 +528,638 @@ export const CHASSIS_GAME_MODE_BY_ID = {
       "starThree": "1st place victory"
     },
     "zones": 3,
-    "linkedRaceCourse": "thunder_ridge_01",
-    "raceTrackLabel": "Magick Forest Spirals",
+    "linkedRaceCourse": "sunset_cove_01",
+    "raceTrackLabel": "Sunny Shores",
+    "mkTier": "Beginner",
+    "mkDifficulty": 1,
+    "studioGradient": "linear-gradient(135deg,#FF8C42,#0f172a)"
+  },
+  "rover_kart_desert_dune_drift": {
+    "id": "rover_kart_desert_dune_drift",
+    "chassisId": "rover",
+    "cat": "racing",
+    "icon": "🚇",
+    "name": "City Circuit",
+    "desc": "🚇 Neon Metro — Rainy tunnels, holographic departure arch, passing trains.",
+    "shortName": "City Circuit",
+    "tagline": "🚇 Neon Metro — Rainy tunnels, holographic departure arch, passing trains.",
+    "arenaType": "neon_metro_01",
+    "color": "#FF00FF",
+    "obstacles": 5,
+    "totalDist": 16,
+    "estMinutes": 5,
+    "checkpoints": 4,
+    "exclusive": "rover",
+    "rec": [
+      "rover"
+    ],
+    "isChassisMode": true,
+    "modeIndex": 2,
+    "difficulty": "Expert",
+    "modeType": "Mission",
+    "programmingConcepts": [
+      "optimization",
+      "sequential blocks"
+    ],
+    "starRequirements": {
+      "one": "Finish the mission",
+      "two": "Beat the time target",
+      "three": "Perfect mastery run"
+    },
+    "rewardBadge": "rover_master",
+    "unlocksNext": null,
+    "catalogName": "Desert Dune Drift",
+    "environmentId": "neon_metro_01",
+    "environmentName": "City Circuit",
+    "environmentEmoji": "🚇",
+    "physics": "racing_spline",
+    "camera": "race_chase",
+    "genre": "racing",
+    "winCondition": "Complete 3 lap(s) around City Circuit",
+    "codeHint": "Integrate speed control, obstacle dodging, and cornering logic.",
+    "gameObjectives": [
+      "Complete 3 lap(s)",
+      "Pass all checkpoints",
+      "Finish under 170s"
+    ],
+    "campusMode": {
+      "modeNumber": 12,
+      "name": "City Circuit",
+      "shortName": "City Circuit",
+      "section": "racing_circuit",
+      "camera": "race_chase",
+      "laps": 3,
+      "aiRivals": 3,
+      "desc": "3-lap championship on the full campus circuit — beat 3 AI Rovers.",
+      "winCondition": "Finish 1st place across 3 laps.",
+      "codeHint": "Integrate speed control, obstacle dodging, and cornering logic.",
+      "codeTelemetry": "full autonomous racing AI",
+      "props": [],
+      "objectives": [
+        "Complete 3 lap(s)",
+        "Pass all checkpoints",
+        "Stay on the racing line"
+      ],
+      "starOne": "Finish the race",
+      "starTwo": "Top 2 finish",
+      "starThree": "1st place victory"
+    },
+    "zones": 3,
+    "linkedRaceCourse": "neon_metro_01",
+    "raceTrackLabel": "City Circuit",
+    "mkTier": "Easy",
+    "mkDifficulty": 2,
+    "studioGradient": "linear-gradient(135deg,#FF00FF,#0f172a)"
+  },
+  "rover_kart_haunted_hollow_gp": {
+    "id": "rover_kart_haunted_hollow_gp",
+    "chassisId": "rover",
+    "cat": "racing",
+    "icon": "🏜️",
+    "name": "Desert Dunes",
+    "desc": "Sandy dunes and canyon narrows — wind pushes your rover sideways.",
+    "shortName": "Desert Dunes",
+    "tagline": "Sandy dunes and canyon narrows — wind pushes your rover sideways.",
+    "arenaType": "dry_dry_desert",
+    "color": "#eab308",
+    "obstacles": 6,
+    "totalDist": 19,
+    "estMinutes": 6,
+    "checkpoints": 5,
+    "exclusive": "rover",
+    "rec": [
+      "rover"
+    ],
+    "isChassisMode": true,
+    "modeIndex": 3,
+    "difficulty": "Expert",
+    "modeType": "Mission",
+    "programmingConcepts": [
+      "optimization",
+      "sequential blocks"
+    ],
+    "starRequirements": {
+      "one": "Finish the mission",
+      "two": "Beat the time target",
+      "three": "Perfect mastery run"
+    },
+    "rewardBadge": "rover_master",
+    "unlocksNext": null,
+    "catalogName": "Haunted Hollow GP",
+    "environmentId": "dry_dry_desert",
+    "environmentName": "Desert Dunes",
+    "environmentEmoji": "🏜️",
+    "physics": "racing_spline",
+    "camera": "race_chase",
+    "genre": "racing",
+    "winCondition": "Complete 2 lap(s) around Desert Dunes",
+    "codeHint": "Integrate speed control, obstacle dodging, and cornering logic.",
+    "gameObjectives": [
+      "Complete 2 lap(s)",
+      "Pass all checkpoints",
+      "Finish under 280s"
+    ],
+    "campusMode": {
+      "modeNumber": 13,
+      "name": "Desert Dunes",
+      "shortName": "Desert Dunes",
+      "section": "racing_circuit",
+      "camera": "race_chase",
+      "laps": 3,
+      "aiRivals": 3,
+      "desc": "3-lap championship on the full campus circuit — beat 3 AI Rovers.",
+      "winCondition": "Finish 1st place across 3 laps.",
+      "codeHint": "Integrate speed control, obstacle dodging, and cornering logic.",
+      "codeTelemetry": "full autonomous racing AI",
+      "props": [],
+      "objectives": [
+        "Complete 2 lap(s)",
+        "Pass all checkpoints",
+        "Stay on the racing line"
+      ],
+      "starOne": "Finish the race",
+      "starTwo": "Top 2 finish",
+      "starThree": "1st place victory"
+    },
+    "zones": 3,
+    "linkedRaceCourse": "dry_dry_desert",
+    "raceTrackLabel": "Desert Dunes",
+    "mkTier": "Medium",
+    "mkDifficulty": 3,
+    "studioGradient": "linear-gradient(135deg,#eab308,#0f172a)"
+  },
+  "rover_kart_coral_circuit": {
+    "id": "rover_kart_coral_circuit",
+    "chassisId": "rover",
+    "cat": "racing",
+    "icon": "🧚",
+    "name": "Forest Trail",
+    "desc": "🧚 Fairy Glen — Giant daisies, toadstool arch, fairy cottage, fireflies. Garden loop.",
+    "shortName": "Forest Trail",
+    "tagline": "🧚 Fairy Glen — Giant daisies, toadstool arch, fairy cottage, fireflies. Garden loop.",
+    "arenaType": "fairy_glen_01",
+    "color": "#7CFC00",
+    "obstacles": 7,
+    "totalDist": 22,
+    "estMinutes": 8,
+    "checkpoints": 6,
+    "exclusive": "rover",
+    "rec": [
+      "rover"
+    ],
+    "isChassisMode": true,
+    "modeIndex": 4,
+    "difficulty": "Expert",
+    "modeType": "Mission",
+    "programmingConcepts": [
+      "optimization",
+      "sequential blocks"
+    ],
+    "starRequirements": {
+      "one": "Finish the mission",
+      "two": "Beat the time target",
+      "three": "Perfect mastery run"
+    },
+    "rewardBadge": "rover_master",
+    "unlocksNext": null,
+    "catalogName": "Coral Circuit",
+    "environmentId": "fairy_glen_01",
+    "environmentName": "Forest Trail",
+    "environmentEmoji": "🧚",
+    "physics": "racing_spline",
+    "camera": "race_chase",
+    "genre": "racing",
+    "winCondition": "Complete 2 lap(s) around Forest Trail",
+    "codeHint": "Integrate speed control, obstacle dodging, and cornering logic.",
+    "gameObjectives": [
+      "Complete 2 lap(s)",
+      "Pass all checkpoints",
+      "Finish under 190s"
+    ],
+    "campusMode": {
+      "modeNumber": 14,
+      "name": "Forest Trail",
+      "shortName": "Forest Trail",
+      "section": "racing_circuit",
+      "camera": "race_chase",
+      "laps": 3,
+      "aiRivals": 3,
+      "desc": "3-lap championship on the full campus circuit — beat 3 AI Rovers.",
+      "winCondition": "Finish 1st place across 3 laps.",
+      "codeHint": "Integrate speed control, obstacle dodging, and cornering logic.",
+      "codeTelemetry": "full autonomous racing AI",
+      "props": [],
+      "objectives": [
+        "Complete 2 lap(s)",
+        "Pass all checkpoints",
+        "Stay on the racing line"
+      ],
+      "starOne": "Finish the race",
+      "starTwo": "Top 2 finish",
+      "starThree": "1st place victory"
+    },
+    "zones": 3,
+    "linkedRaceCourse": "fairy_glen_01",
+    "raceTrackLabel": "Forest Trail",
+    "mkTier": "Hard",
+    "mkDifficulty": 4,
+    "studioGradient": "linear-gradient(135deg,#7CFC00,#0f172a)"
+  },
+  "rover_kart_bamboo_thunder_rally": {
+    "id": "rover_kart_bamboo_thunder_rally",
+    "chassisId": "rover",
+    "cat": "racing",
+    "icon": "🏔️",
+    "name": "Ice Valley",
+    "desc": "❄️ Frost Peak — Alpine descent, ice bridge, ski lift, aurora sky.",
+    "shortName": "Ice Valley",
+    "tagline": "❄️ Frost Peak — Alpine descent, ice bridge, ski lift, aurora sky.",
+    "arenaType": "frost_peak_01",
+    "color": "#5DADE2",
+    "obstacles": 8,
+    "totalDist": 25,
+    "estMinutes": 8,
+    "checkpoints": 7,
+    "exclusive": "rover",
+    "rec": [
+      "rover"
+    ],
+    "isChassisMode": true,
+    "modeIndex": 5,
+    "difficulty": "Expert",
+    "modeType": "Mission",
+    "programmingConcepts": [
+      "optimization",
+      "sequential blocks"
+    ],
+    "starRequirements": {
+      "one": "Finish the mission",
+      "two": "Beat the time target",
+      "three": "Perfect mastery run"
+    },
+    "rewardBadge": "rover_master",
+    "unlocksNext": null,
+    "catalogName": "Bamboo Thunder Rally",
+    "environmentId": "frost_peak_01",
+    "environmentName": "Ice Valley",
+    "environmentEmoji": "🏔️",
+    "physics": "racing_spline",
+    "camera": "race_chase",
+    "genre": "racing",
+    "winCondition": "Complete 2 lap(s) around Ice Valley",
+    "codeHint": "Integrate speed control, obstacle dodging, and cornering logic.",
+    "gameObjectives": [
+      "Complete 2 lap(s)",
+      "Pass all checkpoints",
+      "Finish under 175s"
+    ],
+    "campusMode": {
+      "modeNumber": 15,
+      "name": "Ice Valley",
+      "shortName": "Ice Valley",
+      "section": "racing_circuit",
+      "camera": "race_chase",
+      "laps": 3,
+      "aiRivals": 3,
+      "desc": "3-lap championship on the full campus circuit — beat 3 AI Rovers.",
+      "winCondition": "Finish 1st place across 3 laps.",
+      "codeHint": "Integrate speed control, obstacle dodging, and cornering logic.",
+      "codeTelemetry": "full autonomous racing AI",
+      "props": [],
+      "objectives": [
+        "Complete 2 lap(s)",
+        "Pass all checkpoints",
+        "Stay on the racing line"
+      ],
+      "starOne": "Finish the race",
+      "starTwo": "Top 2 finish",
+      "starThree": "1st place victory"
+    },
+    "zones": 3,
+    "linkedRaceCourse": "frost_peak_01",
+    "raceTrackLabel": "Ice Valley",
+    "mkTier": "Intermediate",
+    "mkDifficulty": 3,
+    "studioGradient": "linear-gradient(135deg,#5DADE2,#0f172a)"
+  },
+  "rover_kart_meteor_mine_madness": {
+    "id": "rover_kart_meteor_mine_madness",
+    "chassisId": "rover",
+    "cat": "racing",
+    "icon": "🛸",
+    "name": "Space Station",
+    "desc": "🛸 Star Station — Habitat domes, glass floor, Earth below, airlock arch. Orbital ring.",
+    "shortName": "Space Station",
+    "tagline": "🛸 Star Station — Habitat domes, glass floor, Earth below, airlock arch. Orbital ring.",
+    "arenaType": "star_station_01",
+    "color": "#AA44FF",
+    "obstacles": 9,
+    "totalDist": 28,
+    "estMinutes": 10,
+    "checkpoints": 8,
+    "exclusive": "rover",
+    "rec": [
+      "rover"
+    ],
+    "isChassisMode": true,
+    "modeIndex": 6,
+    "difficulty": "Expert",
+    "modeType": "Mission",
+    "programmingConcepts": [
+      "optimization",
+      "sequential blocks"
+    ],
+    "starRequirements": {
+      "one": "Finish the mission",
+      "two": "Beat the time target",
+      "three": "Perfect mastery run"
+    },
+    "rewardBadge": "rover_master",
+    "unlocksNext": null,
+    "catalogName": "Meteor Mine Madness",
+    "environmentId": "star_station_01",
+    "environmentName": "Space Station",
+    "environmentEmoji": "🛸",
+    "physics": "racing_spline",
+    "camera": "race_chase",
+    "genre": "racing",
+    "winCondition": "Complete 2 lap(s) around Space Station",
+    "codeHint": "Integrate speed control, obstacle dodging, and cornering logic.",
+    "gameObjectives": [
+      "Complete 2 lap(s)",
+      "Pass all checkpoints",
+      "Finish under 165s"
+    ],
+    "campusMode": {
+      "modeNumber": 16,
+      "name": "Space Station",
+      "shortName": "Space Station",
+      "section": "racing_circuit",
+      "camera": "race_chase",
+      "laps": 3,
+      "aiRivals": 3,
+      "desc": "3-lap championship on the full campus circuit — beat 3 AI Rovers.",
+      "winCondition": "Finish 1st place across 3 laps.",
+      "codeHint": "Integrate speed control, obstacle dodging, and cornering logic.",
+      "codeTelemetry": "full autonomous racing AI",
+      "props": [],
+      "objectives": [
+        "Complete 2 lap(s)",
+        "Pass all checkpoints",
+        "Stay on the racing line"
+      ],
+      "starOne": "Finish the race",
+      "starTwo": "Top 2 finish",
+      "starThree": "1st place victory"
+    },
+    "zones": 3,
+    "linkedRaceCourse": "star_station_01",
+    "raceTrackLabel": "Space Station",
+    "mkTier": "Hard",
+    "mkDifficulty": 4,
+    "studioGradient": "linear-gradient(135deg,#AA44FF,#0f172a)"
+  },
+  "rover_kart_pinwheel_plaza_sprint": {
+    "id": "rover_kart_pinwheel_plaza_sprint",
+    "chassisId": "rover",
+    "cat": "racing",
+    "icon": "🔥",
+    "name": "Volcano Run",
+    "desc": "🔥 Lava Foundry — Molten rivers, gear arch, steam vents, crane hooks.",
+    "shortName": "Volcano Run",
+    "tagline": "🔥 Lava Foundry — Molten rivers, gear arch, steam vents, crane hooks.",
+    "arenaType": "lava_foundry_01",
+    "color": "#FF4500",
+    "obstacles": 10,
+    "totalDist": 31,
+    "estMinutes": 10,
+    "checkpoints": 8,
+    "exclusive": "rover",
+    "rec": [
+      "rover"
+    ],
+    "isChassisMode": true,
+    "modeIndex": 7,
+    "difficulty": "Expert",
+    "modeType": "Mission",
+    "programmingConcepts": [
+      "optimization",
+      "sequential blocks"
+    ],
+    "starRequirements": {
+      "one": "Finish the mission",
+      "two": "Beat the time target",
+      "three": "Perfect mastery run"
+    },
+    "rewardBadge": "rover_master",
+    "unlocksNext": null,
+    "catalogName": "Pinwheel Plaza Sprint",
+    "environmentId": "lava_foundry_01",
+    "environmentName": "Volcano Run",
+    "environmentEmoji": "🔥",
+    "physics": "racing_spline",
+    "camera": "race_chase",
+    "genre": "racing",
+    "winCondition": "Complete 2 lap(s) around Volcano Run",
+    "codeHint": "Integrate speed control, obstacle dodging, and cornering logic.",
+    "gameObjectives": [
+      "Complete 2 lap(s)",
+      "Pass all checkpoints",
+      "Finish under 160s"
+    ],
+    "campusMode": {
+      "modeNumber": 17,
+      "name": "Volcano Run",
+      "shortName": "Volcano Run",
+      "section": "racing_circuit",
+      "camera": "race_chase",
+      "laps": 3,
+      "aiRivals": 3,
+      "desc": "3-lap championship on the full campus circuit — beat 3 AI Rovers.",
+      "winCondition": "Finish 1st place across 3 laps.",
+      "codeHint": "Integrate speed control, obstacle dodging, and cornering logic.",
+      "codeTelemetry": "full autonomous racing AI",
+      "props": [],
+      "objectives": [
+        "Complete 2 lap(s)",
+        "Pass all checkpoints",
+        "Stay on the racing line"
+      ],
+      "starOne": "Finish the race",
+      "starTwo": "Top 2 finish",
+      "starThree": "1st place victory"
+    },
+    "zones": 3,
+    "linkedRaceCourse": "lava_foundry_01",
+    "raceTrackLabel": "Volcano Run",
+    "mkTier": "Intermediate",
+    "mkDifficulty": 3,
+    "studioGradient": "linear-gradient(135deg,#FF4500,#0f172a)"
+  },
+  "rover_kart_glacial_gorge_gp": {
+    "id": "rover_kart_glacial_gorge_gp",
+    "chassisId": "rover",
+    "cat": "racing",
+    "icon": "🗿",
+    "name": "Jungle Ruins",
+    "desc": "🗿 Jungle Ruins — Temple pyramid, stone jaguar, glowing rune arch.",
+    "shortName": "Jungle Ruins",
+    "tagline": "🗿 Jungle Ruins — Temple pyramid, stone jaguar, glowing rune arch.",
+    "arenaType": "jungle_ruins_01",
+    "color": "#228B22",
+    "obstacles": 11,
+    "totalDist": 34,
+    "estMinutes": 12,
+    "checkpoints": 8,
+    "exclusive": "rover",
+    "rec": [
+      "rover"
+    ],
+    "isChassisMode": true,
+    "modeIndex": 8,
+    "difficulty": "Expert",
+    "modeType": "Mission",
+    "programmingConcepts": [
+      "optimization",
+      "sequential blocks"
+    ],
+    "starRequirements": {
+      "one": "Finish the mission",
+      "two": "Beat the time target",
+      "three": "Perfect mastery run"
+    },
+    "rewardBadge": "rover_master",
+    "unlocksNext": null,
+    "catalogName": "Glacial Gorge GP",
+    "environmentId": "jungle_ruins_01",
+    "environmentName": "Jungle Ruins",
+    "environmentEmoji": "🗿",
+    "physics": "racing_spline",
+    "camera": "race_chase",
+    "genre": "racing",
+    "winCondition": "Complete 2 lap(s) around Jungle Ruins",
+    "codeHint": "Integrate speed control, obstacle dodging, and cornering logic.",
+    "gameObjectives": [
+      "Complete 2 lap(s)",
+      "Pass all checkpoints",
+      "Finish under 150s"
+    ],
+    "campusMode": {
+      "modeNumber": 18,
+      "name": "Jungle Ruins",
+      "shortName": "Jungle Ruins",
+      "section": "racing_circuit",
+      "camera": "race_chase",
+      "laps": 3,
+      "aiRivals": 3,
+      "desc": "3-lap championship on the full campus circuit — beat 3 AI Rovers.",
+      "winCondition": "Finish 1st place across 3 laps.",
+      "codeHint": "Integrate speed control, obstacle dodging, and cornering logic.",
+      "codeTelemetry": "full autonomous racing AI",
+      "props": [],
+      "objectives": [
+        "Complete 2 lap(s)",
+        "Pass all checkpoints",
+        "Stay on the racing line"
+      ],
+      "starOne": "Finish the race",
+      "starTwo": "Top 2 finish",
+      "starThree": "1st place victory"
+    },
+    "zones": 3,
+    "linkedRaceCourse": "jungle_ruins_01",
+    "raceTrackLabel": "Jungle Ruins",
+    "mkTier": "Intermediate",
+    "mkDifficulty": 3,
+    "studioGradient": "linear-gradient(135deg,#228B22,#0f172a)"
+  },
+  "rover_kart_safari_stampede_cup": {
+    "id": "rover_kart_safari_stampede_cup",
+    "chassisId": "rover",
+    "cat": "racing",
+    "icon": "🌈",
+    "name": "Rainbow Road",
+    "desc": "Classic cosmic glass ribbon — Neon Rainbow Road floating through outer space.",
+    "shortName": "Rainbow Road",
+    "tagline": "Rainbow Road — cosmic neon highway through space.",
+    "arenaType": "rainbow_road",
+    "color": "#cc44ff",
+    "obstacles": 12,
+    "totalDist": 37,
+    "estMinutes": 12,
+    "checkpoints": 8,
+    "exclusive": "rover",
+    "rec": [
+      "rover"
+    ],
+    "isChassisMode": true,
+    "modeIndex": 9,
+    "difficulty": "Expert",
+    "modeType": "Mission",
+    "programmingConcepts": [
+      "optimization",
+      "sequential blocks"
+    ],
+    "starRequirements": {
+      "one": "Finish the mission",
+      "two": "Beat the time target",
+      "three": "Perfect mastery run"
+    },
+    "rewardBadge": "rover_master",
+    "unlocksNext": null,
+    "catalogName": "Safari Stampede Cup",
+    "environmentId": "rainbow_road",
+    "environmentName": "Rainbow Road",
+    "environmentEmoji": "🌈",
+    "physics": "racing_spline",
+    "camera": "race_chase",
+    "genre": "racing",
+    "winCondition": "Complete 2 lap(s) around Magick Forest Spirals",
+    "codeHint": "Integrate speed control, obstacle dodging, and cornering logic.",
+    "gameObjectives": [
+      "Complete 2 lap(s)",
+      "Pass all checkpoints",
+      "Finish under 195s"
+    ],
+    "campusMode": {
+      "modeNumber": 19,
+      "name": "Safari Stampede Cup",
+      "shortName": "Safari Stampede Cup",
+      "section": "rainbow_road",
+      "camera": "race_chase",
+      "laps": 3,
+      "aiRivals": 3,
+      "desc": "3-lap championship on the full campus circuit — beat 3 AI Rovers.",
+      "winCondition": "Finish 1st place across 3 laps.",
+      "codeHint": "Integrate speed control, obstacle dodging, and cornering logic.",
+      "codeTelemetry": "full autonomous racing AI",
+      "props": [],
+      "objectives": [
+        "Complete 3 laps",
+        "Pass all checkpoint gates",
+        "Stay on the rainbow ribbon"
+      ],
+      "starOne": "Finish the race",
+      "starTwo": "Top 2 finish",
+      "starThree": "1st place victory"
+    },
+    "zones": 3,
+    "linkedRaceCourse": "street_grand_prix",
+    "raceTrackLabel": "Rainbow Road",
     "mkTier": "Hard",
     "mkDifficulty": 4
   },
-  "scout_high_speed_recon_sprint": {
-    "id": "scout_high_speed_recon_sprint",
+  "scout_kart_neon_nitro_nights": {
+    "id": "scout_kart_neon_nitro_nights",
     "chassisId": "scout",
     "cat": "racing",
-    "icon": "💎",
-    "name": "Crystal Palace Circuit",
-    "desc": "💎 Crystal Palace — Lime glass track, faceted crystals, crystal arch landmark, sparkle particles.",
-    "shortName": "Crystal Palace Circuit",
-    "tagline": "💎 Crystal Palace — Lime glass track, faceted crystals, crystal arch landmark, sparkle particles.",
+    "icon": "🏖️",
+    "name": "Sunny Shores",
+    "desc": "🏖️ Sunset Cove — breezy coastal loop along the pier and palm-lined bay.",
+    "shortName": "Sunny Shores",
+    "tagline": "🏖️ Sunset Cove — breezy coastal loop along the pier and palm-lined bay.",
     "arenaType": "sunset_cove_01",
-    "color": "#7CFC00",
+    "color": "#FF8C42",
     "obstacles": 4,
     "totalDist": 13,
     "estMinutes": 3,
@@ -1223,582 +1170,6 @@ export const CHASSIS_GAME_MODE_BY_ID = {
     ],
     "isChassisMode": true,
     "modeIndex": 1,
-    "difficulty": "Tutorial",
-    "modeType": "Training",
-    "programmingConcepts": [
-      "sequential blocks",
-      "variables"
-    ],
-    "starRequirements": {
-      "one": "Complete the objective",
-      "two": "Hit all checkpoints",
-      "three": "Clean run — no penalties"
-    },
-    "rewardBadge": "scout_mode_1",
-    "unlocksNext": "scout_speed_trap_blitz",
-    "catalogName": "Crystal Palace Circuit",
-    "environmentId": "sunset_cove_01",
-    "environmentName": "Crystal Palace Circuit",
-    "environmentEmoji": "💎",
-    "physics": "racing_spline",
-    "camera": "race_chase",
-    "genre": "racing",
-    "linkedRaceCourse": "sunset_cove_01",
-    "raceTrackLabel": "Crystal Palace Circuit",
-    "mkTier": "Beginner",
-    "mkDifficulty": 1,
-    "gameObjectives": [
-      "Complete 2 lap(s)",
-      "Pass all checkpoints",
-      "Finish under 130s"
-    ],
-    "winCondition": "Complete 2 lap(s) around Crystal Palace Circuit",
-    "campusMode": {
-      "camera": "race_chase",
-      "section": "racing_circuit",
-      "props": [],
-      "name": "Crystal Palace Circuit",
-      "shortName": "Crystal Palace Circuit",
-      "objectives": [
-        "Complete 2 lap(s)",
-        "Pass all checkpoints",
-        "Stay on the racing line"
-      ]
-    }
-  },
-  "scout_speed_trap_blitz": {
-    "id": "scout_speed_trap_blitz",
-    "chassisId": "scout",
-    "cat": "racing",
-    "icon": "🌃",
-    "name": "Neon City Descent",
-    "desc": "🌃 Neon City Descent — Futuristic skyline, holographic billboards, rain, wet asphalt reflections.",
-    "shortName": "Neon City Descent",
-    "tagline": "🌃 Neon City Descent — Futuristic skyline, holographic billboards, rain, wet asphalt reflections.",
-    "arenaType": "candy_carnival_01",
-    "color": "#FF00FF",
-    "obstacles": 5,
-    "totalDist": 16,
-    "estMinutes": 5,
-    "checkpoints": 4,
-    "exclusive": "scout",
-    "rec": [
-      "scout"
-    ],
-    "isChassisMode": true,
-    "modeIndex": 2,
-    "difficulty": "Easy",
-    "modeType": "Training",
-    "programmingConcepts": [
-      "variables",
-      "loops"
-    ],
-    "starRequirements": {
-      "one": "Complete the objective",
-      "two": "Hit all checkpoints",
-      "three": "Clean run — no penalties"
-    },
-    "rewardBadge": "scout_mode_2",
-    "unlocksNext": "scout_rapid_target_spotting",
-    "catalogName": "Neon Cyberpunk Boulevard",
-    "environmentId": "candy_carnival_01",
-    "environmentName": "Neon City Descent",
-    "environmentEmoji": "🌃",
-    "physics": "racing_spline",
-    "camera": "race_chase",
-    "genre": "racing",
-    "linkedRaceCourse": "candy_carnival_01",
-    "raceTrackLabel": "Neon City Descent",
-    "mkTier": "Easy",
-    "mkDifficulty": 2,
-    "gameObjectives": [
-      "Complete 3 lap(s)",
-      "Pass all checkpoints",
-      "Finish under 175s"
-    ],
-    "winCondition": "Complete 3 lap(s) around Neon City Descent",
-    "campusMode": {
-      "camera": "race_chase",
-      "section": "racing_circuit",
-      "props": [],
-      "name": "Neon City Descent",
-      "shortName": "Neon City Descent",
-      "objectives": [
-        "Complete 3 lap(s)",
-        "Pass all checkpoints",
-        "Stay on the racing line"
-      ]
-    }
-  },
-  "scout_rapid_target_spotting": {
-    "id": "scout_rapid_target_spotting",
-    "chassisId": "scout",
-    "cat": "racing",
-    "icon": "🌲",
-    "name": "Enchanted Forest Labyrinth",
-    "desc": "🌲 Forest Maze — Giant sculpted trees, leaf particles, temple maze walls, winding labyrinth.",
-    "shortName": "Enchanted Forest Labyrinth",
-    "tagline": "🌲 Forest Maze — Giant sculpted trees, leaf particles, temple maze walls, winding labyrinth.",
-    "arenaType": "neon_metro_01",
-    "color": "#228B22",
-    "obstacles": 6,
-    "totalDist": 19,
-    "estMinutes": 6,
-    "checkpoints": 5,
-    "exclusive": "scout",
-    "rec": [
-      "scout"
-    ],
-    "isChassisMode": true,
-    "modeIndex": 3,
-    "difficulty": "Easy",
-    "modeType": "Training",
-    "programmingConcepts": [
-      "loops",
-      "if/else"
-    ],
-    "starRequirements": {
-      "one": "Finish the mission",
-      "two": "Hit all checkpoints",
-      "three": "Clean run — no penalties"
-    },
-    "rewardBadge": "scout_mode_3",
-    "unlocksNext": "scout_shortcut_navigator",
-    "catalogName": "Enchanted Forest Labyrinth",
-    "environmentId": "neon_metro_01",
-    "environmentName": "Enchanted Forest Labyrinth",
-    "environmentEmoji": "🌲",
-    "physics": "racing_spline",
-    "camera": "race_chase",
-    "genre": "racing",
-    "linkedRaceCourse": "neon_metro_01",
-    "raceTrackLabel": "Enchanted Forest Labyrinth",
-    "mkTier": "Easy",
-    "mkDifficulty": 2,
-    "gameObjectives": [
-      "Complete 2 lap(s)",
-      "Pass all checkpoints",
-      "Finish under 145s"
-    ],
-    "winCondition": "Complete 2 lap(s) around Enchanted Forest Labyrinth",
-    "campusMode": {
-      "camera": "race_chase",
-      "section": "racing_circuit",
-      "props": [],
-      "name": "Enchanted Forest Labyrinth",
-      "shortName": "Enchanted Forest Labyrinth",
-      "objectives": [
-        "Complete 2 lap(s)",
-        "Pass all checkpoints",
-        "Stay on the racing line"
-      ]
-    }
-  },
-  "scout_shortcut_navigator": {
-    "id": "scout_shortcut_navigator",
-    "chassisId": "scout",
-    "cat": "racing",
-    "icon": "🌋",
-    "name": "Volcanic Inferno Pass",
-    "desc": "🌋 Volcanic Inferno Pass — Lava river glow, basalt columns, ash clouds, heat shimmer.",
-    "shortName": "Volcanic Inferno Pass",
-    "tagline": "🌋 Volcanic Inferno Pass — Lava river glow, basalt columns, ash clouds, heat shimmer.",
-    "arenaType": "cloud_citadel_01",
-    "color": "#FF4500",
-    "obstacles": 7,
-    "totalDist": 22,
-    "estMinutes": 8,
-    "checkpoints": 6,
-    "exclusive": "scout",
-    "rec": [
-      "scout"
-    ],
-    "isChassisMode": true,
-    "modeIndex": 4,
-    "difficulty": "Medium",
-    "modeType": "Mission",
-    "programmingConcepts": [
-      "if/else",
-      "sensors"
-    ],
-    "starRequirements": {
-      "one": "Finish the mission",
-      "two": "Hit all checkpoints",
-      "three": "Clean run — no penalties"
-    },
-    "rewardBadge": "scout_mode_4",
-    "unlocksNext": "scout_radar_beacon_chase",
-    "catalogName": "Volcanic Magma Canyon",
-    "environmentId": "cloud_citadel_01",
-    "environmentName": "Volcanic Inferno Pass",
-    "environmentEmoji": "🌋",
-    "physics": "racing_spline",
-    "camera": "race_chase",
-    "genre": "racing",
-    "linkedRaceCourse": "cloud_citadel_01",
-    "raceTrackLabel": "Volcanic Inferno Pass",
-    "mkTier": "Intermediate",
-    "mkDifficulty": 3,
-    "gameObjectives": [
-      "Complete 2 lap(s)",
-      "Pass all checkpoints",
-      "Finish under 160s"
-    ],
-    "winCondition": "Complete 2 lap(s) around Volcanic Inferno Pass",
-    "campusMode": {
-      "camera": "race_chase",
-      "section": "racing_circuit",
-      "props": [],
-      "name": "Volcanic Inferno Pass",
-      "shortName": "Volcanic Inferno Pass",
-      "objectives": [
-        "Complete 2 lap(s)",
-        "Pass all checkpoints",
-        "Stay on the racing line"
-      ]
-    }
-  },
-  "scout_radar_beacon_chase": {
-    "id": "scout_radar_beacon_chase",
-    "chassisId": "scout",
-    "cat": "racing",
-    "icon": "❄️",
-    "name": "Ice Cavern Descent",
-    "desc": "❄️ Ice Cavern — Translucent ice crystals, frost sparkles, slippery descent.",
-    "shortName": "Ice Cavern Descent",
-    "tagline": "❄️ Ice Cavern — Translucent ice crystals, frost sparkles, slippery descent.",
-    "arenaType": "jungle_ruins_01",
-    "color": "#5DADE2",
-    "obstacles": 8,
-    "totalDist": 25,
-    "estMinutes": 8,
-    "checkpoints": 7,
-    "exclusive": "scout",
-    "rec": [
-      "scout"
-    ],
-    "isChassisMode": true,
-    "modeIndex": 5,
-    "difficulty": "Medium",
-    "modeType": "Mission",
-    "programmingConcepts": [
-      "sensors",
-      "events"
-    ],
-    "starRequirements": {
-      "one": "Finish the mission",
-      "two": "Hit all checkpoints",
-      "three": "Clean run — no penalties"
-    },
-    "rewardBadge": "scout_mode_5",
-    "unlocksNext": "scout_fast_turn_drift",
-    "catalogName": "Ice Cavern Descent",
-    "environmentId": "jungle_ruins_01",
-    "environmentName": "Ice Cavern Descent",
-    "environmentEmoji": "❄️",
-    "physics": "racing_spline",
-    "camera": "race_chase",
-    "genre": "racing",
-    "linkedRaceCourse": "jungle_ruins_01",
-    "raceTrackLabel": "Ice Cavern Descent",
-    "mkTier": "Intermediate",
-    "mkDifficulty": 3,
-    "gameObjectives": [
-      "Complete 2 lap(s)",
-      "Pass all checkpoints",
-      "Finish under 185s"
-    ],
-    "winCondition": "Complete 2 lap(s) around Ice Cavern Descent",
-    "campusMode": {
-      "camera": "race_chase",
-      "section": "racing_circuit",
-      "props": [],
-      "name": "Ice Cavern Descent",
-      "shortName": "Ice Cavern Descent",
-      "objectives": [
-        "Complete 2 lap(s)",
-        "Pass all checkpoints",
-        "Stay on the racing line"
-      ]
-    }
-  },
-  "scout_fast_turn_drift": {
-    "id": "scout_fast_turn_drift",
-    "chassisId": "scout",
-    "cat": "racing",
-    "icon": "🐚",
-    "name": "Underwater Temple Ruins",
-    "desc": "🐚 Underwater Temple Ruins — Sunken columns, coral growth, god-rays, caustic light.",
-    "shortName": "Underwater Temple Ruins",
-    "tagline": "🐚 Underwater Temple Ruins — Sunken columns, coral growth, god-rays, caustic light.",
-    "arenaType": "frost_peak_01",
-    "color": "#40E0D0",
-    "obstacles": 9,
-    "totalDist": 28,
-    "estMinutes": 10,
-    "checkpoints": 8,
-    "exclusive": "scout",
-    "rec": [
-      "scout"
-    ],
-    "isChassisMode": true,
-    "modeIndex": 6,
-    "difficulty": "Medium",
-    "modeType": "Mission",
-    "programmingConcepts": [
-      "events",
-      "functions"
-    ],
-    "starRequirements": {
-      "one": "Finish the mission",
-      "two": "Beat the time target",
-      "three": "Clean run — no penalties"
-    },
-    "rewardBadge": "scout_mode_6",
-    "unlocksNext": "scout_outrun_the_timer",
-    "catalogName": "Underwater Temple",
-    "environmentId": "frost_peak_01",
-    "environmentName": "Underwater Temple Ruins",
-    "environmentEmoji": "🐚",
-    "physics": "racing_spline",
-    "camera": "race_chase",
-    "genre": "racing",
-    "linkedRaceCourse": "frost_peak_01",
-    "raceTrackLabel": "Underwater Temple Ruins",
-    "mkTier": "Intermediate",
-    "mkDifficulty": 3,
-    "gameObjectives": [
-      "Complete 2 lap(s)",
-      "Pass all checkpoints",
-      "Finish under 150s"
-    ],
-    "winCondition": "Complete 2 lap(s) around Underwater Temple Ruins",
-    "campusMode": {
-      "camera": "race_chase",
-      "section": "racing_circuit",
-      "props": [],
-      "name": "Underwater Temple Ruins",
-      "shortName": "Underwater Temple Ruins",
-      "objectives": [
-        "Complete 2 lap(s)",
-        "Pass all checkpoints",
-        "Stay on the racing line"
-      ]
-    }
-  },
-  "scout_outrun_the_timer": {
-    "id": "scout_outrun_the_timer",
-    "chassisId": "scout",
-    "cat": "racing",
-    "icon": "☁️",
-    "name": "Sky Island Circuit",
-    "desc": "☁️ Sky Island — Floating platforms, rope bridges, cloud wisps, golden sparkles.",
-    "shortName": "Sky Island Circuit",
-    "tagline": "☁️ Sky Island — Floating platforms, rope bridges, cloud wisps, golden sparkles.",
-    "arenaType": "lava_foundry_01",
-    "color": "#87CEEB",
-    "obstacles": 10,
-    "totalDist": 31,
-    "estMinutes": 10,
-    "checkpoints": 8,
-    "exclusive": "scout",
-    "rec": [
-      "scout"
-    ],
-    "isChassisMode": true,
-    "modeIndex": 7,
-    "difficulty": "Hard",
-    "modeType": "Mission",
-    "programmingConcepts": [
-      "functions",
-      "state machines"
-    ],
-    "starRequirements": {
-      "one": "Finish the mission",
-      "two": "Beat the time target",
-      "three": "Clean run — no penalties"
-    },
-    "rewardBadge": "scout_mode_7",
-    "unlocksNext": "scout_scout_patrol_relay",
-    "catalogName": "Sky Island Circuit",
-    "environmentId": "lava_foundry_01",
-    "environmentName": "Sky Island Circuit",
-    "environmentEmoji": "☁️",
-    "physics": "racing_spline",
-    "camera": "race_chase",
-    "genre": "racing",
-    "linkedRaceCourse": "lava_foundry_01",
-    "raceTrackLabel": "Sky Island Circuit",
-    "mkTier": "Beginner",
-    "mkDifficulty": 1,
-    "gameObjectives": [
-      "Complete 2 lap(s)",
-      "Pass all checkpoints",
-      "Finish under 125s"
-    ],
-    "winCondition": "Complete 2 lap(s) around Sky Island Circuit",
-    "campusMode": {
-      "camera": "race_chase",
-      "section": "racing_circuit",
-      "props": [],
-      "name": "Sky Island Circuit",
-      "shortName": "Sky Island Circuit",
-      "objectives": [
-        "Complete 2 lap(s)",
-        "Pass all checkpoints",
-        "Stay on the racing line"
-      ]
-    }
-  },
-  "scout_scout_patrol_relay": {
-    "id": "scout_scout_patrol_relay",
-    "chassisId": "scout",
-    "cat": "racing",
-    "icon": "🏜️",
-    "name": "Desert Dunes Race",
-    "desc": "🏜️ Desert Dunes — Sand displacement hills, sandstone pillars, dust sparkles.",
-    "shortName": "Desert Dunes Race",
-    "tagline": "🏜️ Desert Dunes — Sand displacement hills, sandstone pillars, dust sparkles.",
-    "arenaType": "star_station_01",
-    "color": "#FFD700",
-    "obstacles": 11,
-    "totalDist": 34,
-    "estMinutes": 12,
-    "checkpoints": 8,
-    "exclusive": "scout",
-    "rec": [
-      "scout"
-    ],
-    "isChassisMode": true,
-    "modeIndex": 8,
-    "difficulty": "Hard",
-    "modeType": "Mission",
-    "programmingConcepts": [
-      "state machines",
-      "timing"
-    ],
-    "starRequirements": {
-      "one": "Finish the mission",
-      "two": "Beat the time target",
-      "three": "Clean run — no penalties"
-    },
-    "rewardBadge": "scout_mode_8",
-    "unlocksNext": "scout_dynamic_obstacle_dodge",
-    "catalogName": "Desert Dunes Race",
-    "environmentId": "star_station_01",
-    "environmentName": "Desert Dunes Race",
-    "environmentEmoji": "🏜️",
-    "physics": "racing_spline",
-    "camera": "race_chase",
-    "genre": "racing",
-    "linkedRaceCourse": "star_station_01",
-    "raceTrackLabel": "Desert Dunes Race",
-    "mkTier": "Easy",
-    "mkDifficulty": 2,
-    "gameObjectives": [
-      "Complete 2 lap(s)",
-      "Pass all checkpoints",
-      "Finish under 135s"
-    ],
-    "winCondition": "Complete 2 lap(s) around Desert Dunes Race",
-    "campusMode": {
-      "camera": "race_chase",
-      "section": "racing_circuit",
-      "props": [],
-      "name": "Desert Dunes Race",
-      "shortName": "Desert Dunes Race",
-      "objectives": [
-        "Complete 2 lap(s)",
-        "Pass all checkpoints",
-        "Stay on the racing line"
-      ]
-    }
-  },
-  "scout_dynamic_obstacle_dodge": {
-    "id": "scout_dynamic_obstacle_dodge",
-    "chassisId": "scout",
-    "cat": "racing",
-    "icon": "🌙",
-    "name": "Moonlight Cavern",
-    "desc": "🌙 Moonlight Cavern — Bioluminescent ore, purple glow, floating spore orbs.",
-    "shortName": "Moonlight Cavern",
-    "tagline": "🌙 Moonlight Cavern — Bioluminescent ore, purple glow, floating spore orbs.",
-    "arenaType": "fairy_glen_01",
-    "color": "#8A2BE2",
-    "obstacles": 12,
-    "totalDist": 37,
-    "estMinutes": 12,
-    "checkpoints": 8,
-    "exclusive": "scout",
-    "rec": [
-      "scout"
-    ],
-    "isChassisMode": true,
-    "modeIndex": 9,
-    "difficulty": "Hard",
-    "modeType": "Mission",
-    "programmingConcepts": [
-      "timing",
-      "optimization"
-    ],
-    "starRequirements": {
-      "one": "Finish the mission",
-      "two": "Beat the time target",
-      "three": "Perfect mastery run"
-    },
-    "rewardBadge": "scout_mode_9",
-    "unlocksNext": "scout_apex_speed_champion",
-    "catalogName": "Moonlight Cavern",
-    "environmentId": "fairy_glen_01",
-    "environmentName": "Moonlight Cavern",
-    "environmentEmoji": "🌙",
-    "physics": "racing_spline",
-    "camera": "race_chase",
-    "genre": "racing",
-    "linkedRaceCourse": "fairy_glen_01",
-    "raceTrackLabel": "Moonlight Cavern",
-    "mkTier": "Hard",
-    "mkDifficulty": 4,
-    "gameObjectives": [
-      "Complete 2 lap(s)",
-      "Pass all checkpoints",
-      "Finish under 165s"
-    ],
-    "winCondition": "Complete 2 lap(s) around Moonlight Cavern",
-    "campusMode": {
-      "camera": "race_chase",
-      "section": "racing_circuit",
-      "props": [],
-      "name": "Moonlight Cavern",
-      "shortName": "Moonlight Cavern",
-      "objectives": [
-        "Complete 2 lap(s)",
-        "Pass all checkpoints",
-        "Stay on the racing line"
-      ]
-    }
-  },
-  "scout_apex_speed_champion": {
-    "id": "scout_apex_speed_champion",
-    "chassisId": "scout",
-    "cat": "racing",
-    "icon": "✨",
-    "name": "Magick Forest Spirals",
-    "desc": "✨ Magick Forest — Twisted trees, glowing rune sparkles, spiral enchanted path.",
-    "shortName": "Magick Forest Spirals",
-    "tagline": "✨ Magick Forest — Twisted trees, glowing rune sparkles, spiral enchanted path.",
-    "arenaType": "thunder_ridge_01",
-    "color": "#7CFC00",
-    "obstacles": 14,
-    "totalDist": 40,
-    "estMinutes": 15,
-    "checkpoints": 8,
-    "exclusive": "scout",
-    "rec": [
-      "scout"
-    ],
-    "isChassisMode": true,
-    "modeIndex": 10,
     "difficulty": "Expert",
     "modeType": "Mastery",
     "programmingConcepts": [
@@ -1812,15 +1183,543 @@ export const CHASSIS_GAME_MODE_BY_ID = {
     },
     "rewardBadge": "scout_master",
     "unlocksNext": null,
-    "catalogName": "Magick Forest Spirals",
-    "environmentId": "thunder_ridge_01",
-    "environmentName": "Magick Forest Spirals",
-    "environmentEmoji": "✨",
+    "catalogName": "Neon Nitro Nights",
+    "environmentId": "sunset_cove_01",
+    "environmentName": "Sunny Shores",
+    "environmentEmoji": "🏖️",
     "physics": "racing_spline",
     "camera": "race_chase",
     "genre": "racing",
-    "linkedRaceCourse": "thunder_ridge_01",
-    "raceTrackLabel": "Magick Forest Spirals",
+    "linkedRaceCourse": "sunset_cove_01",
+    "raceTrackLabel": "Sunny Shores",
+    "mkTier": "Beginner",
+    "mkDifficulty": 1,
+    "gameObjectives": [
+      "Complete 2 lap(s)",
+      "Pass all checkpoints",
+      "Finish under 120s"
+    ],
+    "winCondition": "Complete 2 lap(s) around Sunny Shores",
+    "campusMode": {
+      "camera": "race_chase",
+      "section": "racing_circuit",
+      "props": [],
+      "name": "Sunny Shores",
+      "shortName": "Sunny Shores",
+      "objectives": [
+        "Complete 2 lap(s)",
+        "Pass all checkpoints",
+        "Stay on the racing line"
+      ],
+      "modeNumber": 11
+    },
+    "studioGradient": "linear-gradient(135deg,#FF8C42,#0f172a)"
+  },
+  "scout_kart_desert_dune_drift": {
+    "id": "scout_kart_desert_dune_drift",
+    "chassisId": "scout",
+    "cat": "racing",
+    "icon": "🚇",
+    "name": "City Circuit",
+    "desc": "🚇 Neon Metro — Rainy tunnels, holographic departure arch, passing trains.",
+    "shortName": "City Circuit",
+    "tagline": "🚇 Neon Metro — Rainy tunnels, holographic departure arch, passing trains.",
+    "arenaType": "neon_metro_01",
+    "color": "#FF00FF",
+    "obstacles": 5,
+    "totalDist": 16,
+    "estMinutes": 5,
+    "checkpoints": 4,
+    "exclusive": "scout",
+    "rec": [
+      "scout"
+    ],
+    "isChassisMode": true,
+    "modeIndex": 2,
+    "difficulty": "Expert",
+    "modeType": "Mastery",
+    "programmingConcepts": [
+      "optimization",
+      "sequential blocks"
+    ],
+    "starRequirements": {
+      "one": "Finish the mission",
+      "two": "Beat the time target",
+      "three": "Perfect mastery run"
+    },
+    "rewardBadge": "scout_master",
+    "unlocksNext": null,
+    "catalogName": "Desert Dune Drift",
+    "environmentId": "neon_metro_01",
+    "environmentName": "City Circuit",
+    "environmentEmoji": "🚇",
+    "physics": "racing_spline",
+    "camera": "race_chase",
+    "genre": "racing",
+    "linkedRaceCourse": "neon_metro_01",
+    "raceTrackLabel": "City Circuit",
+    "mkTier": "Easy",
+    "mkDifficulty": 2,
+    "gameObjectives": [
+      "Complete 3 lap(s)",
+      "Pass all checkpoints",
+      "Finish under 170s"
+    ],
+    "winCondition": "Complete 3 lap(s) around City Circuit",
+    "campusMode": {
+      "camera": "race_chase",
+      "section": "racing_circuit",
+      "props": [],
+      "name": "City Circuit",
+      "shortName": "City Circuit",
+      "objectives": [
+        "Complete 3 lap(s)",
+        "Pass all checkpoints",
+        "Stay on the racing line"
+      ],
+      "modeNumber": 12
+    },
+    "studioGradient": "linear-gradient(135deg,#FF00FF,#0f172a)"
+  },
+  "scout_kart_haunted_hollow_gp": {
+    "id": "scout_kart_haunted_hollow_gp",
+    "chassisId": "scout",
+    "cat": "racing",
+    "icon": "🏜️",
+    "name": "Desert Dunes",
+    "desc": "Sandy dunes and canyon narrows — wind pushes your rover sideways.",
+    "shortName": "Desert Dunes",
+    "tagline": "Sandy dunes and canyon narrows — wind pushes your rover sideways.",
+    "arenaType": "dry_dry_desert",
+    "color": "#eab308",
+    "obstacles": 6,
+    "totalDist": 19,
+    "estMinutes": 6,
+    "checkpoints": 5,
+    "exclusive": "scout",
+    "rec": [
+      "scout"
+    ],
+    "isChassisMode": true,
+    "modeIndex": 3,
+    "difficulty": "Expert",
+    "modeType": "Mastery",
+    "programmingConcepts": [
+      "optimization",
+      "sequential blocks"
+    ],
+    "starRequirements": {
+      "one": "Finish the mission",
+      "two": "Beat the time target",
+      "three": "Perfect mastery run"
+    },
+    "rewardBadge": "scout_master",
+    "unlocksNext": null,
+    "catalogName": "Haunted Hollow GP",
+    "environmentId": "dry_dry_desert",
+    "environmentName": "Desert Dunes",
+    "environmentEmoji": "🏜️",
+    "physics": "racing_spline",
+    "camera": "race_chase",
+    "genre": "racing",
+    "linkedRaceCourse": "dry_dry_desert",
+    "raceTrackLabel": "Desert Dunes",
+    "mkTier": "Medium",
+    "mkDifficulty": 3,
+    "gameObjectives": [
+      "Complete 2 lap(s)",
+      "Pass all checkpoints",
+      "Finish under 280s"
+    ],
+    "winCondition": "Complete 2 lap(s) around Desert Dunes",
+    "campusMode": {
+      "camera": "race_chase",
+      "section": "racing_circuit",
+      "props": [],
+      "name": "Desert Dunes",
+      "shortName": "Desert Dunes",
+      "objectives": [
+        "Complete 2 lap(s)",
+        "Pass all checkpoints",
+        "Stay on the racing line"
+      ],
+      "modeNumber": 13
+    },
+    "studioGradient": "linear-gradient(135deg,#eab308,#0f172a)"
+  },
+  "scout_kart_coral_circuit": {
+    "id": "scout_kart_coral_circuit",
+    "chassisId": "scout",
+    "cat": "racing",
+    "icon": "🧚",
+    "name": "Forest Trail",
+    "desc": "🧚 Fairy Glen — Giant daisies, toadstool arch, fairy cottage, fireflies. Garden loop.",
+    "shortName": "Forest Trail",
+    "tagline": "🧚 Fairy Glen — Giant daisies, toadstool arch, fairy cottage, fireflies. Garden loop.",
+    "arenaType": "fairy_glen_01",
+    "color": "#7CFC00",
+    "obstacles": 7,
+    "totalDist": 22,
+    "estMinutes": 8,
+    "checkpoints": 6,
+    "exclusive": "scout",
+    "rec": [
+      "scout"
+    ],
+    "isChassisMode": true,
+    "modeIndex": 4,
+    "difficulty": "Expert",
+    "modeType": "Mastery",
+    "programmingConcepts": [
+      "optimization",
+      "sequential blocks"
+    ],
+    "starRequirements": {
+      "one": "Finish the mission",
+      "two": "Beat the time target",
+      "three": "Perfect mastery run"
+    },
+    "rewardBadge": "scout_master",
+    "unlocksNext": null,
+    "catalogName": "Coral Circuit",
+    "environmentId": "fairy_glen_01",
+    "environmentName": "Forest Trail",
+    "environmentEmoji": "🧚",
+    "physics": "racing_spline",
+    "camera": "race_chase",
+    "genre": "racing",
+    "linkedRaceCourse": "fairy_glen_01",
+    "raceTrackLabel": "Forest Trail",
+    "mkTier": "Hard",
+    "mkDifficulty": 4,
+    "gameObjectives": [
+      "Complete 2 lap(s)",
+      "Pass all checkpoints",
+      "Finish under 190s"
+    ],
+    "winCondition": "Complete 2 lap(s) around Forest Trail",
+    "campusMode": {
+      "camera": "race_chase",
+      "section": "racing_circuit",
+      "props": [],
+      "name": "Forest Trail",
+      "shortName": "Forest Trail",
+      "objectives": [
+        "Complete 2 lap(s)",
+        "Pass all checkpoints",
+        "Stay on the racing line"
+      ],
+      "modeNumber": 14
+    },
+    "studioGradient": "linear-gradient(135deg,#7CFC00,#0f172a)"
+  },
+  "scout_kart_bamboo_thunder_rally": {
+    "id": "scout_kart_bamboo_thunder_rally",
+    "chassisId": "scout",
+    "cat": "racing",
+    "icon": "🏔️",
+    "name": "Ice Valley",
+    "desc": "❄️ Frost Peak — Alpine descent, ice bridge, ski lift, aurora sky.",
+    "shortName": "Ice Valley",
+    "tagline": "❄️ Frost Peak — Alpine descent, ice bridge, ski lift, aurora sky.",
+    "arenaType": "frost_peak_01",
+    "color": "#5DADE2",
+    "obstacles": 8,
+    "totalDist": 25,
+    "estMinutes": 8,
+    "checkpoints": 7,
+    "exclusive": "scout",
+    "rec": [
+      "scout"
+    ],
+    "isChassisMode": true,
+    "modeIndex": 5,
+    "difficulty": "Expert",
+    "modeType": "Mastery",
+    "programmingConcepts": [
+      "optimization",
+      "sequential blocks"
+    ],
+    "starRequirements": {
+      "one": "Finish the mission",
+      "two": "Beat the time target",
+      "three": "Perfect mastery run"
+    },
+    "rewardBadge": "scout_master",
+    "unlocksNext": null,
+    "catalogName": "Bamboo Thunder Rally",
+    "environmentId": "frost_peak_01",
+    "environmentName": "Ice Valley",
+    "environmentEmoji": "🏔️",
+    "physics": "racing_spline",
+    "camera": "race_chase",
+    "genre": "racing",
+    "linkedRaceCourse": "frost_peak_01",
+    "raceTrackLabel": "Ice Valley",
+    "mkTier": "Intermediate",
+    "mkDifficulty": 3,
+    "gameObjectives": [
+      "Complete 2 lap(s)",
+      "Pass all checkpoints",
+      "Finish under 175s"
+    ],
+    "winCondition": "Complete 2 lap(s) around Ice Valley",
+    "campusMode": {
+      "camera": "race_chase",
+      "section": "racing_circuit",
+      "props": [],
+      "name": "Ice Valley",
+      "shortName": "Ice Valley",
+      "objectives": [
+        "Complete 2 lap(s)",
+        "Pass all checkpoints",
+        "Stay on the racing line"
+      ],
+      "modeNumber": 15
+    },
+    "studioGradient": "linear-gradient(135deg,#5DADE2,#0f172a)"
+  },
+  "scout_kart_meteor_mine_madness": {
+    "id": "scout_kart_meteor_mine_madness",
+    "chassisId": "scout",
+    "cat": "racing",
+    "icon": "🛸",
+    "name": "Space Station",
+    "desc": "🛸 Star Station — Habitat domes, glass floor, Earth below, airlock arch. Orbital ring.",
+    "shortName": "Space Station",
+    "tagline": "🛸 Star Station — Habitat domes, glass floor, Earth below, airlock arch. Orbital ring.",
+    "arenaType": "star_station_01",
+    "color": "#AA44FF",
+    "obstacles": 9,
+    "totalDist": 28,
+    "estMinutes": 10,
+    "checkpoints": 8,
+    "exclusive": "scout",
+    "rec": [
+      "scout"
+    ],
+    "isChassisMode": true,
+    "modeIndex": 6,
+    "difficulty": "Expert",
+    "modeType": "Mastery",
+    "programmingConcepts": [
+      "optimization",
+      "sequential blocks"
+    ],
+    "starRequirements": {
+      "one": "Finish the mission",
+      "two": "Beat the time target",
+      "three": "Perfect mastery run"
+    },
+    "rewardBadge": "scout_master",
+    "unlocksNext": null,
+    "catalogName": "Meteor Mine Madness",
+    "environmentId": "star_station_01",
+    "environmentName": "Space Station",
+    "environmentEmoji": "🛸",
+    "physics": "racing_spline",
+    "camera": "race_chase",
+    "genre": "racing",
+    "linkedRaceCourse": "star_station_01",
+    "raceTrackLabel": "Space Station",
+    "mkTier": "Hard",
+    "mkDifficulty": 4,
+    "gameObjectives": [
+      "Complete 2 lap(s)",
+      "Pass all checkpoints",
+      "Finish under 165s"
+    ],
+    "winCondition": "Complete 2 lap(s) around Space Station",
+    "campusMode": {
+      "camera": "race_chase",
+      "section": "racing_circuit",
+      "props": [],
+      "name": "Space Station",
+      "shortName": "Space Station",
+      "objectives": [
+        "Complete 2 lap(s)",
+        "Pass all checkpoints",
+        "Stay on the racing line"
+      ],
+      "modeNumber": 16
+    },
+    "studioGradient": "linear-gradient(135deg,#AA44FF,#0f172a)"
+  },
+  "scout_kart_pinwheel_plaza_sprint": {
+    "id": "scout_kart_pinwheel_plaza_sprint",
+    "chassisId": "scout",
+    "cat": "racing",
+    "icon": "🔥",
+    "name": "Volcano Run",
+    "desc": "🔥 Lava Foundry — Molten rivers, gear arch, steam vents, crane hooks.",
+    "shortName": "Volcano Run",
+    "tagline": "🔥 Lava Foundry — Molten rivers, gear arch, steam vents, crane hooks.",
+    "arenaType": "lava_foundry_01",
+    "color": "#FF4500",
+    "obstacles": 10,
+    "totalDist": 31,
+    "estMinutes": 10,
+    "checkpoints": 8,
+    "exclusive": "scout",
+    "rec": [
+      "scout"
+    ],
+    "isChassisMode": true,
+    "modeIndex": 7,
+    "difficulty": "Expert",
+    "modeType": "Mastery",
+    "programmingConcepts": [
+      "optimization",
+      "sequential blocks"
+    ],
+    "starRequirements": {
+      "one": "Finish the mission",
+      "two": "Beat the time target",
+      "three": "Perfect mastery run"
+    },
+    "rewardBadge": "scout_master",
+    "unlocksNext": null,
+    "catalogName": "Pinwheel Plaza Sprint",
+    "environmentId": "lava_foundry_01",
+    "environmentName": "Volcano Run",
+    "environmentEmoji": "🔥",
+    "physics": "racing_spline",
+    "camera": "race_chase",
+    "genre": "racing",
+    "linkedRaceCourse": "lava_foundry_01",
+    "raceTrackLabel": "Volcano Run",
+    "mkTier": "Intermediate",
+    "mkDifficulty": 3,
+    "gameObjectives": [
+      "Complete 2 lap(s)",
+      "Pass all checkpoints",
+      "Finish under 160s"
+    ],
+    "winCondition": "Complete 2 lap(s) around Volcano Run",
+    "campusMode": {
+      "camera": "race_chase",
+      "section": "racing_circuit",
+      "props": [],
+      "name": "Volcano Run",
+      "shortName": "Volcano Run",
+      "objectives": [
+        "Complete 2 lap(s)",
+        "Pass all checkpoints",
+        "Stay on the racing line"
+      ],
+      "modeNumber": 17
+    },
+    "studioGradient": "linear-gradient(135deg,#FF4500,#0f172a)"
+  },
+  "scout_kart_glacial_gorge_gp": {
+    "id": "scout_kart_glacial_gorge_gp",
+    "chassisId": "scout",
+    "cat": "racing",
+    "icon": "🗿",
+    "name": "Jungle Ruins",
+    "desc": "🗿 Jungle Ruins — Temple pyramid, stone jaguar, glowing rune arch.",
+    "shortName": "Jungle Ruins",
+    "tagline": "🗿 Jungle Ruins — Temple pyramid, stone jaguar, glowing rune arch.",
+    "arenaType": "jungle_ruins_01",
+    "color": "#228B22",
+    "obstacles": 11,
+    "totalDist": 34,
+    "estMinutes": 12,
+    "checkpoints": 8,
+    "exclusive": "scout",
+    "rec": [
+      "scout"
+    ],
+    "isChassisMode": true,
+    "modeIndex": 8,
+    "difficulty": "Expert",
+    "modeType": "Mastery",
+    "programmingConcepts": [
+      "optimization",
+      "sequential blocks"
+    ],
+    "starRequirements": {
+      "one": "Finish the mission",
+      "two": "Beat the time target",
+      "three": "Perfect mastery run"
+    },
+    "rewardBadge": "scout_master",
+    "unlocksNext": null,
+    "catalogName": "Glacial Gorge GP",
+    "environmentId": "jungle_ruins_01",
+    "environmentName": "Jungle Ruins",
+    "environmentEmoji": "🗿",
+    "physics": "racing_spline",
+    "camera": "race_chase",
+    "genre": "racing",
+    "linkedRaceCourse": "jungle_ruins_01",
+    "raceTrackLabel": "Jungle Ruins",
+    "mkTier": "Intermediate",
+    "mkDifficulty": 3,
+    "gameObjectives": [
+      "Complete 2 lap(s)",
+      "Pass all checkpoints",
+      "Finish under 150s"
+    ],
+    "winCondition": "Complete 2 lap(s) around Jungle Ruins",
+    "campusMode": {
+      "camera": "race_chase",
+      "section": "racing_circuit",
+      "props": [],
+      "name": "Jungle Ruins",
+      "shortName": "Jungle Ruins",
+      "objectives": [
+        "Complete 2 lap(s)",
+        "Pass all checkpoints",
+        "Stay on the racing line"
+      ],
+      "modeNumber": 18
+    },
+    "studioGradient": "linear-gradient(135deg,#228B22,#0f172a)"
+  },
+  "scout_kart_safari_stampede_cup": {
+    "id": "scout_kart_safari_stampede_cup",
+    "chassisId": "scout",
+    "cat": "racing",
+    "icon": "🌈",
+    "name": "Rainbow Road",
+    "desc": "Classic cosmic glass ribbon — Neon Rainbow Road floating through outer space.",
+    "shortName": "Rainbow Road",
+    "tagline": "Rainbow Road — cosmic neon highway through space.",
+    "arenaType": "rainbow_road",
+    "color": "#cc44ff",
+    "obstacles": 12,
+    "totalDist": 37,
+    "estMinutes": 12,
+    "checkpoints": 8,
+    "exclusive": "scout",
+    "rec": [
+      "scout"
+    ],
+    "isChassisMode": true,
+    "modeIndex": 9,
+    "difficulty": "Expert",
+    "modeType": "Mastery",
+    "programmingConcepts": [
+      "optimization",
+      "sequential blocks"
+    ],
+    "starRequirements": {
+      "one": "Finish the mission",
+      "two": "Beat the time target",
+      "three": "Perfect mastery run"
+    },
+    "rewardBadge": "scout_master",
+    "unlocksNext": null,
+    "catalogName": "Safari Stampede Cup",
+    "environmentId": "rainbow_road",
+    "environmentName": "Rainbow Road",
+    "environmentEmoji": "🌈",
+    "physics": "racing_spline",
+    "camera": "race_chase",
+    "genre": "racing",
+    "linkedRaceCourse": "street_grand_prix",
+    "raceTrackLabel": "Rainbow Road",
     "mkTier": "Hard",
     "mkDifficulty": 4,
     "gameObjectives": [
@@ -1831,21 +1730,22 @@ export const CHASSIS_GAME_MODE_BY_ID = {
     "winCondition": "Complete 2 lap(s) around Magick Forest Spirals",
     "campusMode": {
       "camera": "race_chase",
-      "section": "racing_circuit",
+      "section": "rainbow_road",
       "props": [],
-      "name": "Magick Forest Spirals",
-      "shortName": "Magick Forest Spirals",
+      "name": "Safari Stampede Cup",
+      "shortName": "Safari Stampede Cup",
       "objectives": [
-        "Complete 2 lap(s)",
-        "Pass all checkpoints",
-        "Stay on the racing line"
-      ]
+        "Complete 3 laps",
+        "Pass all checkpoint gates",
+        "Stay on the rainbow ribbon"
+      ],
+      "modeNumber": 19
     }
   },
   "crawler_rocky_mountain_climb": {
     "id": "crawler_rocky_mountain_climb",
     "chassisId": "crawler",
-    "cat": "space",
+    "cat": "chassis_mode",
     "icon": "🌿",
     "name": "Rocky Mountain Climb",
     "desc": "Climb Martian rock steps where wheels would spin out.",
@@ -1887,7 +1787,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "crawler_mud_puddle_traction_test": {
     "id": "crawler_mud_puddle_traction_test",
     "chassisId": "crawler",
-    "cat": "space",
+    "cat": "chassis_mode",
     "icon": "🌿",
     "name": "Mud Puddle Traction Test",
     "desc": "Cross slippery red dust basins without losing traction.",
@@ -1929,7 +1829,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "crawler_log_bridge_crossing": {
     "id": "crawler_log_bridge_crossing",
     "chassisId": "crawler",
-    "cat": "space",
+    "cat": "chassis_mode",
     "icon": "🌿",
     "name": "Log Bridge Crossing",
     "desc": "Crawl a narrow bridge over a crater gap — don't fall.",
@@ -1971,7 +1871,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "crawler_boulder_field_crawl": {
     "id": "crawler_boulder_field_crawl",
     "chassisId": "crawler",
-    "cat": "space",
+    "cat": "chassis_mode",
     "icon": "🌿",
     "name": "Boulder Field Crawl",
     "desc": "Pick a path through scattered boulders to the drill site.",
@@ -2013,7 +1913,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "crawler_trench_explorer": {
     "id": "crawler_trench_explorer",
     "chassisId": "crawler",
-    "cat": "space",
+    "cat": "chassis_mode",
     "icon": "🌿",
     "name": "Trench Explorer",
     "desc": "Descend into a mining trench and return with soil samples.",
@@ -2055,7 +1955,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "crawler_sand_dune_drift": {
     "id": "crawler_sand_dune_drift",
     "chassisId": "crawler",
-    "cat": "space",
+    "cat": "chassis_mode",
     "icon": "🌿",
     "name": "Sand Dune Drift",
     "desc": "Traverse shifting dunes on low-gravity Mars.",
@@ -2097,7 +1997,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "crawler_earthquake_hazard_trial": {
     "id": "crawler_earthquake_hazard_trial",
     "chassisId": "crawler",
-    "cat": "space",
+    "cat": "chassis_mode",
     "icon": "🌿",
     "name": "Earthquake Hazard Trial",
     "desc": "Cross ground that shakes — pause when sensors detect tremors.",
@@ -2139,7 +2039,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "crawler_heavy_incline_hold": {
     "id": "crawler_heavy_incline_hold",
     "chassisId": "crawler",
-    "cat": "space",
+    "cat": "chassis_mode",
     "icon": "🌿",
     "name": "Heavy Incline Hold",
     "desc": "Stop and hold position on a 40° slope without sliding back.",
@@ -2181,7 +2081,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "crawler_wilderness_search_patrol": {
     "id": "crawler_wilderness_search_patrol",
     "chassisId": "crawler",
-    "cat": "space",
+    "cat": "chassis_mode",
     "icon": "🌿",
     "name": "Wilderness Search Patrol",
     "desc": "Scan 6 anomaly markers across the crater rim.",
@@ -2223,7 +2123,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "crawler_all_terrain_master": {
     "id": "crawler_all_terrain_master",
     "chassisId": "crawler",
-    "cat": "space",
+    "cat": "chassis_mode",
     "icon": "🌿",
     "name": "All-Terrain Master",
     "desc": "Capstone: full Martian circuit with every hazard type.",
@@ -2655,7 +2555,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "stealth_laser_grid_infiltration": {
     "id": "stealth_laser_grid_infiltration",
     "chassisId": "stealth",
-    "cat": "stealth",
+    "cat": "chassis_mode",
     "icon": "🌑",
     "name": "Laser Grid Infiltration",
     "desc": "Cross the museum vault without tripping laser beams.",
@@ -2697,7 +2597,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "stealth_cloaking_device_trial": {
     "id": "stealth_cloaking_device_trial",
     "chassisId": "stealth",
-    "cat": "stealth",
+    "cat": "chassis_mode",
     "icon": "🌑",
     "name": "Cloaking Device Trial",
     "desc": "Reach the exit while cloaked — movement breaks stealth.",
@@ -2739,7 +2639,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "stealth_silent_footsteps": {
     "id": "stealth_silent_footsteps",
     "chassisId": "stealth",
-    "cat": "stealth",
+    "cat": "chassis_mode",
     "icon": "🌑",
     "name": "Silent Footsteps",
     "desc": "Pass sleeping guards — noise meter must stay green.",
@@ -2781,7 +2681,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "stealth_shadow_dash": {
     "id": "stealth_shadow_dash",
     "chassisId": "stealth",
-    "cat": "stealth",
+    "cat": "chassis_mode",
     "icon": "🌑",
     "name": "Shadow Dash",
     "desc": "Dash between shadow zones before searchlights sweep back.",
@@ -2823,7 +2723,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "stealth_night_vision_target_tag": {
     "id": "stealth_night_vision_target_tag",
     "chassisId": "stealth",
-    "cat": "stealth",
+    "cat": "chassis_mode",
     "icon": "🌑",
     "name": "Night Vision Target Tag",
     "desc": "Tag 5 targets in darkness using NV sensors.",
@@ -2865,7 +2765,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "stealth_guard_bypass": {
     "id": "stealth_guard_bypass",
     "chassisId": "stealth",
-    "cat": "stealth",
+    "cat": "chassis_mode",
     "icon": "🌑",
     "name": "Guard Bypass",
     "desc": "Time patrol routes and slip through blind spots.",
@@ -2907,7 +2807,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "stealth_hack_security_terminal": {
     "id": "stealth_hack_security_terminal",
     "chassisId": "stealth",
-    "cat": "stealth",
+    "cat": "chassis_mode",
     "icon": "🌑",
     "name": "Hack Security Terminal",
     "desc": "Hold position at terminal for 10s to hack the door.",
@@ -2949,7 +2849,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "stealth_ghost_recon_sweep": {
     "id": "stealth_ghost_recon_sweep",
     "chassisId": "stealth",
-    "cat": "stealth",
+    "cat": "chassis_mode",
     "icon": "🌑",
     "name": "Ghost Recon Sweep",
     "desc": "Map the rooftop without raising any alarms.",
@@ -2991,7 +2891,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "stealth_distraction_flare_deploy": {
     "id": "stealth_distraction_flare_deploy",
     "chassisId": "stealth",
-    "cat": "stealth",
+    "cat": "chassis_mode",
     "icon": "🌑",
     "name": "Distraction Flare Deploy",
     "desc": "Deploy flare to pull guards, then sneak past.",
@@ -3033,7 +2933,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "stealth_dark_ops_mastermind": {
     "id": "stealth_dark_ops_mastermind",
     "chassisId": "stealth",
-    "cat": "stealth",
+    "cat": "chassis_mode",
     "icon": "🌑",
     "name": "Dark Ops Mastermind",
     "desc": "Full heist: lasers, guards, hack, extract — zero alarms.",
@@ -3075,7 +2975,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "miningbot_crystal_ore_extraction": {
     "id": "miningbot_crystal_ore_extraction",
     "chassisId": "miningbot",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "⛏️",
     "name": "Crystal Ore Extraction",
     "desc": "Drill 8 crystal nodes in the factory quarry zone.",
@@ -3117,7 +3017,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "miningbot_tunnel_digger_sprint": {
     "id": "miningbot_tunnel_digger_sprint",
     "chassisId": "miningbot",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "⛏️",
     "name": "Tunnel Digger Sprint",
     "desc": "Dig through the underground mine to the exit shaft.",
@@ -3159,7 +3059,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "miningbot_heavy_load_haul": {
     "id": "miningbot_heavy_load_haul",
     "chassisId": "miningbot",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "⛏️",
     "name": "Heavy Load Haul",
     "desc": "Haul ore cart from pit to smelter without tipping.",
@@ -3201,7 +3101,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "miningbot_shaft_seismic_scan": {
     "id": "miningbot_shaft_seismic_scan",
     "chassisId": "miningbot",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "⛏️",
     "name": "Shaft Seismic Scan",
     "desc": "Scan walls for weak points before drilling forward.",
@@ -3243,7 +3143,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "miningbot_cave_in_escape": {
     "id": "miningbot_cave_in_escape",
     "chassisId": "miningbot",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "⛏️",
     "name": "Cave-In Escape",
     "desc": "Outrun collapsing tunnel — reach safety before timer ends.",
@@ -3285,7 +3185,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "miningbot_diamond_vein_crusher": {
     "id": "miningbot_diamond_vein_crusher",
     "chassisId": "miningbot",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "⛏️",
     "name": "Diamond Vein Crusher",
     "desc": "Break reinforced vein with timed hammer strikes.",
@@ -3327,7 +3227,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "miningbot_geothermal_vent_bypass": {
     "id": "miningbot_geothermal_vent_bypass",
     "chassisId": "miningbot",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "⛏️",
     "name": "Geothermal Vent Bypass",
     "desc": "Route around steam vents using temperature sensors.",
@@ -3369,7 +3269,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "miningbot_ore_sorting_deposit": {
     "id": "miningbot_ore_sorting_deposit",
     "chassisId": "miningbot",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "⛏️",
     "name": "Ore Sorting Deposit",
     "desc": "Deliver red vs blue ore to correct hoppers.",
@@ -3411,7 +3311,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "miningbot_explosive_charge_plant": {
     "id": "miningbot_explosive_charge_plant",
     "chassisId": "miningbot",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "⛏️",
     "name": "Explosive Charge Plant",
     "desc": "Place charges, retreat, detonate — clear the rubble.",
@@ -3453,7 +3353,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "miningbot_deep_earth_master": {
     "id": "miningbot_deep_earth_master",
     "chassisId": "miningbot",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "⛏️",
     "name": "Deep Earth Master",
     "desc": "Full shift: extract, haul, sort, escape cave-in.",
@@ -3495,7 +3395,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "securitybot_perimeter_patrol_circuit": {
     "id": "securitybot_perimeter_patrol_circuit",
     "chassisId": "securitybot",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "👮",
     "name": "Perimeter Patrol Circuit",
     "desc": "Follow the glowing patrol route — hit every checkpoint.",
@@ -3527,7 +3427,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
     "rewardBadge": "securitybot_mode_1",
     "unlocksNext": "securitybot_intruder_alert_chase",
     "catalogName": "Perimeter Patrol Circuit",
-    "environmentId": "industrial",
+    "environmentId": "neo_city_central",
     "environmentName": "Neo City Central",
     "environmentEmoji": "🏙️",
     "physics": "ground",
@@ -3537,7 +3437,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "securitybot_intruder_alert_chase": {
     "id": "securitybot_intruder_alert_chase",
     "chassisId": "securitybot",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "👮",
     "name": "Intruder Alert Chase",
     "desc": "Pursue the fleeing bot and tag it within 90 seconds.",
@@ -3569,7 +3469,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
     "rewardBadge": "securitybot_mode_2",
     "unlocksNext": "securitybot_night_sentry_watch",
     "catalogName": "Intruder Alert Chase",
-    "environmentId": "industrial",
+    "environmentId": "international_airport",
     "environmentName": "International Airport",
     "environmentEmoji": "✈️",
     "physics": "ground",
@@ -3579,7 +3479,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "securitybot_night_sentry_watch": {
     "id": "securitybot_night_sentry_watch",
     "chassisId": "securitybot",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "👮",
     "name": "Night Sentry Watch",
     "desc": "Scan sectors with spotlight — report anomalies.",
@@ -3611,7 +3511,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
     "rewardBadge": "securitybot_mode_3",
     "unlocksNext": "securitybot_access_card_verification",
     "catalogName": "Night Sentry Watch",
-    "environmentId": "industrial",
+    "environmentId": "national_museum",
     "environmentName": "National Museum",
     "environmentEmoji": "🏛️",
     "physics": "ground",
@@ -3621,7 +3521,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "securitybot_access_card_verification": {
     "id": "securitybot_access_card_verification",
     "chassisId": "securitybot",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "👮",
     "name": "Access Card Verification",
     "desc": "Stop at 4 gates and verify RFID codes.",
@@ -3653,7 +3553,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
     "rewardBadge": "securitybot_mode_4",
     "unlocksNext": "securitybot_flashlight_searchlight",
     "catalogName": "Access Card Verification",
-    "environmentId": "industrial",
+    "environmentId": "airport_gates",
     "environmentName": "Airport Security Gates",
     "environmentEmoji": "🛂",
     "physics": "ground",
@@ -3663,7 +3563,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "securitybot_flashlight_searchlight": {
     "id": "securitybot_flashlight_searchlight",
     "chassisId": "securitybot",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "👮",
     "name": "Flashlight Searchlight",
     "desc": "Find hidden intruders in the warehouse dark zones.",
@@ -3695,8 +3595,8 @@ export const CHASSIS_GAME_MODE_BY_ID = {
     "rewardBadge": "securitybot_mode_5",
     "unlocksNext": "securitybot_crowd_control_barrier",
     "catalogName": "Flashlight Searchlight",
-    "environmentId": "industrial",
-    "environmentName": "Robotics Laboratory",
+    "environmentId": "robotics_lab",
+    "environmentName": "Secret Robotics Lab",
     "environmentEmoji": "🔬",
     "physics": "ground",
     "camera": "factory_overview",
@@ -3705,7 +3605,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "securitybot_crowd_control_barrier": {
     "id": "securitybot_crowd_control_barrier",
     "chassisId": "securitybot",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "👮",
     "name": "Crowd Control Barrier",
     "desc": "Deploy barriers to redirect traffic flow safely.",
@@ -3737,7 +3637,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
     "rewardBadge": "securitybot_mode_6",
     "unlocksNext": "securitybot_alarm_code_response",
     "catalogName": "Crowd Control Barrier",
-    "environmentId": "industrial",
+    "environmentId": "grand_stadium",
     "environmentName": "Grand Sports Stadium",
     "environmentEmoji": "🏟️",
     "physics": "ground",
@@ -3747,7 +3647,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "securitybot_alarm_code_response": {
     "id": "securitybot_alarm_code_response",
     "chassisId": "securitybot",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "👮",
     "name": "Alarm Code Response",
     "desc": "Enter correct code sequence at the alarm panel.",
@@ -3779,7 +3679,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
     "rewardBadge": "securitybot_mode_7",
     "unlocksNext": "securitybot_cctv_blind_spot_sweep",
     "catalogName": "Alarm Code Response",
-    "environmentId": "industrial",
+    "environmentId": "music_festival",
     "environmentName": "Music Festival",
     "environmentEmoji": "🎪",
     "physics": "ground",
@@ -3789,7 +3689,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "securitybot_cctv_blind_spot_sweep": {
     "id": "securitybot_cctv_blind_spot_sweep",
     "chassisId": "securitybot",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "👮",
     "name": "CCTV Blind Spot Sweep",
     "desc": "Cover every camera blind spot on the map.",
@@ -3821,7 +3721,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
     "rewardBadge": "securitybot_mode_8",
     "unlocksNext": "securitybot_vault_lock_protection",
     "catalogName": "CCTV Blind Spot Sweep",
-    "environmentId": "industrial",
+    "environmentId": "luxury_mall",
     "environmentName": "Luxury Shopping District",
     "environmentEmoji": "🛍️",
     "physics": "ground",
@@ -3831,7 +3731,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "securitybot_vault_lock_protection": {
     "id": "securitybot_vault_lock_protection",
     "chassisId": "securitybot",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "👮",
     "name": "Vault Lock Protection",
     "desc": "Defend vault door during 2-minute breach attempt.",
@@ -3863,7 +3763,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
     "rewardBadge": "securitybot_mode_9",
     "unlocksNext": "securitybot_chief_security_officer",
     "catalogName": "Vault Lock Protection",
-    "environmentId": "industrial",
+    "environmentId": "robotics_vault",
     "environmentName": "Secret Robotics Vault",
     "environmentEmoji": "🔐",
     "physics": "ground",
@@ -3873,7 +3773,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "securitybot_chief_security_officer": {
     "id": "securitybot_chief_security_officer",
     "chassisId": "securitybot",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "👮",
     "name": "Chief Security Officer",
     "desc": "Capstone patrol: chase, verify, defend vault.",
@@ -3905,7 +3805,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
     "rewardBadge": "securitybot_master",
     "unlocksNext": null,
     "catalogName": "Chief Security Officer",
-    "environmentId": "industrial",
+    "environmentId": "emergency_centre",
     "environmentName": "Smart City Emergency Centre",
     "environmentEmoji": "🚨",
     "physics": "ground",
@@ -3915,7 +3815,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "farmbot_crop_planting_row": {
     "id": "farmbot_crop_planting_row",
     "chassisId": "farmbot",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "🌾",
     "name": "Crop Planting Row",
     "desc": "Plant seeds in 6 straight rows using repeat loops.",
@@ -3957,7 +3857,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "farmbot_automated_watering_route": {
     "id": "farmbot_automated_watering_route",
     "chassisId": "farmbot",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "🌾",
     "name": "Automated Watering Route",
     "desc": "Water every dry patch along the field circuit.",
@@ -3999,7 +3899,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "farmbot_weed_eradication_blitz": {
     "id": "farmbot_weed_eradication_blitz",
     "chassisId": "farmbot",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "🌾",
     "name": "Weed Eradication Blitz",
     "desc": "Tag all weeds without damaging crops.",
@@ -4041,7 +3941,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "farmbot_apple_orchard_harvester": {
     "id": "farmbot_apple_orchard_harvester",
     "chassisId": "farmbot",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "🌾",
     "name": "Apple Orchard Harvester",
     "desc": "Collect apples from 10 trees in order.",
@@ -4083,7 +3983,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "farmbot_field_plowing_pattern": {
     "id": "farmbot_field_plowing_pattern",
     "chassisId": "farmbot",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "🌾",
     "name": "Field Plowing Pattern",
     "desc": "Drive a zigzag plow pattern across the field.",
@@ -4125,7 +4025,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "farmbot_wheat_harvesting_haul": {
     "id": "farmbot_wheat_harvesting_haul",
     "chassisId": "farmbot",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "🌾",
     "name": "Wheat Harvesting Haul",
     "desc": "Harvest and deliver grain to the silo.",
@@ -4167,7 +4067,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "farmbot_pest_control_patrol": {
     "id": "farmbot_pest_control_patrol",
     "chassisId": "farmbot",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "🌾",
     "name": "Pest Control Patrol",
     "desc": "Spray pest zones when sensor detects infestation.",
@@ -4209,7 +4109,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "farmbot_soil_moisture_sensor_sweep": {
     "id": "farmbot_soil_moisture_sensor_sweep",
     "chassisId": "farmbot",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "🌾",
     "name": "Soil Moisture Sensor Sweep",
     "desc": "Map moisture levels at 8 survey points.",
@@ -4251,7 +4151,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "farmbot_greenhouse_climate_control": {
     "id": "farmbot_greenhouse_climate_control",
     "chassisId": "farmbot",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "🌾",
     "name": "Greenhouse Climate Control",
     "desc": "Adjust vents to keep temperature in green zone.",
@@ -4293,7 +4193,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "farmbot_golden_harvest_master": {
     "id": "farmbot_golden_harvest_master",
     "chassisId": "farmbot",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "🌾",
     "name": "Golden Harvest Master",
     "desc": "Full farm day: plant, water, harvest, deliver.",
@@ -4335,7 +4235,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "spider_web_climbing_ascent": {
     "id": "spider_web_climbing_ascent",
     "chassisId": "spider",
-    "cat": "walker",
+    "cat": "chassis_mode",
     "icon": "🕷️",
     "name": "Web Climbing Ascent",
     "desc": "Climb the vertical mesh wall to the rooftop exit.",
@@ -4377,7 +4277,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "spider_multi_leg_stability_test": {
     "id": "spider_multi_leg_stability_test",
     "chassisId": "spider",
-    "cat": "walker",
+    "cat": "chassis_mode",
     "icon": "🕷️",
     "name": "Multi-Leg Stability Test",
     "desc": "Cross stepping stones without a leg touching void.",
@@ -4419,7 +4319,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "spider_ceiling_crawl_infiltration": {
     "id": "spider_ceiling_crawl_infiltration",
     "chassisId": "spider",
-    "cat": "walker",
+    "cat": "chassis_mode",
     "icon": "🕷️",
     "name": "Ceiling Crawl Infiltration",
     "desc": "Traverse upside-down along ceiling rails.",
@@ -4461,7 +4361,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "spider_web_trap_deploy": {
     "id": "spider_web_trap_deploy",
     "chassisId": "spider",
-    "cat": "walker",
+    "cat": "chassis_mode",
     "icon": "🕷️",
     "name": "Web Trap Deploy",
     "desc": "Spin barriers to trap moving targets in the ruins.",
@@ -4503,7 +4403,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "spider_creepy_crawly_slalom": {
     "id": "spider_creepy_crawly_slalom",
     "chassisId": "spider",
-    "cat": "walker",
+    "cat": "chassis_mode",
     "icon": "🕷️",
     "name": "Creepy Crawly Slalom",
     "desc": "Weave through tight pillars in the temple climb.",
@@ -4545,7 +4445,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "spider_high_step_hazard_jump": {
     "id": "spider_high_step_hazard_jump",
     "chassisId": "spider",
-    "cat": "walker",
+    "cat": "chassis_mode",
     "icon": "🕷️",
     "name": "High-Step Hazard Jump",
     "desc": "Step over pipe obstacles with leg lift blocks.",
@@ -4587,7 +4487,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "spider_vibration_sensor_detect": {
     "id": "spider_vibration_sensor_detect",
     "chassisId": "spider",
-    "cat": "walker",
+    "cat": "chassis_mode",
     "icon": "🕷️",
     "name": "Vibration Sensor Detect",
     "desc": "Locate hidden movement using floor vibration data.",
@@ -4629,7 +4529,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "spider_arachnid_speed_dash": {
     "id": "spider_arachnid_speed_dash",
     "chassisId": "spider",
-    "cat": "walker",
+    "cat": "chassis_mode",
     "icon": "🕷️",
     "name": "Arachnid Speed Dash",
     "desc": "Skitter sideways at top speed through the pipeline.",
@@ -4671,7 +4571,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "spider_inverse_kinematics_gait": {
     "id": "spider_inverse_kinematics_gait",
     "chassisId": "spider",
-    "cat": "walker",
+    "cat": "chassis_mode",
     "icon": "🕷️",
     "name": "Inverse Kinematics Gait",
     "desc": "Adjust leg heights for extreme slope angles.",
@@ -4713,7 +4613,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "spider_spider_queen_showdown": {
     "id": "spider_spider_queen_showdown",
     "chassisId": "spider",
-    "cat": "walker",
+    "cat": "chassis_mode",
     "icon": "🕷️",
     "name": "Spider Queen Showdown",
     "desc": "Scale the colossal tower and defeat the boss gate.",
@@ -4755,7 +4655,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "droid_bipedal_balance_sprint": {
     "id": "droid_bipedal_balance_sprint",
     "chassisId": "droid",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "🤖",
     "name": "Bipedal Balance Sprint",
     "desc": "Sprint without falling — balance meter must stay centered.",
@@ -4797,7 +4697,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "droid_staircase_climb": {
     "id": "droid_staircase_climb",
     "chassisId": "droid",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "🤖",
     "name": "Staircase Climb",
     "desc": "Climb 20 steps to the factory mezzanine.",
@@ -4839,7 +4739,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "droid_object_pick_and_place": {
     "id": "droid_object_pick_and_place",
     "chassisId": "droid",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "🤖",
     "name": "Object Pick and Place",
     "desc": "Grab crate from belt A and place on belt B.",
@@ -4881,7 +4781,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "droid_human_gesture_mimic": {
     "id": "droid_human_gesture_mimic",
     "chassisId": "droid",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "🤖",
     "name": "Human Gesture Mimic",
     "desc": "Copy the instructor pose at each mirror station.",
@@ -4923,7 +4823,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "droid_obstacle_hurdle_jump": {
     "id": "droid_obstacle_hurdle_jump",
     "chassisId": "droid",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "🤖",
     "name": "Obstacle Hurdle Jump",
     "desc": "Jump over 8 hurdles on the assembly floor.",
@@ -4965,7 +4865,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "droid_balance_beam_walk": {
     "id": "droid_balance_beam_walk",
     "chassisId": "droid",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "🤖",
     "name": "Balance Beam Walk",
     "desc": "Cross narrow beam over the conveyor gap.",
@@ -5007,7 +4907,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "droid_door_handle_turn": {
     "id": "droid_door_handle_turn",
     "chassisId": "droid",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "🤖",
     "name": "Door Handle Turn",
     "desc": "Rotate handle and push door — enter next room.",
@@ -5049,7 +4949,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "droid_push_recovery_test": {
     "id": "droid_push_recovery_test",
     "chassisId": "droid",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "🤖",
     "name": "Push Recovery Test",
     "desc": "Recover from shove without falling over.",
@@ -5091,7 +4991,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "droid_dance_choreography": {
     "id": "droid_dance_choreography",
     "chassisId": "droid",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "🤖",
     "name": "Dance Choreography",
     "desc": "Execute 6-move dance sequence in order.",
@@ -5133,7 +5033,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "droid_humanoid_olympics": {
     "id": "droid_humanoid_olympics",
     "chassisId": "droid",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "🤖",
     "name": "Humanoid Olympics",
     "desc": "Capstone: stairs, carry, jump, balance finale.",
@@ -5565,12 +5465,12 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "drone_aerial_ring_slalom": {
     "id": "drone_aerial_ring_slalom",
     "chassisId": "drone",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "🚁",
     "name": "Aerial Ring Slalom",
-    "desc": "Fly through 12 glowing rings in order.",
+    "desc": "Fly through 8 wide rings between the cloud pillars.",
     "shortName": "Aerial Ring",
-    "tagline": "Fly through 12 glowing rings in order.",
+    "tagline": "Fly through 8 wide rings between the cloud pillars.",
     "arenaType": "drone_canyon",
     "color": "#06b6d4",
     "obstacles": 4,
@@ -5607,12 +5507,12 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "drone_hover_altitude_lock": {
     "id": "drone_hover_altitude_lock",
     "chassisId": "drone",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "🚁",
     "name": "Hover Altitude Lock",
-    "desc": "Hold exact altitude through the canyon corridor.",
+    "desc": "Stay in the green height zone while you fly through 6 rings.",
     "shortName": "Hover Altitude",
-    "tagline": "Hold exact altitude through the canyon corridor.",
+    "tagline": "Stay in the green height zone while you fly through 6 rings.",
     "arenaType": "canyon_flight",
     "color": "#06b6d4",
     "obstacles": 5,
@@ -5649,12 +5549,12 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "drone_aerial_target_dive": {
     "id": "drone_aerial_target_dive",
     "chassisId": "drone",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "🚁",
     "name": "Aerial Target Dive",
-    "desc": "Dive-bomb 5 targets then pull up before ground.",
+    "desc": "Fly 3 rings, then dive through 5 cloud-floor targets.",
     "shortName": "Aerial Target",
-    "tagline": "Dive-bomb 5 targets then pull up before ground.",
+    "tagline": "Fly 3 rings, then dive through 5 cloud-floor targets.",
     "arenaType": "storm_cloud",
     "color": "#06b6d4",
     "obstacles": 6,
@@ -5691,12 +5591,12 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "drone_quadcopter_swarm_patrol": {
     "id": "drone_quadcopter_swarm_patrol",
     "chassisId": "drone",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "🚁",
     "name": "Quadcopter Swarm Patrol",
-    "desc": "Patrol 4 sky sectors with waypoint loops.",
+    "desc": "Patrol the figure-8 cloud bridge — fly through 10 rings.",
     "shortName": "Quadcopter Swarm",
-    "tagline": "Patrol 4 sky sectors with waypoint loops.",
+    "tagline": "Patrol the figure-8 cloud bridge — fly through 10 rings.",
     "arenaType": "cloud_race",
     "color": "#06b6d4",
     "obstacles": 7,
@@ -5733,12 +5633,12 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "drone_vertical_ascent_sprint": {
     "id": "drone_vertical_ascent_sprint",
     "chassisId": "drone",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "🚁",
     "name": "Vertical Ascent Sprint",
-    "desc": "Race straight up the tower to the landing pad.",
+    "desc": "Spiral up the launch tower — 10 rings get higher.",
     "shortName": "Vertical Ascent",
-    "tagline": "Race straight up the tower to the landing pad.",
+    "tagline": "Spiral up the launch tower — 10 rings get higher.",
     "arenaType": "space_orbit",
     "color": "#06b6d4",
     "obstacles": 8,
@@ -5775,12 +5675,12 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "drone_package_drop_precision": {
     "id": "drone_package_drop_precision",
     "chassisId": "drone",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "🚁",
     "name": "Package Drop Precision",
-    "desc": "Drop supply crate on the rooftop X marker.",
+    "desc": "Fly 6 rings over sky blocks, then touch the DROP pad.",
     "shortName": "Package Drop",
-    "tagline": "Drop supply crate on the rooftop X marker.",
+    "tagline": "Fly 6 rings over sky blocks, then touch the DROP pad.",
     "arenaType": "flight_rings",
     "color": "#06b6d4",
     "obstacles": 9,
@@ -5817,12 +5717,12 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "drone_aerial_photography_sweep": {
     "id": "drone_aerial_photography_sweep",
     "chassisId": "drone",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "🚁",
     "name": "Aerial Photography Sweep",
-    "desc": "Hover over 6 photo waypoints steadily.",
+    "desc": "Fly past the photo towers A, B, and C — 6 rings.",
     "shortName": "Aerial Photography",
-    "tagline": "Hover over 6 photo waypoints steadily.",
+    "tagline": "Fly past the photo towers A, B, and C — 6 rings.",
     "arenaType": "jet_stunt",
     "color": "#06b6d4",
     "obstacles": 10,
@@ -5859,12 +5759,12 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "drone_wind_tunnel_navigation": {
     "id": "drone_wind_tunnel_navigation",
     "chassisId": "drone",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "🚁",
     "name": "Wind Tunnel Navigation",
-    "desc": "Fight crosswinds without leaving the corridor.",
+    "desc": "Stay inside the wind tunnel — 8 rings between the turbines.",
     "shortName": "Wind Tunnel",
-    "tagline": "Fight crosswinds without leaving the corridor.",
+    "tagline": "Stay inside the wind tunnel — 8 rings between the turbines.",
     "arenaType": "rooftop_delivery",
     "color": "#06b6d4",
     "obstacles": 11,
@@ -5901,12 +5801,12 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "drone_propeller_flip_stunt": {
     "id": "drone_propeller_flip_stunt",
     "chassisId": "drone",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "🚁",
     "name": "Propeller Flip Stunt",
-    "desc": "Execute flip through the stunt ring.",
+    "desc": "Fly 7 rings in the storm eye, then through the ★ stunt ring.",
     "shortName": "Propeller Flip",
-    "tagline": "Execute flip through the stunt ring.",
+    "tagline": "Fly 7 rings in the storm eye, then through the ★ stunt ring.",
     "arenaType": "typhoon",
     "color": "#06b6d4",
     "obstacles": 12,
@@ -5943,12 +5843,12 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "drone_sky_ace_master": {
     "id": "drone_sky_ace_master",
     "chassisId": "drone",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "🚁",
     "name": "Sky Ace Master",
-    "desc": "Capstone: rings, dive, drop, stunt combo course.",
+    "desc": "Graduation course: storm, climb, tunnel, and warp finish — 8 rings.",
     "shortName": "Sky Ace",
-    "tagline": "Capstone: rings, dive, drop, stunt combo course.",
+    "tagline": "Graduation course: storm, climb, tunnel, and warp finish — 8 rings.",
     "arenaType": "warp_gate",
     "color": "#06b6d4",
     "obstacles": 14,
@@ -5985,13 +5885,13 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "racedrone_fpv_drone_racing_circuit": {
     "id": "racedrone_fpv_drone_racing_circuit",
     "chassisId": "racedrone",
-    "cat": "racing",
+    "cat": "chassis_mode",
     "icon": "🏎️",
     "name": "FPV Drone Racing Circuit",
     "desc": "Rainbow Road ribbon race from FPV chase cam.",
     "shortName": "FPV Drone",
     "tagline": "Rainbow Road ribbon race from FPV chase cam.",
-    "arenaType": "rainbow_road",
+    "arenaType": "drone_canyon",
     "color": "#f59e0b",
     "obstacles": 4,
     "totalDist": 13,
@@ -6022,13 +5922,12 @@ export const CHASSIS_GAME_MODE_BY_ID = {
     "environmentEmoji": "🏎️",
     "physics": "hybrid",
     "camera": "race_chase",
-    "genre": "racing",
-    "linkedRaceCourse": "street_grand_prix"
+    "genre": "aerial"
   },
   "racedrone_tunnel_turbo_dash": {
     "id": "racedrone_tunnel_turbo_dash",
     "chassisId": "racedrone",
-    "cat": "racing",
+    "cat": "chassis_mode",
     "icon": "🏎️",
     "name": "Tunnel Turbo Dash",
     "desc": "Burst through neon tunnel on Dragon Skyway.",
@@ -6065,19 +5964,18 @@ export const CHASSIS_GAME_MODE_BY_ID = {
     "environmentEmoji": "🏎️",
     "physics": "hybrid",
     "camera": "race_chase",
-    "genre": "racing",
-    "linkedRaceCourse": "street_grand_prix"
+    "genre": "aerial"
   },
   "racedrone_gate_proximity_drift": {
     "id": "racedrone_gate_proximity_drift",
     "chassisId": "racedrone",
-    "cat": "racing",
+    "cat": "chassis_mode",
     "icon": "🏎️",
     "name": "Gate Proximity Drift",
     "desc": "Clip gate edges for drift bonus points.",
     "shortName": "Gate Proximity",
     "tagline": "Clip gate edges for drift bonus points.",
-    "arenaType": "sunny_circuit",
+    "arenaType": "flight_rings",
     "color": "#f59e0b",
     "obstacles": 6,
     "totalDist": 19,
@@ -6108,13 +6006,12 @@ export const CHASSIS_GAME_MODE_BY_ID = {
     "environmentEmoji": "🏎️",
     "physics": "hybrid",
     "camera": "race_chase",
-    "genre": "racing",
-    "linkedRaceCourse": "sunny_circuit"
+    "genre": "aerial"
   },
   "racedrone_speed_trap_sky_burst": {
     "id": "racedrone_speed_trap_sky_burst",
     "chassisId": "racedrone",
-    "cat": "racing",
+    "cat": "chassis_mode",
     "icon": "🏎️",
     "name": "Speed Trap Sky Burst",
     "desc": "Hit 6 speed traps on the cloud race line.",
@@ -6151,19 +6048,18 @@ export const CHASSIS_GAME_MODE_BY_ID = {
     "environmentEmoji": "🏎️",
     "physics": "hybrid",
     "camera": "race_chase",
-    "genre": "racing",
-    "linkedRaceCourse": "street_grand_prix"
+    "genre": "aerial"
   },
   "racedrone_high_speed_slalom": {
     "id": "racedrone_high_speed_slalom",
     "chassisId": "racedrone",
-    "cat": "racing",
+    "cat": "chassis_mode",
     "icon": "🏎️",
     "name": "High-Speed Slalom",
     "desc": "Slalom floating rings at max throttle.",
     "shortName": "High-Speed Slalom",
     "tagline": "Slalom floating rings at max throttle.",
-    "arenaType": "dragon_skyway",
+    "arenaType": "warp_gate",
     "color": "#f59e0b",
     "obstacles": 8,
     "totalDist": 25,
@@ -6194,13 +6090,12 @@ export const CHASSIS_GAME_MODE_BY_ID = {
     "environmentEmoji": "🏎️",
     "physics": "hybrid",
     "camera": "race_chase",
-    "genre": "racing",
-    "linkedRaceCourse": "dragon_skyway"
+    "genre": "aerial"
   },
   "racedrone_battery_drain_time_attack": {
     "id": "racedrone_battery_drain_time_attack",
     "chassisId": "racedrone",
-    "cat": "racing",
+    "cat": "chassis_mode",
     "icon": "🏎️",
     "name": "Battery Drain Time Attack",
     "desc": "Finish before battery hits zero.",
@@ -6237,19 +6132,18 @@ export const CHASSIS_GAME_MODE_BY_ID = {
     "environmentEmoji": "🏎️",
     "physics": "hybrid",
     "camera": "race_chase",
-    "genre": "racing",
-    "linkedRaceCourse": "street_grand_prix"
+    "genre": "aerial"
   },
   "racedrone_acrobatic_barrel_roll": {
     "id": "racedrone_acrobatic_barrel_roll",
     "chassisId": "racedrone",
-    "cat": "racing",
+    "cat": "chassis_mode",
     "icon": "🏎️",
     "name": "Acrobatic Barrel Roll",
     "desc": "Roll through the storm cloud gate.",
     "shortName": "Acrobatic Barrel",
     "tagline": "Roll through the storm cloud gate.",
-    "arenaType": "volcano_drift",
+    "arenaType": "cloud_race",
     "color": "#f59e0b",
     "obstacles": 10,
     "totalDist": 31,
@@ -6280,13 +6174,12 @@ export const CHASSIS_GAME_MODE_BY_ID = {
     "environmentEmoji": "🏎️",
     "physics": "hybrid",
     "camera": "race_chase",
-    "genre": "racing",
-    "linkedRaceCourse": "volcano_drift"
+    "genre": "aerial"
   },
   "racedrone_ghost_drone_race": {
     "id": "racedrone_ghost_drone_race",
     "chassisId": "racedrone",
-    "cat": "racing",
+    "cat": "chassis_mode",
     "icon": "🏎️",
     "name": "Ghost Drone Race",
     "desc": "Beat your ghost lap on Volcano Drift.",
@@ -6323,19 +6216,18 @@ export const CHASSIS_GAME_MODE_BY_ID = {
     "environmentEmoji": "🏎️",
     "physics": "hybrid",
     "camera": "race_chase",
-    "genre": "racing",
-    "linkedRaceCourse": "street_grand_prix"
+    "genre": "aerial"
   },
   "racedrone_low_altitude_lawn_mower": {
     "id": "racedrone_low_altitude_lawn_mower",
     "chassisId": "racedrone",
-    "cat": "racing",
+    "cat": "chassis_mode",
     "icon": "🏎️",
     "name": "Low-Altitude Lawn Mower",
     "desc": "Skim rooftop delivery route at 2m altitude.",
     "shortName": "Low-Altitude Lawn",
     "tagline": "Skim rooftop delivery route at 2m altitude.",
-    "arenaType": "street_grand_prix",
+    "arenaType": "storm_cloud",
     "color": "#f59e0b",
     "obstacles": 12,
     "totalDist": 37,
@@ -6366,13 +6258,12 @@ export const CHASSIS_GAME_MODE_BY_ID = {
     "environmentEmoji": "🏎️",
     "physics": "hybrid",
     "camera": "race_chase",
-    "genre": "racing",
-    "linkedRaceCourse": "street_grand_prix"
+    "genre": "aerial"
   },
   "racedrone_grand_sky_prix_champion": {
     "id": "racedrone_grand_sky_prix_champion",
     "chassisId": "racedrone",
-    "cat": "racing",
+    "cat": "chassis_mode",
     "icon": "🏎️",
     "name": "Grand Sky Prix Champion",
     "desc": "Final: hybrid sky + Rainbow Road championship.",
@@ -6409,13 +6300,12 @@ export const CHASSIS_GAME_MODE_BY_ID = {
     "environmentEmoji": "🏎️",
     "physics": "hybrid",
     "camera": "race_chase",
-    "genre": "racing",
-    "linkedRaceCourse": "street_grand_prix"
+    "genre": "aerial"
   },
   "rescuedrone_disaster_zone_search": {
     "id": "rescuedrone_disaster_zone_search",
     "chassisId": "rescuedrone",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "🚑",
     "name": "Disaster Zone Search",
     "desc": "Scan rubble for 5 survivor heat signatures.",
@@ -6457,7 +6347,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "rescuedrone_emergency_first_aid_drop": {
     "id": "rescuedrone_emergency_first_aid_drop",
     "chassisId": "rescuedrone",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "🚑",
     "name": "Emergency First Aid Drop",
     "desc": "Drop medkits on survivors in burning district.",
@@ -6499,7 +6389,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "rescuedrone_flood_zone_evacuation_tag": {
     "id": "rescuedrone_flood_zone_evacuation_tag",
     "chassisId": "rescuedrone",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "🚑",
     "name": "Flood Zone Evacuation Tag",
     "desc": "Tag evacuees on rooftops in flooded city.",
@@ -6541,7 +6431,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "rescuedrone_thermal_heat_signature_spotting": {
     "id": "rescuedrone_thermal_heat_signature_spotting",
     "chassisId": "rescuedrone",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "🚑",
     "name": "Thermal Heat Signature Spotting",
     "desc": "Find hidden victims using thermal cam.",
@@ -6583,7 +6473,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "rescuedrone_avalanche_beacon_sweep": {
     "id": "rescuedrone_avalanche_beacon_sweep",
     "chassisId": "rescuedrone",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "🚑",
     "name": "Avalanche Beacon Sweep",
     "desc": "Locate beacons under snow_rescue terrain.",
@@ -6625,7 +6515,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "rescuedrone_rope_lifeline_deploy": {
     "id": "rescuedrone_rope_lifeline_deploy",
     "chassisId": "rescuedrone",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "🚑",
     "name": "Rope Lifeline Deploy",
     "desc": "Deploy rope to stranded bot on cliff edge.",
@@ -6667,7 +6557,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "rescuedrone_hurricane_wind_rescue": {
     "id": "rescuedrone_hurricane_wind_rescue",
     "chassisId": "rescuedrone",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "🚑",
     "name": "Hurricane Wind Rescue",
     "desc": "Hover stable in typhoon corridor to rescue.",
@@ -6709,7 +6599,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "rescuedrone_night_searchlight_recon": {
     "id": "rescuedrone_night_searchlight_recon",
     "chassisId": "rescuedrone",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "🚑",
     "name": "Night Searchlight Recon",
     "desc": "Light and find targets in dark hospital zone.",
@@ -6751,7 +6641,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "rescuedrone_hazardous_gas_sampling": {
     "id": "rescuedrone_hazardous_gas_sampling",
     "chassisId": "rescuedrone",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "🚑",
     "name": "Hazardous Gas Sampling",
     "desc": "Collect air samples without entering red zones.",
@@ -6793,7 +6683,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "rescuedrone_hero_rescue_medal": {
     "id": "rescuedrone_hero_rescue_medal",
     "chassisId": "rescuedrone",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "🚑",
     "name": "Hero Rescue Medal",
     "desc": "Capstone multi-victim rescue mission.",
@@ -6835,12 +6725,12 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "helicopter_heavy_cargo_airlift": {
     "id": "helicopter_heavy_cargo_airlift",
     "chassisId": "helicopter",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "🚁",
     "name": "Heavy Cargo Airlift",
-    "desc": "Lift crate from pad A to oil rig landing zone.",
+    "desc": "Pick up the orange crate and fly it to the oil rig helipad.",
     "shortName": "Heavy Cargo",
-    "tagline": "Lift crate from pad A to oil rig landing zone.",
+    "tagline": "Pick up the orange crate and fly it to the oil rig helipad.",
     "arenaType": "drone_canyon",
     "color": "#7c3aed",
     "obstacles": 4,
@@ -6877,12 +6767,12 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "helicopter_offshore_oil_rig_landing": {
     "id": "helicopter_offshore_oil_rig_landing",
     "chassisId": "helicopter",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "🚁",
     "name": "Offshore Oil Rig Landing",
-    "desc": "Land on moving platform in crosswind.",
+    "desc": "Land on the moving yellow H pad between rings 3 and 4.",
     "shortName": "Offshore Oil",
-    "tagline": "Land on moving platform in crosswind.",
+    "tagline": "Land on the moving yellow H pad between rings 3 and 4.",
     "arenaType": "canyon_flight",
     "color": "#7c3aed",
     "obstacles": 5,
@@ -6919,12 +6809,12 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "helicopter_water_bucket_fire_suppression": {
     "id": "helicopter_water_bucket_fire_suppression",
     "chassisId": "helicopter",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "🚁",
     "name": "Water Bucket Fire Suppression",
-    "desc": "Fill bucket and dump on firebot_blaze targets.",
+    "desc": "Fill the blue bucket and dump water on the fire at rig 1.",
     "shortName": "Water Bucket",
-    "tagline": "Fill bucket and dump on firebot_blaze targets.",
+    "tagline": "Fill the blue bucket and dump water on the fire at rig 1.",
     "arenaType": "storm_cloud",
     "color": "#7c3aed",
     "obstacles": 6,
@@ -6961,12 +6851,12 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "helicopter_mountain_top_insertion": {
     "id": "helicopter_mountain_top_insertion",
     "chassisId": "helicopter",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "🚁",
     "name": "Mountain Top Insertion",
-    "desc": "Insert team at summit waypoint in canyon flight.",
+    "desc": "Fly the figure-8 over the ocean and reach the snowy rig peak.",
     "shortName": "Mountain Top",
-    "tagline": "Insert team at summit waypoint in canyon flight.",
+    "tagline": "Fly the figure-8 over the ocean and reach the snowy rig peak.",
     "arenaType": "cloud_race",
     "color": "#7c3aed",
     "obstacles": 7,
@@ -7003,12 +6893,12 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "helicopter_rotor_pitch_control": {
     "id": "helicopter_rotor_pitch_control",
     "chassisId": "helicopter",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "🚁",
     "name": "Rotor Pitch Control",
-    "desc": "Hold hover while pitch meter stays in green.",
+    "desc": "Spiral up the launch tower — keep the green altitude band.",
     "shortName": "Rotor Pitch",
-    "tagline": "Hold hover while pitch meter stays in green.",
+    "tagline": "Spiral up the launch tower — keep the green altitude band.",
     "arenaType": "space_orbit",
     "color": "#7c3aed",
     "obstacles": 8,
@@ -7045,12 +6935,12 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "helicopter_construction_girder_placement": {
     "id": "helicopter_construction_girder_placement",
     "chassisId": "helicopter",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "🚁",
     "name": "Construction Girder Placement",
-    "desc": "Place steel beam on marked hooks.",
+    "desc": "Drop steel girders on the three rooftop helipads.",
     "shortName": "Construction Girder",
-    "tagline": "Place steel beam on marked hooks.",
+    "tagline": "Drop steel girders on the three rooftop helipads.",
     "arenaType": "flight_rings",
     "color": "#7c3aed",
     "obstacles": 9,
@@ -7087,12 +6977,12 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "helicopter_long_haul_fuel_flight": {
     "id": "helicopter_long_haul_fuel_flight",
     "chassisId": "helicopter",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "🚁",
     "name": "Long Haul Fuel Flight",
-    "desc": "Reach distant pad before fuel runs out.",
+    "desc": "Fly past the tanker ship and reach the fuel buoy before time runs out.",
     "shortName": "Long Haul",
-    "tagline": "Reach distant pad before fuel runs out.",
+    "tagline": "Fly past the tanker ship and reach the fuel buoy before time runs out.",
     "arenaType": "jet_stunt",
     "color": "#7c3aed",
     "obstacles": 10,
@@ -7129,12 +7019,12 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "helicopter_emergency_medevac_transport": {
     "id": "helicopter_emergency_medevac_transport",
     "chassisId": "helicopter",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "🚁",
     "name": "Emergency Medevac Transport",
-    "desc": "Pick up patient from hospital_walk zone.",
+    "desc": "Fly the blue tunnel and pick up the patient at the red cross hospital.",
     "shortName": "Emergency Medevac",
-    "tagline": "Pick up patient from hospital_walk zone.",
+    "tagline": "Fly the blue tunnel and pick up the patient at the red cross hospital.",
     "arenaType": "rooftop_delivery",
     "color": "#7c3aed",
     "obstacles": 11,
@@ -7171,12 +7061,12 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "helicopter_vehicle_recovery_winch": {
     "id": "helicopter_vehicle_recovery_winch",
     "chassisId": "helicopter",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "🚁",
     "name": "Vehicle Recovery Winch",
-    "desc": "Winch stranded rover from crater.",
+    "desc": "Winch the stranded rover from the storm eye in the ocean.",
     "shortName": "Vehicle Recovery",
-    "tagline": "Winch stranded rover from crater.",
+    "tagline": "Winch the stranded rover from the storm eye in the ocean.",
     "arenaType": "typhoon",
     "color": "#7c3aed",
     "obstacles": 12,
@@ -7213,12 +7103,12 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "helicopter_sky_crane_master": {
     "id": "helicopter_sky_crane_master",
     "chassisId": "helicopter",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "🚁",
     "name": "Sky Crane Master",
-    "desc": "Capstone lift + land + medevac chain.",
+    "desc": "Capstone: lift cargo, land on rigs, medevac pad, then finish at the warp ring.",
     "shortName": "Sky Crane",
-    "tagline": "Capstone lift + land + medevac chain.",
+    "tagline": "Capstone: lift cargo, land on rigs, medevac pad, then finish at the warp ring.",
     "arenaType": "warp_gate",
     "color": "#7c3aed",
     "obstacles": 14,
@@ -7255,12 +7145,12 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "hoverbot_anti_gravity_glide": {
     "id": "hoverbot_anti_gravity_glide",
     "chassisId": "hoverbot",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "🛸",
     "name": "Anti-Gravity Glide",
-    "desc": "Glide frictionless across the sky arena gap.",
+    "desc": "Glide through the pulsing violet repulsor gate over the lab pads.",
     "shortName": "Anti-Gravity Glide",
-    "tagline": "Glide frictionless across the sky arena gap.",
+    "tagline": "Glide through the pulsing violet repulsor gate over the lab pads.",
     "arenaType": "drone_canyon",
     "color": "#8b5cf6",
     "obstacles": 4,
@@ -7297,12 +7187,12 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "hoverbot_repulsor_field_push": {
     "id": "hoverbot_repulsor_field_push",
     "chassisId": "hoverbot",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "🛸",
     "name": "Repulsor Field Push",
-    "desc": "Push debris blocks off the hover lane.",
+    "desc": "Push the grey debris blocks off the lane — stay in the green band.",
     "shortName": "Repulsor Field",
-    "tagline": "Push debris blocks off the hover lane.",
+    "tagline": "Push the grey debris blocks off the lane — stay in the green band.",
     "arenaType": "canyon_flight",
     "color": "#8b5cf6",
     "obstacles": 5,
@@ -7339,12 +7229,12 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "hoverbot_magnet_rail_hover": {
     "id": "hoverbot_magnet_rail_hover",
     "chassisId": "hoverbot",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "🛸",
     "name": "Magnet Rail Hover",
-    "desc": "Lock onto mag-rail and follow the circuit.",
+    "desc": "Follow the glowing teal magnet rail through the purple storm walls.",
     "shortName": "Magnet Rail",
-    "tagline": "Lock onto mag-rail and follow the circuit.",
+    "tagline": "Follow the glowing teal magnet rail through the purple storm walls.",
     "arenaType": "storm_cloud",
     "color": "#8b5cf6",
     "obstacles": 6,
@@ -7381,12 +7271,12 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "hoverbot_zero_g_physics_room": {
     "id": "hoverbot_zero_g_physics_room",
     "chassisId": "hoverbot",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "🛸",
     "name": "Zero-G Physics Room",
-    "desc": "Navigate zero_g chamber without touching walls.",
+    "desc": "Fly the figure-8 inside the zero-G room — don't touch the walls.",
     "shortName": "Zero-G Physics",
-    "tagline": "Navigate zero_g chamber without touching walls.",
+    "tagline": "Fly the figure-8 inside the zero-G room — don't touch the walls.",
     "arenaType": "cloud_race",
     "color": "#8b5cf6",
     "obstacles": 7,
@@ -7423,12 +7313,12 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "hoverbot_hover_height_calibration": {
     "id": "hoverbot_hover_height_calibration",
     "chassisId": "hoverbot",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "🛸",
     "name": "Hover Height Calibration",
-    "desc": "Hold 3 different altitudes at markers.",
+    "desc": "Spiral up the tower — match the height tick marks on the repulsor gate.",
     "shortName": "Hover Height",
-    "tagline": "Hold 3 different altitudes at markers.",
+    "tagline": "Spiral up the tower — match the height tick marks on the repulsor gate.",
     "arenaType": "space_orbit",
     "color": "#8b5cf6",
     "obstacles": 8,
@@ -7465,12 +7355,12 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "hoverbot_smooth_banked_glide": {
     "id": "hoverbot_smooth_banked_glide",
     "chassisId": "hoverbot",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "🛸",
     "name": "Smooth Banked Glide",
-    "desc": "Bank through cloud race turns smoothly.",
+    "desc": "Bank smoothly between three floating lab pads linked by teal bridges.",
     "shortName": "Smooth Banked",
-    "tagline": "Bank through cloud race turns smoothly.",
+    "tagline": "Bank smoothly between three floating lab pads linked by teal bridges.",
     "arenaType": "flight_rings",
     "color": "#8b5cf6",
     "obstacles": 9,
@@ -7507,12 +7397,12 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "hoverbot_energy_shield_bounce": {
     "id": "hoverbot_energy_shield_bounce",
     "chassisId": "hoverbot",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "🛸",
     "name": "Energy Shield Bounce",
-    "desc": "Bounce off shields to reach high platforms.",
+    "desc": "Bounce off the cyan shield dome to reach the high arc columns.",
     "shortName": "Energy Shield",
-    "tagline": "Bounce off shields to reach high platforms.",
+    "tagline": "Bounce off the cyan shield dome to reach the high arc columns.",
     "arenaType": "jet_stunt",
     "color": "#8b5cf6",
     "obstacles": 10,
@@ -7549,12 +7439,12 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "hoverbot_plasma_thruster_boost": {
     "id": "hoverbot_plasma_thruster_boost",
     "chassisId": "hoverbot",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "🛸",
     "name": "Plasma Thruster Boost",
-    "desc": "Chain boost pads on drone canyon course.",
+    "desc": "Race the purple tunnel and hit the cyan boost pad in the middle.",
     "shortName": "Plasma Thruster",
-    "tagline": "Chain boost pads on drone canyon course.",
+    "tagline": "Race the purple tunnel and hit the cyan boost pad in the middle.",
     "arenaType": "rooftop_delivery",
     "color": "#8b5cf6",
     "obstacles": 11,
@@ -7591,12 +7481,12 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "hoverbot_chasm_crossing_glide": {
     "id": "hoverbot_chasm_crossing_glide",
     "chassisId": "hoverbot",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "🛸",
     "name": "Chasm Crossing Glide",
-    "desc": "Cross widest gap on single battery charge.",
+    "desc": "Glide across the black chasm between two lab pads in the storm eye.",
     "shortName": "Chasm Crossing",
-    "tagline": "Cross widest gap on single battery charge.",
+    "tagline": "Glide across the black chasm between two lab pads in the storm eye.",
     "arenaType": "typhoon",
     "color": "#8b5cf6",
     "obstacles": 12,
@@ -7633,12 +7523,12 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "hoverbot_anti_gravity_master": {
     "id": "hoverbot_anti_gravity_master",
     "chassisId": "hoverbot",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "🛸",
     "name": "Anti-Gravity Master",
-    "desc": "Capstone glide + boost + precision landing.",
+    "desc": "Capstone: repulsor arch, storm, plasma ring, then finish at the violet warp gate.",
     "shortName": "Anti-Gravity Master",
-    "tagline": "Capstone glide + boost + precision landing.",
+    "tagline": "Capstone: repulsor arch, storm, plasma ring, then finish at the violet warp gate.",
     "arenaType": "warp_gate",
     "color": "#8b5cf6",
     "obstacles": 14,
@@ -7675,13 +7565,13 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "hoverracer_quantum_speedway_grand_prix": {
     "id": "hoverracer_quantum_speedway_grand_prix",
     "chassisId": "hoverracer",
-    "cat": "racing",
+    "cat": "chassis_mode",
     "icon": "🏁",
     "name": "Quantum Speedway Grand Prix",
     "desc": "Rainbow Road lap 1 — plasma hover tires.",
     "shortName": "Quantum Speedway",
     "tagline": "Rainbow Road lap 1 — plasma hover tires.",
-    "arenaType": "rainbow_road",
+    "arenaType": "drone_canyon",
     "color": "#ec4899",
     "obstacles": 4,
     "totalDist": 13,
@@ -7712,13 +7602,12 @@ export const CHASSIS_GAME_MODE_BY_ID = {
     "environmentEmoji": "🏎️",
     "physics": "hybrid",
     "camera": "race_chase",
-    "genre": "racing",
-    "linkedRaceCourse": "street_grand_prix"
+    "genre": "aerial"
   },
   "hoverracer_mach_1_speed_test": {
     "id": "hoverracer_mach_1_speed_test",
     "chassisId": "hoverracer",
-    "cat": "racing",
+    "cat": "chassis_mode",
     "icon": "🏁",
     "name": "Mach 1 Speed Test",
     "desc": "Break speed record on sunny_circuit straight.",
@@ -7755,19 +7644,18 @@ export const CHASSIS_GAME_MODE_BY_ID = {
     "environmentEmoji": "🏎️",
     "physics": "hybrid",
     "camera": "race_chase",
-    "genre": "racing",
-    "linkedRaceCourse": "street_grand_prix"
+    "genre": "aerial"
   },
   "hoverracer_plasma_drift_cornering": {
     "id": "hoverracer_plasma_drift_cornering",
     "chassisId": "hoverracer",
-    "cat": "racing",
+    "cat": "chassis_mode",
     "icon": "🏁",
     "name": "Plasma Drift Cornering",
     "desc": "Drift every corner on Dragon Skyway.",
     "shortName": "Plasma Drift",
     "tagline": "Drift every corner on Dragon Skyway.",
-    "arenaType": "sunny_circuit",
+    "arenaType": "flight_rings",
     "color": "#ec4899",
     "obstacles": 6,
     "totalDist": 19,
@@ -7798,13 +7686,12 @@ export const CHASSIS_GAME_MODE_BY_ID = {
     "environmentEmoji": "🏎️",
     "physics": "hybrid",
     "camera": "race_chase",
-    "genre": "racing",
-    "linkedRaceCourse": "sunny_circuit"
+    "genre": "aerial"
   },
   "hoverracer_energy_pad_recharge": {
     "id": "hoverracer_energy_pad_recharge",
     "chassisId": "hoverracer",
-    "cat": "racing",
+    "cat": "chassis_mode",
     "icon": "🏁",
     "name": "Energy Pad Recharge",
     "desc": "Hit all recharge pads before battery empty.",
@@ -7841,19 +7728,18 @@ export const CHASSIS_GAME_MODE_BY_ID = {
     "environmentEmoji": "🏎️",
     "physics": "hybrid",
     "camera": "race_chase",
-    "genre": "racing",
-    "linkedRaceCourse": "street_grand_prix"
+    "genre": "aerial"
   },
   "hoverracer_sonic_boom_slalom": {
     "id": "hoverracer_sonic_boom_slalom",
     "chassisId": "hoverracer",
-    "cat": "racing",
+    "cat": "chassis_mode",
     "icon": "🏁",
     "name": "Sonic Boom Slalom",
     "desc": "Slalom rings in storm_cloud corridor.",
     "shortName": "Sonic Boom",
     "tagline": "Slalom rings in storm_cloud corridor.",
-    "arenaType": "dragon_skyway",
+    "arenaType": "warp_gate",
     "color": "#ec4899",
     "obstacles": 8,
     "totalDist": 25,
@@ -7884,13 +7770,12 @@ export const CHASSIS_GAME_MODE_BY_ID = {
     "environmentEmoji": "🏎️",
     "physics": "hybrid",
     "camera": "race_chase",
-    "genre": "racing",
-    "linkedRaceCourse": "dragon_skyway"
+    "genre": "aerial"
   },
   "hoverracer_elimination_hover_sprint": {
     "id": "hoverracer_elimination_hover_sprint",
     "chassisId": "hoverracer",
-    "cat": "racing",
+    "cat": "chassis_mode",
     "icon": "🏁",
     "name": "Elimination Hover Sprint",
     "desc": "Stay ahead as last-place gates close.",
@@ -7927,19 +7812,18 @@ export const CHASSIS_GAME_MODE_BY_ID = {
     "environmentEmoji": "🏎️",
     "physics": "hybrid",
     "camera": "race_chase",
-    "genre": "racing",
-    "linkedRaceCourse": "street_grand_prix"
+    "genre": "aerial"
   },
   "hoverracer_warp_tunnel_burst": {
     "id": "hoverracer_warp_tunnel_burst",
     "chassisId": "hoverracer",
-    "cat": "racing",
+    "cat": "chassis_mode",
     "icon": "🏁",
     "name": "Warp Tunnel Burst",
     "desc": "Navigate warp_gate tunnel at max speed.",
     "shortName": "Warp Tunnel",
     "tagline": "Navigate warp_gate tunnel at max speed.",
-    "arenaType": "volcano_drift",
+    "arenaType": "cloud_race",
     "color": "#ec4899",
     "obstacles": 10,
     "totalDist": 31,
@@ -7970,13 +7854,12 @@ export const CHASSIS_GAME_MODE_BY_ID = {
     "environmentEmoji": "🏎️",
     "physics": "hybrid",
     "camera": "race_chase",
-    "genre": "racing",
-    "linkedRaceCourse": "volcano_drift"
+    "genre": "aerial"
   },
   "hoverracer_mag_strip_inversion": {
     "id": "hoverracer_mag_strip_inversion",
     "chassisId": "hoverracer",
-    "cat": "racing",
+    "cat": "chassis_mode",
     "icon": "🏁",
     "name": "Mag-Strip Inversion",
     "desc": "Complete inverted mag-strip section upside-down.",
@@ -8013,19 +7896,18 @@ export const CHASSIS_GAME_MODE_BY_ID = {
     "environmentEmoji": "🏎️",
     "physics": "hybrid",
     "camera": "race_chase",
-    "genre": "racing",
-    "linkedRaceCourse": "street_grand_prix"
+    "genre": "aerial"
   },
   "hoverracer_turbo_slipstream_chase": {
     "id": "hoverracer_turbo_slipstream_chase",
     "chassisId": "hoverracer",
-    "cat": "racing",
+    "cat": "chassis_mode",
     "icon": "🏁",
     "name": "Turbo Slipstream Chase",
     "desc": "Draft behind ghost racer then overtake.",
     "shortName": "Turbo Slipstream",
     "tagline": "Draft behind ghost racer then overtake.",
-    "arenaType": "street_grand_prix",
+    "arenaType": "storm_cloud",
     "color": "#ec4899",
     "obstacles": 12,
     "totalDist": 37,
@@ -8056,13 +7938,12 @@ export const CHASSIS_GAME_MODE_BY_ID = {
     "environmentEmoji": "🏎️",
     "physics": "hybrid",
     "camera": "race_chase",
-    "genre": "racing",
-    "linkedRaceCourse": "street_grand_prix"
+    "genre": "aerial"
   },
   "hoverracer_galactic_turbo_champion": {
     "id": "hoverracer_galactic_turbo_champion",
     "chassisId": "hoverracer",
-    "cat": "racing",
+    "cat": "chassis_mode",
     "icon": "🏁",
     "name": "Galactic Turbo Champion",
     "desc": "Championship on street_grand_prix finale.",
@@ -8099,13 +7980,12 @@ export const CHASSIS_GAME_MODE_BY_ID = {
     "environmentEmoji": "🏎️",
     "physics": "hybrid",
     "camera": "race_chase",
-    "genre": "racing",
-    "linkedRaceCourse": "street_grand_prix"
+    "genre": "aerial"
   },
   "submarine_coral_reef_survey": {
     "id": "submarine_coral_reef_survey",
     "chassisId": "submarine",
-    "cat": "underwater",
+    "cat": "chassis_mode",
     "icon": "🌊",
     "name": "Coral Reef Survey",
     "desc": "Scan 10 marine species in the coral_reef.",
@@ -8147,7 +8027,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "submarine_deep_trench_navigation": {
     "id": "submarine_deep_trench_navigation",
     "chassisId": "submarine",
-    "cat": "underwater",
+    "cat": "chassis_mode",
     "icon": "🌊",
     "name": "Deep Trench Navigation",
     "desc": "Navigate deep_trench without crushing pressure.",
@@ -8189,7 +8069,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "submarine_submarine_buoyancy_control": {
     "id": "submarine_submarine_buoyancy_control",
     "chassisId": "submarine",
-    "cat": "underwater",
+    "cat": "chassis_mode",
     "icon": "🌊",
     "name": "Submarine Buoyancy Control",
     "desc": "Trim buoyancy to hold depth at markers.",
@@ -8231,7 +8111,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "submarine_sunken_shipwreck_explore": {
     "id": "submarine_sunken_shipwreck_explore",
     "chassisId": "submarine",
-    "cat": "underwater",
+    "cat": "chassis_mode",
     "icon": "🌊",
     "name": "Sunken Shipwreck Explore",
     "desc": "Explore shipwreck and tag 5 artifacts.",
@@ -8273,7 +8153,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "submarine_hydro_current_survival": {
     "id": "submarine_hydro_current_survival",
     "chassisId": "submarine",
-    "cat": "underwater",
+    "cat": "chassis_mode",
     "icon": "🌊",
     "name": "Hydro-Current Survival",
     "desc": "Ride currents through kelp_forest maze.",
@@ -8315,7 +8195,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "submarine_underwater_sonar_mapping": {
     "id": "submarine_underwater_sonar_mapping",
     "chassisId": "submarine",
-    "cat": "underwater",
+    "cat": "chassis_mode",
     "icon": "🌊",
     "name": "Underwater Sonar Mapping",
     "desc": "Map seafloor_scan grid completely.",
@@ -8357,7 +8237,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "submarine_marine_trash_collection": {
     "id": "submarine_marine_trash_collection",
     "chassisId": "submarine",
-    "cat": "underwater",
+    "cat": "chassis_mode",
     "icon": "🌊",
     "name": "Marine Trash Collection",
     "desc": "Collect 12 trash items from robot_reef.",
@@ -8399,7 +8279,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "submarine_bioluminescent_trail_follow": {
     "id": "submarine_bioluminescent_trail_follow",
     "chassisId": "submarine",
-    "cat": "underwater",
+    "cat": "chassis_mode",
     "icon": "🌊",
     "name": "Bioluminescent Trail Follow",
     "desc": "Follow bioluminescent path in darkness.",
@@ -8441,7 +8321,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "submarine_thermal_vent_sample": {
     "id": "submarine_thermal_vent_sample",
     "chassisId": "submarine",
-    "cat": "underwater",
+    "cat": "chassis_mode",
     "icon": "🌊",
     "name": "Thermal Vent Sample",
     "desc": "Grab sample near vent without overheating hull.",
@@ -8483,7 +8363,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "submarine_ocean_floor_master": {
     "id": "submarine_ocean_floor_master",
     "chassisId": "submarine",
-    "cat": "underwater",
+    "cat": "chassis_mode",
     "icon": "🌊",
     "name": "Ocean Floor Master",
     "desc": "Capstone reef + trench + wreck expedition.",
@@ -8525,7 +8405,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "deepseabot_abyssal_zone_pressure_test": {
     "id": "deepseabot_abyssal_zone_pressure_test",
     "chassisId": "deepseabot",
-    "cat": "underwater",
+    "cat": "chassis_mode",
     "icon": "🐙",
     "name": "Abyssal Zone Pressure Test",
     "desc": "Descend mariana trench within hull limits.",
@@ -8567,7 +8447,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "deepseabot_giant_squid_evasion": {
     "id": "deepseabot_giant_squid_evasion",
     "chassisId": "deepseabot",
-    "cat": "underwater",
+    "cat": "chassis_mode",
     "icon": "🐙",
     "name": "Giant Squid Evasion",
     "desc": "Evade squid in atlantis ruins corridor.",
@@ -8609,7 +8489,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "deepseabot_seafloor_ore_mining": {
     "id": "deepseabot_seafloor_ore_mining",
     "chassisId": "deepseabot",
-    "cat": "underwater",
+    "cat": "chassis_mode",
     "icon": "🐙",
     "name": "Seafloor Ore Mining",
     "desc": "Mine 8 nodes on abyssal plain.",
@@ -8651,7 +8531,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "deepseabot_deep_sea_trench_rescue": {
     "id": "deepseabot_deep_sea_trench_rescue",
     "chassisId": "deepseabot",
-    "cat": "underwater",
+    "cat": "chassis_mode",
     "icon": "🐙",
     "name": "Deep Sea Trench Rescue",
     "desc": "Rescue trapped bot in trench cage.",
@@ -8693,7 +8573,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "deepseabot_hydrothermal_smoker_exploration": {
     "id": "deepseabot_hydrothermal_smoker_exploration",
     "chassisId": "deepseabot",
-    "cat": "underwater",
+    "cat": "chassis_mode",
     "icon": "🐙",
     "name": "Hydrothermal Smoker Exploration",
     "desc": "Circle smokers without hull damage.",
@@ -8735,7 +8615,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "deepseabot_sub_surface_headlight_search": {
     "id": "deepseabot_sub_surface_headlight_search",
     "chassisId": "deepseabot",
-    "cat": "underwater",
+    "cat": "chassis_mode",
     "icon": "🐙",
     "name": "Sub-Surface Headlight Search",
     "desc": "Find relics using headlights only.",
@@ -8777,7 +8657,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "deepseabot_ancient_ruin_artifact_grab": {
     "id": "deepseabot_ancient_ruin_artifact_grab",
     "chassisId": "deepseabot",
-    "cat": "underwater",
+    "cat": "chassis_mode",
     "icon": "🐙",
     "name": "Ancient Ruin Artifact Grab",
     "desc": "Retrieve artifact from pirate_wreck.",
@@ -8819,7 +8699,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "deepseabot_submarine_pipeline_sealer": {
     "id": "deepseabot_submarine_pipeline_sealer",
     "chassisId": "deepseabot",
-    "cat": "underwater",
+    "cat": "chassis_mode",
     "icon": "🐙",
     "name": "Submarine Pipeline Sealer",
     "desc": "Seal 4 pipeline cracks underwater.",
@@ -8861,7 +8741,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "deepseabot_deep_sea_anglerfish_lure": {
     "id": "deepseabot_deep_sea_anglerfish_lure",
     "chassisId": "deepseabot",
-    "cat": "underwater",
+    "cat": "chassis_mode",
     "icon": "🐙",
     "name": "Deep Sea Anglerfish Lure",
     "desc": "Avoid lures while crossing dark zone.",
@@ -8903,7 +8783,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "deepseabot_master_of_the_abyss": {
     "id": "deepseabot_master_of_the_abyss",
     "chassisId": "deepseabot",
-    "cat": "underwater",
+    "cat": "chassis_mode",
     "icon": "🐙",
     "name": "Master of the Abyss",
     "desc": "Capstone abyss run: mine, rescue, seal.",
@@ -8945,7 +8825,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "robotarm_micro_chip_soldering": {
     "id": "robotarm_micro_chip_soldering",
     "chassisId": "robotarm",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "🦿",
     "name": "Micro-Chip Soldering",
     "desc": "Place solder on 6 micro pads in factory zone.",
@@ -8987,7 +8867,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "robotarm_precision_pick_and_place": {
     "id": "robotarm_precision_pick_and_place",
     "chassisId": "robotarm",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "🦿",
     "name": "Precision Pick-and-Place",
     "desc": "Move chips from feeder to PCB slots.",
@@ -9029,7 +8909,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "robotarm_rubik_s_cube_solver": {
     "id": "robotarm_rubik_s_cube_solver",
     "chassisId": "robotarm",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "🦿",
     "name": "Rubik's Cube Solver",
     "desc": "Execute scripted twist sequence on cube.",
@@ -9071,7 +8951,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "robotarm_high_precision_drawing": {
     "id": "robotarm_high_precision_drawing",
     "chassisId": "robotarm",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "🦿",
     "name": "High-Precision Drawing",
     "desc": "Trace the pattern on the drawing pad.",
@@ -9113,7 +8993,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "robotarm_surgical_threading": {
     "id": "robotarm_surgical_threading",
     "chassisId": "robotarm",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "🦿",
     "name": "Surgical Threading",
     "desc": "Thread needle through 4 eye loops.",
@@ -9155,7 +9035,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "robotarm_stack_the_blocks": {
     "id": "robotarm_stack_the_blocks",
     "chassisId": "robotarm",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "🦿",
     "name": "Stack the Blocks",
     "desc": "Stack 8 blocks without toppling tower.",
@@ -9197,7 +9077,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "robotarm_conveyor_belt_sorting": {
     "id": "robotarm_conveyor_belt_sorting",
     "chassisId": "robotarm",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "🦿",
     "name": "Conveyor Belt Sorting",
     "desc": "Sort red/blue parts on moving belt.",
@@ -9239,7 +9119,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "robotarm_glassware_pouring_test": {
     "id": "robotarm_glassware_pouring_test",
     "chassisId": "robotarm",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "🦿",
     "name": "Glassware Pouring Test",
     "desc": "Pour liquid to line without spilling.",
@@ -9281,7 +9161,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "robotarm_chess_piece_master": {
     "id": "robotarm_chess_piece_master",
     "chassisId": "robotarm",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "🦿",
     "name": "Chess Piece Master",
     "desc": "Move pieces to checkmate puzzle positions.",
@@ -9323,7 +9203,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "robotarm_surgical_precision_master": {
     "id": "robotarm_surgical_precision_master",
     "chassisId": "robotarm",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "🦿",
     "name": "Surgical Precision Master",
     "desc": "Capstone: pick, place, pour, stack chain.",
@@ -9365,7 +9245,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "factorybot_assembly_line_production": {
     "id": "factorybot_assembly_line_production",
     "chassisId": "factorybot",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "🏭",
     "name": "Assembly Line Production",
     "desc": "Assemble 10 units on the factory_floor line.",
@@ -9407,7 +9287,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "factorybot_box_stacking_warehouse": {
     "id": "factorybot_box_stacking_warehouse",
     "chassisId": "factorybot",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "🏭",
     "name": "Box Stacking Warehouse",
     "desc": "Stack boxes in warehouse to height target.",
@@ -9449,7 +9329,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "factorybot_quality_control_inspection": {
     "id": "factorybot_quality_control_inspection",
     "chassisId": "factorybot",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "🏭",
     "name": "Quality Control Inspection",
     "desc": "Reject defective parts at QC gate.",
@@ -9491,7 +9371,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "factorybot_robot_arm_synchronization": {
     "id": "factorybot_robot_arm_synchronization",
     "chassisId": "factorybot",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "🏭",
     "name": "Robot Arm Synchronization",
     "desc": "Sync with second arm — no collisions.",
@@ -9533,7 +9413,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "factorybot_industrial_stamping_press": {
     "id": "factorybot_industrial_stamping_press",
     "chassisId": "factorybot",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "🏭",
     "name": "Industrial Stamping Press",
     "desc": "Time stamp presses on conveyor items.",
@@ -9575,7 +9455,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "factorybot_automated_guided_vehicle_route": {
     "id": "factorybot_automated_guided_vehicle_route",
     "chassisId": "factorybot",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "🏭",
     "name": "Automated Guided Vehicle Route",
     "desc": "Follow AGV path through plant.",
@@ -9617,7 +9497,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "factorybot_hazardous_material_handling": {
     "id": "factorybot_hazardous_material_handling",
     "chassisId": "factorybot",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "🏭",
     "name": "Hazardous Material Handling",
     "desc": "Move hazmat crate without breach.",
@@ -9659,7 +9539,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "factorybot_factory_emergency_shutdown": {
     "id": "factorybot_factory_emergency_shutdown",
     "chassisId": "factorybot",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "🏭",
     "name": "Factory Emergency Shutdown",
     "desc": "Hit E-stop sequence in correct order.",
@@ -9701,7 +9581,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "factorybot_packaging_machine_wrap": {
     "id": "factorybot_packaging_machine_wrap",
     "chassisId": "factorybot",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "🏭",
     "name": "Packaging Machine Wrap",
     "desc": "Wrap 8 packages before belt overflow.",
@@ -9743,7 +9623,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "factorybot_industry_4_0_efficiency": {
     "id": "factorybot_industry_4_0_efficiency",
     "chassisId": "factorybot",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "🏭",
     "name": "Industry 4.0 Efficiency",
     "desc": "Capstone shift: build, QC, ship, zero defects.",
@@ -9785,7 +9665,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "spacerover_lunar_surface_exploration": {
     "id": "spacerover_lunar_surface_exploration",
     "chassisId": "spacerover",
-    "cat": "space",
+    "cat": "chassis_mode",
     "icon": "🚀",
     "name": "Lunar Surface Exploration",
     "desc": "Drive alien_planet rim and tag 6 landmarks.",
@@ -9827,7 +9707,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "spacerover_martian_soil_sample_drill": {
     "id": "spacerover_martian_soil_sample_drill",
     "chassisId": "spacerover",
-    "cat": "space",
+    "cat": "chassis_mode",
     "icon": "🚀",
     "name": "Martian Soil Sample Drill",
     "desc": "Drill 5 sample cores in desert_rally zone.",
@@ -9869,7 +9749,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "spacerover_solar_panel_deployment": {
     "id": "spacerover_solar_panel_deployment",
     "chassisId": "spacerover",
-    "cat": "space",
+    "cat": "chassis_mode",
     "icon": "🚀",
     "name": "Solar Panel Deployment",
     "desc": "Deploy panels at 4 station markers.",
@@ -9911,7 +9791,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "spacerover_crater_rim_traverse": {
     "id": "spacerover_crater_rim_traverse",
     "chassisId": "spacerover",
-    "cat": "space",
+    "cat": "chassis_mode",
     "icon": "🚀",
     "name": "Crater Rim Traverse",
     "desc": "Circle crater on rough terrain without flip.",
@@ -9953,7 +9833,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "spacerover_dust_storm_navigation": {
     "id": "spacerover_dust_storm_navigation",
     "chassisId": "spacerover",
-    "cat": "space",
+    "cat": "chassis_mode",
     "icon": "🚀",
     "name": "Dust Storm Navigation",
     "desc": "Navigate during reduced visibility storm.",
@@ -9995,7 +9875,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "spacerover_moon_base_construction": {
     "id": "spacerover_moon_base_construction",
     "chassisId": "spacerover",
-    "cat": "space",
+    "cat": "chassis_mode",
     "icon": "🚀",
     "name": "Moon Base Construction",
     "desc": "Deliver bricks to base construction pads.",
@@ -10037,7 +9917,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "spacerover_alien_fossil_discovery": {
     "id": "spacerover_alien_fossil_discovery",
     "chassisId": "spacerover",
-    "cat": "space",
+    "cat": "chassis_mode",
     "icon": "🚀",
     "name": "Alien Fossil Discovery",
     "desc": "Scan fossils in lava_canyon dig site.",
@@ -10079,7 +9959,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "spacerover_space_communication_array": {
     "id": "spacerover_space_communication_array",
     "chassisId": "spacerover",
-    "cat": "space",
+    "cat": "chassis_mode",
     "icon": "🚀",
     "name": "Space Communication Array",
     "desc": "Align rover with comm dish at space_corridor.",
@@ -10121,7 +10001,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "spacerover_rover_battery_conservation": {
     "id": "spacerover_rover_battery_conservation",
     "chassisId": "spacerover",
-    "cat": "space",
+    "cat": "chassis_mode",
     "icon": "🚀",
     "name": "Rover Battery Conservation",
     "desc": "Complete route using minimum energy.",
@@ -10163,7 +10043,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "spacerover_interplanetary_pioneer": {
     "id": "spacerover_interplanetary_pioneer",
     "chassisId": "spacerover",
-    "cat": "space",
+    "cat": "chassis_mode",
     "icon": "🚀",
     "name": "Interplanetary Pioneer",
     "desc": "Capstone Mars mission: drill, build, return.",
@@ -10205,7 +10085,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "legobot_brick_stacking_tower": {
     "id": "legobot_brick_stacking_tower",
     "chassisId": "legobot",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "🧱",
     "name": "Brick Stacking Tower",
     "desc": "Stack bricks to target height in factory yard.",
@@ -10247,7 +10127,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "legobot_pattern_brick_matching": {
     "id": "legobot_pattern_brick_matching",
     "chassisId": "legobot",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "🧱",
     "name": "Pattern Brick Matching",
     "desc": "Match the pattern shown on the blueprint.",
@@ -10289,7 +10169,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "legobot_lego_bridge_construction": {
     "id": "legobot_lego_bridge_construction",
     "chassisId": "legobot",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "🧱",
     "name": "LEGO Bridge Construction",
     "desc": "Span gap with bridge of correct length.",
@@ -10331,7 +10211,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "legobot_gear_mechanism_assembly": {
     "id": "legobot_gear_mechanism_assembly",
     "chassisId": "legobot",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "🧱",
     "name": "Gear Mechanism Assembly",
     "desc": "Insert gears so mechanism spins freely.",
@@ -10373,7 +10253,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "legobot_brick_sorting_hopper": {
     "id": "legobot_brick_sorting_hopper",
     "chassisId": "legobot",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "🧱",
     "name": "Brick Sorting Hopper",
     "desc": "Sort colors into correct hoppers.",
@@ -10415,7 +10295,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "legobot_lego_vehicle_crafting": {
     "id": "legobot_lego_vehicle_crafting",
     "chassisId": "legobot",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "🧱",
     "name": "LEGO Vehicle Crafting",
     "desc": "Build drivable mini vehicle on pad.",
@@ -10457,7 +10337,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "legobot_wall_building_challenge": {
     "id": "legobot_wall_building_challenge",
     "chassisId": "legobot",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "🧱",
     "name": "Wall Building Challenge",
     "desc": "Build wall to cover breach in warehouse.",
@@ -10499,7 +10379,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "legobot_brick_demolition_smash": {
     "id": "legobot_brick_demolition_smash",
     "chassisId": "legobot",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "🧱",
     "name": "Brick Demolition Smash",
     "desc": "Clear rubble blocks from the lane.",
@@ -10541,7 +10421,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "legobot_robotic_crane_latch": {
     "id": "legobot_robotic_crane_latch",
     "chassisId": "legobot",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "🧱",
     "name": "Robotic Crane Latch",
     "desc": "Latch and lift beam with crane attachment.",
@@ -10583,7 +10463,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "legobot_master_builder_grand_prize": {
     "id": "legobot_master_builder_grand_prize",
     "chassisId": "legobot",
-    "cat": "factory",
+    "cat": "chassis_mode",
     "icon": "🧱",
     "name": "Master Builder Grand Prize",
     "desc": "Capstone build: bridge, wall, vehicle.",
@@ -10621,6 +10501,426 @@ export const CHASSIS_GAME_MODE_BY_ID = {
     "physics": "ground",
     "camera": "factory_overview",
     "genre": "simulation"
+  },
+  "blockbot_grassland_spawn": {
+    "id": "blockbot_grassland_spawn",
+    "chassisId": "blockbot",
+    "cat": "chassis_mode",
+    "icon": "🟩",
+    "modeIndex": 1,
+    "exclusive": "blockbot",
+    "rec": [
+      "blockbot"
+    ],
+    "isChassisMode": true,
+    "obstacles": 4,
+    "totalDist": 13,
+    "checkpoints": 0,
+    "estMinutes": 3,
+    "name": "Grassland Spawn",
+    "shortName": "Grassland Spawn",
+    "desc": "Chop 3 logs from the trees.",
+    "tagline": "Chop 3 logs from the trees.",
+    "difficulty": "Tutorial",
+    "modeType": "Training",
+    "programmingConcepts": [
+      "sequential blocks",
+      "variables"
+    ],
+    "starRequirements": {
+      "one": "Complete the objective",
+      "two": "Hit all checkpoints",
+      "three": "Clean run — no penalties"
+    },
+    "rewardBadge": "blockbot_mode_1",
+    "unlocksNext": "blockbot_forest_path",
+    "catalogName": "Grassland Spawn",
+    "arenaType": "auto_factory",
+    "environmentId": "industrial",
+    "environmentName": "Automated Assembly Yard",
+    "environmentEmoji": "🏭",
+    "physics": "ground",
+    "camera": "factory_overview",
+    "genre": "simulation",
+    "color": "#4aa8d8"
+  },
+  "blockbot_forest_path": {
+    "id": "blockbot_forest_path",
+    "chassisId": "blockbot",
+    "cat": "chassis_mode",
+    "icon": "🟩",
+    "modeIndex": 2,
+    "exclusive": "blockbot",
+    "rec": [
+      "blockbot"
+    ],
+    "isChassisMode": true,
+    "obstacles": 5,
+    "totalDist": 16,
+    "checkpoints": 0,
+    "estMinutes": 5,
+    "name": "Forest Path",
+    "shortName": "Forest Path",
+    "desc": "Chop wood and craft a wooden pickaxe.",
+    "tagline": "Chop wood and craft a wooden pickaxe.",
+    "difficulty": "Easy",
+    "modeType": "Training",
+    "programmingConcepts": [
+      "variables",
+      "loops"
+    ],
+    "starRequirements": {
+      "one": "Complete the objective",
+      "two": "Hit all checkpoints",
+      "three": "Clean run — no penalties"
+    },
+    "rewardBadge": "blockbot_mode_2",
+    "unlocksNext": "blockbot_village_cobble",
+    "catalogName": "Forest Path",
+    "arenaType": "factory_floor",
+    "environmentId": "industrial",
+    "environmentName": "Automated Assembly Yard",
+    "environmentEmoji": "🏭",
+    "physics": "ground",
+    "camera": "factory_overview",
+    "genre": "simulation",
+    "color": "#4aa8d8"
+  },
+  "blockbot_village_cobble": {
+    "id": "blockbot_village_cobble",
+    "chassisId": "blockbot",
+    "cat": "chassis_mode",
+    "icon": "🟩",
+    "modeIndex": 3,
+    "exclusive": "blockbot",
+    "rec": [
+      "blockbot"
+    ],
+    "isChassisMode": true,
+    "obstacles": 6,
+    "totalDist": 19,
+    "checkpoints": 0,
+    "estMinutes": 6,
+    "name": "Village Cobble",
+    "shortName": "Village Cobble",
+    "desc": "Build! Place 10 blocks in the village.",
+    "tagline": "Build! Place 10 blocks in the village.",
+    "difficulty": "Easy",
+    "modeType": "Training",
+    "programmingConcepts": [
+      "loops",
+      "if/else"
+    ],
+    "starRequirements": {
+      "one": "Finish the mission",
+      "two": "Hit all checkpoints",
+      "three": "Clean run — no penalties"
+    },
+    "rewardBadge": "blockbot_mode_3",
+    "unlocksNext": "blockbot_surface_mine",
+    "catalogName": "Village Cobble",
+    "arenaType": "warehouse",
+    "environmentId": "industrial",
+    "environmentName": "Automated Assembly Yard",
+    "environmentEmoji": "🏭",
+    "physics": "ground",
+    "camera": "factory_overview",
+    "genre": "simulation",
+    "color": "#4aa8d8"
+  },
+  "blockbot_surface_mine": {
+    "id": "blockbot_surface_mine",
+    "chassisId": "blockbot",
+    "cat": "chassis_mode",
+    "icon": "🟩",
+    "modeIndex": 4,
+    "exclusive": "blockbot",
+    "rec": [
+      "blockbot"
+    ],
+    "isChassisMode": true,
+    "obstacles": 7,
+    "totalDist": 22,
+    "checkpoints": 0,
+    "estMinutes": 8,
+    "name": "Surface Mine",
+    "shortName": "Surface Mine",
+    "desc": "Mine 3 coal and 2 iron ore.",
+    "tagline": "Mine 3 coal and 2 iron ore.",
+    "difficulty": "Medium",
+    "modeType": "Mission",
+    "programmingConcepts": [
+      "if/else",
+      "sensors"
+    ],
+    "starRequirements": {
+      "one": "Finish the mission",
+      "two": "Hit all checkpoints",
+      "three": "Clean run — no penalties"
+    },
+    "rewardBadge": "blockbot_mode_4",
+    "unlocksNext": "blockbot_desert_ruins",
+    "catalogName": "Surface Mine",
+    "arenaType": "underground_mine",
+    "environmentId": "industrial",
+    "environmentName": "Automated Assembly Yard",
+    "environmentEmoji": "🏭",
+    "physics": "ground",
+    "camera": "factory_overview",
+    "genre": "simulation",
+    "color": "#4aa8d8"
+  },
+  "blockbot_desert_ruins": {
+    "id": "blockbot_desert_ruins",
+    "chassisId": "blockbot",
+    "cat": "chassis_mode",
+    "icon": "🟩",
+    "modeIndex": 5,
+    "exclusive": "blockbot",
+    "rec": [
+      "blockbot"
+    ],
+    "isChassisMode": true,
+    "obstacles": 8,
+    "totalDist": 25,
+    "checkpoints": 0,
+    "estMinutes": 8,
+    "name": "Desert Ruins",
+    "shortName": "Desert Ruins",
+    "desc": "Dig down under the glowing block to find the diamond.",
+    "tagline": "Dig down under the glowing block to find the diamond.",
+    "difficulty": "Medium",
+    "modeType": "Mission",
+    "programmingConcepts": [
+      "sensors",
+      "events"
+    ],
+    "starRequirements": {
+      "one": "Finish the mission",
+      "two": "Hit all checkpoints",
+      "three": "Clean run — no penalties"
+    },
+    "rewardBadge": "blockbot_mode_5",
+    "unlocksNext": "blockbot_snowy_peaks",
+    "catalogName": "Desert Ruins",
+    "arenaType": "power_garden",
+    "environmentId": "industrial",
+    "environmentName": "Automated Assembly Yard",
+    "environmentEmoji": "🏭",
+    "physics": "ground",
+    "camera": "factory_overview",
+    "genre": "simulation",
+    "color": "#4aa8d8"
+  },
+  "blockbot_snowy_peaks": {
+    "id": "blockbot_snowy_peaks",
+    "chassisId": "blockbot",
+    "cat": "chassis_mode",
+    "icon": "🟩",
+    "modeIndex": 6,
+    "exclusive": "blockbot",
+    "rec": [
+      "blockbot"
+    ],
+    "isChassisMode": true,
+    "obstacles": 9,
+    "totalDist": 28,
+    "checkpoints": 0,
+    "estMinutes": 10,
+    "name": "Snowy Peaks",
+    "shortName": "Snowy Peaks",
+    "desc": "Build steps up the mountain to the gold block.",
+    "tagline": "Build steps up the mountain to the gold block.",
+    "difficulty": "Medium",
+    "modeType": "Mission",
+    "programmingConcepts": [
+      "events",
+      "functions"
+    ],
+    "starRequirements": {
+      "one": "Finish the mission",
+      "two": "Beat the time target",
+      "three": "Clean run — no penalties"
+    },
+    "rewardBadge": "blockbot_mode_6",
+    "unlocksNext": "blockbot_crimson_cavern",
+    "catalogName": "Snowy Peaks",
+    "arenaType": "pipeline_crawl",
+    "environmentId": "industrial",
+    "environmentName": "Automated Assembly Yard",
+    "environmentEmoji": "🏭",
+    "physics": "ground",
+    "camera": "factory_overview",
+    "genre": "simulation",
+    "color": "#4aa8d8"
+  },
+  "blockbot_crimson_cavern": {
+    "id": "blockbot_crimson_cavern",
+    "chassisId": "blockbot",
+    "cat": "chassis_mode",
+    "icon": "🟩",
+    "modeIndex": 7,
+    "exclusive": "blockbot",
+    "rec": [
+      "blockbot"
+    ],
+    "isChassisMode": true,
+    "obstacles": 10,
+    "totalDist": 31,
+    "checkpoints": 0,
+    "estMinutes": 10,
+    "name": "Crimson Cavern",
+    "shortName": "Crimson Cavern",
+    "desc": "Place blocks to bridge the lava and reach the portal.",
+    "tagline": "Place blocks to bridge the lava and reach the portal.",
+    "difficulty": "Hard",
+    "modeType": "Mission",
+    "programmingConcepts": [
+      "functions",
+      "state machines"
+    ],
+    "starRequirements": {
+      "one": "Finish the mission",
+      "two": "Beat the time target",
+      "three": "Clean run — no penalties"
+    },
+    "rewardBadge": "blockbot_mode_7",
+    "unlocksNext": "blockbot_deep_stone_hall",
+    "catalogName": "Crimson Cavern",
+    "arenaType": "urban_obstacle",
+    "environmentId": "industrial",
+    "environmentName": "Automated Assembly Yard",
+    "environmentEmoji": "🏭",
+    "physics": "ground",
+    "camera": "factory_overview",
+    "genre": "simulation",
+    "color": "#4aa8d8"
+  },
+  "blockbot_deep_stone_hall": {
+    "id": "blockbot_deep_stone_hall",
+    "chassisId": "blockbot",
+    "cat": "chassis_mode",
+    "icon": "🟩",
+    "modeIndex": 8,
+    "exclusive": "blockbot",
+    "rec": [
+      "blockbot"
+    ],
+    "isChassisMode": true,
+    "obstacles": 11,
+    "totalDist": 34,
+    "checkpoints": 0,
+    "estMinutes": 12,
+    "name": "Deep Stone Hall",
+    "shortName": "Deep Stone Hall",
+    "desc": "Mine 3 diamonds in the deep stone hall.",
+    "tagline": "Mine 3 diamonds in the deep stone hall.",
+    "difficulty": "Hard",
+    "modeType": "Mission",
+    "programmingConcepts": [
+      "state machines",
+      "timing"
+    ],
+    "starRequirements": {
+      "one": "Finish the mission",
+      "two": "Beat the time target",
+      "three": "Clean run — no penalties"
+    },
+    "rewardBadge": "blockbot_mode_8",
+    "unlocksNext": "blockbot_sky_islands",
+    "catalogName": "Deep Stone Hall",
+    "arenaType": "factory_floor",
+    "environmentId": "industrial",
+    "environmentName": "Automated Assembly Yard",
+    "environmentEmoji": "🏭",
+    "physics": "ground",
+    "camera": "factory_overview",
+    "genre": "simulation",
+    "color": "#4aa8d8"
+  },
+  "blockbot_sky_islands": {
+    "id": "blockbot_sky_islands",
+    "chassisId": "blockbot",
+    "cat": "chassis_mode",
+    "icon": "🟩",
+    "modeIndex": 9,
+    "exclusive": "blockbot",
+    "rec": [
+      "blockbot"
+    ],
+    "isChassisMode": true,
+    "obstacles": 12,
+    "totalDist": 37,
+    "checkpoints": 0,
+    "estMinutes": 12,
+    "name": "Sky Islands",
+    "shortName": "Sky Islands",
+    "desc": "Build bridges across the sky to the gold block.",
+    "tagline": "Build bridges across the sky to the gold block.",
+    "difficulty": "Hard",
+    "modeType": "Mission",
+    "programmingConcepts": [
+      "timing",
+      "optimization"
+    ],
+    "starRequirements": {
+      "one": "Finish the mission",
+      "two": "Beat the time target",
+      "three": "Perfect mastery run"
+    },
+    "rewardBadge": "blockbot_mode_9",
+    "unlocksNext": "blockbot_master_builder_cup",
+    "catalogName": "Sky Islands",
+    "arenaType": "auto_factory",
+    "environmentId": "industrial",
+    "environmentName": "Automated Assembly Yard",
+    "environmentEmoji": "🏭",
+    "physics": "ground",
+    "camera": "factory_overview",
+    "genre": "simulation",
+    "color": "#4aa8d8"
+  },
+  "blockbot_master_builder_cup": {
+    "id": "blockbot_master_builder_cup",
+    "chassisId": "blockbot",
+    "cat": "chassis_mode",
+    "icon": "🟩",
+    "modeIndex": 10,
+    "exclusive": "blockbot",
+    "rec": [
+      "blockbot"
+    ],
+    "isChassisMode": true,
+    "obstacles": 14,
+    "totalDist": 40,
+    "checkpoints": 0,
+    "estMinutes": 15,
+    "name": "Master Builder Cup",
+    "shortName": "Master Builder Cup",
+    "desc": "From nothing, craft a stone pickaxe.",
+    "tagline": "From nothing, craft a stone pickaxe.",
+    "difficulty": "Expert",
+    "modeType": "Mastery",
+    "programmingConcepts": [
+      "optimization",
+      "sequential blocks"
+    ],
+    "starRequirements": {
+      "one": "Finish the mission",
+      "two": "Beat the time target",
+      "three": "Perfect mastery run"
+    },
+    "rewardBadge": "blockbot_master",
+    "unlocksNext": null,
+    "catalogName": "Master Builder Cup",
+    "arenaType": "colosseum",
+    "environmentId": "industrial",
+    "environmentName": "Automated Assembly Yard",
+    "environmentEmoji": "🏭",
+    "physics": "ground",
+    "camera": "factory_overview",
+    "genre": "simulation",
+    "color": "#4aa8d8"
   },
   "battlebot_mech_combat_duel": {
     "id": "battlebot_mech_combat_duel",
@@ -11402,20 +11702,20 @@ export const CHASSIS_GAME_MODE_BY_ID = {
     "unlocksNext": null,
     "catalogName": "Ring Out Knockdown"
   },
-  "footballbot_1v1_penalty_shootout": {
-    "id": "footballbot_1v1_penalty_shootout",
+  "footballbot_2v2_robot_world_cup": {
+    "id": "footballbot_2v2_robot_world_cup",
     "chassisId": "footballbot",
     "cat": "chassis_mode",
     "icon": "⚽",
-    "name": "1v1 Penalty Shootout",
-    "desc": "Solo drill — not a full match. Score penalties past the keeper.",
-    "shortName": "1v1 Penalty",
-    "tagline": "Solo drill — not a full match",
+    "name": "3v3 World Cup",
+    "desc": "Code Defender, Striker and Midfielder in a FIFA 3v3 match.",
+    "shortName": "World Cup 3v3",
+    "tagline": "Code each player, then Simulate.",
     "arenaType": "robot_football",
     "color": "#16A34A",
     "obstacles": 4,
     "totalDist": 13,
-    "estMinutes": 3,
+    "estMinutes": 5,
     "checkpoints": 3,
     "exclusive": "footballbot",
     "rec": [
@@ -11423,44 +11723,6 @@ export const CHASSIS_GAME_MODE_BY_ID = {
     ],
     "isChassisMode": true,
     "modeIndex": 1,
-    "genre": "football",
-    "linkedFootballCourse": "football_penalties",
-    "difficulty": "Tutorial",
-    "modeType": "Training",
-    "programmingConcepts": [
-      "sequential blocks",
-      "variables"
-    ],
-    "starRequirements": {
-      "one": "Complete the objective",
-      "two": "Hit all checkpoints",
-      "three": "Clean run — no penalties"
-    },
-    "rewardBadge": "footballbot_mode_1",
-    "unlocksNext": "footballbot_2v2_robot_world_cup",
-    "catalogName": "1v1 Penalty Shootout"
-  },
-  "footballbot_2v2_robot_world_cup": {
-    "id": "footballbot_2v2_robot_world_cup",
-    "chassisId": "footballbot",
-    "cat": "chassis_mode",
-    "icon": "⚽",
-    "name": "3v3 World Cup",
-    "desc": "Build your team AI — code Defender, Striker and Midfielder in a FIFA 3v3 match.",
-    "shortName": "World Cup 3v3",
-    "tagline": "Build your team AI",
-    "arenaType": "robot_football",
-    "color": "#16A34A",
-    "obstacles": 5,
-    "totalDist": 16,
-    "estMinutes": 5,
-    "checkpoints": 4,
-    "exclusive": "footballbot",
-    "rec": [
-      "footballbot"
-    ],
-    "isChassisMode": true,
-    "modeIndex": 2,
     "genre": "football",
     "linkedFootballCourse": "football_fifa",
     "difficulty": "Easy",
@@ -11477,6 +11739,44 @@ export const CHASSIS_GAME_MODE_BY_ID = {
     "rewardBadge": "footballbot_mode_2",
     "unlocksNext": "footballbot_corner_target_kick",
     "catalogName": "3v3 World Cup"
+  },
+  "footballbot_1v1_penalty_shootout": {
+    "id": "footballbot_1v1_penalty_shootout",
+    "chassisId": "footballbot",
+    "cat": "chassis_mode",
+    "icon": "⚽",
+    "name": "1v1 Penalty Shootout",
+    "desc": "Solo drill — not a full match. Score penalties past the keeper.",
+    "shortName": "1v1 Penalty",
+    "tagline": "Solo drill — not a full match",
+    "arenaType": "robot_football",
+    "color": "#16A34A",
+    "obstacles": 5,
+    "totalDist": 16,
+    "estMinutes": 3,
+    "checkpoints": 4,
+    "exclusive": "footballbot",
+    "rec": [
+      "footballbot"
+    ],
+    "isChassisMode": true,
+    "modeIndex": 2,
+    "genre": "football",
+    "linkedFootballCourse": "football_penalties",
+    "difficulty": "Tutorial",
+    "modeType": "Training",
+    "programmingConcepts": [
+      "sequential blocks",
+      "variables"
+    ],
+    "starRequirements": {
+      "one": "Complete the objective",
+      "two": "Hit all checkpoints",
+      "three": "Clean run — no penalties"
+    },
+    "rewardBadge": "footballbot_mode_1",
+    "unlocksNext": "footballbot_2v2_robot_world_cup",
+    "catalogName": "1v1 Penalty Shootout"
   },
   "footballbot_corner_target_kick": {
     "id": "footballbot_corner_target_kick",
@@ -12175,7 +12475,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "ninja_laser_grid_infiltration": {
     "id": "ninja_laser_grid_infiltration",
     "chassisId": "ninja",
-    "cat": "stealth",
+    "cat": "chassis_mode",
     "icon": "🥷",
     "name": "Laser Grid Infiltration",
     "desc": "Cross shadow_escape grid undetected.",
@@ -12217,7 +12517,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "ninja_shuriken_target_accuracy": {
     "id": "ninja_shuriken_target_accuracy",
     "chassisId": "ninja",
-    "cat": "stealth",
+    "cat": "chassis_mode",
     "icon": "🥷",
     "name": "Shuriken Target Accuracy",
     "desc": "Hit 10 targets with shuriken.",
@@ -12259,7 +12559,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "ninja_shadow_clone_duel": {
     "id": "ninja_shadow_clone_duel",
     "chassisId": "ninja",
-    "cat": "stealth",
+    "cat": "chassis_mode",
     "icon": "🥷",
     "name": "Shadow Clone Duel",
     "desc": "Defeat shadow clone in mirror match.",
@@ -12301,7 +12601,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "ninja_wall_jump_tower_parkour": {
     "id": "ninja_wall_jump_tower_parkour",
     "chassisId": "ninja",
-    "cat": "stealth",
+    "cat": "chassis_mode",
     "icon": "🥷",
     "name": "Wall Jump Tower Parkour",
     "desc": "Wall-jump climb the tower.",
@@ -12343,7 +12643,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "ninja_speed_dash_assassination": {
     "id": "ninja_speed_dash_assassination",
     "chassisId": "ninja",
-    "cat": "stealth",
+    "cat": "chassis_mode",
     "icon": "🥷",
     "name": "Speed Dash Assassination",
     "desc": "Dash to target before alarm triggers.",
@@ -12385,7 +12685,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "ninja_smoke_bomb_maze_escape": {
     "id": "ninja_smoke_bomb_maze_escape",
     "chassisId": "ninja",
-    "cat": "stealth",
+    "cat": "chassis_mode",
     "icon": "🥷",
     "name": "Smoke Bomb Maze Escape",
     "desc": "Escape maze after smoke deploy.",
@@ -12427,7 +12727,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "ninja_parry_katana_counter": {
     "id": "ninja_parry_katana_counter",
     "chassisId": "ninja",
-    "cat": "stealth",
+    "cat": "chassis_mode",
     "icon": "🥷",
     "name": "Parry & Katana Counter",
     "desc": "Parry 5 strikes then counter.",
@@ -12469,7 +12769,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "ninja_silent_footsteps_trial": {
     "id": "ninja_silent_footsteps_trial",
     "chassisId": "ninja",
-    "cat": "stealth",
+    "cat": "chassis_mode",
     "icon": "🥷",
     "name": "Silent Footsteps Trial",
     "desc": "Complete route with zero noise.",
@@ -12511,7 +12811,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "ninja_rooftop_night_sprint": {
     "id": "ninja_rooftop_night_sprint",
     "chassisId": "ninja",
-    "cat": "stealth",
+    "cat": "chassis_mode",
     "icon": "🥷",
     "name": "Rooftop Night Sprint",
     "desc": "Sprint rooftops in night_patrol city.",
@@ -12553,7 +12853,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "ninja_sensei_boss_showdown": {
     "id": "ninja_sensei_boss_showdown",
     "chassisId": "ninja",
-    "cat": "stealth",
+    "cat": "chassis_mode",
     "icon": "🥷",
     "name": "Sensei Boss Showdown",
     "desc": "Defeat sensei in final duel.",
@@ -12985,7 +13285,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "medbot_emergency_triage_response": {
     "id": "medbot_emergency_triage_response",
     "chassisId": "medbot",
-    "cat": "emergency",
+    "cat": "chassis_mode",
     "icon": "🏥",
     "name": "Emergency Triage Response",
     "desc": "Reach patient in 15s in hospital_walk.",
@@ -13027,7 +13327,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "medbot_defibrillator_shock_recharge": {
     "id": "medbot_defibrillator_shock_recharge",
     "chassisId": "medbot",
-    "cat": "emergency",
+    "cat": "chassis_mode",
     "icon": "🏥",
     "name": "Defibrillator Shock Recharge",
     "desc": "Time shock pulse to restart heart.",
@@ -13069,7 +13369,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "medbot_bandage_wrap_precision": {
     "id": "medbot_bandage_wrap_precision",
     "chassisId": "medbot",
-    "cat": "emergency",
+    "cat": "chassis_mode",
     "icon": "🏥",
     "name": "Bandage Wrap Precision",
     "desc": "Bandage 3 limbs on wounded bot.",
@@ -13111,7 +13411,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "medbot_antidote_medicine_mix": {
     "id": "medbot_antidote_medicine_mix",
     "chassisId": "medbot",
-    "cat": "emergency",
+    "cat": "chassis_mode",
     "icon": "🏥",
     "name": "Antidote Medicine Mix",
     "desc": "Mix correct chemical doses at station.",
@@ -13153,7 +13453,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "medbot_hospital_corridor_dash": {
     "id": "medbot_hospital_corridor_dash",
     "chassisId": "medbot",
-    "cat": "emergency",
+    "cat": "chassis_mode",
     "icon": "🏥",
     "name": "Hospital Corridor Dash",
     "desc": "Transport stretcher without jostling.",
@@ -13195,7 +13495,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "medbot_vital_signs_monitor": {
     "id": "medbot_vital_signs_monitor",
     "chassisId": "medbot",
-    "cat": "emergency",
+    "cat": "chassis_mode",
     "icon": "🏥",
     "name": "Vital Signs Monitor",
     "desc": "Read temp, pulse, oxygen at bedside.",
@@ -13237,7 +13537,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "medbot_quarantine_zone_containment": {
     "id": "medbot_quarantine_zone_containment",
     "chassisId": "medbot",
-    "cat": "emergency",
+    "cat": "chassis_mode",
     "icon": "🏥",
     "name": "Quarantine Zone Containment",
     "desc": "Isolate infected bots safely.",
@@ -13279,7 +13579,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "medbot_surgical_laser_precision": {
     "id": "medbot_surgical_laser_precision",
     "chassisId": "medbot",
-    "cat": "emergency",
+    "cat": "chassis_mode",
     "icon": "🏥",
     "name": "Surgical Laser Precision",
     "desc": "Remove splinter with laser arm.",
@@ -13321,7 +13621,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "medbot_medical_supply_helicopter_drop": {
     "id": "medbot_medical_supply_helicopter_drop",
     "chassisId": "medbot",
-    "cat": "emergency",
+    "cat": "chassis_mode",
     "icon": "🏥",
     "name": "Medical Supply Helicopter Drop",
     "desc": "Catch dropped medicine crates.",
@@ -13363,7 +13663,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "medbot_chief_medical_officer": {
     "id": "medbot_chief_medical_officer",
     "chassisId": "medbot",
-    "cat": "emergency",
+    "cat": "chassis_mode",
     "icon": "🏥",
     "name": "Chief Medical Officer",
     "desc": "Save 10 patients in ER capstone.",
@@ -13405,7 +13705,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "firebot_water_cannon_blaze_extinguish": {
     "id": "firebot_water_cannon_blaze_extinguish",
     "chassisId": "firebot",
-    "cat": "emergency",
+    "cat": "chassis_mode",
     "icon": "🔥",
     "name": "Water Cannon Blaze Extinguish",
     "desc": "Extinguish 5 fires in firebot_blaze zone.",
@@ -13447,7 +13747,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "firebot_smoke_rescue_dash": {
     "id": "firebot_smoke_rescue_dash",
     "chassisId": "firebot",
-    "cat": "emergency",
+    "cat": "chassis_mode",
     "icon": "🔥",
     "name": "Smoke Rescue Dash",
     "desc": "Evacuate 3 bots from smoke-filled building.",
@@ -13489,7 +13789,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "firebot_fire_hydrant_hookup": {
     "id": "firebot_fire_hydrant_hookup",
     "chassisId": "firebot",
-    "cat": "emergency",
+    "cat": "chassis_mode",
     "icon": "🔥",
     "name": "Fire Hydrant Hookup",
     "desc": "Connect hose to 3 hydrants in order.",
@@ -13531,7 +13831,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "firebot_chemical_fire_suppression": {
     "id": "firebot_chemical_fire_suppression",
     "chassisId": "firebot",
-    "cat": "emergency",
+    "cat": "chassis_mode",
     "icon": "🔥",
     "name": "Chemical Fire Suppression",
     "desc": "Deploy foam on oil blaze safely.",
@@ -13573,7 +13873,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "firebot_burning_tower_ladder_climb": {
     "id": "firebot_burning_tower_ladder_climb",
     "chassisId": "firebot",
-    "cat": "emergency",
+    "cat": "chassis_mode",
     "icon": "🔥",
     "name": "Burning Tower Ladder Climb",
     "desc": "Extend ladder to top floor window.",
@@ -13615,7 +13915,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "firebot_wildfire_perimeter_trench": {
     "id": "firebot_wildfire_perimeter_trench",
     "chassisId": "firebot",
-    "cat": "emergency",
+    "cat": "chassis_mode",
     "icon": "🔥",
     "name": "Wildfire Perimeter Trench",
     "desc": "Carve firebreak before spread reaches town.",
@@ -13657,7 +13957,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "firebot_gas_explosion_response": {
     "id": "firebot_gas_explosion_response",
     "chassisId": "firebot",
-    "cat": "emergency",
+    "cat": "chassis_mode",
     "icon": "🔥",
     "name": "Gas Explosion Response",
     "desc": "Cool overheating gas tanks before blast.",
@@ -13699,7 +13999,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "firebot_emergency_siren_rush": {
     "id": "firebot_emergency_siren_rush",
     "chassisId": "firebot",
-    "cat": "emergency",
+    "cat": "chassis_mode",
     "icon": "🔥",
     "name": "Emergency Siren Rush",
     "desc": "Drive engine to scene under time limit.",
@@ -13741,7 +14041,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "firebot_flashover_prevention": {
     "id": "firebot_flashover_prevention",
     "chassisId": "firebot",
-    "cat": "emergency",
+    "cat": "chassis_mode",
     "icon": "🔥",
     "name": "Flashover Prevention",
     "desc": "Vent hot gases before room flashes over.",
@@ -13783,7 +14083,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "firebot_chief_fire_officer_medal": {
     "id": "firebot_chief_fire_officer_medal",
     "chassisId": "firebot",
-    "cat": "emergency",
+    "cat": "chassis_mode",
     "icon": "🔥",
     "name": "Chief Fire Officer Medal",
     "desc": "Capstone multi-blaze city mission.",
@@ -13825,7 +14125,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "jetplane_supersonic_dogfight": {
     "id": "jetplane_supersonic_dogfight",
     "chassisId": "jetplane",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "✈️",
     "name": "Supersonic Dogfight",
     "desc": "Fly the ace training lane — holo rings over the carrier deck.",
@@ -13867,7 +14167,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "jetplane_precision_air_strike": {
     "id": "jetplane_precision_air_strike",
     "chassisId": "jetplane",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "✈️",
     "name": "Precision Air Strike",
     "desc": "Hit ground targets without collateral.",
@@ -13909,7 +14209,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "jetplane_aircraft_carrier_touch_and_go": {
     "id": "jetplane_aircraft_carrier_touch_and_go",
     "chassisId": "jetplane",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "✈️",
     "name": "Aircraft Carrier Touch-and-Go",
     "desc": "Land and launch on carrier deck.",
@@ -13951,7 +14251,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "jetplane_mach_2_speed_trap": {
     "id": "jetplane_mach_2_speed_trap",
     "chassisId": "jetplane",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "✈️",
     "name": "Mach 2 Speed Trap",
     "desc": "Break Mach 2 through speed trap gates.",
@@ -13993,7 +14293,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "jetplane_radar_evasion_stealth_flight": {
     "id": "jetplane_radar_evasion_stealth_flight",
     "chassisId": "jetplane",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "✈️",
     "name": "Radar Evasion Stealth Flight",
     "desc": "Cross zone without radar lock.",
@@ -14035,7 +14335,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "jetplane_missile_jammer_countermeasures": {
     "id": "jetplane_missile_jammer_countermeasures",
     "chassisId": "jetplane",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "✈️",
     "name": "Missile Jammer Countermeasures",
     "desc": "Jam incoming missiles during run.",
@@ -14077,7 +14377,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "jetplane_mid_air_tanker_refuel": {
     "id": "jetplane_mid_air_tanker_refuel",
     "chassisId": "jetplane",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "✈️",
     "name": "Mid-Air Tanker Refuel",
     "desc": "Dock with tanker mid-flight.",
@@ -14119,7 +14419,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "jetplane_canyon_run_precision": {
     "id": "jetplane_canyon_run_precision",
     "chassisId": "jetplane",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "✈️",
     "name": "Canyon Run Precision",
     "desc": "Thread canyon at minimum altitude.",
@@ -14161,7 +14461,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "jetplane_escort_transport_jet": {
     "id": "jetplane_escort_transport_jet",
     "chassisId": "jetplane",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "✈️",
     "name": "Escort Transport Jet",
     "desc": "Escort cargo plane through typhoon.",
@@ -14203,7 +14503,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "jetplane_top_gun_ace_fighter": {
     "id": "jetplane_top_gun_ace_fighter",
     "chassisId": "jetplane",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "✈️",
     "name": "Top Gun Ace Fighter",
     "desc": "Capstone dogfight + strike + carrier landing.",
@@ -14245,7 +14545,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "steathjet_radar_dome_infiltration": {
     "id": "steathjet_radar_dome_infiltration",
     "chassisId": "steathjet",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "🌑",
     "name": "Radar Dome Infiltration",
     "desc": "Penetrate radar dome undetected.",
@@ -14287,7 +14587,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "steathjet_night_bombing_raid": {
     "id": "steathjet_night_bombing_raid",
     "chassisId": "steathjet",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "🌑",
     "name": "Night Bombing Raid",
     "desc": "Hit targets on night_patrol map.",
@@ -14329,7 +14629,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "steathjet_thermal_signature_suppression": {
     "id": "steathjet_thermal_signature_suppression",
     "chassisId": "steathjet",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "🌑",
     "name": "Thermal Signature Suppression",
     "desc": "Stay cold on thermal sensors.",
@@ -14371,7 +14671,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "steathjet_shadow_formation_flight": {
     "id": "steathjet_shadow_formation_flight",
     "chassisId": "steathjet",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "🌑",
     "name": "Shadow Formation Flight",
     "desc": "Fly formation without breaking stealth.",
@@ -14413,7 +14713,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "steathjet_electronic_warfare_jamming": {
     "id": "steathjet_electronic_warfare_jamming",
     "chassisId": "steathjet",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "🌑",
     "name": "Electronic Warfare Jamming",
     "desc": "Jam enemy comms at waypoint.",
@@ -14455,7 +14755,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "steathjet_high_altitude_recon_photo": {
     "id": "steathjet_high_altitude_recon_photo",
     "chassisId": "steathjet",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "🌑",
     "name": "High-Altitude Recon Photo",
     "desc": "Photograph 6 targets from altitude.",
@@ -14497,7 +14797,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "steathjet_silent_glide_approach": {
     "id": "steathjet_silent_glide_approach",
     "chassisId": "steathjet",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "🌑",
     "name": "Silent Glide Approach",
     "desc": "Glide in with engines off.",
@@ -14539,7 +14839,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "steathjet_precision_missile_sniping": {
     "id": "steathjet_precision_missile_sniping",
     "chassisId": "steathjet",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "🌑",
     "name": "Precision Missile Sniping",
     "desc": "Single missile per target — no misses.",
@@ -14581,7 +14881,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "steathjet_emp_bomb_drop": {
     "id": "steathjet_emp_bomb_drop",
     "chassisId": "steathjet",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "🌑",
     "name": "EMP Bomb Drop",
     "desc": "EMP drop disables grid then escape.",
@@ -14623,7 +14923,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "steathjet_ghost_jet_master": {
     "id": "steathjet_ghost_jet_master",
     "chassisId": "steathjet",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "🌑",
     "name": "Ghost Jet Master",
     "desc": "Capstone stealth strike mission.",
@@ -14665,7 +14965,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "aerobat_smoke_trail_loop_de_loop": {
     "id": "aerobat_smoke_trail_loop_de_loop",
     "chassisId": "aerobat",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "💫",
     "name": "Smoke Trail Loop-de-Loop",
     "desc": "Complete loop leaving smoke trail.",
@@ -14707,7 +15007,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "aerobat_barrel_roll_speed_slalom": {
     "id": "aerobat_barrel_roll_speed_slalom",
     "chassisId": "aerobat",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "💫",
     "name": "Barrel Roll Speed Slalom",
     "desc": "Barrel roll between slalom pylons.",
@@ -14749,7 +15049,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "aerobat_knife_edge_flying": {
     "id": "aerobat_knife_edge_flying",
     "chassisId": "aerobat",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "💫",
     "name": "Knife-Edge Flying",
     "desc": "Hold knife-edge through gate sequence.",
@@ -14791,7 +15091,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "aerobat_air_show_formation_dance": {
     "id": "aerobat_air_show_formation_dance",
     "chassisId": "aerobat",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "💫",
     "name": "Air Show Formation Dance",
     "desc": "Mirror lead plane through formation.",
@@ -14833,7 +15133,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "aerobat_touch_and_go_ribbon_snip": {
     "id": "aerobat_touch_and_go_ribbon_snip",
     "chassisId": "aerobat",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "💫",
     "name": "Touch-and-Go Ribbon Snip",
     "desc": "Clip ribbon with wing on low pass.",
@@ -14875,7 +15175,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "aerobat_inverted_flying_sprint": {
     "id": "aerobat_inverted_flying_sprint",
     "chassisId": "aerobat",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "💫",
     "name": "Inverted Flying Sprint",
     "desc": "Inverted flight through cloud_race section.",
@@ -14917,7 +15217,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "aerobat_hammerhead_turn_stunt": {
     "id": "aerobat_hammerhead_turn_stunt",
     "chassisId": "aerobat",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "💫",
     "name": "Hammerhead Turn Stunt",
     "desc": "Hammerhead at stunt checkpoint.",
@@ -14959,7 +15259,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "aerobat_pyrotechnic_night_flight": {
     "id": "aerobat_pyrotechnic_night_flight",
     "chassisId": "aerobat",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "💫",
     "name": "Pyrotechnic Night Flight",
     "desc": "Fly fireworks display path.",
@@ -15001,7 +15301,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "aerobat_pylon_slalom_time_attack": {
     "id": "aerobat_pylon_slalom_time_attack",
     "chassisId": "aerobat",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "💫",
     "name": "Pylon Slalom Time Attack",
     "desc": "Best time through pylon course.",
@@ -15043,7 +15343,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "aerobat_red_bull_air_race_champion": {
     "id": "aerobat_red_bull_air_race_champion",
     "chassisId": "aerobat",
-    "cat": "sky",
+    "cat": "chassis_mode",
     "icon": "💫",
     "name": "Red Bull Air Race Champion",
     "desc": "Capstone aerobatic championship.",
@@ -15505,7 +15805,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "custom_custom_test_drive": {
     "id": "custom_custom_test_drive",
     "chassisId": "custom",
-    "cat": "sandbox",
+    "cat": "chassis_mode",
     "icon": "✨",
     "name": "Custom Test Drive",
     "desc": "Test motors and wheels on open sandbox track.",
@@ -15547,7 +15847,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "custom_custom_obstacle_course": {
     "id": "custom_custom_obstacle_course",
     "chassisId": "custom",
-    "cat": "sandbox",
+    "cat": "chassis_mode",
     "icon": "✨",
     "name": "Custom Obstacle Course",
     "desc": "Navigate user-placed obstacles.",
@@ -15589,7 +15889,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "custom_custom_sensor_calibration": {
     "id": "custom_custom_sensor_calibration",
     "chassisId": "custom",
-    "cat": "sandbox",
+    "cat": "chassis_mode",
     "icon": "✨",
     "name": "Custom Sensor Calibration",
     "desc": "Calibrate light, sonar, or IR sensors.",
@@ -15631,7 +15931,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "custom_custom_block_sandbox": {
     "id": "custom_custom_block_sandbox",
     "chassisId": "custom",
-    "cat": "sandbox",
+    "cat": "chassis_mode",
     "icon": "✨",
     "name": "Custom Block Sandbox",
     "desc": "Freeplay all Blockly robot blocks.",
@@ -15673,7 +15973,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "custom_speed_power_tuning": {
     "id": "custom_speed_power_tuning",
     "chassisId": "custom",
-    "cat": "sandbox",
+    "cat": "chassis_mode",
     "icon": "✨",
     "name": "Speed & Power Tuning",
     "desc": "Tune torque and acceleration constants.",
@@ -15715,7 +16015,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "custom_custom_attachment_trial": {
     "id": "custom_custom_attachment_trial",
     "chassisId": "custom",
-    "cat": "sandbox",
+    "cat": "chassis_mode",
     "icon": "✨",
     "name": "Custom Attachment Trial",
     "desc": "Test arm, kicker, or shield attachment.",
@@ -15757,7 +16057,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "custom_custom_ai_logic_trainer": {
     "id": "custom_custom_ai_logic_trainer",
     "chassisId": "custom",
-    "cat": "sandbox",
+    "cat": "chassis_mode",
     "icon": "✨",
     "name": "Custom AI Logic Trainer",
     "desc": "Train behavior tree on test bots.",
@@ -15799,7 +16099,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "custom_community_challenge_track": {
     "id": "custom_community_challenge_track",
     "chassisId": "custom",
-    "cat": "sandbox",
+    "cat": "chassis_mode",
     "icon": "✨",
     "name": "Community Challenge Track",
     "desc": "Play community-published track.",
@@ -15841,7 +16141,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "custom_custom_robot_duel": {
     "id": "custom_custom_robot_duel",
     "chassisId": "custom",
-    "cat": "sandbox",
+    "cat": "chassis_mode",
     "icon": "✨",
     "name": "Custom Robot Duel",
     "desc": "Fight preset bot with your build.",
@@ -15883,7 +16183,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   "custom_custom_master_showcase": {
     "id": "custom_custom_master_showcase",
     "chassisId": "custom",
-    "cat": "sandbox",
+    "cat": "chassis_mode",
     "icon": "✨",
     "name": "Custom Master Showcase",
     "desc": "Present final robot in showcase arena.",
@@ -15936,7 +16236,9 @@ export function resolveChassisModeCourse(mode, allCourses = []) {
   if (!mode) return null;
   mode = applyModeCatalog(mode);
   if (mode.chassisId === 'securitybot') mode = applySecurityBotArenaMeta(mode);
-  const studioChassis = isPrimaryStudioChassis(mode.chassisId);
+  // Kart racers (Rover, Scout…) keep their race tracks; only non-racing studio
+  // robots take their arena name, goal and scene from the Arena Bible.
+  const studioChassis = isPrimaryStudioChassis(mode.chassisId) && !isCarChassis(mode.chassisId);
   const attach = (resolved) => {
     const named = studioChassis ? applyPrimaryStudioMeta(resolved) : resolved;
     const spec = getGameModeSpec(mode.id);

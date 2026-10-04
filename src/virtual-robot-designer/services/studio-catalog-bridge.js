@@ -64,7 +64,7 @@ export function resolveChassisBuildKey(c) {
     hoverbot: 'hoverbot', hoverracer: 'hoverracer', deepseabot: 'deepseabot',
     robotarm: 'robotarm', factorybot: 'factorybot', battlebot: 'battlebot',
     spacerover: 'spacerover', jetplane: 'jetplane', steathjet: 'steathjet', aerobat: 'aerobat',
-    medbot: 'medbot', firebot: 'firebot', legobot: 'legobot',
+    medbot: 'medbot', firebot: 'firebot', legobot: 'legobot', blockbot: 'blockbot',
   };
   if (direct[id]) return direct[id];
 

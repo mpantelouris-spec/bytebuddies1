@@ -6,7 +6,7 @@ import * as THREE from 'three';
 
 const SKY_PRESETS = {
   sunset_cove_01: { top: '#287fc4', mid: '#69c5ea', horizon: '#ffd39a', fog: 0xb7ddec },
-  candy_carnival_01: { top: '#7ec8ff', mid: '#ffe0f0', horizon: '#ffc0e0', fog: 0xffe8f4 },
+  candy_carnival_01: { top: '#2f8ff0', mid: '#6ec2ff', horizon: '#d2f0ff', fog: 0xcdeeff },
   neon_metro_01: { top: '#1a0840', mid: '#2a1058', horizon: '#3a2080', fog: 0x1a1040 },
   cloud_citadel_01: { top: '#4fc3f7', mid: '#b0d8f8', horizon: '#e8f4ff', fog: 0xc8e8ff },
   jungle_ruins_01: { top: '#5dade2', mid: '#8fbc8f', horizon: '#c8e8a0', fog: 0xa8d090 },
@@ -91,8 +91,7 @@ export function installTrackSky(scene, bounds, arenaType) {
   }
   if (arenaType === 'frost_peak_01') addAurora(scene, bounds);
   if (arenaType === 'thunder_ridge_01') addStormClouds(scene, bounds);
-  if (arenaType === 'sunset_cove_01') addVolumetricClouds(scene, bounds);
-  if (arenaType === 'candy_carnival_01') addCarnivalSkyDressing(scene, bounds);
+  if (arenaType === 'sunset_cove_01' || arenaType === 'candy_carnival_01') addVolumetricClouds(scene, bounds);
 
   return dome;
 }

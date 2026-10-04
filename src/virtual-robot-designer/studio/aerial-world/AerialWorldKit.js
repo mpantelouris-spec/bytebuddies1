@@ -226,7 +226,9 @@ function buildMidground(scene, curve, recipe) {
 
 function buildRaceRibbon(scene, curve, recipe) {
   const spec = recipe.raceRibbon;
-  if (!spec) return;
+  // Laid along the flight path it ran straight through every gate, so the rings
+  // looked wrapped around a track. The numbered gates already mark the route.
+  if (!spec || !spec.show) return;
   const root = new THREE.Group();
   root.name = 'AerialRaceRibbon';
   const colors = spec.colors?.length ? spec.colors : [0x06b6d4, 0xec4899, 0xa855f7];

@@ -103,15 +103,18 @@ function normUuid(u) {
   return String(u || '').toLowerCase().replace(/-/g, '');
 }
 
-function pickChars(allChars, variant) {
-  const rxId = normUuid(variant.rx);
-  const txId = normUuid(variant.tx);
-  const rxChar =
-    allChars.find((c) => normUuid(c.uuid) === rxId) ||
-    allChars.find((c) => normUuid(c.uuid).includes('6e400002'));
-  const txChar =
-    allChars.find((c) => normUuid(c.uuid) === txId) ||
-    allChars.find((c) => normUuid(c.uuid).includes('6e400003'));
+/**
+ * micro:bit (Lancaster/MakeCode) UART swaps the Nordic roles: 6E400002 is the
+ * micro:bit's TX (indicate) and 6E400003 its RX (write). Choose by what each
+ * characteristic can do so both layouts work.
+ */
+function pickChars(allChars) {
+  const nus = allChars.filter((c) => /6e40000[23]/.test(normUuid(c.uuid)));
+  const pool = nus.length ? nus : allChars;
+  const canWrite = (c) => c.properties.write || c.properties.writeWithoutResponse;
+  const canNotify = (c) => c.properties.notify || c.properties.indicate;
+  const rxChar = pool.find((c) => canWrite(c) && !canNotify(c)) || pool.find(canWrite);
+  const txChar = pool.find((c) => canNotify(c) && c !== rxChar) || pool.find(canNotify);
   return { rxChar, txChar };
 }
 
@@ -228,7 +231,7 @@ export class MicrobitBleUart {
     this.log(`UART service found (${this.variant === NUS_B5A3 ? 'B5A3' : 'B5B3'})`);
 
     const chars = await service.getCharacteristics();
-    let { rxChar, txChar } = pickChars(chars, this.variant);
+    let { rxChar, txChar } = pickChars(chars);
     if (!rxChar) rxChar = await service.getCharacteristic(this.variant.rx);
     if (!txChar) txChar = await service.getCharacteristic(this.variant.tx);
     if (!rxChar || !txChar) {

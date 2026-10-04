@@ -10,49 +10,6 @@ function formatMatchClock(matchTime = 0, timeLimit = 180) {
   return `${String(matchMinute).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
 }
 
-function CircularRadar({ match }) {
-  const bots = match.radar || [];
-  const size = 100;
-  const cx = size / 2;
-  const cy = size / 2;
-  const r = size / 2 - 8;
-  const hx = 20;
-  const hz = 12.5;
-  const toPx = (x, z) => ({
-    left: cx + (x / hx) * (r * 0.86),
-    top: cy + (z / hz) * (r * 0.86),
-  });
-  const ball = toPx(match.ballX ?? 0, match.ballZ ?? 0);
-  const facing = match.playerFacing ?? 0;
-  const wedgeDeg = (facing * 180) / Math.PI;
-
-  return (
-    <div className="fifa-tv-radar" aria-hidden="true">
-      <div className="fifa-tv-radar-ring">
-        <div
-          className="fifa-tv-radar-wedge"
-          style={{
-            left: cx,
-            top: cy,
-            transform: `translate(-50%, -50%) rotate(${wedgeDeg}deg)`,
-          }}
-        />
-        {bots.map((b) => {
-          const p = toPx(b.x, b.z);
-          return (
-            <span
-              key={b.id}
-              className={`fifa-tv-radar-dot ${b.team === 'player' ? 'home' : 'away'}${b.isPlayer ? ' you' : ''}`}
-              style={{ left: p.left, top: p.top }}
-            />
-          );
-        })}
-        <span className="fifa-tv-radar-ball" style={{ left: ball.left, top: ball.top }} />
-      </div>
-    </div>
-  );
-}
-
 export function FootballHUD({
   match = {},
   robotName = 'You',
@@ -98,7 +55,12 @@ export function FootballHUD({
   const scriptBadge = codedAction || codingLabel;
   const stamina = Math.max(0, Math.min(1, match.playerStamina ?? 1));
   const playerLabel = match.playerLabel || '#9 STRIKER';
-  const showTvLayout = isTeamMatch && !isTraining;
+  const showTvLayout = true;
+  const tvHome = isKeeper ? 'KEEPER' : isPenalty ? 'KICKER' : homeName;
+  const tvAway = isKeeper ? 'SHOOTER' : isPenalty ? 'KEEPER' : isTraining ? 'GOAL' : awayName;
+  const tvScore = isKeeper || (isTraining && !isTeamMatch)
+    ? `${homeGoals} / ${goalsToWin}`
+    : `${homeGoals} - ${awayGoals}`;
 
   return (
     <div className={`football-hud fifa-hud${showTvLayout ? ' fifa-hud--tv' : ''}`} aria-live="polite">
@@ -116,15 +78,18 @@ export function FootballHUD({
             <div className="fifa-tv-scorebar-accent fifa-tv-scorebar-accent--green" />
             <div className="fifa-tv-scorebar-accent fifa-tv-scorebar-accent--blue" />
             <div className="fifa-tv-scorebar-body">
-              <span className="fifa-tv-team fifa-tv-team--green">{homeName}</span>
-              <span className="fifa-tv-score">{homeGoals} - {awayGoals}</span>
-              <span className="fifa-tv-team fifa-tv-team--blue">{awayName}</span>
+              <span className="fifa-tv-chip fifa-tv-chip--green" />
+              <span className="fifa-tv-team fifa-tv-team--green">{String(tvHome).slice(0, 3)}</span>
+              <span className="fifa-tv-score">{tvScore}</span>
+              <span className="fifa-tv-team fifa-tv-team--blue">{String(tvAway).slice(0, 3)}</span>
+              <span className="fifa-tv-chip fifa-tv-chip--blue" />
+              <span className="fifa-tv-bug-clock">{isPenalty ? `${(match.drillAttempt ?? 0) + 1}` : clock}</span>
             </div>
             <span className="fifa-tv-comp">{compTitle}</span>
           </div>
 
           <div className="fifa-tv-clock-block">
-            <span className="fifa-tv-clock">{clock}</span>
+            <span className="fifa-tv-clock">{isPenalty ? `${(match.drillAttempt ?? 0) + 1}` : clock}</span>
             {(isRunning || isPaused) && onPause && (
               <button
                 type="button"
@@ -137,8 +102,7 @@ export function FootballHUD({
             )}
           </div>
 
-          <CircularRadar match={match} />
-
+          {match.userDriving && (
           <div className="fifa-tv-player-card">
             <div className="fifa-tv-player-name">{playerLabel}</div>
             <div className="fifa-tv-stamina">
@@ -151,6 +115,7 @@ export function FootballHUD({
               </div>
             </div>
           </div>
+          )}
         </>
       ) : (
         <div className={`fifa-scorebar${kickoff ? ' kickoff' : ''}`}>

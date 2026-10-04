@@ -39,6 +39,7 @@ const CHASSIS_META = {
   factorybot: { icon: '🏭', color: '#78716c' },
   spacerover: { icon: '🚀', color: '#dc2626' },
   legobot: { icon: '🧱', color: '#eab308' },
+  blockbot: { icon: '🟩', color: '#4aa8d8' },
   battlebot: { icon: '⚔️', color: '#ef4444' },
   striker: { icon: '🥊', color: '#f43f5e' },
   footballbot: { icon: '⚽', color: '#16a34a' },
@@ -94,142 +95,23 @@ for (const [chassisId, ids] of Object.entries(CHASSIS_MODE_MAP)) {
   });
 }
 
-const header = `/**
- * chassis-game-modes.js — Exhaustive per-chassis game mode catalog (35 chassis × 10 modes)
- * Strict UI filtering: each chassis shows ONLY its 10 assigned modes.
- * Mode names/objectives synced from chassis-mode-catalog.js — run: node scripts/sync-chassis-game-modes.mjs
- */
-import { applyCarRacingArena, isCarChassis } from './car-racing-tracks.js';
-import { applyChassisArenaEnvironment } from './robot-arena-config.js';
-import { applyModeCatalog } from './chassis-mode-catalog.js';
-import { getGameModeSpec } from './game-mode-specifications.js';
-`;
+// Keep the hand-written imports and resolver code already in the target file;
+// only the two data objects are regenerated. (Hard-coded copies of that code
+// here drifted out of date and silently dropped the Robot Studio arena naming.)
+const existing = fs.readFileSync(target, 'utf8');
+const MAP_MARKER = 'export const CHASSIS_MODE_MAP = ';
+const FOOTER_MARKER = '\nexport const ALL_CHASSIS_GAME_MODES';
+const mapAt = existing.indexOf(MAP_MARKER);
+const footerAt = existing.indexOf(FOOTER_MARKER);
+if (mapAt < 0 || footerAt < 0) {
+  throw new Error('chassis-game-modes.js is missing its data markers; restore it from git first.');
+}
+const header = existing.slice(0, mapAt).trimEnd() + '\n';
 
 const mapJson = JSON.stringify(CHASSIS_MODE_MAP, null, 2);
 const byIdJson = JSON.stringify(synced, null, 2);
 
-const footer = `
-export const ALL_CHASSIS_GAME_MODES = Object.values(CHASSIS_GAME_MODE_BY_ID);
-
-/** All chassis IDs with dedicated mode sets */
-export const CHASSIS_MODE_CHASSIS_IDS = Object.keys(CHASSIS_MODE_MAP);
-
-/**
- * Resolve a chassis mode to a playable course — links fight/football modes to engine courses.
- */
-export function resolveChassisModeCourse(mode, allCourses = []) {
-  if (!mode) return null;
-  mode = applyModeCatalog(mode);
-  const attach = (resolved) => ({
-    ...resolved,
-    isChassisMode: true,
-    chassisId: mode.chassisId,
-    modeIndex: mode.modeIndex,
-    modeSpec: getGameModeSpec(mode.id),
-    difficulty: resolved.difficulty || mode.difficulty,
-    modeType: resolved.modeType || mode.modeType,
-    starRequirements: resolved.starRequirements || mode.starRequirements,
-    programmingConcepts: resolved.programmingConcepts || mode.programmingConcepts,
-    estMinutes: resolved.estMinutes || mode.estMinutes,
-    rewardBadge: resolved.rewardBadge || mode.rewardBadge,
-  });
-
-  if (mode.linkedFightCourse) {
-    const linked = allCourses.find((c) => c.id === mode.linkedFightCourse);
-    if (linked) {
-      return attach({
-        ...linked,
-        ...mode,
-        id: mode.id,
-        name: mode.name,
-        desc: mode.desc,
-        shortName: mode.shortName,
-        tagline: mode.tagline,
-        arenaType: 'robot_fight',
-        genre: 'combat',
-        cat: 'combat',
-      });
-    }
-  }
-  if (mode.linkedFootballCourse) {
-    const linked = allCourses.find((c) => c.id === mode.linkedFootballCourse);
-    if (linked) {
-      return attach({
-        ...linked,
-        ...mode,
-        id: mode.id,
-        name: mode.name,
-        desc: mode.desc,
-        shortName: mode.shortName,
-        tagline: mode.tagline,
-        arenaType: 'robot_football',
-        genre: 'football',
-        cat: 'football',
-      });
-    }
-  }
-
-  let resolved = applyChassisArenaEnvironment(mode);
-  if (isCarChassis(mode.chassisId)) {
-    resolved = applyCarRacingArena(resolved);
-  }
-
-  if (resolved.linkedRaceCourse) {
-    const linked = allCourses.find((c) => c.id === resolved.linkedRaceCourse);
-    if (linked) {
-      const racing = resolved.raceTrackLabel || resolved.genre === 'racing';
-      return attach({
-        ...linked,
-        ...resolved,
-        id: mode.id,
-        ...(racing ? {} : {
-          name: mode.name,
-          desc: mode.desc,
-          shortName: mode.shortName,
-          tagline: mode.tagline,
-        }),
-        genre: 'racing',
-        cat: 'racing',
-      });
-    }
-  }
-
-  return attach(resolved);
-}
-
-/** Get exactly 10 game modes for a chassis — strict filter */
-export function getCoursesForChassis(chassisId, allCourses = []) {
-  const key = resolveChassisKey(chassisId);
-  const ids = CHASSIS_MODE_MAP[key] || CHASSIS_MODE_MAP.rover;
-  return ids
-    .map((id) => resolveChassisModeCourse(CHASSIS_GAME_MODE_BY_ID[id], allCourses))
-    .filter(Boolean);
-}
-
-/** Normalize chassis id — unknown/custom builds use the custom mode set */
-export function resolveChassisKey(chassisId) {
-  if (!chassisId) return 'custom';
-  return CHASSIS_MODE_MAP[chassisId] ? chassisId : 'custom';
-}
-
-/** Default (first) mode when chassis is selected */
-export function getDefaultChassisCourse(chassisId, allCourses = []) {
-  const modes = getCoursesForChassis(chassisId, allCourses);
-  return modes[0] || null;
-}
-
-/** True if course belongs to this chassis's 10-mode set */
-export function isCourseForChassis(courseId, chassisId) {
-  const key = resolveChassisKey(chassisId);
-  const ids = CHASSIS_MODE_MAP[key] || CHASSIS_MODE_MAP.rover;
-  return ids.includes(courseId);
-}
-
-export function getChassisIdForCourse(courseId) {
-  const mode = CHASSIS_GAME_MODE_BY_ID[courseId];
-  return mode?.chassisId || null;
-}
-`;
+const footer = existing.slice(footerAt);
 
 const content = `${header}
 export const CHASSIS_MODE_MAP = ${mapJson};

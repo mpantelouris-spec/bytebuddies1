@@ -38,6 +38,16 @@ const recipes = {
   cake_decorating: ['cake','desk','tray'], music_bells: ['bell','stage','tile'],
   garden_seed_tray: ['tray','flower','greenhouse'], marble_mover: ['tray','marble','cube'],
   toy_assembly: ['car','shelf','desk'], maker_finale: ['tower','canvas','cake'],
+  giant_garden: ['flower','stone','tree'], treehouse_kingdom: ['pine','bridge','lantern'],
+  toy_room: ['teddy','tower','car'], sweet_factory: ['cake','tray','lantern'],
+  giant_kitchen: ['desk','tray','cake'], ancient_temple: ['arch','stone','crystal'],
+  robot_factory_climb: ['shelf','beacon','tower'], sky_islands_web: ['island','cloud','flag'],
+  crystal_caverns: ['crystal','beacon','web'], clockwork_castle: ['tower','arch','lantern'],
+  web_garden: ['web','flower','tree'], vine_wall: ['vine','web','tree'],
+  temple_steps: ['arch','web','stone'], crystal_web_cave: ['crystal','web','beacon'],
+  bamboo_canopy: ['pine','web','vine'], ruins_bridge: ['bridge','web','stone'],
+  dewdrop_meadow: ['web','flower','stone'], pipe_crawl: ['tunnel','web','beacon'],
+  glow_web_night: ['web','lantern','tree'], spider_summit: ['web','pine','flag'],
 };
 
 // Theme words also cover helper, sport, creative and custom robot chapters.

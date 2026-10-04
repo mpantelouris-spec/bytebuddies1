@@ -4,13 +4,23 @@
  * v2 — bright stage, rich part tiles, delete functionality, robot-click overlay
  */
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { loadXbotFootballer } from './football/FootballPlayerKit.js';
 import * as THREE from 'three';
 import {
   CHASSIS_DATA, SENSORS_DATA, TOOLS_DATA, POWER_DATA, HEADS_DATA, ARMS_DATA, LIGHTS_DATA,
   AI_DATA, COMM_DATA, STRUCTURAL_DATA, DECO_DATA, LEGO_DATA,
-  BLOCKS_DATA, SAMPLE_ROBOTS, buildRobotModel, normalizeRobotBuildConfig,
+  BLOCKS_DATA, buildRobotModel, normalizeRobotBuildConfig, applyStudioPaint,
 } from '../services/studio-robot-builder.js';
-import { parseWeightKg, getPrimaryRobotDisplay } from '../data/primary-robot-studio.js';
+import {
+  parseWeightKg,
+  getPrimaryRobotDisplay,
+  getStudioRobotGroup,
+  STARTER_CHASSIS_IDS,
+  RETIRED_CHASSIS_IDS,
+  FAMILY_PICKER_LABEL,
+  partitionByStarterIds,
+  isStarterChassis,
+} from '../data/primary-robot-studio.js';
 import { createSimWebGLRenderer } from '../services/art-direction.js';
 
 // ─── Colour palettes ────────────────────────────────────────────────────────
@@ -219,7 +229,7 @@ const SOCKET_DEFS = {
 // Map each chassis ID to its socket set
 const CHASSIS_SOCKETS = {
   rover: SOCKET_DEFS.rover, scout: SOCKET_DEFS.rover, crawler: SOCKET_DEFS.rover,
-  spacerover: SOCKET_DEFS.rover, legobot: SOCKET_DEFS.rover,
+  spacerover: SOCKET_DEFS.rover, legobot: SOCKET_DEFS.rover, blockbot: SOCKET_DEFS.rover,
   tank: SOCKET_DEFS.tank, stealth: SOCKET_DEFS.tank, miningbot: SOCKET_DEFS.tank,
   securitybot: SOCKET_DEFS.tank, battlebot: SOCKET_DEFS.tank, farmbot: SOCKET_DEFS.tank,
   factorybot: SOCKET_DEFS.tank, medbot: SOCKET_DEFS.tank, firebot: SOCKET_DEFS.tank,
@@ -292,8 +302,111 @@ function PartTile({ id, icon, name, desc, active, onClick, bg = '#F5F5F5', accen
 }
 
 // ─── Chassis card (larger card for body category) ─────────────────────────
+const MORE_FAMILY_ORDER = ['wheeled', 'aerial', 'walker', 'underwater', 'arm', 'footballbot', 'birdbot', 'arcade', 'custom'];
 
-// ─── Chassis card (larger card for body category) ─────────────────────────
+function groupMoreChassis(more) {
+  const groups = new Map();
+  for (const ch of more) {
+    const fam = ch.isCustom ? 'custom' : getStudioRobotGroup(ch.id);
+    if (!groups.has(fam)) groups.set(fam, []);
+    groups.get(fam).push(ch);
+  }
+  return MORE_FAMILY_ORDER.filter((k) => groups.has(k)).map((k) => ({
+    id: k,
+    label: FAMILY_PICKER_LABEL[k] || 'More',
+    items: groups.get(k),
+  }));
+}
+
+function disposeThumbModel(obj) {
+  obj.traverse((n) => {
+    n.geometry?.dispose?.();
+    const mats = n.material ? (Array.isArray(n.material) ? n.material : [n.material]) : [];
+    mats.forEach((m) => m.dispose?.());
+  });
+}
+
+let thumbRenderer = null;
+let thumbCamera = null;
+let thumbScene = null;
+let thumbQueue = Promise.resolve();
+const thumbCache = new Map();
+
+function getThumbRenderer() {
+  if (thumbRenderer) return thumbRenderer;
+  thumbRenderer = createSimWebGLRenderer({ antialias: true, lowPower: true });
+  if (!thumbRenderer) return null;
+  thumbRenderer.setSize(160, 160, false);
+  thumbRenderer.setClearColor(0xf3f5fb, 1);
+  thumbCamera = new THREE.PerspectiveCamera(34, 1, 0.08, 80);
+  thumbScene = new THREE.Scene();
+  thumbScene.add(new THREE.AmbientLight(0xffffff, 1.15));
+  const key = new THREE.DirectionalLight(0xffffff, 1.25);
+  key.position.set(2.4, 5.2, 3.6);
+  thumbScene.add(key);
+  const fill = new THREE.DirectionalLight(0xffffff, 0.45);
+  fill.position.set(-3, 2, -2);
+  thumbScene.add(fill);
+  return thumbRenderer;
+}
+
+const XBOT_CHASSIS = new Set(['footballbot', 'striker']);
+
+function renderChassisThumbUrl(ch) {
+  const key = `${ch.id}|${ch.primaryColor}|${ch.accentColor}`;
+  if (thumbCache.has(key)) return Promise.resolve(thumbCache.get(key));
+  thumbQueue = thumbQueue.then(async () => {
+    if (thumbCache.has(key)) return thumbCache.get(key);
+    // Footballer and boxer use the animated X Bot body — wait for it so the card shows the real robot
+    if (XBOT_CHASSIS.has(ch.id)) await loadXbotFootballer();
+    const renderer = getThumbRenderer();
+    if (!renderer) return null;
+    let model = null;
+    try {
+      model = buildRobotModel(normalizeRobotBuildConfig({
+        chassisId: ch.id,
+        name: ch.name,
+        primaryColor: ch.primaryColor,
+        accentColor: ch.accentColor,
+        sensors: [],
+        tools: [],
+      }));
+      thumbScene.add(model);
+      // settle animated bodies into their idle pose (not the T-pose)
+      if (model.userData.animate) for (let i = 1; i <= 20; i++) model.userData.animate(i * 0.05, 0.05);
+      model.updateMatrixWorld(true);
+      frameStudioRobot(model, thumbCamera);
+      renderer.render(thumbScene, thumbCamera);
+      const url = renderer.domElement.toDataURL('image/png');
+      thumbCache.set(key, url);
+      return url;
+    } catch {
+      return null;
+    } finally {
+      if (model) {
+        thumbScene.remove(model);
+      }
+    }
+  }).catch(() => null);
+  return thumbQueue;
+}
+
+function ChassisThumb({ ch }) {
+  const [src, setSrc] = useState(null);
+  useEffect(() => {
+    let live = true;
+    renderChassisThumbUrl(ch).then((url) => { if (live && url) setSrc(url); });
+    return () => { live = false; };
+  }, [ch.id, ch.primaryColor, ch.accentColor]);
+  return (
+    <span className="bb-chassis-thumb">
+      {src
+        ? <img src={src} alt="" draggable={false} />
+        : <span className="bb-chassis-icon">{ch.icon}</span>}
+    </span>
+  );
+}
+
 function ChassisCard({ ch, active, onClick }) {
   const handleDragStart = (e) => {
     e.dataTransfer.setData('text/plain', JSON.stringify({ partType: 'chassis', id: ch.id }));
@@ -302,21 +415,15 @@ function ChassisCard({ ch, active, onClick }) {
   };
   return (
     <button
+      type="button"
       className={`bb-chassis-card${active ? ' selected' : ''}`}
       onClick={onClick}
       draggable
       onDragStart={handleDragStart}
       title={ch.desc || ch.name}
-      style={active ? { background: `linear-gradient(160deg,${ch.bgGrad[0]},${ch.bgGrad[1]})`, borderColor: ch.accentColor || '#7c3aed' } : {}}
     >
-      <span className="bb-chassis-icon">{ch.icon}</span>
+      <ChassisThumb ch={ch} />
       <span className="bb-chassis-name">{ch.name}</span>
-      <span className="bb-chassis-badge" style={active ? { background: ch.primaryColor, color: '#fff' } : {}}>{ch.badge}</span>
-      <div className="bb-chassis-bars">
-        <div className="bb-chassis-bar" title="Speed" style={{ width: `${ch.speed}%`, background: '#1E90FF' }} />
-        <div className="bb-chassis-bar" title="Power" style={{ width: `${ch.power}%`, background: '#9B59B6' }} />
-        <div className="bb-chassis-bar" title="Durability" style={{ width: `${ch.durability}%`, background: '#00C851' }} />
-      </div>
     </button>
   );
 }
@@ -358,147 +465,63 @@ function BodySizePicker({ bodySize, onChange }) {
 
 // ─── Color Toolbar (always-visible in viewport) ────────────────────────────
 function ColorToolbar({ robotConfig, setRobotConfig }) {
-  const [activePop, setActivePop] = useState(null);
-  const [popTab, setPopTab]       = useState('classic');
-  const containerRef              = useRef(null);
-
-  const PALETTES = {
-    classic:  PALETTE_CLASSIC,
-    metallic: PALETTE_METALLIC,
-    neon:     PALETTE_NEON,
-    dark:     PALETTE_DARK,
-  };
+  const [slot, setSlot] = useState('primaryColor');
 
   const COLOR_DEFS = [
-    { key: 'primaryColor', label: 'Body',   def: '#FF8C00', hasTabs: true },
-    { key: 'accentColor',  label: 'Accent', def: '#FFD700', hasTabs: true },
-    { key: 'trimColor',    label: 'Trim',   def: '#FFD700', hasTabs: true },
-    { key: 'wheelColor',   label: 'Wheel',  def: '#1a1a1a', hasTabs: false, swatches: WHEEL_COLORS },
-    { key: 'ledColor',     label: 'LED',    def: '#00D9FF', hasTabs: false, swatches: LED_COLORS },
+    { key: 'primaryColor', label: 'Body',   def: '#FF8C00' },
+    { key: 'accentColor',  label: 'Accent', def: '#FFD700' },
+    { key: 'trimColor',    label: 'Trim',   def: '#FFD700' },
+    { key: 'wheelColor',   label: 'Wheel',  def: '#1a1a1a' },
+    { key: 'ledColor',     label: 'LED',    def: '#00D9FF' },
   ];
 
-  // Close popover on outside click
-  useEffect(() => {
-    const handler = (e) => {
-      if (containerRef.current && !containerRef.current.contains(e.target)) setActivePop(null);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
+  const swatches = slot === 'wheelColor' ? WHEEL_COLORS
+    : slot === 'ledColor' ? LED_COLORS
+    : PALETTE_CLASSIC;
+  const current = robotConfig[slot] || COLOR_DEFS.find((d) => d.key === slot)?.def || '#FF8C00';
+
+  const paint = (c) => {
+    setRobotConfig((prev) => {
+      const next = { ...prev, [slot]: c };
+      if (slot === 'primaryColor') next.accentColor = c;
+      return next;
+    });
+  };
 
   return (
-    <div ref={containerRef} style={{
-      display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px',
-      background: 'rgba(0,0,0,0.18)', borderBottom: '1px solid rgba(255,255,255,0.06)',
-      flexShrink: 0,
-    }}>
-      <span style={{ fontSize: 11, color: '#aaa', fontWeight: 700, marginRight: 2, flexShrink: 0 }}>🎨 Colors</span>
-
-      {/* Colour swatches */}
-      {COLOR_DEFS.map(({ key, label, def, hasTabs, swatches }) => {
-        const value  = robotConfig[key] || def;
-        const isOpen = activePop === key;
-        const currentSwatches = hasTabs ? (PALETTES[popTab] || PALETTE_CLASSIC) : (swatches || PALETTE_CLASSIC);
-
-        return (
-          <div key={key} style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            {/* Swatch circle button */}
+    <div className="bb-color-toolbar">
+      <span className="bb-color-toolbar-label">Paint</span>
+      <div className="bb-color-slots">
+        {COLOR_DEFS.map(({ key, label, def }) => {
+          const value = robotConfig[key] || def;
+          return (
             <button
-              title={`${label}: ${value}`}
-              onClick={() => { setActivePop(isOpen ? null : key); setPopTab('classic'); }}
-              style={{
-                width: 28, height: 28, borderRadius: '50%', border: 'none',
-                background: value, cursor: 'pointer',
-                outline: isOpen ? '3px solid #fff' : '2px solid rgba(255,255,255,0.3)',
-                outlineOffset: 2,
-                boxShadow: '0 2px 8px rgba(0,0,0,0.5)',
-                transition: 'outline 0.12s, transform 0.12s',
-                transform: isOpen ? 'scale(1.15)' : 'scale(1)',
-              }}
-            />
-            <span style={{ fontSize: 9, color: '#888', marginTop: 3, userSelect: 'none' }}>{label}</span>
-
-            {/* Popover */}
-            {isOpen && (
-              <div style={{
-                position: 'absolute', top: 48, left: '50%', transform: 'translateX(-50%)',
-                background: '#1a1a2e', border: '1px solid #2a2a40', borderRadius: 12,
-                padding: 12, zIndex: 9999,
-                boxShadow: '0 16px 48px rgba(0,0,0,0.75)',
-                minWidth: 220,
-              }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#ddd', marginBottom: 8, textAlign: 'center' }}>
-                  {label} Color
-                </div>
-
-                {/* Palette tabs */}
-                {hasTabs && (
-                  <div style={{ display: 'flex', gap: 3, marginBottom: 8 }}>
-                    {[['classic','Classic'],['metallic','Metal'],['neon','Neon'],['dark','Dark']].map(([k, l]) => (
-                      <button key={k} onClick={() => setPopTab(k)} style={{
-                        flex: 1, fontSize: 9, padding: '3px 0', borderRadius: 6, border: 'none',
-                        background: popTab === k ? '#7c3aed' : '#2a2a40',
-                        color: popTab === k ? '#fff' : '#777', cursor: 'pointer', fontWeight: 700,
-                      }}>{l}</button>
-                    ))}
-                  </div>
-                )}
-
-                {/* Colour swatches grid */}
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 10 }}>
-                  {currentSwatches.map(c => (
-                    <button key={c} onClick={() => setRobotConfig(prev => ({ ...prev, [key]: c }))}
-                      title={c} style={{
-                        width: 26, height: 26, borderRadius: 5, border: 'none', cursor: 'pointer',
-                        background: c,
-                        outline: value === c ? '2px solid #fff' : '1px solid rgba(255,255,255,0.15)',
-                        outlineOffset: value === c ? 1 : 0,
-                        transition: 'outline 0.08s',
-                      }}
-                    />
-                  ))}
-                  {/* Custom colour input */}
-                  <input type="color" value={value}
-                    onChange={e => setRobotConfig(prev => ({ ...prev, [key]: e.target.value }))}
-                    title="Custom colour"
-                    style={{ width: 26, height: 26, border: 'none', borderRadius: 5, cursor: 'pointer', padding: 0, background: 'none' }}
-                  />
-                </div>
-
-                {/* Current colour preview */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <div style={{ width: 20, height: 20, borderRadius: 4, background: value, border: '1px solid rgba(255,255,255,0.2)', flexShrink: 0 }} />
-                  <span style={{ fontFamily: 'monospace', fontSize: 11, color: '#aaa' }}>{value.toUpperCase()}</span>
-                </div>
-              </div>
-            )}
-          </div>
-        );
-      })}
-
-      {/* Divider */}
-      <div style={{ width: 1, height: 28, background: 'rgba(255,255,255,0.12)', margin: '0 4px', flexShrink: 0 }} />
-
-      {/* Metalness slider */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-        <span style={{ fontSize: 12 }} title="Metallic shine">🔩</span>
-        <input type="range" min={0} max={1} step={0.05}
-          value={robotConfig.materialMetalness ?? 0.4}
-          onChange={e => setRobotConfig(prev => ({ ...prev, materialMetalness: parseFloat(e.target.value) }))}
-          style={{ width: 56, accentColor: '#aaa' }}
-          title={`Metallic: ${Math.round((robotConfig.materialMetalness ?? 0.4) * 100)}%`}
-        />
+              key={key}
+              type="button"
+              className={`bb-color-slot${slot === key ? ' active' : ''}`}
+              onClick={() => setSlot(key)}
+              title={label}
+            >
+              <span className="bb-color-slot-dot" style={{ background: value }} />
+              <span>{label}</span>
+            </button>
+          );
+        })}
       </div>
-
-      {/* Glow slider */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-        <span style={{ fontSize: 12 }} title="LED glow intensity">💡</span>
-        <input type="range" min={0} max={3} step={0.1}
-          value={robotConfig.materialGlow ?? 1.0}
-          onChange={e => setRobotConfig(prev => ({ ...prev, materialGlow: parseFloat(e.target.value) }))}
-          style={{ width: 56, accentColor: '#00D9FF' }}
-          title={`Glow: ${Math.round((robotConfig.materialGlow ?? 1.0) / 3 * 100)}%`}
-        />
+      <div className="bb-color-swatches">
+        {swatches.map((c) => (
+          <button
+            key={c}
+            type="button"
+            className={`bb-color-chip${current.toLowerCase() === c.toLowerCase() ? ' active' : ''}`}
+            style={{ background: c }}
+            title={c}
+            onClick={() => paint(c)}
+          />
+        ))}
+        <label className="bb-color-chip bb-color-chip--custom" title="Any colour">
+          <input type="color" value={/^#[0-9a-f]{6}$/i.test(current) ? current : '#FF8C00'} onChange={(e) => paint(e.target.value)} />
+        </label>
       </div>
     </div>
   );
@@ -528,32 +551,73 @@ function frameStudioRobot(model, camera) {
   camera.lookAt(0, midY, 0);
 }
 
+// ─── Stage motion helpers ───────────────────────────────────────────────────
+// Robots that float above the stage instead of standing on it.
+const HOVER_CHASSIS = /drone|helicopter|hover|jet|aerobat|submarine|deepsea/;
+// Robots whose rotors push air down onto the stage.
+const ROTOR_CHASSIS = /drone|helicopter|hover/;
+const GRAVITY = 26;
+const IDLE_SPIN = 0.28;              // rad/s turntable speed when untouched
+const ANIM_STEP = 1 / 60;            // robot rigs were authored for 60 fps steps
+const CAM_AZIMUTH = Math.atan2(0.55, 0.85);
+const CAM_ELEVATION = Math.atan2(0.38, Math.hypot(0.55, 0.85));
+const CAM_RADIUS = Math.hypot(0.55, 0.38, 0.85);
+
+function radialTexture(inner, outer) {
+  const c = document.createElement('canvas');
+  c.width = 128; c.height = 128;
+  const ctx = c.getContext('2d');
+  const g = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
+  g.addColorStop(0, inner);
+  g.addColorStop(1, outer);
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 128, 128);
+  return new THREE.CanvasTexture(c);
+}
+
+/** Measure a freshly built (unparented) robot in its rest pose. */
+function measureStudioRobot(model) {
+  if (typeof model.userData.animate === 'function') model.userData.animate(0);
+  const box = new THREE.Box3().setFromObject(model);
+  if (box.isEmpty()) return { floor: 0, height: 1, footprint: 1, span: 1 };
+  const size = box.getSize(new THREE.Vector3());
+  return {
+    floor: -box.min.y,
+    height: size.y,
+    footprint: Math.max(size.x, size.z, 0.4),
+    span: Math.max(size.x, size.y, size.z, 1),
+  };
+}
+
+/** Damped spring toward `target`; underdamped springs give the cartoon wobble. */
+function stepSpring(s, target, stiffness, damping, dt) {
+  s.v += ((target - s.x) * stiffness - s.v * damping) * dt;
+  s.x += s.v * dt;
+}
+
 // ─── 3D Viewer ─────────────────────────────────────────────────────────────
 function RobotCanvas({ robotConfig, onRobotClick, onDrop, children }) {
   const wrapRef  = useRef(null);
-  const sceneRef = useRef(null);
-  const camRef   = useRef(null);
-  const rendRef  = useRef(null);
-  const robotRef = useRef(null);   // the raw robot model
-  const pivotRef = useRef(null);   // wrapper group for orbit rotation
-  const rafRef   = useRef(null);
-  const roRef    = useRef(null);
+  const rigRef   = useRef(null);   // stage rig shared between the init and rebuild effects
+  const clickRef = useRef(onRobotClick);
+  clickRef.current = onRobotClick;
 
   // Init scene once per key-mount
   useEffect(() => {
     const el = wrapRef.current;
     if (!el) return undefined;
     let renderer = null;
+    let raf = 0;
     try {
 
     const W = Math.max(el.clientWidth, 1);
     const H = Math.max(el.clientHeight, 1);
+    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
     // ── Scene: LIGHT background ─────────────────────────────────────────────
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0xf0f2f8);
     scene.fog = new THREE.Fog(0xf0f2f8, 22, 50);
-    sceneRef.current = scene;
 
     // ── Environment map for metallic reflections ─────────────────────────
     const envCanvas = document.createElement('canvas');
@@ -566,12 +630,10 @@ function RobotCanvas({ robotConfig, onRobotClick, onDrop, children }) {
     envGrad.addColorStop(0.65, '#d0d8ec');
     envGrad.addColorStop(1.0, '#889aae');
     envCtx.fillStyle = envGrad; envCtx.fillRect(0, 0, 512, 256);
-    // Studio ceiling panels
     envCtx.strokeStyle = 'rgba(255,255,255,0.08)'; envCtx.lineWidth = 1;
     for (let x = 0; x < 512; x += 64) {
       envCtx.beginPath(); envCtx.moveTo(x, 0); envCtx.lineTo(x, 110); envCtx.stroke();
     }
-    // Bright horizon band
     envCtx.fillStyle = 'rgba(255,255,255,0.28)';
     envCtx.fillRect(0, 108, 512, 40);
     const envTex = new THREE.CanvasTexture(envCanvas);
@@ -582,7 +644,6 @@ function RobotCanvas({ robotConfig, onRobotClick, onDrop, children }) {
     const camera = new THREE.PerspectiveCamera(46, W / H, 0.1, 80);
     camera.position.set(2.4, 2.0, 3.6);
     camera.lookAt(0, 0.4, 0);
-    camRef.current = camera;
 
     // Renderer — high quality settings, never throw if GPU/WebGL is blocked
     renderer = createSimWebGLRenderer({ antialias: true });
@@ -595,14 +656,10 @@ function RobotCanvas({ robotConfig, onRobotClick, onDrop, children }) {
     renderer.toneMappingExposure = 1.15;
     renderer.outputColorSpace = THREE.SRGBColorSpace || 'srgb';
     el.appendChild(renderer.domElement);
-    rendRef.current = renderer;
 
     // ── Lights: professional studio 3-point lighting ──────────────────────
     scene.add(new THREE.AmbientLight(0xffffff, 0.7));
-    const hemi = new THREE.HemisphereLight(0xd0e8ff, 0xd8e0f0, 0.5);
-    scene.add(hemi);
-
-    // Key light (main dramatic light from upper front-right)
+    scene.add(new THREE.HemisphereLight(0xd0e8ff, 0xd8e0f0, 0.5));
     const sun = new THREE.DirectionalLight(0xfff4e0, 1.8);
     sun.position.set(6, 10, 8);
     sun.castShadow = true;
@@ -610,117 +667,198 @@ function RobotCanvas({ robotConfig, onRobotClick, onDrop, children }) {
     sun.shadow.camera.left = -5; sun.shadow.camera.right = 5;
     sun.shadow.camera.top = 5;   sun.shadow.camera.bottom = -5;
     sun.shadow.bias = -0.0002;
+    sun.shadow.radius = 4;
     scene.add(sun);
-
-    // Fill light (softer, from left)
     const fill = new THREE.DirectionalLight(0xc8e0ff, 0.6);
     fill.position.set(-6, 5, -3);
     scene.add(fill);
-
-    // Rim light (back light for depth separation, blue-purple tint)
     const rim = new THREE.DirectionalLight(0xc0a0ff, 0.5);
     rim.position.set(0, 3, -8);
     scene.add(rim);
-
-    // Bottom bounce light
     const bounce = new THREE.DirectionalLight(0xfff0d8, 0.2);
     bounce.position.set(0, -4, 2);
     scene.add(bounce);
 
-    // ── Particle system ───────────────────────────────────────────────────
-    const MAX_P = 120;
-    const pPositions = new Float32Array(MAX_P * 3);
-    const pGeo = new THREE.BufferGeometry();
-    pGeo.setAttribute('position', new THREE.BufferAttribute(pPositions, 3));
-    // Draw a soft circle sprite for particles
-    const sprCanvas = document.createElement('canvas');
-    sprCanvas.width = 32; sprCanvas.height = 32;
-    const sCtx = sprCanvas.getContext('2d');
-    const radGrad = sCtx.createRadialGradient(16, 16, 0, 16, 16, 16);
-    radGrad.addColorStop(0, 'rgba(200,180,140,1)');
-    radGrad.addColorStop(1, 'rgba(200,180,140,0)');
-    sCtx.fillStyle = radGrad; sCtx.fillRect(0, 0, 32, 32);
-    const sprTex = new THREE.CanvasTexture(sprCanvas);
-    const pMat = new THREE.PointsMaterial({
-      size: 0.07, map: sprTex, transparent: true,
-      opacity: 0.8, depthWrite: false, sizeAttenuation: true,
-    });
-    const pPoints = new THREE.Points(pGeo, pMat);
-    scene.add(pPoints);
-    // Particle pool
-    const pPool = [];
-    for (let i = 0; i < MAX_P; i++) pPool.push({ x: 0, y: -100, z: 0, vx: 0, vy: 0, vz: 0, life: 0 });
-    let pActive = 0;
-    const emitDust = (x, y, z, count = 3, vy0 = 0.08) => {
-      let emitted = 0;
-      for (let i = 0; i < MAX_P && emitted < count; i++) {
-        if (pPool[i].life <= 0) {
-          pPool[i].x = x + (Math.random() - 0.5) * 0.3;
-          pPool[i].y = y + Math.random() * 0.05;
-          pPool[i].z = z + (Math.random() - 0.5) * 0.3;
-          pPool[i].vx = (Math.random() - 0.5) * 0.025;
-          pPool[i].vy = vy0 + Math.random() * 0.04;
-          pPool[i].vz = (Math.random() - 0.5) * 0.025;
-          pPool[i].life = 0.8 + Math.random() * 0.8;
-          emitted++;
-        }
+    // ── Turntable stage: gives the robot a floor to stand and land on ─────
+    const disposables = [];
+    const own = (x) => { disposables.push(x); return x; };
+    const stage = new THREE.Group();
+    const deck = new THREE.Mesh(
+      own(new THREE.CylinderGeometry(1, 1.02, 0.1, 72)),
+      own(new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6, metalness: 0.02 })),
+    );
+    deck.position.y = -0.05;
+    deck.receiveShadow = true;
+    const plinth = new THREE.Mesh(
+      own(new THREE.CylinderGeometry(1.05, 1.12, 0.16, 72)),
+      own(new THREE.MeshStandardMaterial({ color: 0xd9def0, roughness: 0.7 })),
+    );
+    plinth.position.y = -0.18;
+    const trim = new THREE.Mesh(
+      own(new THREE.CylinderGeometry(1.035, 1.035, 0.035, 72, 1, true)),
+      own(new THREE.MeshBasicMaterial({ color: 0xa78bfa, transparent: true, opacity: 0.45 })),
+    );
+    trim.position.y = -0.085;
+    stage.add(deck, plinth, trim);
+    scene.add(stage);
+
+    // Soft contact shadow — shrinks and fades as the robot leaves the floor
+    const blob = new THREE.Mesh(
+      own(new THREE.PlaneGeometry(1, 1)),
+      own(new THREE.MeshBasicMaterial({
+        map: own(radialTexture('rgba(40,30,80,0.6)', 'rgba(40,30,80,0)')),
+        transparent: true, depthWrite: false,
+      })),
+    );
+    blob.rotation.x = -Math.PI / 2;
+    blob.position.y = 0.003;
+    blob.renderOrder = 1;
+    scene.add(blob);
+
+    // ── Dust puffs: pooled sprites that bloom outward and fade ─────────────
+    const puffTex = own(radialTexture('rgba(255,255,255,1)', 'rgba(255,255,255,0)'));
+    const puffs = [];
+    for (let i = 0; i < 40; i++) {
+      const mat = own(new THREE.SpriteMaterial({ map: puffTex, color: 0xfffaf2, transparent: true, depthWrite: false, opacity: 0 }));
+      const sprite = new THREE.Sprite(mat);
+      sprite.visible = false;
+      scene.add(sprite);
+      puffs.push({ sprite, life: 0, max: 1, size: 0.2, v: new THREE.Vector3() });
+    }
+    const emitPuff = (x, y, z, vx, vy, vz, size, life) => {
+      const p = puffs.find((q) => q.life <= 0);
+      if (!p) return;
+      p.sprite.position.set(x, y, z);
+      p.v.set(vx, vy, vz);
+      p.size = size; p.life = life; p.max = life;
+      p.sprite.visible = true;
+    };
+    const puffRing = (radius, count, speed = 1.6, size = 0.26) => {
+      for (let i = 0; i < count; i++) {
+        const a = (i / count) * Math.PI * 2 + Math.random() * 0.4;
+        emitPuff(
+          Math.cos(a) * radius, 0.05, Math.sin(a) * radius,
+          Math.cos(a) * speed * (0.7 + Math.random() * 0.5), 0.4 + Math.random() * 0.5, Math.sin(a) * speed * (0.7 + Math.random() * 0.5),
+          size * (0.8 + Math.random() * 0.5), 0.45 + Math.random() * 0.25,
+        );
       }
     };
-    const updateParticles = (dt) => {
-      pActive = 0;
-      for (let i = 0; i < MAX_P; i++) {
-        const p = pPool[i];
-        if (p.life > 0) {
-          p.life -= dt * 0.9;
-          p.x += p.vx; p.y += p.vy; p.z += p.vz;
-          p.vy -= 0.004; // gravity
-          pPositions[i * 3]     = p.life > 0 ? p.x : 0;
-          pPositions[i * 3 + 1] = p.life > 0 ? p.y : -100;
-          pPositions[i * 3 + 2] = p.life > 0 ? p.z : 0;
-          if (p.life > 0) pActive++;
-        } else {
-          pPositions[i * 3 + 1] = -100;
-        }
+    const updatePuffs = (dt) => {
+      const drag = Math.exp(-3.5 * dt);
+      for (const p of puffs) {
+        if (p.life <= 0) continue;
+        p.life -= dt;
+        if (p.life <= 0) { p.sprite.visible = false; continue; }
+        const k = 1 - p.life / p.max;
+        p.sprite.position.addScaledVector(p.v, dt);
+        p.v.multiplyScalar(drag);
+        p.sprite.scale.setScalar(p.size * (0.55 + k * 1.3));
+        p.sprite.material.opacity = Math.pow(1 - k, 1.6) * 0.8;
       }
-      pGeo.attributes.position.needsUpdate = true;
-      pMat.opacity = Math.min(0.8, 0.3 + pActive * 0.01);
     };
 
-    // ── Orbit pivot group (separates orbit from robot-local animations) ───
-    const pivot = new THREE.Group();
+    // ── Robot rig ─────────────────────────────────────────────────────────
+    // pivot (turntable yaw) → lift (height, hop spin) → squash (scale about the
+    // feet) → ground (keeps feet on y=0) → model. The robot's own animate()
+    // may move the model freely without undoing the floor offset.
+    const pivot  = new THREE.Group();
+    const lift   = new THREE.Group();
+    const squash = new THREE.Group();
+    const ground = new THREE.Group();
+    pivot.add(lift); lift.add(squash); squash.add(ground);
     scene.add(pivot);
-    pivotRef.current = pivot;
 
-    // ── Raycaster for robot-click ─────────────────────────────────────────────
+    const motion = {
+      y: 0, vy: 0, airborne: false, crouch: 0,
+      sq: { x: 0, v: 0 }, spin: { x: 0, v: 0 }, spinTarget: 0,
+      hover: false, rotor: false, hoverH: 0, footprint: 1,
+    };
+    const frame = { dist: 4, midY: 0.5, targetDist: 4, targetMidY: 0.5 };
+    let model = null;
+    let chassisId = null;
+    let animAcc = 0;
+    let animT = 0;
+    let washTimer = 0;
+
+    const setModel = (next) => {
+      if (model) ground.remove(model);
+      const m = measureStudioRobot(next);
+      const nextId = next.userData.chassisId || '';
+      const isNewChassis = nextId !== chassisId;
+      model = next;
+      chassisId = nextId;
+      animT = 0; animAcc = 0;
+      ground.position.y = m.floor;
+      ground.add(next);
+
+      motion.hover = HOVER_CHASSIS.test(nextId);
+      motion.rotor = ROTOR_CHASSIS.test(nextId);
+      motion.hoverH = motion.hover ? Math.min(0.6, Math.max(0.3, m.height * 0.35)) : 0;
+      motion.footprint = m.footprint;
+
+      const radius = Math.min(2.8, Math.max(1.15, m.footprint * 0.78));
+      stage.scale.set(radius, 1, radius);
+      frame.targetMidY = m.height / 2 + motion.hoverH;
+      frame.targetDist = Math.max(3.4, Math.max(m.span, radius * 1.6) * 2.15);
+      if (next.userData.envTex) scene.environment = next.userData.envTex;
+
+      if (reduceMotion) return;
+      if (isNewChassis) {
+        // Drop in from above and land with a squash ("boing")
+        motion.y = 1.4 + m.height * 0.5;
+        motion.vy = 0;
+        motion.airborne = true;
+        motion.crouch = 0;
+        motion.sq.x = -0.18; motion.sq.v = 0;
+      } else {
+        // Same robot, new paint or parts: a happy wiggle
+        motion.sq.v += 3.2;
+        puffRing(m.footprint * 0.45, 6, 1.1, 0.18);
+      }
+    };
+
+    const hop = () => {
+      if (reduceMotion || motion.airborne || motion.crouch > 0) return;
+      motion.crouch = 0.09; // brief anticipation squat before the jump
+    };
+
+    rigRef.current = { setModel };
+
+    // ── Raycaster for robot-click ─────────────────────────────────────────
     const raycaster = new THREE.Raycaster();
     const mouse     = new THREE.Vector2();
+    let dragDistance = 0;
 
     const handleClick = (e) => {
-      if (!pivotRef.current || !onRobotClick) return;
+      if (dragDistance > 6 || !model) return; // it was a drag, not a click
       const rect = el.getBoundingClientRect();
-      mouse.x =  ((e.clientX - rect.left)  / rect.width)  * 2 - 1;
-      mouse.y = -((e.clientY - rect.top)   / rect.height) * 2 + 1;
-      raycaster.setFromCamera(mouse, camRef.current);
-      const hits = raycaster.intersectObjects(pivotRef.current.children, true);
-      if (hits.length > 0) {
-        onRobotClick();
-        if (hits[0].object.material?.emissive) {
-          hits[0].object.material.emissive.set(0xffffff);
-          hits[0].object.material.emissiveIntensity = 0.4;
-          setTimeout(() => {
-            if (hits[0].object.material?.emissive) {
-              hits[0].object.material.emissive.set(0x000000);
-              hits[0].object.material.emissiveIntensity = 0;
-            }
-          }, 350);
-        }
+      mouse.x =  ((e.clientX - rect.left) / rect.width)  * 2 - 1;
+      mouse.y = -((e.clientY - rect.top)  / rect.height) * 2 + 1;
+      raycaster.setFromCamera(mouse, camera);
+      const hits = raycaster.intersectObject(model, true);
+      if (!hits.length) return;
+      hop();
+      const mesh = hits[0].object;
+      const mat = mesh.material;
+      if (mat?.emissive && !mesh.userData.flashing) {
+        const prevColor = mat.emissive.getHex();
+        const prevIntensity = mat.emissiveIntensity;
+        mesh.userData.flashing = true;
+        mat.emissive.set(0xffffff);
+        mat.emissiveIntensity = Math.max(prevIntensity, 0.45);
+        setTimeout(() => {
+          mat.emissive.setHex(prevColor);
+          mat.emissiveIntensity = prevIntensity;
+          mesh.userData.flashing = false;
+        }, 160);
       }
+      // Let the hop read before the coding panel opens over it
+      setTimeout(() => clickRef.current?.(), reduceMotion ? 0 : 240);
     };
     el.addEventListener('click', handleClick);
 
     // ── ResizeObserver ─────────────────────────────────────────────────────
     const onResize = () => {
-      if (!el) return;
       const w = Math.max(el.clientWidth, 1);
       const h = Math.max(el.clientHeight, 1);
       camera.aspect = w / h;
@@ -729,85 +867,171 @@ function RobotCanvas({ robotConfig, onRobotClick, onDrop, children }) {
     };
     const ro = new ResizeObserver(onResize);
     ro.observe(el);
-    roRef.current = ro;
-    window.addEventListener('resize', onResize);
 
-    // ── Orbit drag controls ───────────────────────────────────────────────
-    let isDragging = false, lastX = 0, lastY = 0;
-    let orbitY = 0, orbitX = 0;
-    const onMouseDown = (e) => { isDragging = true; lastX = e.clientX; lastY = e.clientY; };
-    const onMouseMove = (e) => {
-      if (!isDragging) return;
-      orbitY += (e.clientX - lastX) * 0.012;
-      orbitX = Math.max(-0.5, Math.min(0.5, orbitX + (e.clientY - lastY) * 0.008));
+    // ── Orbit drag with inertia (mouse, pen and touch) ────────────────────
+    let dragging = false, lastX = 0, lastY = 0, lastMoveAt = 0;
+    let yaw = 0.5, yawVel = IDLE_SPIN, pitch = 0;
+    const onPointerDown = (e) => {
+      dragging = true;
+      dragDistance = 0;
       lastX = e.clientX; lastY = e.clientY;
+      lastMoveAt = performance.now();
+      yawVel = 0;
     };
-    const onMouseUp = () => { isDragging = false; };
-    el.addEventListener('mousedown', onMouseDown);
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
+    const onPointerMove = (e) => {
+      if (!dragging) return;
+      const dx = e.clientX - lastX;
+      const dy = e.clientY - lastY;
+      const now = performance.now();
+      const dt = Math.max((now - lastMoveAt) / 1000, 1 / 240);
+      yaw += dx * 0.012;
+      yawVel = yawVel * 0.4 + (dx * 0.012 / dt) * 0.6;
+      pitch = Math.max(-0.25, Math.min(0.5, pitch + dy * 0.006));
+      dragDistance += Math.abs(dx) + Math.abs(dy);
+      lastX = e.clientX; lastY = e.clientY; lastMoveAt = now;
+    };
+    const onPointerUp = () => {
+      if (!dragging) return;
+      dragging = false;
+      if (performance.now() - lastMoveAt > 80) yawVel = 0; // held still before release
+      yawVel = Math.max(-9, Math.min(9, yawVel));
+    };
+    el.addEventListener('pointerdown', onPointerDown);
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
+    window.addEventListener('pointercancel', onPointerUp);
 
     // ── Animation ──────────────────────────────────────────────────────────
+    const clock = new THREE.Clock();
     let t = 0;
-    let pEmitTimer = 0;
     const tick = () => {
-      rafRef.current = requestAnimationFrame(tick);
-      const dt = 0.016;
+      raf = requestAnimationFrame(tick);
+      const dt = Math.min(clock.getDelta(), 1 / 20);
       t += dt;
-      const robot = robotRef.current;
-      if (pivot) {
-        if (!isDragging) orbitY += 0.004;
-        pivot.rotation.y = orbitY;
-        pivot.rotation.x = orbitX;
-        pivot.position.y = Math.sin(t * 1.4) * 0.055;
-        if (robot && robot.userData.animate) {
-          robot.userData.animate(t);
+
+      // Turntable: flick inertia settles back into the slow idle spin
+      if (!dragging) {
+        const idle = reduceMotion ? IDLE_SPIN * 0.3 : IDLE_SPIN;
+        yawVel = idle + (yawVel - idle) * Math.exp(-2.4 * dt);
+        yaw += yawVel * dt;
+      }
+      pivot.rotation.y = yaw;
+
+      // Anticipation squat → launch with a stretch and a full spin
+      if (motion.crouch > 0) {
+        motion.crouch -= dt;
+        if (motion.crouch <= 0) {
+          motion.crouch = 0;
+          motion.airborne = true;
+          motion.vy = 6.4;
+          motion.sq.v -= 4;
+          motion.spinTarget += Math.PI * 2;
+          puffRing(motion.footprint * 0.4, 5, 1.2, 0.18);
         }
-        // Emit particles based on chassis type
-        pEmitTimer += dt;
-        if (pEmitTimer > 0.12 && robot) {
-          pEmitTimer = 0;
-          const cid = robot.userData.chassisId || '';
-          if (/spider|walker|droid|mech|legobot|striker|ninja|berserker|footballbot/.test(cid)) {
-            // Foot-level dust for walking robots
-            const leg = Math.floor(Math.random() * 4);
-            const lx = (leg < 2 ? -0.5 : 0.5) * 0.8 + (Math.random() - 0.5) * 0.2;
-            const lz = (leg % 2 === 0 ? 0.3 : -0.3) + (Math.random() - 0.5) * 0.2;
-            emitDust(lx, 0.02, lz, 2, 0.04);
-          } else if (/drone|helicopter|hoverbot/.test(cid)) {
-            // Propeller wash — downward particle rings
-            for (let i = 0; i < 4; i++) {
-              const a = (i / 4) * Math.PI * 2;
-              emitDust(
-                Math.cos(a) * 0.55, 0.1 + pivot.position.y, Math.sin(a) * 0.55,
-                1, -0.05
-              );
-            }
-          } else if (/rover|scout|crawler|tank/.test(cid)) {
-            // Wheel dust
-            emitDust(-0.7 + (Math.random() - 0.5) * 0.2, 0.08, 0.5 + (Math.random() - 0.5) * 0.3, 1, 0.03);
-            emitDust(0.7 + (Math.random() - 0.5) * 0.2, 0.08, 0.5 + (Math.random() - 0.5) * 0.3, 1, 0.03);
+      }
+
+      // Jump / drop physics with a bouncy landing
+      if (motion.airborne) {
+        motion.vy -= GRAVITY * dt;
+        motion.y += motion.vy * dt;
+        if (motion.y <= 0 && motion.vy < 0) {
+          const impact = -motion.vy;
+          motion.y = 0;
+          motion.sq.v += impact * 0.6;
+          if (impact > 3.5) {
+            motion.vy = impact * 0.3;           // one little bounce
+          } else {
+            motion.vy = 0;
+            motion.airborne = false;
+          }
+          if (impact > 2) {
+            if (motion.hover) puffRing(motion.footprint * 0.5, 6, 1.3, 0.2);
+            else puffRing(motion.footprint * 0.5, Math.min(14, Math.round(4 + impact)), 1.8, 0.26);
           }
         }
       }
-      updateParticles(dt);
+
+      // Squash & stretch: breathing idle + crouch + velocity stretch
+      const breath = motion.hover || reduceMotion ? 0 : Math.sin(t * 2.4) * 0.014;
+      stepSpring(motion.sq, breath + (motion.crouch > 0 ? 0.17 : 0), 340, 12, dt);
+      const stretch = motion.airborne ? Math.max(-0.12, Math.min(0.14, motion.vy * 0.018)) : 0;
+      const s = Math.max(-0.3, Math.min(0.32, motion.sq.x - stretch));
+      squash.scale.set(1 + s * 0.55, 1 - s, 1 + s * 0.55);
+
+      // Hop spin with a slight overshoot wobble
+      stepSpring(motion.spin, motion.spinTarget, 70, 11, dt);
+      lift.rotation.y = motion.spin.x;
+
+      // Hover robots float; ground robots stay planted
+      const bob = motion.hover && !reduceMotion ? Math.sin(t * 1.7) * 0.06 : 0;
+      lift.position.y = motion.hoverH + bob + motion.y;
+
+      // Contact shadow follows height and squash
+      const h = lift.position.y;
+      const shadowSize = motion.footprint * 1.15 * (1 + Math.max(0, s) * 0.5) / (1 + h * 0.8);
+      blob.scale.set(shadowSize, shadowSize, 1);
+      blob.material.opacity = 0.85 / (1 + h * 1.6);
+
+      // Rotor downwash kicks up dust under hovering rotor robots
+      if (motion.rotor && !reduceMotion) {
+        washTimer += dt;
+        if (washTimer > 0.1) {
+          washTimer = 0;
+          const a = Math.random() * Math.PI * 2;
+          const r = motion.footprint * 0.3;
+          emitPuff(Math.cos(a) * r, 0.04, Math.sin(a) * r, Math.cos(a) * 1.3, 0.12, Math.sin(a) * 1.3, 0.15, 0.6);
+        }
+      }
+
+      // Robot rigs advance in fixed 60 Hz steps so they look the same on any display
+      if (model?.userData.animate) {
+        animAcc += dt;
+        let steps = 0;
+        while (animAcc >= ANIM_STEP && steps < 4) {
+          animT += ANIM_STEP;
+          model.userData.animate(animT);
+          animAcc -= ANIM_STEP;
+          steps++;
+        }
+        if (steps === 4) animAcc = 0;
+      }
+
+      updatePuffs(dt);
+
+      // Camera eases between robot sizes; vertical drag orbits the camera, not the robot
+      const ease = 1 - Math.exp(-5 * dt);
+      frame.dist += (frame.targetDist - frame.dist) * ease;
+      frame.midY += (frame.targetMidY - frame.midY) * ease;
+      const elev = CAM_ELEVATION + pitch;
+      const r = frame.dist * CAM_RADIUS;
+      camera.position.set(
+        Math.sin(CAM_AZIMUTH) * Math.cos(elev) * r,
+        frame.midY + Math.sin(elev) * r,
+        Math.cos(CAM_AZIMUTH) * Math.cos(elev) * r,
+      );
+      camera.lookAt(0, frame.midY, 0);
+
       renderer.render(scene, camera);
     };
     tick();
 
     return () => {
+      rigRef.current = null;
       el.removeEventListener('click', handleClick);
-      el.removeEventListener('mousedown', onMouseDown);
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseup', onMouseUp);
-      cancelAnimationFrame(rafRef.current);
-      roRef.current?.disconnect();
-      window.removeEventListener('resize', onResize);
-      if (el && renderer?.domElement?.parentNode === el) el.removeChild(renderer.domElement);
-      renderer?.dispose();
+      el.removeEventListener('pointerdown', onPointerDown);
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+      window.removeEventListener('pointercancel', onPointerUp);
+      cancelAnimationFrame(raf);
+      ro.disconnect();
+      disposables.forEach((d) => d.dispose());
+      envTex.dispose();
+      if (renderer.domElement.parentNode === el) el.removeChild(renderer.domElement);
+      renderer.dispose();
     };
     } catch (err) {
       console.warn('[BuildPage 3D]', err);
+      cancelAnimationFrame(raf);
       try { renderer?.dispose(); } catch { /* ignore */ }
       el.replaceChildren();
       const fallback = document.createElement('div');
@@ -818,27 +1042,32 @@ function RobotCanvas({ robotConfig, onRobotClick, onDrop, children }) {
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Rebuild robot model when config changes — attach to pivot, not scene
+  // Rebuild robot model when config changes
   useEffect(() => {
-    const pivot = pivotRef.current;
-    const scene = sceneRef.current;
-    if (!pivot) return;
-    if (robotRef.current) {
-      pivot.remove(robotRef.current);
-      robotRef.current = null;
-    }
-    const model = buildRobotModel(normalizeRobotBuildConfig(robotConfig));
-    pivot.add(model);
-    robotRef.current = model;
-    frameStudioRobot(model, camRef.current);
-    // Apply environment map for metallic reflections
-    if (scene && model.userData.envTex) {
-      scene.environment = model.userData.envTex;
-    }
+    let cancelled = false;
+    let retry = 0;
+    const run = () => {
+      if (cancelled) return;
+      const rig = rigRef.current;
+      if (!rig) {
+        retry = requestAnimationFrame(run);
+        return;
+      }
+      const model = buildRobotModel(normalizeRobotBuildConfig(robotConfig));
+      applyStudioPaint(
+        model,
+        robotConfig.primaryColor,
+        robotConfig.accentColor,
+        robotConfig.wheelColor,
+      );
+      rig.setModel(model);
+    };
+    run();
+    return () => { cancelled = true; cancelAnimationFrame(retry); };
   }, [robotConfig]);
 
   return (
-    <div ref={wrapRef} className="bb-studio-canvas-wrap" style={{ cursor: 'pointer' }} onDrop={onDrop}>
+    <div ref={wrapRef} className="bb-studio-canvas-wrap" style={{ cursor: 'pointer', touchAction: 'none' }} onDrop={onDrop}>
       {children}
     </div>
   );
@@ -849,7 +1078,13 @@ function RobotCanvas({ robotConfig, onRobotClick, onDrop, children }) {
 function LeftPanel({ robotConfig, setRobotConfig, activeRobotId, setActiveRobotId, customParts = [], onGoCreate, onSimulate, onSaveDesign, onFootballLaunch }) {
   const [activeCat, setActiveCat] = useState('body');
   const [search, setSearch]       = useState('');
-  const [savedRobots]             = useState(SAMPLE_ROBOTS);
+  const [showMoreChassis, setShowMoreChassis] = useState(() => !isStarterChassis(robotConfig?.chassisId));
+
+  useEffect(() => {
+    if (robotConfig?.chassisId && !isStarterChassis(robotConfig.chassisId)) {
+      setShowMoreChassis(true);
+    }
+  }, [robotConfig?.chassisId]);
 
   const toggleSensor = (id) =>
     setRobotConfig(prev => ({
@@ -904,7 +1139,7 @@ function LeftPanel({ robotConfig, setRobotConfig, activeRobotId, setActiveRobotI
     switch (activeCat) {
       case 'body': {
         const customChassis = customParts.filter(p => p.type === 'chassis');
-        const allChassis = [...CHASSIS_DATA, ...customChassis.map(c => ({
+        const allChassis = [...CHASSIS_DATA.filter((c) => !RETIRED_CHASSIS_IDS.has(c.id)), ...customChassis.map(c => ({
           id: c.id, name: c.name, icon: '✨', badge: 'Custom',
           primaryColor: c.color, accentColor: c.color,
           speed: 70, power: 70, durability: 70,
@@ -912,44 +1147,102 @@ function LeftPanel({ robotConfig, setRobotConfig, activeRobotId, setActiveRobotI
           isCustom: true,
         }))];
         const filtered = allChassis.filter(c => !q || c.name.toLowerCase().includes(q));
+        const { starters, more } = partitionByStarterIds(filtered, (c) => c.id, STARTER_CHASSIS_IDS);
+        const searching = Boolean(q);
+        const showExtras = searching || showMoreChassis;
+        const extraGroups = searching ? [{ id: 'search', label: 'Matches', items: filtered }] : groupMoreChassis(more);
+
+        const pickChassis = (ch) => {
+          if (ch.id === 'footballbot' && onFootballLaunch) {
+            onFootballLaunch();
+            return;
+          }
+          setRobotConfig((prev) => {
+            const next = {
+              ...prev,
+              chassisId: ch.id,
+              name: getPrimaryRobotDisplay(ch.id).name,
+              primaryColor: ch.primaryColor || prev.primaryColor,
+              accentColor: ch.accentColor || prev.accentColor,
+              movementId: ({
+                wheels: 'wheels', wheels6: 'wheels6', tracks: 'tracks',
+                legs: 'legs', flying: 'flying', hover: 'flying', swim: 'flying', jets: 'jets',
+              }[ch.movementHint] || prev.movementId),
+              socketAttachments: {},
+            };
+            delete next.chassisBuildKey;
+            return next;
+          });
+        };
+
+        const renderCards = (list) => list.map((ch) => (
+          <ChassisCard
+            key={ch.id}
+            ch={ch}
+            active={robotConfig.chassisId === ch.id}
+            onClick={() => pickChassis(ch)}
+          />
+        ));
+
         return (
           <>
-            <p className="bb-studio-section-label">Chassis Type</p>
-            <div className="bb-chassis-grid">
-              {filtered.map(ch => (
-                <ChassisCard
-                  key={ch.id}
-                  ch={ch}
-                  active={robotConfig.chassisId === ch.id}
-                  onClick={() => {
-                    if (ch.id === 'footballbot' && onFootballLaunch) {
-                      onFootballLaunch();
-                      return;
-                    }
-                    setRobotConfig(prev => {
-                    const next = {
-                      ...prev,
-                      chassisId: ch.id,
-                      name: getPrimaryRobotDisplay(ch.id).name,
-                      primaryColor: ch.primaryColor || prev.primaryColor,
-                      accentColor: ch.accentColor || prev.accentColor,
-                      movementId: ({
-                        wheels: 'wheels', wheels6: 'wheels6', tracks: 'tracks',
-                        legs: 'legs', flying: 'flying', hover: 'flying', swim: 'flying', jets: 'jets',
-                      }[ch.movementHint] || prev.movementId),
-                      socketAttachments: {}, // reset sockets when chassis changes
-                    };
-                    delete next.chassisBuildKey;
-                    return next;
-                  });
-                  }}
-                />
-              ))}
-              <button className="bb-chassis-card bb-chassis-card--create" onClick={onGoCreate}>
-                <span className="bb-chassis-icon">✨</span>
-                <span className="bb-chassis-name">Create Custom</span>
-                <span className="bb-chassis-badge" style={{ background: '#7c3aed', color: '#fff' }}>New</span>
+            <p className="bb-studio-section-label">Pick a robot</p>
+            {!searching && (
+              <div className="bb-chassis-grid">
+                {renderCards(starters)}
+                <button type="button" className="bb-chassis-card bb-chassis-card--create" onClick={onGoCreate}>
+                  <span className="bb-chassis-thumb bb-chassis-thumb--create">✨</span>
+                  <span className="bb-chassis-name">Create Custom</span>
+                </button>
+              </div>
+            )}
+            {more.length > 0 && !searching && (
+              <button
+                type="button"
+                className="bb-chassis-more-btn"
+                onClick={() => setShowMoreChassis((v) => !v)}
+                aria-expanded={showMoreChassis}
+              >
+                {showMoreChassis ? 'Hide extra robots' : `More robots (${more.length})`}
               </button>
+            )}
+            {showExtras && extraGroups.map((group) => (
+              <div key={group.id} className="bb-chassis-family">
+                <p className="bb-studio-section-label bb-chassis-family-label">{group.label}</p>
+                <div className="bb-chassis-grid">
+                  {renderCards(group.items)}
+                </div>
+              </div>
+            ))}
+            <div className="bb-paint-block">
+              <p className="bb-studio-section-label">Paint your robot</p>
+              <div className="bb-paint-dots">
+                {PALETTE_CLASSIC.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    className={`bb-paint-dot${(robotConfig.primaryColor || '').toLowerCase() === c.toLowerCase() ? ' active' : ''}`}
+                    style={{ background: c }}
+                    title={c}
+                    onClick={() => setRobotConfig((prev) => ({
+                      ...prev,
+                      primaryColor: c,
+                      accentColor: c,
+                    }))}
+                  />
+                ))}
+                <label className="bb-paint-custom" title="Pick any colour">
+                  <input
+                    type="color"
+                    value={robotConfig.primaryColor || '#FF8C00'}
+                    onChange={(e) => setRobotConfig((prev) => ({
+                      ...prev,
+                      primaryColor: e.target.value,
+                      accentColor: e.target.value,
+                    }))}
+                  />
+                </label>
+              </div>
             </div>
             <BodySizePicker
               bodySize={robotConfig.bodySize || 'M'}
@@ -1791,7 +2084,7 @@ export default function BuildPage({ robotConfig, setRobotConfig, onSimulate, onR
       >
         <div className="bb-studio-viewport-header">
           <span className="bb-studio-viewport-title">🤖 {robotConfig.name || 'My Robot'}</span>
-          <span style={{ fontSize: 11, color: '#aaa', fontStyle: 'italic' }}>
+          <span className="bb-studio-viewport-hint">
             {draggingPartType
               ? `🎯 Hover a glowing socket to snap ${draggingPartType} here`
               : 'Drag parts onto glowing sockets · Click robot to code'}

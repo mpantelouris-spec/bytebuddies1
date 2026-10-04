@@ -91,7 +91,7 @@ function MinimalRaceHUD({
     <>
       {atGrid && (
         <div className="rc-hud-ready rc-hud-ready--minimal" style={{ borderColor: t.pillBorder, background: t.pillBg, color: t.accent }}>
-          {countdown > 0 ? `${countdown}…` : '🏁 READY — ↑/W to drive'}
+          {countdown > 0 ? `${countdown}…` : '🏁 READY — your code drives the car'}
         </div>
       )}
 
@@ -254,6 +254,55 @@ function RaceObjectivesPanel({ objectives, stats, theme }) {
   );
 }
 
+/** Turn-by-turn route card: the blocks that drive one lap of this circuit. */
+function RouteGuidePanel({ guide, trackT, laps = 1 }) {
+  const [open, setOpen] = useState(() => {
+    try { return localStorage.getItem('bb_route_guide_open') !== '0'; } catch { return true; }
+  });
+  const listRef = useRef(null);
+  const steps = guide?.steps || [];
+  const inRange = (t, a, b) => (a <= b ? t >= a && t < b : t >= a || t < b);
+  // before the kart moves, point at the first block
+  const current = !trackT ? 0 : steps.findIndex((s) => inRange(trackT, s.t0, s.t1));
+  useEffect(() => {
+    if (!open || current < 0 || !listRef.current) return;
+    const el = listRef.current.querySelector(`[data-step="${current}"]`);
+    el?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' });
+  }, [current, open]);
+  if (!steps.length) return null;
+  const toggle = () => {
+    const next = !open;
+    setOpen(next);
+    try { localStorage.setItem('bb_route_guide_open', next ? '1' : '0'); } catch { /* ignore */ }
+  };
+  const icon = (b) => (b === 'curve_left' ? '↰' : b === 'curve_right' ? '↱' : '⬆');
+  return (
+    <div className={`rc-route${open ? '' : ' rc-route--closed'}`}>
+      <button type="button" className="rc-route-head" onClick={toggle}>
+        <span>🗺️ Route guide</span>
+        <span className="rc-route-count">{steps.length} steps {open ? '▾' : '▸'}</span>
+      </button>
+      {open && (
+        <>
+          <div className="rc-route-tip">
+            Start with <b>Set speed {guide.speed}</b>, then code these blocks in order
+            {laps > 1 ? <> — wrap them in <b>Repeat {laps}</b> for every lap</> : null}.
+          </div>
+          <ol className="rc-route-list" ref={listRef}>
+            {steps.map((s, i) => (
+              <li key={i} data-step={i} className={`rc-route-step rc-route-step--${s.block}${i === current ? ' is-current' : ''}`}>
+                <span className="rc-route-num">{i + 1}</span>
+                <span className="rc-route-ico">{icon(s.block)}</span>
+                <span className="rc-route-txt">{s.label}</span>
+              </li>
+            ))}
+          </ol>
+        </>
+      )}
+    </div>
+  );
+}
+
 export function RacingHUD({ stats, challenge, theme = 'default', onRestart, hideMinimap = false, minimal = false }) {
   const baseTheme = THEMES[theme] || THEMES.default;
   const t = challenge?.color
@@ -353,6 +402,7 @@ export function RacingHUD({ stats, challenge, theme = 'default', onRestart, hide
             className="rc-minimap--coderacer"
           />
         )}
+        <RouteGuidePanel guide={stats.raceRouteGuide} trackT={stats.raceTrackT} laps={totalLaps} />
         <RaceNotification message={notifyMsg} />
         {stats.raceOptimizeHint && (
           <div className="rc-hud-hint rc-hud-hint--minimal">{stats.raceOptimizeHint}</div>

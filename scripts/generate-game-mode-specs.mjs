@@ -48,6 +48,7 @@ const CHASSIS_META = {
   factorybot: { label: 'Factory Bot (Industrial)', role: 'assembly line worker', ability1: 'Conveyor synchronization', ability2: 'Quality inspection sensors', advantage: 'Keeps pace with factory timing' },
   spacerover: { label: 'Space Rover (Astronaut)', role: 'planetary rover', ability1: 'Low-gravity traction', ability2: 'Sample drill arm', advantage: 'Martian dust and crater rims' },
   legobot: { label: 'LEGO Bot (Builder)', role: 'modular constructor', ability1: 'Brick latch precision', ability2: 'Pattern replication', advantage: 'Builds structures block by block' },
+  blockbot: { label: 'Block Crafter (World Builder)', role: 'voxel explorer', ability1: 'Pickaxe precision', ability2: 'Block placement', advantage: 'Traverses grass, stone, and sky block worlds' },
   battlebot: { label: 'Battle Mech (Combat)', role: 'combat mech', ability1: 'Energy weapons', ability2: 'Shield matrix', advantage: 'Dominates destructible arenas' },
   striker: { label: 'Boxing Striker (Boxing)', role: 'boxing fighter', ability1: 'Combo punch chains', ability2: 'Block and counter', advantage: 'Ring control and knockout timing' },
   footballbot: { label: 'Striker FC (Football)', role: 'soccer striker', ability1: 'Ball chase AI', ability2: 'Power shot', advantage: '3D turf physics mastery' },

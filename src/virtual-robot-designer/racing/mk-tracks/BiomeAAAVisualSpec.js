@@ -22,12 +22,12 @@ export const BIOME_AAA_SPECS = {
     mood: 'Sunset Cove — tropical bay golden hour',
   },
   candy_carnival_01: {
-    palette: { primary: '#FF69B4', secondary: '#FFD700', accent: '#FF69B4', fog: 0xffe0f0 },
-    keyLight: 0xffffff, fillLight: 0xff69b4, rimLight: 0xffd700, ambient: 0xfff0f8,
-    ground: 0xffc8e8, roadStyle: 'candy_pink',
-    lightingTemp: 'bright-day', atmosphere: 'carnival', fogDensity: 0.0008,
-    post: { ...BASE_POST, bloom: 0.48, gradeSat: 1.5, gradeGain: [1.06, 1.02, 1.04], gradeCss: 'saturate(1.55) contrast(1.12) brightness(1.12)' },
-    mood: 'Candy Carnival — bright midway colors',
+    palette: { primary: '#FF69B4', secondary: '#FFD700', accent: '#2FB4FF', fog: 0xcdeeff },
+    keyLight: 0xffffff, fillLight: 0xbfe4ff, rimLight: 0xffd700, ambient: 0xf2f7ff,
+    ground: 0xff9fcf, roadStyle: 'asphalt',
+    lightingTemp: 'bright-day', atmosphere: 'carnival', fogDensity: 0.0004,
+    post: { ...BASE_POST, bloom: 0.3, gradeSat: 1.25, gradeGain: [1, 1, 1.02], gradeCss: 'saturate(1.3) contrast(1.12) brightness(1)' },
+    mood: 'Candy Rainbow Run — candy cliffs, rainbow road, blue sky',
   },
   neon_metro_01: {
     palette: { primary: '#FF00FF', secondary: '#00FFFF', accent: '#FF00FF', fog: 0x001030 },

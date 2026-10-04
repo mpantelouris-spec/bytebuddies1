@@ -62,6 +62,12 @@
   display: none !important;
 }
 
+.bb-football-cinema .football-role-tabs,
+.bb-football-cinema .football-coding-badge,
+.bb-football-cinema .fifa-viewport-role-strip {
+  display: none !important;
+}
+
 .bb-new-layout.bb-football-fifa-immersive {
   grid-template-columns: minmax(0, 1fr);
   min-height: min(100%, 100dvh);
@@ -1458,6 +1464,7 @@
 
 .scratch-pal-block-row {
   display: flex;
+  flex-wrap: wrap; /* blocks with several settings drop them onto a second line */
   align-items: center;
   gap: 6px;
   width: 100%;
@@ -1465,8 +1472,9 @@
 }
 .scratch-blk-icon { font-size: 14px; flex-shrink: 0; }
 .scratch-blk-text { flex: 1; min-width: 0; line-height: 1.25; }
-.scratch-pal-block .scratch-blk-text { white-space: normal; word-break: break-word; }
-.scratch-blk-param { display: flex; gap: 4px; flex-shrink: 0; margin-left: auto; }
+/* Keep the label readable: whole words, never squeezed into a column of letters */
+.scratch-pal-block .scratch-blk-text { flex: 1 1 7em; min-width: 7em; white-space: normal; overflow-wrap: normal; word-break: normal; }
+.scratch-blk-param { display: flex; flex-wrap: wrap; gap: 4px; flex-shrink: 1; max-width: 100%; margin-left: auto; }
 .scratch-blk-val {
   background: rgba(0, 0, 0, 0.35);
   padding: 1px 6px;
@@ -1513,8 +1521,12 @@
 }
 .scratch-tool-btn:disabled { opacity: 0.35; cursor: default; }
 .scratch-clear-btn { color: #fca5a5; }
-.scratch-ws-spacer { flex: 1; }
-.scratch-block-count { font-size: 10px; color: var(--bb-muted); font-weight: 700; }
+.scratch-ws-spacer { flex: 1; min-width: 0; }
+/* Count gives way first so the Mission button is never clipped in a narrow column */
+.scratch-block-count {
+  font-size: 10px; color: var(--bb-muted); font-weight: 700;
+  min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 .scratch-mission-btn {
   background: rgba(124, 58, 237, 0.25);
   border: 1px solid rgba(167, 139, 250, 0.4);
@@ -2179,28 +2191,51 @@
 
 .bb-vp-run-controls {
   position: absolute;
-  top: max(12px, env(safe-area-inset-top));
-  right: max(12px, env(safe-area-inset-right));
-  left: auto;
+  top: auto;
+  right: auto;
+  bottom: max(18px, env(safe-area-inset-bottom));
+  left: max(12px, env(safe-area-inset-left));
   z-index: 50;
   display: flex;
-  gap: 6px;
+  gap: 8px;
   align-items: center;
+  flex-wrap: wrap;
+  max-width: min(520px, calc(100% - 24px));
+  justify-content: flex-start;
 }
 
-.bb-vp-run-btn, .bb-vp-stop-btn, .bb-vp-step-btn, .bb-vp-icon-btn {
+.bb-vp-run-btn, .bb-vp-stop-btn, .bb-vp-step-btn, .bb-vp-icon-btn, .bb-vp-modes-btn {
   border: none;
-  border-radius: 10px;
-  padding: 8px 14px;
-  font-size: 12px;
+  border-radius: 14px;
+  padding: 10px 16px;
+  font-size: 13px;
   font-weight: 800;
   cursor: pointer;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+}
+.bb-vp-modes-btn {
+  background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+  color: #fff;
+  letter-spacing: 0.01em;
+  box-shadow: 0 4px 20px rgba(109, 40, 217, 0.55);
+  border: 2px solid rgba(255, 255, 255, 0.22);
+}
+.bb-vp-modes-btn:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+.bb-vp-modes-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 .bb-vp-run-btn { background: linear-gradient(135deg, #22c55e, #16a34a); color: #fff; }
 .bb-vp-pause-btn { background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; }
-.bb-vp-stop-btn { background: #ef4444; color: #fff; padding: 8px 12px; }
-.bb-vp-step-btn, .bb-vp-icon-btn { background: rgba(20, 18, 40, 0.85); color: #fff; border: 1px solid var(--bb-border); }
+.bb-vp-stop-btn { background: #ef4444; color: #fff; padding: 10px 14px; }
+.bb-vp-step-btn, .bb-vp-icon-btn {
+  background: rgba(20, 18, 40, 0.92);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.16);
+  padding: 10px 12px;
+}
 .bb-vp-icon-btn--active { background: rgba(99, 102, 241, 0.45); border-color: rgba(129, 140, 248, 0.7); }
 
 .bb-exec-pill {
@@ -2312,8 +2347,9 @@
 /* ── FLOAT HUD + LEGACY MISSION OVERLAY ──────────────────────────────────── */
 .bb-float-hud {
   position: absolute;
-  bottom: 12px;
-  left: 12px;
+  /* sit just above the Game modes / Simulate row instead of underneath it */
+  bottom: calc(max(18px, env(safe-area-inset-bottom)) + 62px);
+  left: max(12px, env(safe-area-inset-left));
   z-index: 11;
   display: flex;
   align-items: center;
@@ -2470,14 +2506,15 @@
   right: 16px;
   left: auto;
   bottom: auto;
-  width: 132px;
-  height: 132px;
-  padding: 8px;
-  border-radius: 50%;
+  width: 140px;
+  height: 140px;
+  padding: 0;
+  border-radius: 16px;
   overflow: hidden;
-  background: rgba(255,255,255,.92) !important;
-  border: 5px solid #fff !important;
-  box-shadow: 0 6px 18px rgba(0,0,0,.28);
+  background: rgba(8, 12, 28, 0.55) !important;
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
+  box-shadow: 0 6px 18px rgba(0,0,0,.35);
+  backdrop-filter: blur(6px);
 }
 .rc-minimap--coderacer .rc-minimap-header,
 .rc-minimap--coderacer .rc-minimap-section,
@@ -2488,7 +2525,7 @@
 .rc-minimap--coderacer .rc-minimap-canvas {
   width: 100%;
   height: 100%;
-  border-radius: 50%;
+  border-radius: 16px;
 }
 
 .bb-viewport-toolbar + * ~ .rc-minimap--coderacer,
@@ -2506,7 +2543,7 @@
     top: 12px;
     right: 10px;
     bottom: auto;
-    padding: 6px;
+    padding: 0;
   }
 }
 
@@ -3520,7 +3557,7 @@
    ════════════════════════════════════════════════════════════════════════════ */
 .mcp-panel {
   position: absolute;
-  top: 12px;
+  top: 64px;
   right: 12px;
   width: 240px;
   background: rgba(8,10,22,0.92);
@@ -4991,17 +5028,20 @@
 /* Compact bottom strip — must never cover the fighters in the ring */
 .fight-arena-entry {
   position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 8px;
+  /* top-left, clear of the Game modes / Simulate row and the Mission panel */
+  left: 12px;
+  right: auto;
+  top: 10px;
+  max-width: calc(100% - 300px);
   display: flex;
-  align-items: flex-end;
-  justify-content: center;
+  align-items: flex-start;
+  justify-content: flex-start;
   pointer-events: none;
   z-index: 8;
 }
 .fight-arena-entry-inner {
   display: flex;
+  flex-wrap: wrap;
   flex-direction: row;
   align-items: center;
   gap: 12px;
@@ -5016,6 +5056,24 @@
 .fight-arena-entry-icon { font-size: 22px; }
 .fight-arena-entry-inner strong { font-size: 14px; letter-spacing: 0.08em; color: #fca5a5; }
 .fight-arena-entry-hint { font-size: 11px; color: rgba(255, 255, 255, 0.75); max-width: 340px; }
+/* Football is full-screen with the score + Show Code top-left: keep its bar centred above START MATCH */
+.fight-arena-entry.football-arena-entry {
+  top: 10px;
+  bottom: auto;
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: calc(100% - 620px);
+  justify-content: center;
+}
+.football-arena-entry .fight-arena-entry-inner { padding: 6px 12px; gap: 8px; justify-content: center; }
+.football-arena-entry .fight-arena-entry-hint { max-width: 260px; }
+.football-arena-entry .fight-hub-open-btn { margin-top: 0; }
+@media (max-width: 1100px) {
+  .fight-arena-entry.football-arena-entry { max-width: calc(100% - 520px); }
+  .football-arena-entry .fight-arena-entry-hint { display: none; }
+}
 .football-arena-entry .fight-arena-entry-inner {
   border-color: rgba(34, 197, 94, 0.55);
   box-shadow: 0 0 24px rgba(34, 197, 94, 0.22);
@@ -5833,17 +5891,17 @@
   color: #ffe23f;
 }
 .rc-minimal-time-badge {
+  /* Corner timer (arcade-racer style) so it never sits on top of the kart */
   position: absolute;
-  left: 50%;
+  right: 24px;
   bottom: 22px;
   z-index: 14;
-  transform: translateX(-50%);
   padding: 0;
   border: 0;
   background: none;
   box-shadow: none;
   color: #fff;
-  font-size: clamp(28px, 4vw, 42px);
+  font-size: clamp(24px, 3vw, 36px);
   font-weight: 950;
   font-variant-numeric: tabular-nums;
   letter-spacing: .04em;
@@ -6196,8 +6254,9 @@
   transition: width 0.12s linear;
 }
 .fifa-hud--tv .football-coding-badge {
-  top: 52px;
-  left: 12px;
+  top: 84px;
+  left: 50%;
+  transform: translateX(-50%);
   right: auto;
   bottom: auto;
   font-size: 9px;
@@ -6423,8 +6482,8 @@
 
 .football-cam-toggle {
   position: absolute;
-  left: 12px;
-  top: 48px;
+  left: 112px;
+  top: 12px;
   z-index: 55;
   border: 1px solid rgba(96, 165, 250, 0.5);
   border-radius: 999px;
@@ -6575,3 +6634,288 @@
   font-size: 10px;
   color: #e2e8f0;
 }
+
+/* ── FIFA-style score bug: compact, top-left, clock attached ─────────────── */
+.fifa-hud--tv .fifa-tv-scorebar {
+  top: 56px !important;
+  left: 14px !important;
+  right: auto !important;
+  transform: none !important;
+  width: auto !important;
+  min-width: 0 !important;
+  padding: 0 !important;
+  background: none !important;
+  border: 0 !important;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35) !important;
+}
+.fifa-hud--tv .fifa-tv-scorebar-accent,
+.fifa-hud--tv .fifa-tv-comp,
+.fifa-hud--tv .fifa-tv-clock { display: none !important; }
+.fifa-hud--tv .fifa-tv-scorebar-body {
+  display: flex !important;
+  align-items: stretch !important;
+  gap: 0 !important;
+  height: 34px;
+  padding: 0 !important;
+  border-radius: 4px !important;
+  overflow: hidden;
+  background: linear-gradient(180deg, #1c2233 0%, #0d111c 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  font-family: 'Arial Narrow', 'Roboto Condensed', system-ui, sans-serif;
+}
+.fifa-hud--tv .fifa-tv-chip { width: 6px; }
+.fifa-hud--tv .fifa-tv-chip--green { background: #22c55e; }
+.fifa-hud--tv .fifa-tv-chip--blue { background: #3b82f6; }
+.fifa-hud--tv .fifa-tv-team {
+  display: flex; align-items: center;
+  padding: 0 10px !important;
+  font-size: 15px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.08em !important;
+  color: #ffffff !important;
+}
+.fifa-hud--tv .fifa-tv-score {
+  display: flex; align-items: center;
+  padding: 0 12px !important;
+  font-size: 18px !important;
+  font-weight: 900 !important;
+  color: #0d111c !important;
+  background: #ffffff;
+  font-variant-numeric: tabular-nums;
+}
+.fifa-hud--tv .fifa-tv-bug-clock {
+  display: flex; align-items: center;
+  padding: 0 12px;
+  font-size: 15px;
+  font-weight: 800;
+  color: #ffffff;
+  background: #2a3346;
+  border-left: 1px solid rgba(255, 255, 255, 0.12);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Race route guide (turn-by-turn blocks for one lap) ── */
+.rc-route {
+  position: absolute;
+  top: 168px;
+  right: 16px;
+  width: 176px;
+  max-height: min(300px, calc(100% - 260px));
+  display: flex;
+  flex-direction: column;
+  background: rgba(10, 14, 32, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 14px;
+  color: #f1f5ff;
+  font-size: 11px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(8px);
+  pointer-events: auto;
+  z-index: 6;
+  overflow: hidden;
+}
+.rc-route--closed { max-height: none; }
+.rc-route-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 6px 9px; background: rgba(255, 255, 255, 0.06); border: 0; color: inherit;
+  font: 700 11.5px/1.2 inherit; cursor: pointer; text-align: left;
+}
+.rc-route-count { font-weight: 600; opacity: 0.7; font-size: 11px; }
+.rc-route-tip { padding: 5px 9px; font-size: 10px; line-height: 1.35; color: rgba(226, 232, 255, 0.82); border-bottom: 1px solid rgba(255,255,255,0.08); }
+.rc-route-tip b { color: #fde68a; }
+.rc-route-list { list-style: none; margin: 0; padding: 4px; overflow-y: auto; }
+.rc-route-step {
+  display: grid; grid-template-columns: 16px 14px 1fr; align-items: center; gap: 5px;
+  padding: 3px 5px; border-radius: 7px; margin-bottom: 2px; line-height: 1.25;
+  background: rgba(255, 255, 255, 0.04);
+}
+.rc-route-num { font-weight: 800; font-size: 10.5px; opacity: 0.6; text-align: right; }
+.rc-route-ico { font-weight: 900; font-size: 12px; text-align: center; }
+.rc-route-step--move_forward .rc-route-ico { color: #60a5fa; }
+.rc-route-step--curve_left .rc-route-ico { color: #fbbf24; }
+.rc-route-step--curve_right .rc-route-ico { color: #f472b6; }
+.rc-route-txt { font-weight: 600; }
+.rc-route-step.is-current { background: rgba(250, 204, 21, 0.22); box-shadow: inset 0 0 0 1px rgba(250, 204, 21, 0.7); }
+.rc-route-step.is-current .rc-route-num { opacity: 1; color: #fde68a; }
+@media (max-width: 767px) {
+  .rc-route { top: 126px; right: 10px; width: 176px; font-size: 11px; max-height: calc(100% - 210px); }
+}
+
+/* Mission panel: which action block this mission needs */
+.mcp-v2-action-hint {
+  display: flex; align-items: center; gap: 8px;
+  margin: 8px 0 2px; padding: 7px 9px; border-radius: 10px;
+  background: rgba(236, 72, 153, 0.16); border: 1px solid rgba(236, 72, 153, 0.45);
+  color: #fdf2f8; font-size: 11.5px; line-height: 1.3;
+}
+.mcp-v2-action-hint b { color: #fbcfe8; }
+.mcp-v2-action-ico { font-size: 18px; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BLOCKY BLOCKS — Scratch-style jigsaw pieces.
+   Every block has a notch on top and a tab underneath, so a script reads as one
+   snapped-together stack. Earlier blocks sit above later ones (inline z-index)
+   so each tab fills the notch of the block below it.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.scratch-pal-blocks { --blk-hole: #0e0d18; gap: 13px; padding: 10px 10px 16px; }
+.scratch-ws-canvas  { --blk-hole: #12101f; }
+.scratch-script-stack { gap: 0; padding-bottom: 8px; }
+
+.scratch-pal-block,
+.scratch-script-block,
+.scratch-anchor-block {
+  --blk: var(--cat-c, #4c97ff);
+  --blk-dark: color-mix(in srgb, var(--blk) 72%, #000);
+  position: relative;
+  overflow: visible;
+  border: 0;
+  border-radius: 5px;
+  background: var(--blk);
+  color: #fff;
+  box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.35);
+}
+/* the notch (a dent in the top edge) */
+.scratch-pal-block::before,
+.scratch-script-block::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: var(--notch-x, 18px);
+  width: 26px;
+  height: 7px;
+  background: var(--blk-hole, #12101f);
+  clip-path: polygon(0 0, 100% 0, 78% 100%, 22% 100%);
+  pointer-events: none;
+  z-index: 1;
+}
+/* the tab (a bump on the bottom edge that fills the next block's notch) */
+.scratch-pal-block::after,
+.scratch-script-block::after,
+.scratch-anchor-block::after {
+  content: '';
+  position: absolute;
+  bottom: -7px;
+  left: var(--tab-x, var(--notch-x, 18px));
+  width: 26px;
+  height: 8px;
+  background: var(--blk-dark);
+  clip-path: polygon(0 0, 100% 0, 78% 100%, 22% 100%);
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Palette pieces */
+.scratch-pal-block { padding: 11px 12px 12px; font-size: 12px; font-weight: 800; }
+.scratch-pal-block:hover { filter: brightness(1.1); transform: translateY(-1px); }
+.scratch-pal-block:active { transform: translateY(1px); }
+.scratch-pal-block .scratch-blk-val,
+.scratch-blk-val { background: #fff; color: #1f2937; text-shadow: none; border-radius: 10px; padding: 1px 7px; font-weight: 800; }
+.scratch-blk-tag { background: rgba(0, 0, 0, 0.22); }
+
+/* Hat blocks: rounded "cap" on top, no notch */
+.scratch-anchor-block,
+.scratch-pal-block.event-hat,
+.scratch-script-block.event-hat {
+  --blk: #e5484d;
+  border-radius: 26px 26px 5px 5px / 16px 16px 5px 5px;
+  padding-top: 14px;
+  box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.22), inset 0 2px 0 rgba(255, 255, 255, 0.3);
+}
+.scratch-anchor-block { margin-bottom: 0; padding: 14px 16px 12px; font-size: 13px; position: relative; z-index: 999; }
+.scratch-script-block.event-hat::before { display: none; }
+.scratch-pal-block.event-hat::before { display: none; }
+
+/* Script pieces */
+.scratch-script-block {
+  min-height: 40px;
+  cursor: grab;
+}
+.scratch-script-block .scratch-script-body {
+  background: transparent;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 10px 8px 12px;
+}
+.scratch-script-block .scratch-script-grip {
+  background: transparent;
+  color: rgba(255, 255, 255, 0.55);
+  padding: 0 4px 0 8px;
+}
+.scratch-script-block .scratch-script-actions { background: rgba(0, 0, 0, 0.16); border-radius: 0 5px 5px 0; padding: 4px 4px 7px; }
+.scratch-script-block .scratch-act-btn { background: rgba(255, 255, 255, 0.18); color: #fff; }
+.scratch-script-block .scratch-act-btn:hover { background: rgba(255, 255, 255, 0.32); }
+.scratch-script-block .scratch-del-btn:hover { background: #dc2626; color: #fff; }
+
+/* White "slots" for numbers and choices, like Scratch */
+.scratch-script-block .scratch-param-input,
+.scratch-script-block .scratch-param-select {
+  background: #fff;
+  color: #1f2937;
+  border: 0;
+  border-radius: 12px;
+  font-weight: 800;
+  text-shadow: none;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+.scratch-script-block .scratch-param-select { border-radius: 6px; padding: 3px 6px; }
+.scratch-script-block .scratch-param-unit { opacity: 0.9; }
+
+.scratch-script-block.dragging { opacity: 0.45; }
+.scratch-script-block.drag-over { box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.22), 0 -3px 0 0 #fff; }
+.scratch-script-block.executing {
+  box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.22), 0 0 0 3px #fff, 0 0 18px color-mix(in srgb, var(--blk) 80%, #fff);
+  filter: brightness(1.12);
+}
+.scratch-script-block.completed { opacity: 0.8; }
+
+/* ── C-shaped blocks (Forever / Repeat / If / Else) in the arcade & Arena Quest panel ── */
+.bb-arc-row { position: relative; }
+.bb-arc-arm { position: absolute; top: 0; bottom: 0; width: 14px; background: var(--arm); box-shadow: inset -3px 0 0 rgba(0, 0, 0, 0.18); }
+.scratch-script-block.is-container { --tab-x: 32px; border-bottom-left-radius: 0; }
+.bb-arc-foot {
+  --blk: var(--arm);
+  position: relative;
+  width: min(150px, 70%);
+  height: 16px;
+  background: var(--arm);
+  border-radius: 0 0 5px 5px;
+  box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.22);
+}
+.bb-arc-foot::after {
+  content: '';
+  position: absolute;
+  bottom: -7px;
+  left: 18px;
+  width: 26px;
+  height: 8px;
+  background: color-mix(in srgb, var(--arm) 72%, #000);
+  clip-path: polygon(0 0, 100% 0, 78% 100%, 22% 100%);
+}
+
+/* Arcade blocks: let long names wrap inside deep loops instead of spilling out */
+.bb-arcade-root .bb-arc-sblock .scratch-blk-text { white-space: normal; }
+.bb-arcade-root .bb-arc-sblock { min-width: 0; }
+
+/* 💾 Save / 📂 My saved programs */
+.scratch-save-btn { font-weight: 800; white-space: nowrap; }
+.scratch-saves-pop {
+  position: fixed; z-index: 100000; width: 290px; max-height: min(420px, 70vh); overflow-y: auto;
+  padding: 12px; border-radius: 14px; background: #1b1830; color: #f1f5f9;
+  border: 1px solid rgba(167, 139, 250, 0.45); box-shadow: 0 18px 50px rgba(0, 0, 0, 0.5);
+  font-family: inherit;
+}
+.scratch-saves-head { font-size: 14px; font-weight: 900; }
+.scratch-saves-sub { font-size: 11px; color: #a5a3c4; margin: 3px 0 10px; }
+.scratch-saves-empty { font-size: 12px; color: #c4c2df; padding: 12px 4px; text-align: center; }
+.scratch-saves-row { display: flex; align-items: center; gap: 8px; padding: 8px; border-radius: 10px; background: rgba(255, 255, 255, 0.05); margin-top: 6px; }
+.scratch-saves-meta { flex: 1; min-width: 0; }
+.scratch-saves-meta b { display: block; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.scratch-saves-meta small { display: block; font-size: 10px; color: #a5a3c4; margin-top: 2px; }
+.scratch-saves-load { border: 0; border-radius: 8px; padding: 6px 12px; background: #22c55e; color: #052e16; font-weight: 900; font-size: 11px; cursor: pointer; font-family: inherit; }
+.scratch-saves-load:hover { filter: brightness(1.1); }
+.scratch-saves-del { border: 0; border-radius: 8px; width: 26px; height: 26px; background: rgba(255, 255, 255, 0.08); color: #fca5a5; cursor: pointer; }
+.scratch-saves-del:hover { background: #dc2626; color: #fff; }
+.bb-arcade-root .bb-arc-sblock .scratch-script-body { column-gap: 5px; padding-left: 4px; }
+.bb-arcade-root .bb-arc-sblock .scratch-script-grip { padding: 0 2px 0 6px; }

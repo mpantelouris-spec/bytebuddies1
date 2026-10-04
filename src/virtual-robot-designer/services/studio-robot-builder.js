@@ -4,10 +4,15 @@
  * Creates distinct, visually rich 3D models for each chassis type.
  */
 import * as THREE from 'three';
+import { buildDesignedRobot } from '../create/designedRobot.js';
+import { buildMKKart, CHASSIS_KART } from '../racing/MKKartModel.js';
 import { isCarChassis } from '../data/car-racing-tracks.js';
 import { getPrimaryRobotDisplay } from '../data/primary-robot-studio.js';
 import { buildProfessionalFighterHumanoid } from '../studio/fighter-character-models.js';
 import { buildFootballBot } from '../studio/football-character-models.js';
+import { buildFootballPlayerMesh } from '../studio/football/FootballPlayerKit.js';
+import { buildBirdBotModel } from './birdbot-model.js';
+import { buildFlappyBirdModel } from '../studio/flappy/FlappyBirdModel.js';
 import { prepareLabRobot, prepareCombatFighter } from './art-direction.js';
 
 // Shared geometry instances (reused across builds)
@@ -202,6 +207,71 @@ export const CHASSIS_DATA = [
     weight: '2.1 kg', movement: 'Wheels',
     movementHint: 'wheels',
     bgGrad: ['#FFF3E0', '#FFE0B2'],
+  },
+  {
+    id: 'pacbot',
+    name: 'Pac-Bot',
+    icon: '🟡',
+    badge: 'Arcade',
+    desc: 'Maze chase — gobble every dot and dodge the Glitch Bugs!',
+    primaryColor: '#FACC15',
+    accentColor: '#3B82F6',
+    speed: 85, power: 60, durability: 65,
+    weight: '1.1 kg', movement: 'Wheels',
+    movementHint: 'wheels',
+    bgGrad: ['#FEF9C3', '#FDE68A'],
+  },
+  {
+    id: 'brickbot',
+    name: 'Brick Bot',
+    icon: '🧱',
+    badge: 'Arcade',
+    desc: 'Breakout — bounce the ball and smash every brick.',
+    primaryColor: '#F97316',
+    accentColor: '#38BDF8',
+    speed: 90, power: 70, durability: 80,
+    weight: '1.6 kg', movement: 'Wheels',
+    movementHint: 'wheels',
+    bgGrad: ['#FFEDD5', '#FED7AA'],
+  },
+  {
+    id: 'hopbot',
+    name: 'Hop Bot',
+    icon: '🐸',
+    badge: 'Arcade',
+    desc: 'Crossy-road style — hop over roads, rivers and train tracks.',
+    primaryColor: '#22C55E',
+    accentColor: '#FDE047',
+    speed: 80, power: 65, durability: 70,
+    weight: '0.9 kg', movement: 'Legs',
+    movementHint: 'wheels',
+    bgGrad: ['#DCFCE7', '#BBF7D0'],
+  },
+  {
+    id: 'raiderbot',
+    name: 'Space Raider',
+    icon: '👾',
+    badge: 'Arcade',
+    desc: 'Space Raiders — zap the marching fleet before it lands!',
+    primaryColor: '#6366F1',
+    accentColor: '#F43F5E',
+    speed: 85, power: 80, durability: 70,
+    weight: '1.3 kg', movement: 'Hover',
+    movementHint: 'wheels',
+    bgGrad: ['#EDE9FE', '#DDD6FE'],
+  },
+  {
+    id: 'snakebot',
+    name: 'Snake Bot',
+    icon: '🐍',
+    badge: 'Arcade',
+    desc: 'Code a robot snake to eat every apple.',
+    primaryColor: '#22C55E',
+    accentColor: '#FDE047',
+    speed: 75, power: 60, durability: 65,
+    weight: '1.4 kg', movement: 'Segments',
+    movementHint: 'wheels',
+    bgGrad: ['#DCFCE7', '#BBF7D0'],
   },
   {
     id: 'scout',
@@ -475,6 +545,18 @@ export const CHASSIS_DATA = [
     bgGrad: ['#FFFBEB', '#FEF3C7'],
   },
   {
+    id: 'blockbot',
+    name: 'Block Crafter',
+    icon: '🟩',
+    badge: 'World Builder',
+    primaryColor: '#4aa8d8',
+    accentColor: '#5c4033',
+    speed: 58, power: 62, durability: 75,
+    weight: '1.4 kg', movement: 'Legs',
+    movementHint: 'legs',
+    bgGrad: ['#ECFDF5', '#D1FAE5'],
+  },
+  {
     id: 'battlebot',
     name: 'Mega Mech',
     icon: '⚔️',
@@ -488,7 +570,7 @@ export const CHASSIS_DATA = [
   },
   {
     id: 'striker',
-    name: 'Sport Striker',
+    name: 'Boxing',
     icon: '🥊',
     badge: 'Boxing',
     primaryColor: '#f97316',
@@ -610,9 +692,9 @@ export const CHASSIS_DATA = [
   // ── Launcher Robot ─────────────────────────────────────────────────────────
   {
     id: 'birdbot',
-    name: 'Sling-B',
+    name: 'Flappy Bird',
     icon: '🐦',
-    badge: 'Launcher',
+    badge: 'Flappy',
     primaryColor: '#e52222',
     accentColor: '#ffdd00',
     speed: 60, power: 90, durability: 75,
@@ -1992,111 +2074,97 @@ function buildSpider(primary, accent) {
     g.add(fang);
   });
 
-  // ── 8 LEGS — hierarchical: pivot → coxa → femurGrp → tibiaGrp → claw ──
-  // Each leg is a chain of Groups so parent rotation drags children cleanly
-  const legPivots = []; // for animation
-
-  // zAttach: fore-aft position along body, spreadAngle: initial Y rotation outward
+  // ── 8 LEGS — two-bone IK so every foot plants on the ground ──
+  // hip on the body rim → knee arched high → foot on the floor. Legs fan out
+  // evenly (front pair reaching forward, back pair reaching back) like a real spider.
+  const FEMUR = 0.56;
+  const TIBIA = 0.72;
+  const UP = new THREE.Vector3(0, 1, 0);
+  const femurGeo = new THREE.CylinderGeometry(0.04, 0.055, 1, 10);
+  femurGeo.translate(0, 0.5, 0);
+  const tibiaGeo = new THREE.CylinderGeometry(0.014, 0.04, 1, 10);
+  tibiaGeo.translate(0, 0.5, 0);
+  const femurMat = matBrushed(accent, 0.72, 0.28);
+  const tibiaMat = matPanel(primary, 0.5, 0.48);
+  const jointMat = matBrushed('#3a3a3a', 0.85, 0.2);
+  const legs = [];
+  // yaw measured from forward (+z) towards the leg's side
   const legDefs = [
-    { z: 0.28, spreadY:  0.6 },  // L1 front
-    { z: 0.10, spreadY:  0.3 },  // L2
-    { z:-0.08, spreadY: -0.2 },  // L3
-    { z:-0.26, spreadY: -0.55 }, // L4 rear
+    { yaw: 0.62, hipZ: 0.30, reach: 0.82 },
+    { yaw: 1.12, hipZ: 0.18, reach: 0.74 },
+    { yaw: 1.72, hipZ: 0.04, reach: 0.74 },
+    { yaw: 2.3,  hipZ: -0.1, reach: 0.84 },
   ];
-
-  [-1, 1].forEach((side, si) => {
-    legDefs.forEach(({ z, spreadY }, li) => {
-      // ── Pivot group anchored at body edge ──
-      const pivot = new THREE.Group();
-      pivot.position.set(side * 0.36, BODY_Y, z);
-      pivot.rotation.y = side * spreadY; // fan legs forward/back
-      g.add(pivot);
-
-      // Coxa — short horizontal segment going straight out (brushed metal)
-      const coxaGrp = new THREE.Group();
-      const coxaMesh = new THREE.Mesh(BOX_GEO, matPanel(primary, 0.55, 0.40));
-      coxaMesh.scale.set(0.28, 0.068, 0.075);
-      coxaMesh.position.set(side * 0.14, 0, 0);
-      coxaMesh.castShadow = true;
-      coxaGrp.add(coxaMesh);
-      // Hip socket ball
-      const hipBall = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 6), matBrushed(accent, 0.78, 0.22));
-      hipBall.position.set(0, 0, 0);
-      coxaGrp.add(hipBall);
-      pivot.add(coxaGrp);
-
-      // Femur group — hangs off end of coxa, angles upward then out
-      const femurGrp = new THREE.Group();
-      femurGrp.position.set(side * 0.28, 0, 0);
-      femurGrp.rotation.z = side * 0.55;
-      coxaGrp.add(femurGrp);
-
-      const femurMesh = new THREE.Mesh(BOX_GEO, matBrushed(accent, 0.72, 0.28));
-      femurMesh.scale.set(0.38, 0.058, 0.065);
-      femurMesh.position.set(side * 0.19, 0, 0);
-      femurMesh.castShadow = true;
-      femurGrp.add(femurMesh);
-      // Hydraulic cylinder alongside femur
-      const hydro = new THREE.Mesh(CYL_GEO, mat('#555', 0.9, 0.15));
-      hydro.scale.set(0.018, 0.3, 0.018);
-      hydro.position.set(side * 0.19, 0.04, 0);
-      hydro.rotation.z = Math.PI / 2;
-      femurGrp.add(hydro);
-
-      // Knee sphere — polished joint
-      const knee = new THREE.Mesh(new THREE.SphereGeometry(0.056, 10, 8), matBrushed(accent, 0.82, 0.15));
-      knee.position.set(side * 0.38, 0, 0);
-      femurGrp.add(knee);
-
-      // Tibia group — hangs off knee, angles sharply downward
-      const tibiaGrp = new THREE.Group();
-      tibiaGrp.position.set(side * 0.38, 0, 0);
-      tibiaGrp.rotation.z = side * -1.05;
-      femurGrp.add(tibiaGrp);
-
-      const tibiaMesh = new THREE.Mesh(BOX_GEO, matPanel(primary, 0.50, 0.48));
-      tibiaMesh.scale.set(0.38, 0.048, 0.056);
-      tibiaMesh.position.set(side * 0.19, 0, 0);
-      tibiaMesh.castShadow = true;
-      tibiaGrp.add(tibiaMesh);
-
-      // Ankle joint ball
-      const ankle = new THREE.Mesh(new THREE.SphereGeometry(0.034, 8, 6), matBrushed('#777', 0.8, 0.18));
-      ankle.position.set(side * 0.38, 0, 0);
-      tibiaGrp.add(ankle);
-
-      // Claw at tip of tibia — polished steel
-      const clawGrp = new THREE.Group();
-      clawGrp.position.set(side * 0.38, 0, 0);
-      tibiaGrp.add(clawGrp);
-      const clawMesh = new THREE.Mesh(new THREE.ConeGeometry(0.028, 0.13, 6), mat('#c0c0c0', 0.95, 0.08));
-      clawMesh.rotation.z = side > 0 ? -Math.PI / 2 : Math.PI / 2;
-      clawMesh.position.set(side * 0.065, 0, 0);
-      clawMesh.castShadow = true;
-      clawGrp.add(clawMesh);
-      // Rubber grip pad at claw tip
-      const grip = new THREE.Mesh(new THREE.SphereGeometry(0.022, 6, 5), matRubber('#222'));
-      grip.position.set(side * 0.12, -0.02, 0);
-      clawGrp.add(grip);
-
-      // Alternating tripod gait: even/odd pairs with phase offset per side
-      const phase = (li % 2 === 0 ? 0 : Math.PI) + (si === 0 ? Math.PI : 0);
-      legPivots.push({ pivot, femurGrp, tibiaGrp, phase });
+  [-1, 1].forEach((side) => {
+    legDefs.forEach((d, li) => {
+      const hip = new THREE.Vector3(side * 0.3, BODY_Y + 0.02, d.hipZ);
+      const dir = new THREE.Vector3(side * Math.sin(d.yaw), 0, Math.cos(d.yaw));
+      const rest = hip.clone().addScaledVector(dir, d.reach);
+      rest.y = 0.02;
+      const femur = new THREE.Mesh(femurGeo, femurMat);
+      const tibia = new THREE.Mesh(tibiaGeo, tibiaMat);
+      const hipBall = new THREE.Mesh(new THREE.SphereGeometry(0.06, 10, 8), jointMat);
+      const knee = new THREE.Mesh(new THREE.SphereGeometry(0.058, 10, 8), matBrushed(accent, 0.82, 0.15));
+      const foot = new THREE.Mesh(new THREE.SphereGeometry(0.024, 8, 6), matRubber('#222'));
+      [femur, tibia, hipBall, knee, foot].forEach((m) => { m.castShadow = true; g.add(m); });
+      hipBall.position.copy(hip);
+      // alternating tetrapod gait: L1 R2 L3 R4 step together, then the others
+      const group = (li + (side > 0 ? 1 : 0)) % 2;
+      legs.push({ hip, rest, dir, femur, tibia, knee, foot, phase: group * 0.5 });
     });
   });
+
+  const _k = new THREE.Vector3();
+  const _v = new THREE.Vector3();
+  const place = (mesh, from, to) => {
+    _v.subVectors(to, from);
+    const len = _v.length();
+    mesh.position.copy(from);
+    mesh.quaternion.setFromUnitVectors(UP, _v.normalize());
+    mesh.scale.set(1, len, 1);
+  };
+  const solveLeg = (L, target) => {
+    // two-bone IK in the vertical plane through hip and foot, knee arched up
+    const toFoot = _v.subVectors(target, L.hip);
+    const dist = Math.min(FEMUR + TIBIA - 0.01, Math.max(0.2, toFoot.length()));
+    const flat = new THREE.Vector3(toFoot.x, 0, toFoot.z);
+    const flatLen = flat.length() || 1;
+    flat.divideScalar(flatLen);
+    const elev = Math.atan2(toFoot.y, flatLen);
+    const a = Math.acos(Math.min(1, Math.max(-1, (FEMUR * FEMUR + dist * dist - TIBIA * TIBIA) / (2 * FEMUR * dist))));
+    const up = elev + a;
+    _k.copy(L.hip).addScaledVector(flat, Math.cos(up) * FEMUR);
+    _k.y += Math.sin(up) * FEMUR;
+    const footPos = L.hip.clone().addScaledVector(flat, Math.cos(elev) * dist);
+    footPos.y += Math.sin(elev) * dist;
+    place(L.femur, L.hip, _k);
+    place(L.tibia, _k, footPos);
+    L.knee.position.copy(_k);
+    L.foot.position.copy(footPos);
+  };
+  const stride = 0.09;
+  const fwd = new THREE.Vector3(0, 0, 1);
+  const target = new THREE.Vector3();
+  const pose = (t) => {
+    legs.forEach((L) => {
+      const p = ((t * 0.9 + L.phase) % 1 + 1) % 1;
+      let off; let lift = 0;
+      if (p < 0.5) { const q = p / 0.5; off = -stride + 2 * stride * q; lift = Math.sin(q * Math.PI) * 0.11; }
+      else { const q = (p - 0.5) / 0.5; off = stride - 2 * stride * q; }
+      target.copy(L.rest).addScaledVector(fwd, off);
+      target.y = L.rest.y + lift;
+      solveLeg(L, target);
+    });
+  };
+  pose(0);
 
   // ── ANIMATION ──
   g.userData.animate = (t) => {
     eyeRefs.forEach((e, i) => {
       e.material.emissiveIntensity = 2.0 + Math.sin(t * 5 + i * 0.9) * 0.9;
     });
-    legPivots.forEach(({ pivot, femurGrp, tibiaGrp, phase }) => {
-      const wave = Math.sin(t * 4.0 + phase);
-      pivot.rotation.x     =  wave * 0.18;         // swing fore/aft
-      femurGrp.rotation.x  =  wave * 0.12;         // femur lifts
-      tibiaGrp.rotation.x  = -wave * 0.16;         // tibia compensates
-    });
-    g.position.y = Math.abs(Math.sin(t * 4.0)) * 0.012; // body bob
+    pose(t);
+    g.position.y = Math.abs(Math.sin(t * 0.9 * Math.PI * 2)) * 0.012; // body bob with each step
   };
 
   return g;
@@ -2661,6 +2729,7 @@ function buildHoverSaucer(primary, accent) {
     shieldMat
   );
   shield.position.set(0, 0.38, 0);
+  shield.rotation.x = Math.PI / 2; // lie flat around the saucer rim, like the inner ring
   g.add(shield);
   // Inner energy ring (closer, faster pulse)
   const innerShieldMat = new THREE.MeshStandardMaterial({
@@ -2686,7 +2755,7 @@ function buildHoverSaucer(primary, accent) {
     });
     underglow.material.emissiveIntensity = 0.9 + Math.sin(t * 4) * 0.4;
     // EM shield shimmer — rotate + pulse opacity
-    shield.rotation.y += 0.008;
+    shield.rotation.z += 0.008;
     shieldMat.emissiveIntensity = 0.4 + Math.sin(t * 3.5) * 0.4;
     shieldMat.opacity = 0.15 + Math.sin(t * 3.5) * 0.1;
     innerShield.rotation.z += 0.022;
@@ -3135,6 +3204,200 @@ function buildLegoBot(primary, accent) {
     foot.position.set(x, -0.14, 0.06);
     g.add(foot);
   });
+  return g;
+}
+
+/** Pixel block textures for voxel-style hero (Block Crafter). */
+function getBlockPixelTex(kind) {
+  const key = `blockpx_${kind}`;
+  if (_texCache[key]) return _texCache[key];
+  const S = 16;
+  const c = document.createElement('canvas');
+  c.width = S;
+  c.height = S;
+  const g = c.getContext('2d');
+  const fill = (col) => { g.fillStyle = col; g.fillRect(0, 0, S, S); };
+  const noise = (a = 0.12) => {
+    for (let i = 0; i < 48; i++) {
+      const x = (Math.random() * S) | 0;
+      const y = (Math.random() * S) | 0;
+      g.fillStyle = `rgba(0,0,0,${a * Math.random()})`;
+      g.fillRect(x, y, 1, 1);
+    }
+  };
+  const highlight = (a = 0.15) => {
+    g.fillStyle = `rgba(255,255,255,${a})`;
+    g.fillRect(0, 0, S, 2);
+    g.fillRect(0, 0, 2, S);
+  };
+  if (kind === 'grass_top') {
+    fill('#5ea832');
+    for (let i = 0; i < 28; i++) {
+      g.fillStyle = Math.random() > 0.5 ? '#6fbf3a' : '#4d9428';
+      g.fillRect((Math.random() * S) | 0, (Math.random() * S) | 0, 1, 1);
+    }
+    highlight(0.2);
+  } else if (kind === 'grass_side') {
+    fill('#8b6914');
+    g.fillStyle = '#5ea832';
+    g.fillRect(0, 0, S, 5);
+    noise(0.08);
+  } else if (kind === 'dirt') {
+    fill('#8b6914');
+    noise(0.18);
+    highlight(0.08);
+  } else if (kind === 'stone') {
+    fill('#9a9a9a');
+    noise(0.22);
+    g.strokeStyle = 'rgba(40,40,40,0.35)';
+    g.lineWidth = 1;
+    g.strokeRect(0.5, 0.5, S - 1, S - 1);
+  } else if (kind === 'skin') {
+    fill('#c89664');
+    g.fillStyle = '#b88458';
+    g.fillRect(0, 10, S, 6);
+    noise(0.06);
+  } else if (kind === 'face') {
+    fill('#c89664');
+    g.fillStyle = '#fff';
+    g.fillRect(4, 5, 3, 3);
+    g.fillRect(9, 5, 3, 3);
+    g.fillStyle = '#4a3728';
+    g.fillRect(5, 6, 1, 1);
+    g.fillRect(10, 6, 1, 1);
+    g.fillStyle = '#6b4a3a';
+    g.fillRect(6, 10, 4, 1);
+  } else if (kind === 'hair') {
+    fill('#3d2314');
+    noise(0.14);
+    highlight(0.1);
+  } else if (kind === 'shirt') {
+    fill('#4aa8d8');
+    noise(0.1);
+    highlight(0.12);
+  } else if (kind === 'pants') {
+    fill('#2b2b55');
+    noise(0.12);
+  } else if (kind === 'pick_wood') {
+    fill('#8b6914');
+    noise(0.15);
+  } else if (kind === 'pick_iron') {
+    fill('#d8d8d8');
+    noise(0.2);
+    g.fillStyle = '#888';
+    g.fillRect(0, 0, 4, S);
+  } else {
+    fill('#888');
+    noise(0.1);
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.magFilter = THREE.NearestFilter;
+  tex.minFilter = THREE.NearestFilter;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  _texCache[key] = tex;
+  return tex;
+}
+
+function matBlockTex(kind, colorTint = null) {
+  const m = new THREE.MeshStandardMaterial({
+    map: getBlockPixelTex(kind),
+    roughness: 0.92,
+    metalness: 0.02,
+    envMapIntensity: 0,
+  });
+  if (colorTint) m.color = new THREE.Color(colorTint);
+  return m;
+}
+
+function matBlockFlat(color) {
+  return new THREE.MeshStandardMaterial({
+    color: new THREE.Color(color),
+    roughness: 0.9,
+    metalness: 0.02,
+    envMapIntensity: 0,
+  });
+}
+
+function blockBox(w, h, d, materials) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), materials);
+  m.castShadow = true;
+  m.receiveShadow = true;
+  m.userData.skipStudioPaint = true;
+  return m;
+}
+
+function buildBlockBot(primary, accent) {
+  const g = new THREE.Group();
+  g.userData.chassisId = 'blockbot';
+  const shirtHex = primary || '#4aa8d8';
+  const hairHex = accent || '#5c4033';
+  const u = 0.2;
+  const skinM = matBlockTex('skin');
+  const faceM = matBlockTex('face');
+  const hairM = matBlockFlat(hairHex);
+  hairM.map = getBlockPixelTex('hair');
+  const shirtM = matBlockFlat(shirtHex);
+  shirtM.map = getBlockPixelTex('shirt');
+  const pantsM = matBlockTex('pants');
+  const sideM = matBlockTex('grass_side');
+  const topM = matBlockTex('grass_top');
+
+  const headMats = [skinM, skinM, hairM, skinM, faceM, skinM];
+  const head = blockBox(u * 4, u * 4, u * 4, headMats);
+  head.position.set(0, u * 10, 0);
+  g.add(head);
+
+  const body = blockBox(u * 4, u * 6, u * 2, shirtM);
+  body.position.set(0, u * 5, 0);
+  body.userData.isBody = true;
+  g.add(body);
+
+  // Arms and legs hang from shoulder / hip pivots so they can swing when walking
+  const limbs = { arms: [], legs: [] };
+  [-1, 1].forEach((side) => {
+    const shoulder = new THREE.Group();
+    shoulder.position.set(side * u * 3, u * 8, 0);
+    const arm = blockBox(u * 2, u * 6, u * 2, shirtM);
+    arm.position.set(0, -u * 3, 0);
+    shoulder.add(arm);
+    const hand = blockBox(u * 2, u * 2, u * 2, skinM);
+    hand.position.set(0, -u * 6.5, 0);
+    shoulder.add(hand);
+    g.add(shoulder);
+    limbs.arms.push(shoulder);
+  });
+
+  [-0.5, 0.5].forEach((side) => {
+    const hip = new THREE.Group();
+    hip.position.set(side * u * 2, u * 6, 0);
+    const leg = blockBox(u * 2, u * 6, u * 2, pantsM);
+    leg.position.set(0, -u * 3, 0);
+    hip.add(leg);
+    const boot = blockBox(u * 2.2, u * 1, u * 2.4, matBlockTex('stone'));
+    boot.position.set(0, -u * 5.5, u * 0.1);
+    hip.add(boot);
+    g.add(hip);
+    limbs.legs.push(hip);
+  });
+  g.userData.limbs = limbs;
+
+  const pick = new THREE.Group();
+  const handle = blockBox(u * 0.6, u * 4, u * 0.6, matBlockTex('pick_wood'));
+  handle.position.set(0, u * 2, 0);
+  pick.add(handle);
+  const headPick = blockBox(u * 2.4, u * 0.6, u * 0.6, matBlockTex('pick_iron'));
+  headPick.position.set(0, u * 4.2, 0);
+  pick.add(headPick);
+  pick.rotation.z = -0.55;
+  pick.position.set(u * 0.2, u * -3.5, u * 0.8); // in the right hand, swings with the arm
+  limbs.arms[1].add(pick);
+
+  const heldBlock = blockBox(u * 2, u * 2, u * 2, [
+    sideM, sideM, topM, matBlockTex('dirt'), sideM, sideM,
+  ]);
+  heldBlock.position.set(-u * 0.2, u * -5.8, u * 0.6);
+  limbs.arms[0].add(heldBlock);
+
   return g;
 }
 
@@ -4064,246 +4327,202 @@ function buildFirebot(primary, accent) {
 // SLING-B (BIRDBOT) — round-bodied launcher robot inspired by bird silhouettes
 // Features: spherical body, expressive LED eyes, beak launcher nozzle,
 // wing-flap thruster arms, forehead crest antenna, wheeled base.
-function buildBirdBot(primary, accent) {
+/* ─── Arcade robots ─────────────────────────────────────────────────────── */
+function buildPacBot(primary, accent) {
   const g = new THREE.Group();
-
-  // ── Wheeled base platform ────────────────────────────────────────────────
-  const base = box(0.82, 0.16, 0.88, '#2a1a00', 0.7, 0.4);
-  base.position.set(0, 0.10, 0);
-  g.add(base);
-  addWheels(g, [
-    [-0.44, 0.15,  0.30], [0.44, 0.15,  0.30],
-    [-0.44, 0.15, -0.30], [0.44, 0.15, -0.30],
-  ], 0.155, 0.14, '#1a1a1a');
-
-  // ── Round main body ──────────────────────────────────────────────────────
+  // Classic chomping ball with the mouth facing forward (+z)
   const body = new THREE.Mesh(
-    new THREE.SphereGeometry(0.46, 24, 18),
-    mat(primary, 0.35, 0.55),
+    new THREE.SphereGeometry(0.55, 32, 20, Math.PI / 2 + 0.55, Math.PI * 2 - 1.1),
+    matPanel(primary, 0.35, 0.35),
   );
-  body.scale.set(1.0, 1.12, 1.0); // slightly taller than wide — bird silhouette
-  body.position.set(0, 0.65, 0);
+  body.material.side = THREE.DoubleSide;
+  body.rotation.z = Math.PI / 2; // turn the slice into a horizontal "chomp" mouth
+  body.position.y = 0.62;
+  body.castShadow = true;
   g.add(body);
-
-  // ── White belly patch ────────────────────────────────────────────────────
-  const belly = new THREE.Mesh(
-    new THREE.SphereGeometry(0.31, 16, 12, 0, Math.PI * 2, Math.PI * 0.32, Math.PI * 0.56),
-    mat('#f8f0e0', 0.1, 0.8),
-  );
-  belly.position.set(0, 0.58, 0.28);
-  g.add(belly);
-
-  // ── Expressive LED eyes (pair) ───────────────────────────────────────────
-  const eyeWhiteL = new THREE.Mesh(new THREE.SphereGeometry(0.115, 14, 10), mat('#ffffff', 0.05, 0.5));
-  const eyeWhiteR = eyeWhiteL.clone();
-  eyeWhiteL.position.set(-0.17, 0.72, 0.36);
-  eyeWhiteR.position.set( 0.17, 0.72, 0.36);
-  g.add(eyeWhiteL); g.add(eyeWhiteR);
-
-  const pupilMat = mat('#111122', 0.1, 0.6, accent);
-  pupilMat.emissiveIntensity = 2.2;
-  const pupilL = new THREE.Mesh(new THREE.SphereGeometry(0.062, 10, 8), pupilMat.clone());
-  const pupilR = new THREE.Mesh(new THREE.SphereGeometry(0.062, 10, 8), pupilMat.clone());
-  pupilL.position.set(-0.17, 0.72, 0.455);
-  pupilR.position.set( 0.17, 0.72, 0.455);
-  g.add(pupilL); g.add(pupilR);
-
-  // Angry brow ridges (thick accent-coloured strips over eyes)
-  [-0.17, 0.17].forEach((x, i) => {
-    const brow = box(0.18, 0.04, 0.09, accent, 0.4, 0.5);
-    brow.position.set(x, 0.845, 0.36);
-    brow.rotation.z = i === 0 ? 0.28 : -0.28; // V-shape furrow for personality
-    g.add(brow);
+  const mouth = sphere(0.5, '#7c2d12', 0.1, 0.8);
+  mouth.position.y = 0.62;
+  g.add(mouth);
+  // Eyes on top
+  [-0.2, 0.2].forEach((x) => {
+    const white = sphere(0.12, '#ffffff', 0.1, 0.4);
+    white.position.set(x, 1.0, 0.18);
+    g.add(white);
+    const pupil = sphere(0.06, '#111827', 0, 0.3);
+    pupil.position.set(x, 1.02, 0.29);
+    g.add(pupil);
   });
-
-  // ── Beak / launcher nozzle ───────────────────────────────────────────────
-  const beakOuter = new THREE.Mesh(
-    new THREE.ConeGeometry(0.09, 0.28, 8),
-    mat(accent, 0.4, 0.5),
-  );
-  beakOuter.rotation.x = Math.PI / 2;
-  beakOuter.position.set(0, 0.60, 0.60);
-  g.add(beakOuter);
-
-  // Inner beak channel (launcher barrel)
-  const beakInner = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.04, 0.04, 0.20, 8),
-    mat('#111', 0.8, 0.2),
-  );
-  beakInner.rotation.x = Math.PI / 2;
-  beakInner.position.set(0, 0.60, 0.68);
-  g.add(beakInner);
-
-  // Launcher glow tip — glows when ready to fire
-  const launcherTip = sphere(0.038, '#ff8800', 0, 0.2, '#ffcc00');
-  launcherTip.material.emissiveIntensity = 1.8;
-  launcherTip.position.set(0, 0.60, 0.80);
-  g.add(launcherTip);
-  launcherTip.userData.isLed = true;
-
-  // ── Wing-flap thruster arms ───────────────────────────────────────────────
-  const wingMat = mat(primary, 0.4, 0.55);
-  const wingL = new THREE.Group();
-  const wingR = new THREE.Group();
-
-  // Main wing blade
-  [wingL, wingR].forEach((wg, i) => {
-    const side = i === 0 ? -1 : 1;
-    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.06, 0.22), wingMat.clone());
-    blade.rotation.z = side * 0.22;
-    blade.position.set(side * 0.18, 0, 0);
-    wg.add(blade);
-
-    // Thruster nozzle at wing tip
-    const nozzle = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.04, 0.055, 0.12, 7),
-      mat('#333', 0.75, 0.3),
-    );
-    nozzle.rotation.x = Math.PI / 2;
-    nozzle.position.set(side * 0.38, -0.04, 0.04);
-    wg.add(nozzle);
-
-    // Thruster glow
-    const glow = sphere(0.03, '#ff6600', 0, 0.2, '#ff9900');
-    glow.material.emissiveIntensity = 1.5;
-    glow.position.set(side * 0.38, -0.04, 0.10);
-    wg.add(glow);
-    glow.userData.isLed = true;
-  });
-
-  wingL.position.set(-0.46, 0.65, 0.04);
-  wingR.position.set( 0.46, 0.65, 0.04);
-  g.add(wingL); g.add(wingR);
-
-  // ── Forehead crest / antenna ─────────────────────────────────────────────
-  const crestBase = cylinder(0.04, 0.18, accent, 0.45, 0.5);
-  crestBase.position.set(0, 1.10, -0.06);
-  g.add(crestBase);
-
-  const crestTip = sphere(0.065, accent, 0.3, 0.4, accent);
-  crestTip.material.emissiveIntensity = 1.4;
-  crestTip.position.set(0, 1.22, -0.06);
-  g.add(crestTip);
-  crestTip.userData.isLed = true;
-
-  // Secondary crest feathers (3 small fins swept back)
-  [-0.08, 0, 0.08].forEach((x, i) => {
-    const feather = new THREE.Mesh(
-      new THREE.ConeGeometry(0.028, 0.14 - i * 0.025, 5),
-      mat(i === 1 ? accent : primary, 0.3, 0.5),
-    );
-    feather.position.set(x, 1.14 + i * 0.01, -0.1 - i * 0.03);
-    feather.rotation.x = -0.45;
-    feather.rotation.z = x * 0.8;
-    g.add(feather);
-  });
-
-  // ── Tail fin (swept back, gives aerodynamic personality) ─────────────────
-  const tailFin = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.02, 0.08, 0.28, 4),
-    mat(accent, 0.4, 0.5),
-  );
-  tailFin.rotation.x = -0.7;
-  tailFin.position.set(0, 0.74, -0.44);
-  g.add(tailFin);
-
-  base.userData.flappyHide = true;
-  g.userData.wingL = wingL;
-  g.userData.wingR = wingR;
-  g.userData.flappyHideParts = [base];
-  g.traverse(c => { if (c.userData?.isWheel) g.userData.flappyHideParts.push(c); });
-
-  // ── Animations ──────────────────────────────────────────────────────────
-  g.userData.animate = (t) => {
-    // Eyes pulse with slight squint (scale Y) — personality
-    const blink = t % 4.0 < 0.12 ? 0.15 : 1.0; // blink every ~4s
-    pupilL.scale.y = blink;
-    pupilR.scale.y = blink;
-
-    // Wing flap (idle)
-    wingL.rotation.z =  Math.sin(t * 3.5) * 0.14;
-    wingR.rotation.z = -Math.sin(t * 3.5) * 0.14;
-
-    // Launcher tip pulse — charge glow
-    launcherTip.material.emissiveIntensity = 1.4 + Math.sin(t * 4.2) * 0.6;
-
-    // Crest tip pulse
-    crestTip.material.emissiveIntensity = 1.0 + Math.sin(t * 2.8) * 0.6;
-
-    // Body subtle bob
-    body.position.y = 0.65 + Math.sin(t * 4.8) * 0.012;
-    belly.position.y = 0.58 + Math.sin(t * 4.8) * 0.012;
-  };
-
+  // Antenna with a glowing tip
+  const ant = cylinder(0.025, 0.35, '#475569', 0.8, 0.2);
+  ant.position.set(0, 1.28, -0.1);
+  g.add(ant);
+  const tip = sphere(0.07, accent, 0, 0.2, accent);
+  tip.material.emissiveIntensity = 1.2;
+  tip.position.set(0, 1.48, -0.1);
+  g.add(tip);
+  // Little wheels
+  addWheels(g, [[-0.42, 0.13, -0.05], [0.42, 0.13, -0.05]], 0.13, 0.1, '#1a1a1a');
   return g;
 }
 
-/** Classic side-view Flappy Bird — round flyer (not the wheeled Sling-B launcher). */
-function buildClassicFlappyBird(primary, accent) {
+function buildBrickBot(primary, accent) {
   const g = new THREE.Group();
-  const bodyColor = primary || '#facc15';
-  const beakColor = accent || '#f97316';
-  const bodyMat = mat(bodyColor, 0.15, 0.62);
-  const bellyMat = mat('#fff8e8', 0.05, 0.75);
-
-  const body = new THREE.Mesh(new THREE.SphereGeometry(0.36, 20, 16), bodyMat);
-  body.scale.set(1.08, 0.96, 0.82);
-  body.position.set(0, 0.34, 0);
+  // A long paddle robot — the bumper is what the ball bounces on
+  const body = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.36, 0.55), matPanel(primary, 0.5, 0.4));
+  body.position.set(0, 0.36, 0);
+  body.castShadow = true;
   g.add(body);
-
-  const belly = new THREE.Mesh(
-    new THREE.SphereGeometry(0.28, 14, 10, 0, Math.PI * 2, Math.PI * 0.25, Math.PI * 0.5),
-    bellyMat,
-  );
-  belly.position.set(0.04, 0.28, 0.14);
-  g.add(belly);
-
-  const eyeWhite = new THREE.Mesh(new THREE.SphereGeometry(0.11, 12, 10), mat('#ffffff', 0.05, 0.45));
-  eyeWhite.position.set(0.08, 0.42, 0.2);
-  g.add(eyeWhite);
-
-  const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.055, 10, 8), mat('#111111', 0.1, 0.55));
-  pupil.position.set(0.1, 0.42, 0.28);
-  g.add(pupil);
-
-  const beak = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.22, 8), mat(beakColor, 0.25, 0.55));
-  beak.rotation.z = -Math.PI / 2;
-  beak.position.set(0.42, 0.3, 0.02);
-  g.add(beak);
-
-  const wingMat = mat(bodyColor, 0.2, 0.58);
-  const wingL = new THREE.Group();
-  const wingR = new THREE.Group();
-  const wingShape = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.06, 0.2), wingMat);
-  wingShape.position.set(-0.12, 0, 0);
-  wingL.add(wingShape);
-  wingL.position.set(-0.08, 0.34, -0.04);
-  wingL.rotation.z = 0.35;
-  const wingShapeR = wingShape.clone();
-  wingR.add(wingShapeR);
-  wingR.position.set(-0.08, 0.34, 0.04);
-  wingR.rotation.z = -0.35;
-  g.add(wingL, wingR);
-
-  const tail = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.08, 0.14), mat(beakColor, 0.25, 0.55));
-  tail.position.set(-0.34, 0.28, 0);
-  tail.rotation.z = 0.25;
-  g.add(tail);
-
-  g.userData.wingL = wingL;
-  g.userData.wingR = wingR;
-  g.userData.flappyHideParts = [];
-  g.userData.isFlappyBird = true;
-  g.userData.chassisId = 'birdbot';
-
-  g.userData.animate = (t) => {
-    const flap = Math.sin(t * 4.2) * 0.22;
-    wingL.rotation.z = 0.35 + flap;
-    wingR.rotation.z = -0.35 - flap;
-    body.position.y = 0.34 + Math.sin(t * 4.8) * 0.02;
-  };
-
+  const bumper = new THREE.Mesh(new THREE.CapsuleGeometry(0.11, 1.7, 6, 12), mat(accent, 0.3, 0.3, accent, 0.4));
+  bumper.rotation.z = Math.PI / 2;
+  bumper.position.set(0, 0.5, -0.3);
+  g.add(bumper);
+  [-0.92, 0.92].forEach((x) => {
+    const cap = sphere(0.2, accent, 0.4, 0.3);
+    cap.position.set(x, 0.36, 0);
+    g.add(cap);
+  });
+  const visor = box(0.7, 0.14, 0.05, '#0f172a', 0.3, 0.2);
+  visor.position.set(0, 0.42, 0.28);
+  g.add(visor);
+  [-0.18, 0.18].forEach((x) => {
+    const eye = sphere(0.05, '#5eead4', 0, 0.2, '#5eead4');
+    eye.material.emissiveIntensity = 1.5;
+    eye.position.set(x, 0.42, 0.31);
+    g.add(eye);
+  });
+  addWheels(g, [[-0.6, 0.15, 0], [0.6, 0.15, 0], [-0.2, 0.15, 0], [0.2, 0.15, 0]], 0.15, 0.12, '#1a1a1a');
   return g;
+}
+
+function buildHopBot(primary, accent) {
+  const g = new THREE.Group();
+  // Frog robot: squat body, big eye domes, springy legs
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.5, 24, 16), matPanel(primary, 0.4, 0.4));
+  body.scale.set(1.1, 0.75, 1.05);
+  body.position.y = 0.5;
+  body.castShadow = true;
+  g.add(body);
+  const belly = sphere(0.36, '#f0fdf4', 0.1, 0.6);
+  belly.scale.set(1, 0.7, 0.6);
+  belly.position.set(0, 0.42, 0.22);
+  g.add(belly);
+  [-0.24, 0.24].forEach((x) => {
+    const dome = sphere(0.19, primary, 0.4, 0.35);
+    dome.position.set(x, 0.86, 0.12);
+    g.add(dome);
+    const lens = sphere(0.11, '#0f172a', 0.2, 0.2);
+    lens.position.set(x, 0.9, 0.25);
+    g.add(lens);
+    const glint = sphere(0.04, accent, 0, 0.2, accent);
+    glint.material.emissiveIntensity = 1.5;
+    glint.position.set(x + 0.03, 0.94, 0.34);
+    g.add(glint);
+  });
+  const smile = new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.025, 6, 16, Math.PI), mat('#14532d', 0.2, 0.6));
+  smile.rotation.z = Math.PI;
+  smile.position.set(0, 0.55, 0.5);
+  g.add(smile);
+  // Spring legs
+  [[-0.42, -0.15], [0.42, -0.15], [-0.32, 0.3], [0.32, 0.3]].forEach(([x, z]) => {
+    const spring = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.025, 6, 12), mat('#94a3b8', 0.8, 0.25));
+    spring.rotation.x = Math.PI / 2;
+    spring.position.set(x, 0.14, z);
+    g.add(spring);
+    const foot = box(0.2, 0.06, 0.26, accent, 0.3, 0.5);
+    foot.position.set(x, 0.04, z + 0.05);
+    g.add(foot);
+  });
+  return g;
+}
+
+function buildRaiderBot(primary, accent) {
+  // A chunky cartoon starfighter. Nose points +z like the other robots.
+  const g = new THREE.Group();
+  const hull = new THREE.Mesh(new THREE.CapsuleGeometry(0.22, 0.75, 8, 16), matPanel(primary, 0.55, 0.3));
+  hull.rotation.x = Math.PI / 2;
+  hull.position.y = 0.42;
+  hull.castShadow = true;
+  g.add(hull);
+  const nose = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.4, 16), matPanel(accent, 0.5, 0.3));
+  nose.rotation.x = Math.PI / 2;
+  nose.position.set(0, 0.42, 0.72);
+  g.add(nose);
+  const cockpit = new THREE.Mesh(new THREE.SphereGeometry(0.17, 18, 12), mat('#7dd3fc', 0.2, 0.05, '#38bdf8', 0.35));
+  cockpit.scale.set(1, 0.75, 1.5);
+  cockpit.position.set(0, 0.6, 0.18);
+  g.add(cockpit);
+  [-1, 1].forEach((side) => {
+    const wing = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.06, 0.42), matPanel(primary, 0.55, 0.3));
+    wing.position.set(side * 0.5, 0.38, -0.08);
+    wing.rotation.z = side * -0.12;
+    wing.rotation.y = side * 0.25;
+    wing.castShadow = true;
+    g.add(wing);
+    const tipStripe = box(0.06, 0.08, 0.44, accent, 0.4, 0.3, accent);
+    tipStripe.material.emissiveIntensity = 0.6;
+    tipStripe.position.set(side * 0.84, 0.34, -0.1);
+    g.add(tipStripe);
+    const gun = cylinder(0.035, 0.42, '#e2e8f0', 0.85, 0.2);
+    gun.rotation.x = Math.PI / 2;
+    gun.position.set(side * 0.62, 0.36, 0.22);
+    g.add(gun);
+    const pod = cylinder(0.11, 0.42, '#334155', 0.7, 0.3);
+    pod.rotation.x = Math.PI / 2;
+    pod.position.set(side * 0.24, 0.32, -0.52);
+    g.add(pod);
+    const flame = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.32, 12), mat('#f97316', 0.1, 0.3, '#fb923c', 1.6));
+    flame.rotation.x = -Math.PI / 2;
+    flame.position.set(side * 0.24, 0.32, -0.88);
+    g.add(flame);
+  });
+  const fin = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.32, 0.36), matPanel(accent, 0.5, 0.3));
+  fin.position.set(0, 0.68, -0.42);
+  g.add(fin);
+  return g;
+}
+
+function buildSnakeBot(primary, accent) {
+  const g = new THREE.Group();
+  // Chain of shrinking ball segments in an S-curve
+  const n = 7;
+  for (let i = 0; i < n; i++) {
+    const r = 0.26 - i * 0.022;
+    const seg = new THREE.Mesh(new THREE.SphereGeometry(r, 18, 12), matPanel(i % 2 ? accent : primary, 0.45, 0.4));
+    seg.position.set(Math.sin(i * 0.9) * 0.28, r, 0.75 - i * 0.3);
+    seg.castShadow = true;
+    g.add(seg);
+    if (i > 0) {
+      const joint = cylinder(0.05, 0.12, '#475569', 0.8, 0.25);
+      joint.position.set(Math.sin((i - 0.5) * 0.9) * 0.28, r, 0.9 - i * 0.3);
+      joint.rotation.x = Math.PI / 2;
+      g.add(joint);
+    }
+  }
+  // Robot head with visor and antenna
+  const head = box(0.5, 0.34, 0.46, primary, 0.5, 0.35);
+  head.position.set(0, 0.3, 1.05);
+  g.add(head);
+  const visor = box(0.42, 0.12, 0.04, '#0f172a', 0.3, 0.2);
+  visor.position.set(0, 0.34, 1.29);
+  g.add(visor);
+  [-0.11, 0.11].forEach((x) => {
+    const eye = sphere(0.04, '#5eead4', 0, 0.2, '#5eead4');
+    eye.material.emissiveIntensity = 1.5;
+    eye.position.set(x, 0.34, 1.31);
+    g.add(eye);
+  });
+  const ant = cylinder(0.015, 0.28, '#475569', 0.8, 0.2);
+  ant.position.set(0.12, 0.6, 1.0);
+  g.add(ant);
+  const bulb = sphere(0.05, accent, 0, 0.2, accent);
+  bulb.material.emissiveIntensity = 1.2;
+  bulb.position.set(0.12, 0.76, 1.0);
+  g.add(bulb);
+  return g;
+}
+
+function buildBirdBot(primary, accent) {
+  return buildBirdBotModel(primary, accent);
 }
 
 // FACTORY BOT — vertical industrial lifter/sorter with articulated claw arm
@@ -4392,14 +4611,45 @@ function buildFactoryBot(primary, accent) {
 
 // ─── Attachment builders ───────────────────────────────────────────────────
 
+/**
+ * Bounding box of a robot in its own local space. The root group of some
+ * chassis is offset (e.g. the humanoid is built at y=0.95 and its idle
+ * animation resets it), so a world-space box would place add-ons twice as far.
+ */
+function localRobotBounds(group) {
+  const saved = group.position.clone();
+  group.position.set(0, 0, 0);
+  group.updateMatrixWorld(true);
+  // Skip see-through shells (force fields, glass domes) so add-ons sit on the solid body
+  const bbox = new THREE.Box3();
+  const part = new THREE.Box3();
+  group.traverse((obj) => {
+    if (!obj.isMesh || !obj.geometry) return;
+    const m = Array.isArray(obj.material) ? obj.material[0] : obj.material;
+    if (m?.transparent && (m.opacity ?? 1) < 0.6) return;
+    if (obj.userData?.skipBounds) return;
+    if (obj.isSkinnedMesh) {
+      // Posed bounds; the geometry's own box is the unscaled rest pose
+      obj.computeBoundingBox();
+      bbox.union(part.copy(obj.boundingBox).applyMatrix4(obj.matrixWorld));
+      return;
+    }
+    if (!obj.geometry.boundingBox) obj.geometry.computeBoundingBox();
+    bbox.union(part.copy(obj.geometry.boundingBox).applyMatrix4(obj.matrixWorld));
+  });
+  group.position.copy(saved);
+  group.updateMatrixWorld(true);
+  if (bbox.isEmpty()) bbox.set(new THREE.Vector3(-0.5, 0, -0.5), new THREE.Vector3(0.5, 1, 0.5));
+  return bbox;
+}
 function addCamera(group) {
-  const bbox = new THREE.Box3().setFromObject(group);
+  const bbox = localRobotBounds(group);
   const size = new THREE.Vector3();
   const center = new THREE.Vector3();
   bbox.getSize(size);
   bbox.getCenter(center);
-  const y = Number.isFinite(bbox.max.y) ? bbox.max.y + 0.05 : 0.92;
-  const z = Number.isFinite(center.z) ? center.z + Math.min(0.22, size.z * 0.18) : 0.18;
+  const y = bbox.max.y + 0.05;
+  const z = center.z + Math.min(0.22, size.z * 0.18);
   const mount = cylinder(0.05, 0.12, '#2a2a30', 0.6, 0.5);
   mount.position.set(0, y - 0.04, z);
   group.add(mount);
@@ -4413,22 +4663,25 @@ function addCamera(group) {
   lens.position.set(0, y + 0.04, z + 0.1);
   group.add(lens);
 }
-
 function addSonar(group) {
+  const bbox = localRobotBounds(group);
   const sonar = box(0.26, 0.1, 0.09, '#00d9ff', 0.5, 0.4, '#00d9ff');
   sonar.material.emissiveIntensity = 0.5;
-  sonar.position.set(0, 0.74, 0.54);
+  // Flush against the front face, a little above mid-height
+  sonar.position.set(0, bbox.min.y + (bbox.max.y - bbox.min.y) * 0.55, bbox.max.z + 0.02);
   group.add(sonar);
 }
-
 function addGrabber(group) {
+  const bbox = localRobotBounds(group);
+  const y = bbox.min.y + (bbox.max.y - bbox.min.y) * 0.4;
+  const front = bbox.max.z;
   const arm = cylinder(0.04, 0.5, '#888', 0.7, 0.3);
   arm.rotation.x = Math.PI / 2;
-  arm.position.set(0, 0.62, 0.68);
+  arm.position.set(0, y, front + 0.2);
   group.add(arm);
   [-0.1, 0.1].forEach(x => {
     const claw = box(0.05, 0.22, 0.06, '#666', 0.75, 0.3);
-    claw.position.set(x, 0.62, 0.95);
+    claw.position.set(x, y, front + 0.47);
     claw.rotation.z = x < 0 ? 0.3 : -0.3;
     group.add(claw);
   });
@@ -4454,7 +4707,7 @@ export function normalizeRobotBuildConfig(config = {}) {
     'Rover', 'Scout Rover', 'Crawler', 'Heavy Rover', 'Quiet Rover', 'Mining Bot',
     'Safety Patrol Bot', 'Farm Bot', 'Spider Bot', 'Humanoid', 'Mech Walker',
     'Drone', 'Racing Drone', 'Rescue Drone', 'Helicopter', 'Hover Bot', 'Hover Racer',
-    'Sub Drone', 'Deep Sea Bot', 'Robot Arm', 'Factory Bot', 'Space Rover', 'LEGO Bot',
+    'Sub Drone', 'Deep Sea Bot', 'Robot Arm', 'Factory Bot', 'Space Rover', 'LEGO Bot', 'Block Crafter',
     'Mega Mech', 'Sport Striker', 'Striker FC', 'Elemental Maker', 'Ninja Helper',
     'Power Bot', 'Med Bot', 'Fire Safety Bot', 'Jet Explorer', 'Quiet Jet', 'Aero Stunt',
     'Sling-B', 'Custom Bot', 'Tank', 'Stealth', 'Jet Fighter', 'Battle Mech', 'Boxing Striker',
@@ -4567,6 +4820,9 @@ function buildFallbackSimRobot(cfg) {
 export function buildSimRobot(config = {}) {
   const cfg = normalizeRobotBuildConfig(config);
 
+  // The Flappy Bird game flies the classic Flappy Bird itself
+  if (cfg.flappyBird) return buildFlappyBirdModel();
+
   // Football arenas use the FootballBot sprinter mesh
   if (cfg.footballFighter) {
     const group = buildFootballBot({
@@ -4606,15 +4862,31 @@ export function buildSimRobot(config = {}) {
     return group;
   }
 
-  if (cfg.flappyBird || cfg.flappyMode) {
-    const group = buildClassicFlappyBird(cfg.primaryColor, cfg.accentColor);
+
+  // Kart races: rover-family cars become a console-style go-kart with a robot driver
+  if (cfg.raceMode && ['rover', 'scout'].includes(cfg.chassisId)) {
     try {
-      bakeMeshScalesIntoGeometry(group);
+      const chassis = CHASSIS_DATA.find((c) => c.id === cfg.chassisId) || CHASSIS_DATA[0];
+      const group = buildMKKart({
+        body: cfg.primaryColor || chassis.primaryColor || '#ff8c00',
+        accent: cfg.accentColor || chassis.accentColor || '#ffd700',
+        tyre: cfg.wheelColor || 0x1b1c20,
+        eyes: cfg.ledColor || 0x7ff6ff,
+        number: 1,
+        ...(CHASSIS_KART[cfg.chassisId] || CHASSIS_KART.rover),
+      });
+      group.userData.chassisId = cfg.chassisId;
+      group.userData.isRaceMode = true;
       prepareLabRobot(group);
+      // prepareLabRobot mutes reflections for hand-painted chassis; the kart's clear-coat needs them
+      group.traverse((o) => {
+        const mats = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : [];
+        mats.forEach((m) => { if ('envMapIntensity' in m) m.envMapIntensity = 1; });
+      });
+      return group;
     } catch (e) {
-      console.warn('[buildSimRobot] classic flappy bird prepare failed', e);
+      console.warn('[buildSimRobot] kart build failed — using chassis mesh', e);
     }
-    return group;
   }
 
     try {
@@ -4631,6 +4903,16 @@ export function buildSimRobot(config = {}) {
     console.warn('[buildSimRobot] using fallback rover mesh', e);
     return buildFallbackSimRobot(cfg);
   }
+}
+
+/** Kart for the Build screen: the studio's bright reflections would wash out the clear-coat. */
+function buildStudioKart(opts) {
+  const kart = buildMKKart(opts);
+  kart.traverse((o) => {
+    const mats = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : [];
+    mats.forEach((m) => { if ('envMapIntensity' in m) m.envMapIntensity = 0.3; });
+  });
+  return kart;
 }
 
 export function buildRobotModel(config = {}) {
@@ -4664,6 +4946,13 @@ export function buildRobotModel(config = {}) {
     return group;
   }
 
+  // Robots made in the Robot Designer carry their own design
+  if (cfg.chassisBuildKey === 'designer' || config.design) {
+    const group = buildDesignedRobot(config.design || cfg.design, primary, accent, ledColor);
+    group.userData.chassisId = cfg.chassisId;
+    return group;
+  }
+
   // Override the shared wheel helper to use user-chosen wheelColor
   const _origWheel = wheel;
   const wheelFn = (radius, thick, _ignored, rimColor = '#cccccc') =>
@@ -4672,14 +4961,19 @@ export function buildRobotModel(config = {}) {
   let group;
   switch (buildId) {
     // Ground robots
-    case 'rover':       group = buildRover(primary, accent);        break;
-    case 'scout':       group = buildScout(primary, accent);        break;
+    case 'rover':       group = buildStudioKart({ body: primary, accent, tyre: cfg.wheelColor || 0x1b1c20, eyes: ledColor, ...CHASSIS_KART.rover }); break;
+    case 'scout':       group = buildStudioKart({ body: primary, accent, tyre: cfg.wheelColor || 0x1b1c20, eyes: ledColor, ...CHASSIS_KART.scout }); break;
     case 'crawler':     group = buildCrawler(primary, accent);      break;
     case 'tank':        group = cfg.combatFighter ? buildTankFighter(primary, accent) : buildTank(primary, accent); break;
     case 'stealth':     group = buildStealth(primary, accent);      break;
     case 'miningbot':   group = cfg.combatFighter ? buildTankFighter(primary, accent) : buildMiningBot(primary, accent); break;
     case 'securitybot': group = buildSecurityBot(primary, accent);  break;
     case 'farmbot':     group = buildFarmBot(primary, accent);      break;
+    case 'pacbot':      group = buildPacBot(primary, accent);       break;
+    case 'brickbot':    group = buildBrickBot(primary, accent);     break;
+    case 'hopbot':      group = buildHopBot(primary, accent);       break;
+    case 'raiderbot':   group = buildRaiderBot(primary, accent);    break;
+    case 'snakebot':    group = buildSnakeBot(primary, accent);     break;
     case 'medbot':      group = buildMedbot(primary, accent);       break;
     case 'firebot':     group = buildFirebot(primary, accent);      break;
     // Walking robots
@@ -4687,6 +4981,7 @@ export function buildRobotModel(config = {}) {
     case 'droid':       group = buildDroid(primary, accent);        break;
     case 'mech':        group = buildMech(primary, accent);         break;
     case 'legobot':     group = buildLegoBot(primary, accent);      break;
+    case 'blockbot':    group = buildBlockBot(primary, accent);     break;
     // Flying robots
     case 'drone':       group = buildDroneQuad(primary, accent);    break;
     case 'racedrone':   group = buildRacingDrone(primary, accent);  break;
@@ -4709,14 +5004,20 @@ export function buildRobotModel(config = {}) {
     case 'steathjet':   group = buildJetPlane(primary, accent);     break;
     case 'aerobat':     group = buildJetPlane(primary, accent);     break;
     case 'birdbot':     group = buildBirdBot(primary, accent);      break;
-    case 'striker':     group = buildStriker(primary, accent);      break;
+    case 'striker':
+      // Same animated robot boxer as the ring (classic boxer stands in until the model loads)
+      group = buildProfessionalFighterHumanoid(primary, accent, 'striker');
+      group.userData.skipStudioPaint = true;
+      break;
     case 'footballbot':
-      group = buildFootballBot({
+      // Same kitted robot footballer as the match; Body paint is the shirt colour
+      group = buildFootballPlayerMesh({
         teamColor: cfg.teamColor || 'green',
+        shellColor: primary,
         jerseyNumber: cfg.jerseyNumber ?? 10,
-        bootType: cfg.bootType || 'standard',
         playstyle: cfg.playstyle || 'striker',
       });
+      group.userData.skipStudioPaint = true;
       break;
     case 'blaster':     group = buildBlaster(primary, accent);      break;
     case 'ninja':       group = buildNinja(primary, accent);        break;
@@ -4766,8 +5067,50 @@ export function buildRobotModel(config = {}) {
 
   // Tag group with chassis id (for particle system and other callers)
   group.userData.chassisId = buildId;
-  // Tag group with env texture reference so callers can apply to scene
   group.userData.envTex = buildEnvTex();
+  applyStudioPaint(group, primary, accent, wheelColor);
+  return group;
+}
 
+/** Recolor body (and optional wheels) so studio paint shows on every chassis. */
+export function applyStudioPaint(group, primary, accent, wheel) {
+  if (!group || group.userData?.skipStudioPaint) return group;
+  let primaryC = null;
+  let wheelC = null;
+  try {
+    if (primary) primaryC = new THREE.Color(primary);
+  } catch { /* keep null */ }
+  try {
+    if (wheel) wheelC = new THREE.Color(wheel);
+  } catch { /* keep null */ }
+  if (!primaryC && !wheelC) return group;
+
+  group.traverse((obj) => {
+    if (!obj.isMesh) return;
+    if (obj.userData?.skipStudioPaint) return;
+    const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+    mats.forEach((m) => {
+      if (!m?.color) return;
+      if (obj.userData?.isWheel) {
+        if (wheelC) {
+          m.color.copy(wheelC);
+          m.needsUpdate = true;
+        }
+        return;
+      }
+      if (!primaryC) return;
+      if (m.transparent && (m.opacity ?? 1) < 0.85) return;
+      const emi = m.emissiveIntensity || 0;
+      const em = m.emissive;
+      if (emi > 0.35 && em && (em.r + em.g + em.b) > 0.18) return;
+      const lum = m.color.r * 0.2126 + m.color.g * 0.7152 + m.color.b * 0.0722;
+      if (lum < 0.08) return;
+      m.color.copy(primaryC);
+      m.needsUpdate = true;
+    });
+  });
+  group.userData.paintedPrimary = primary;
+  group.userData.paintedAccent = accent;
+  group.userData.paintedWheel = wheel;
   return group;
 }

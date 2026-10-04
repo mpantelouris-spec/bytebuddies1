@@ -14,12 +14,13 @@ export const PLAYER_START_X = -8;
 export const ENEMY_START_X = 8;
 export const GOAL_Z = 12.5;
 export const GOAL_WIDTH = 4.2;
-export const POSSESSION_RADIUS = 0.42;
+export const POSSESSION_RADIUS = 0.72;
 export const SHOOT_RANGE = 7.2;
 export const DRIBBLE_RANGE = 0.45;
-const CODE_SPEED = 6.6;
+const CODE_SPEED = 5.8;
 const DRIBBLE_SPEED = 4.8;
 const GUARD_SPEED = 5.4;
+const KEEPER_LIVES = 3;
 const MOVE_INTENTS = new Set([
   'chase_ball', 'face_ball', 'move_to_position', 'dribble',
   'guard_goal', 'dive_save', 'catch_ball', 'user_drive',
@@ -149,10 +150,12 @@ export function createFootballEngine({
 }) {
   const stats = getFootballStats(playerConfig);
   const layout = resolveFootballLayout(challenge);
-  const goalsToWin = challenge.goalsToWin ?? 3;
+  const drillStyle = layout.drillStyle || DRILL_STYLES.FULL_MATCH;
+  const goalsToWin = drillStyle === DRILL_STYLES.KEEPER_WAVES
+    ? (challenge.missionTarget || 5)
+    : (challenge.goalsToWin ?? 3);
   const timeLimit = challenge.timeLimit ?? 90;
   const difficulty = challenge.aiDifficulty || 'medium';
-  const drillStyle = layout.drillStyle || DRILL_STYLES.FULL_MATCH;
   const isDrill = drillStyle !== DRILL_STYLES.FULL_MATCH;
   const isTraining = isDrill;
   const teamSize = layout.teamSize;
@@ -458,7 +461,7 @@ export function createFootballEngine({
   function checkGoal() {
     if (state.pendingReset > 0) return false;
     const inGoalMouth = Math.abs(ball.x) < GOAL_WIDTH / 2;
-    if (ball.z >= goalZ && inGoalMouth && ball.y < 2.8) {
+    if (ball.z >= goalZ && inGoalMouth && ball.y < 2.8 && drillStyle !== DRILL_STYLES.KEEPER_WAVES) {
       state.playerGoals += 1;
       state.missionProgress = state.playerGoals;
       state.kickInFlight = false;
@@ -483,10 +486,17 @@ export function createFootballEngine({
     if (ball.z <= -goalZ && inGoalMouth && ball.y < 2.8) {
       state.enemyGoals += 1;
       if (drillStyle === DRILL_STYLES.KEEPER_WAVES) {
-        setFeedback('They scored! Clean sheet lost.', 'lose');
-        state.goalFlash = 2.0;
+        const livesLeft = Math.max(0, KEEPER_LIVES - state.enemyGoals);
+        state.goalFlash = 0.8;
         ball.vx = 0; ball.vz = 0; ball.vy = 0;
-        endMatch(false);
+        ball.x = 0; ball.z = -goalZ + 2.5; ball.y = BALL_CONFIG.groundY;
+        if (livesLeft <= 0) {
+          setFeedback('They scored! Out of gloves.', 'lose');
+          endMatch(false);
+        } else {
+          setFeedback(`They scored! ${livesLeft} ${livesLeft === 1 ? 'life' : 'lives'} left 🧤`, 'concede');
+          ai.shooterTimer = 2.0;
+        }
         return true;
       }
       setFeedback('Opponent scores! 😞', 'concede');
@@ -636,12 +646,47 @@ export function createFootballEngine({
     moveBot(shooter, shotX, shotZ - 0.4, 5.2, dt);
     if (botDistToBall(shooter) < POSSESSION_RADIUS + 0.2) {
       doKick('shot', shooter);
+      state.keeperShotLive = true;
     }
     if (keeper) {
       moveBot(keeper, clamp(ball.x * 0.85, -GOAL_WIDTH * 0.42, GOAL_WIDTH * 0.42), -goalZ + 1.1, 5.4, dt);
     }
     ai.shooterTimer = 2.2 + Math.random() * 0.9;
     state.shotsFaced += 1;
+  }
+
+  function tickKeeperSave() {
+    if (!state.keeperShotLive || state.over) return;
+    const keeper = bots.find((b) => b.isPlayer);
+    const inMouth = Math.abs(ball.x) < GOAL_WIDTH / 2;
+    if (ball.z <= -goalZ && inMouth && ball.y < 2.8) {
+      state.keeperShotLive = false;
+      return;
+    }
+    const reach = keeper && keeper.intent?.type === 'dive_save' ? 1.35 : 1.0;
+    const touched = keeper && ball.vz < 0 && ball.y < 2.4
+      && Math.hypot(ball.x - keeper.x, ball.z - keeper.z) < reach;
+    const wide = ball.z < -goalZ - 0.3 || Math.hypot(ball.vx, ball.vz) < 0.4;
+    if (!touched && !wide) return;
+    state.keeperShotLive = false;
+    if (touched) {
+      ball.vz = Math.abs(ball.vz) * 0.45;
+      ball.vx = (ball.x >= keeper.x ? 1 : -1) * (2.5 + Math.random() * 2);
+      ball.vy = 2.2;
+      ball.lastTouch = keeper.id;
+      state.saves += 1;
+      keeper.actionTimer = 0.45;
+      emit('save', { x: ball.x, z: ball.z });
+      if (state.saves >= goalsToWin) {
+        setFeedback(`${state.saves} saves — Keeper Hero! 🧤`, 'win');
+        endMatch(true);
+        return;
+      }
+      setFeedback(`SAVE! 🧤 ${state.saves}/${goalsToWin}`, 'goal');
+    } else {
+      setFeedback('Wide of the post!', 'info');
+    }
+    ai.shooterTimer = Math.max(ai.shooterTimer, 1.6);
   }
 
   function endMatch(won) {
@@ -836,6 +881,11 @@ export function createFootballEngine({
       }
       return { x: ball.x, z: ball.z };
     }
+    if (bot.role === 'defender' && ownHalf && ballD < 9) {
+      const ownGoalZ = bot.team === 'enemy' ? goalZ : -goalZ;
+      const k = Math.min(0.55, 2.4 / Math.max(1, Math.hypot(ball.x, ownGoalZ - ball.z)));
+      return { x: ball.x * (1 - k), z: ball.z + (ownGoalZ - ball.z) * k };
+    }
     return roleHome(bot);
   }
 
@@ -911,7 +961,7 @@ export function createFootballEngine({
       const isChaser = leader?.id === bot.id;
       const isPressing = isChaser;
 
-      if (canKick && isChaser && ballD < POSSESSION_RADIUS + 0.15 && ai.actionCooldown <= 0) {
+      if (canKick && (isChaser || botHasBall(bot)) && ballD < POSSESSION_RADIUS + 0.15 && ai.actionCooldown <= 0) {
         decideKick(bot);
         ai.actionCooldown = 0.45 + ai.reactionDelay;
         continue;
@@ -970,16 +1020,19 @@ export function createFootballEngine({
     for (const bot of bots) {
       if (bot.team !== 'player' || bot.frozen || bot.actionTimer > 0) continue;
       if (bot.isPlayer && state.userDriving) continue;
-      const codedMove = bot.intent && MOVE_INTENTS.has(bot.intent.type);
+      const intentType = bot.intent?.type;
+      const codedMove = intentType && MOVE_INTENTS.has(intentType) && intentType !== 'face_ball';
       const kickCd = ai.greenKickCd[bot.id] || 0;
       if (kickCd > 0) ai.greenKickCd[bot.id] = kickCd - dt;
 
-      if (codedMove) continue;
+      const loose = !intentType || intentType === 'face_ball' || intentType === 'chase_ball';
+      if (codedMove && !(loose && botHasBall(bot))) continue;
       if (botHasBall(bot) && canKick && bot.canAct && kickCd <= 0) {
         decideKick(bot);
         ai.greenKickCd[bot.id] = 0.38 + Math.random() * 0.25;
         continue;
       }
+      if (codedMove) continue;
 
       roleDefaultMove(bot, dt, baseSpeed);
     }
@@ -1077,17 +1130,52 @@ export function createFootballEngine({
     ball.lastTouch = bot.id;
   }
 
+  /** A hard kick that runs into an opponent bounces off them (the only way to stop a shot — there is no keeper). */
+  function blockFastBall() {
+    if (ball.kickCooldown > 0 || ball.y > 1.6) return;
+    const spd = Math.hypot(ball.vx, ball.vz);
+    if (spd < 3) return;
+    const kicker = bots.find((b) => b.id === ball.lastTouch);
+    if (!kicker) return;
+    const blocker = bots.find((b) => b.team !== kicker.team && !b.frozen && botDistToBall(b) < 1.05);
+    if (!blocker) return;
+    const away = directionTo(blocker.x, blocker.z, ball.x, ball.z);
+    ball.vx = away.x * spd * 0.35;
+    ball.vz = away.z * spd * 0.35;
+    ball.lastTouch = blocker.id;
+    ball.kickCooldown = 0.2;
+    if (blocker.team === 'player') setFeedback('Blocked! 🛡️', 'info');
+  }
+
   function recoverStuckBall(dt) {
     if (!state.kickoffDone || state.pendingReset > 0) return;
+    if (Math.abs(ball.z) > pitchHalfZ + 0.25) {
+      state.behindLineTimer = (state.behindLineTimer || 0) + dt;
+      if (state.behindLineTimer > 0.7) {
+        state.behindLineTimer = 0;
+        state.stuckBallTimer = 0;
+        ball.x = clamp(ball.x * 0.3, -2, 2);
+        ball.z = Math.sign(ball.z) * (pitchHalfZ - 3.2);
+        ball.vx = 0;
+        ball.vz = -Math.sign(ball.z) * 3.5;
+        ball.kickCooldown = 0.3;
+        state.possession = null;
+        state.possessionBotId = null;
+        setFeedback('Goal kick!', 'info');
+      }
+      return;
+    }
+    state.behindLineTimer = 0;
     const spd = Math.hypot(ball.vx, ball.vz);
-    const nearEdge = Math.abs(ball.x) > pitchHalfX - 2.8 || Math.abs(ball.z) > pitchHalfZ - 2.8;
-    const clustered = spd < 0.14 && nearEdge;
+    const nearEdge = Math.abs(ball.x) > pitchHalfX - 2.8
+      || (Math.abs(ball.z) > pitchHalfZ - 2.8 && Math.abs(ball.x) > GOAL_WIDTH * 0.8);
+    const clustered = spd < 1.2 && nearEdge;
     if (clustered) {
       state.stuckBallTimer = (state.stuckBallTimer || 0) + dt;
     } else {
       state.stuckBallTimer = Math.max(0, (state.stuckBallTimer || 0) - dt * 2);
     }
-    if ((state.stuckBallTimer || 0) < 1.4) return;
+    if ((state.stuckBallTimer || 0) < 2.2) return;
     state.stuckBallTimer = 0;
     ball.x = clamp(ball.x * 0.4, -6, 6);
     ball.z = clamp(ball.z * 0.35, -6, 6);
@@ -1431,6 +1519,10 @@ export function createFootballEngine({
 
       state.matchTime += dt;
       state.timeLeft = Math.max(0, timeLimit - state.matchTime);
+      if (state.timeLeft <= 0 && drillStyle === DRILL_STYLES.KEEPER_WAVES) {
+        endMatch(state.enemyGoals < KEEPER_LIVES);
+        return;
+      }
       if (state.timeLeft <= 0 && !isTraining) {
         endMatch(state.playerGoals > state.enemyGoals);
         return;
@@ -1441,6 +1533,7 @@ export function createFootballEngine({
       if (drillStyle === DRILL_STYLES.KEEPER_WAVES) {
         applyCodedIntents(dt);
         syncBotMeshes(dt);
+        tickKeeperSave();
         checkGoal();
         const nearest = nearestBotToBall();
         const holder = nearest && botDistToBall(nearest) < POSSESSION_RADIUS ? nearest : null;
@@ -1452,6 +1545,8 @@ export function createFootballEngine({
           state.possessionBotId = null;
         }
         state.ballOut = Math.abs(ball.x) > pitchHalfX + 0.4 || Math.abs(ball.z) > pitchHalfZ + 0.4;
+        if (state.feedbackTimer > 0) state.feedbackTimer -= dt;
+        if (state.goalFlash > 0) state.goalFlash = Math.max(0, state.goalFlash - dt);
         return;
       }
 
@@ -1466,6 +1561,7 @@ export function createFootballEngine({
       tickGreenTeamAI(dt, difficulty === 'hard' ? 1.12 : difficulty === 'easy' ? 0.82 : 1, ai.warmupTimer > 0);
       const onBall = resolveBallCarrier();
       if (onBall) coupleBallToBot(onBall, dt);
+      if (isTeamMatch) blockFastBall();
       recoverStuckBall(dt);
       checkGoal();
 

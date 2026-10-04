@@ -2,6 +2,9 @@
  * Primary-school Robot Studio — 8 arena sets × 10 missions (Arena Bible).
  * Each mode has its own place, palette, floor, skill, and child-facing objective.
  */
+import { KART_THEME_TRACKS } from './kart-theme-tracks.js';
+import { ROBOT_ARENA_SETS } from './robot-arena-sets.js';
+
 const hex = (h) => Number.parseInt(String(h).replace('#', ''), 16);
 
 /** Per-mode teaching labels aligned to the Arena Bible progression. */
@@ -230,7 +233,7 @@ function cloneSetForChassis(setRows, chassisId) {
 const CHASSIS_SET_KEY = {
   rover: 'ground', scout: 'ground', crawler: 'ground', farmbot: 'ground',
   securitybot: 'safety', miningbot: 'ground', spacerover: 'ground',
-  legobot: 'creative', tank: 'ground', stealth: 'creative',
+  legobot: 'creative', blockbot: 'creative', tank: 'ground', stealth: 'creative',
   drone: 'aerial', racedrone: 'aerial', helicopter: 'aerial',
   hoverbot: 'aerial', hoverracer: 'aerial', jetplane: 'aerial',
   steathjet: 'aerial', aerobat: 'aerial',
@@ -246,12 +249,56 @@ const CHASSIS_SET_KEY = {
   custom: 'custom',
 };
 
+/** Rover & Scout finale is a real kart race on the Candy Rainbow Run track. */
+const CAR_RACE_FINALE = {
+  id: 'candy_rainbow_run',
+  title: 'Candy Rainbow Run',
+  emoji: '🍭',
+  objective: 'Race around the candy rainbow track and collect the gold coins!',
+  landmark: 'Rainbow road',
+  floorKind: 'asphalt_lot',
+  gradient: 'linear-gradient(135deg,#ff6fb5,#ffe23a,#2fb4ff)',
+  skill: 'Racing',
+  tryThis: 'Add "Follow track automatically", then press Simulate.',
+  isRace: true,
+  raceArena: 'candy_carnival_01',
+  raceThemeId: 'candy_rainbow_run',
+};
+
+function kartThemeRow(track, template) {
+  return {
+    ...template,
+    mode: track.mode,
+    id: track.id,
+    title: track.title,
+    emoji: track.emoji,
+    objective: track.objective,
+    landmark: track.landmark,
+    floorKind: 'asphalt_lot',
+    gradient: track.gradient,
+    sceneTheme: track.id,
+    difficulty: track.mode < 14 ? 'Medium' : (track.mode < 17 ? 'Hard' : 'Expert'),
+    skill: 'Racing',
+    tryThis: 'Add "Follow track automatically", then press Simulate.',
+    estMinutes: 5,
+    isRace: true,
+    raceArena: track.base,
+    raceThemeId: track.id,
+  };
+}
+
 export function buildPrimaryStudioArenas() {
   const out = {};
   for (const [chassisId, setKey] of Object.entries(CHASSIS_SET_KEY)) {
+    const own = ROBOT_ARENA_SETS[chassisId];
     const base = SETS[setKey];
     if (!base) continue;
-    out[chassisId] = cloneSetForChassis(base, chassisId);
+    out[chassisId] = own ? A(own) : cloneSetForChassis(base, chassisId);
+    if (chassisId === 'rover' || chassisId === 'scout') {
+      const finale = { ...out[chassisId][9], ...CAR_RACE_FINALE };
+      out[chassisId][9] = finale;
+      KART_THEME_TRACKS.forEach((track) => out[chassisId].push(kartThemeRow(track, finale)));
+    }
   }
   return out;
 }

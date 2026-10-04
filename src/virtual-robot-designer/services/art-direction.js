@@ -156,6 +156,48 @@ export function prepareLabRobot(robot) {
   return robot;
 }
 
+/** Keep the player kart readable on night tracks (chase cam looks at a dark rear). */
+export function lightRaceRobot(robot) {
+  if (!robot || robot.userData.raceLit) return robot;
+  robot.userData.raceLit = true;
+  if (robot.userData.isMKKart) {
+    // The console kart is fully PBR-lit; a soft fill keeps it readable on night tracks
+    const soft = new THREE.PointLight(0xfff4e4, 0.9, 6, 2);
+    soft.name = 'race-kart-fill';
+    soft.position.set(0, 1.6, -1.8);
+    robot.add(soft);
+    return robot;
+  }
+
+  robot.traverse((o) => {
+    if (!o.isMesh || !o.material) return;
+    if (o.userData?.isWheel) return;
+    const mats = Array.isArray(o.material) ? o.material : [o.material];
+    mats.forEach((m) => {
+      if (!m?.color || (!m.isMeshStandardMaterial && !m.isMeshPhysicalMaterial)) return;
+      const lum = m.color.r * 0.2126 + m.color.g * 0.7152 + m.color.b * 0.0722;
+      if (lum < 0.08) return;
+      const em = m.emissive;
+      const emi = m.emissiveIntensity || 0;
+      if (emi > 0.4 && em && (em.r + em.g + em.b) > 0.2) return;
+      m.emissive = m.color.clone().multiplyScalar(0.55);
+      m.emissiveIntensity = Math.max(emi, 0.62);
+      m.envMapIntensity = Math.max(m.envMapIntensity || 0, 0.28);
+      m.needsUpdate = true;
+    });
+  });
+
+  const fill = new THREE.PointLight(0xfff4e4, 2.6, 8, 2);
+  fill.name = 'race-kart-fill';
+  fill.position.set(0, 1.45, -1.55);
+  robot.add(fill);
+  const front = new THREE.PointLight(0xe8f0ff, 1.5, 6, 2);
+  front.name = 'race-kart-front';
+  front.position.set(0, 0.85, 1.15);
+  robot.add(front);
+  return robot;
+}
+
 /** Neutral daylight env map for outdoor MK circuits (no pink wash). */
 export function setupMKDayEnvironment(scene) {
   const canvas = document.createElement('canvas');

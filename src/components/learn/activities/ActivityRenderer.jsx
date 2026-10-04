@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { CHARACTERS } from '../../../data/learnWorldData';
 import BlockCodingLab from '../CodingLab/BlockCodingLab';
+import FunGame from '../games/FunGame.jsx';
+import CodeRacerSequenceSprint from './CodeRacerSequenceSprint';
 
 // ─── SHARED STYLES ────────────────────────────────────────────────────────────
 const successBox = { marginTop:12, padding:'12px 16px', background:'rgba(16,185,129,0.12)',
@@ -1627,19 +1629,38 @@ export default function ActivityRenderer({ activity, color='#6366f1', onComplete
 
   return (
     <div>
+      {type === 'game' && <FunGame activity={activity} color={color} onComplete={finish} />}
+
+      {type !== 'codeRacerSeq' && type !== 'game' && (
       <div style={{marginBottom:16}}>
         <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:6,flexWrap:'wrap'}}>
           <div style={{fontWeight:800,fontSize:16,color:'#f0f0ff'}}>{title}</div>
           <span style={{fontSize:11,fontWeight:700,color:'#fbbf24',background:'rgba(251,191,36,0.12)',
             border:'1px solid rgba(251,191,36,0.3)',borderRadius:20,padding:'2px 8px'}}>+{xp} XP</span>
-          {duration && <span style={{fontSize:10,color:'rgba(255,255,255,0.35)'}}>⏱ {duration}</span>}
+          {duration && <span style={{fontSize:10,color:'rgba(255,255,255,0.35)'}}>{duration}</span>}
         </div>
         {description && <div style={{fontSize:13,color:'rgba(255,255,255,0.5)',lineHeight:1.5}}>{description}</div>}
       </div>
+      )}
+
+      {type === 'codeRacerSeq' && (
+        <CodeRacerSequenceSprint activity={activity} color={color}>
+          <SequenceGame config={activity} color={color} onComplete={finish} />
+        </CodeRacerSequenceSprint>
+      )}
 
       {type === 'blocks'     && (
         <BlockCodingLab
-          config={activity.config}
+          config={{
+            ...(activity.config || {}),
+            characterName: activity.characterName || activity.config?.characterName,
+            characterImage: activity.characterImage || activity.config?.characterImage,
+            mission: {
+              ...(activity.config?.mission || {}),
+              charName: activity.characterName || activity.config?.mission?.charName,
+              charImage: activity.characterImage || activity.config?.mission?.charImage,
+            },
+          }}
           color={color}
           storageKey={`bb_puzzle_${activity.title?.replace(/\s/g, '_') || 'blocks'}`}
           onComplete={finish}

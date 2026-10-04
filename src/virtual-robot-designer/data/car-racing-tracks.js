@@ -10,6 +10,7 @@ import {
   CAR_MODE_TRACK_LABELS,
   getCarModeArenaId,
 } from '../racing/mk-tracks/MKTrackRegistry.js';
+import { KART_THEME_BY_MODE } from './kart-theme-tracks.js';
 
 /** Wheeled racers on biome kart tracks */
 export const CAR_CHASSIS_IDS = new Set([
@@ -159,6 +160,13 @@ const CAR_TILE_GRADIENTS = [
 
 export const CAR_KID_TRACK_TILES = CAR_MODE_ARENA_IDS.map((slot, i) => {
   const mode = i + 1;
+  const themed = KART_THEME_BY_MODE[mode];
+  if (themed) {
+    return {
+      mode, arenaId: slot, label: themed.title, emoji: themed.emoji, color: '#6366f1',
+      gradient: themed.gradient, story: themed.objective,
+    };
+  }
   const isRainbow = slot === '__rainbow__';
   const biome = isRainbow ? null : BIOME_TRACKS.find((t) => t.id === slot || t.arenaType === slot);
   const label = isRainbow ? 'Rainbow Road' : (CAR_MODE_TRACK_LABELS[slot] || biome?.label || `Track ${mode}`);

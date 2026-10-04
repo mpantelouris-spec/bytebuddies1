@@ -43,16 +43,15 @@ export function matchBleNusVariant(serviceUuid) {
   return null;
 }
 
-export function pickNusCharacteristics(allChars, variant) {
+export function pickNusCharacteristics(allChars) {
+  // micro:bit swaps the Nordic roles (6E400002 = indicate, 6E400003 = write): pick by capability.
   const norm = (id) => String(id || '').toLowerCase().replace(/-/g, '');
-  const writeUuid = norm(variant.write);
-  const notifyUuid = norm(variant.notify);
-  const writeChar =
-    allChars.find((c) => norm(c.uuid) === writeUuid) ||
-    allChars.find((c) => norm(c.uuid).includes('6e400002'));
-  const notifyChar =
-    allChars.find((c) => norm(c.uuid) === notifyUuid) ||
-    allChars.find((c) => norm(c.uuid).includes('6e400003'));
+  const nus = allChars.filter((c) => /6e40000[23]/.test(norm(c.uuid)));
+  const pool = nus.length ? nus : allChars;
+  const canWrite = (c) => c.properties.write || c.properties.writeWithoutResponse;
+  const canNotify = (c) => c.properties.notify || c.properties.indicate;
+  const writeChar = pool.find((c) => canWrite(c) && !canNotify(c)) || pool.find(canWrite);
+  const notifyChar = pool.find((c) => canNotify(c) && c !== writeChar) || pool.find(canNotify);
   return { writeChar, notifyChar };
 }
 

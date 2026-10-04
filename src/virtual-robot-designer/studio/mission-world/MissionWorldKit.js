@@ -71,6 +71,9 @@ function computeMissionBounds(curve) {
 export function buildMissionWorld(scene, arenaType, challenge) {
   if (scene.userData.combatMode || scene.userData.flappyMode || scene.userData.biomeAAA) return;
   if (scene.userData.aerialWorldBuilt || scene.userData.skipMissionWorld) return;
+  // Kart circuits already have their road; a mission route on top lays a second
+  // road, kerbs and checkpoint arches across the racing line.
+  if (scene.userData.raceCurve) return;
   const primaryStudioWorld = challenge?.isChassisMode && isPrimaryStudioChassis(challenge?.chassisId)
     && arenaType !== 'flappy_bird'
     && arenaType !== 'robot_football'

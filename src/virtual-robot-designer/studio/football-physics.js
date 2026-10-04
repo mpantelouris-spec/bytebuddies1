@@ -4,13 +4,13 @@
 import * as THREE from 'three';
 
 export const BALL_CONFIG = {
-  radius: 0.11,
+  radius: 0.28,
   mass: 0.43,
   restitution: 0.62,
   linearDamping: 0.14,
   angularDamping: 0.32,
   friction: 0.48,
-  groundY: 0.115,
+  groundY: 0.30,
 };
 
 export function createBallState(x = 0, z = 0) {
@@ -25,51 +25,61 @@ export function createBallState(x = 0, z = 0) {
   };
 }
 
-function createFootballTexture() {
-  const size = 256;
-  const canvas = document.createElement('canvas');
-  canvas.width = size;
-  canvas.height = size;
-  const ctx = canvas.getContext('2d');
-  ctx.fillStyle = '#f5f5f5';
-  ctx.fillRect(0, 0, size, size);
-
-  const drawPent = (cx, cy, r, fill) => {
-    ctx.beginPath();
-    for (let i = 0; i < 5; i += 1) {
-      const a = (i * 2 * Math.PI) / 5 - Math.PI / 2;
-      const px = cx + Math.cos(a) * r;
-      const py = cy + Math.sin(a) * r;
-      if (i === 0) ctx.moveTo(px, py);
-      else ctx.lineTo(px, py);
+/**
+ * Classic 32-panel football: 12 black pentagons and 20 white hexagons laid out
+ * as a truncated icosahedron, with darker stitched seams between panels.
+ * Colours are painted per vertex on a finely subdivided sphere, so the pattern
+ * sits exactly on the ball instead of a flat picture stretched around it.
+ */
+function createClassicBallGeometry(radius) {
+  const geo = new THREE.IcosahedronGeometry(radius, 24);
+  // Panel centres: icosahedron vertices (pentagons) and face centres (hexagons)
+  const ico = new THREE.IcosahedronGeometry(1, 0);
+  const ip = ico.attributes.position;
+  const pent = [];
+  for (let i = 0; i < ip.count; i++) {
+    const v = new THREE.Vector3().fromBufferAttribute(ip, i).normalize();
+    if (!pent.some((p) => p.distanceTo(v) < 1e-3)) pent.push(v);
+  }
+  const hex = [];
+  for (let i = 0; i < ip.count; i += 3) {
+    hex.push(new THREE.Vector3()
+      .fromBufferAttribute(ip, i)
+      .add(new THREE.Vector3().fromBufferAttribute(ip, i + 1))
+      .add(new THREE.Vector3().fromBufferAttribute(ip, i + 2))
+      .normalize());
+  }
+  const centres = [...pent.map((v) => ({ v, black: true })), ...hex.map((v) => ({ v, black: false }))];
+  const pos = geo.attributes.position;
+  const colors = new Float32Array(pos.count * 3);
+  const black = new THREE.Color(0x141414);
+  const white = new THREE.Color(0xf5f5f2);
+  const seam = new THREE.Color(0x9a9a96);
+  const d = new THREE.Vector3();
+  for (let i = 0; i < pos.count; i++) {
+    d.fromBufferAttribute(pos, i).normalize();
+    let a1 = Infinity;
+    let a2 = Infinity;
+    let nearest = null;
+    for (const c of centres) {
+      const a = d.angleTo(c.v);
+      if (a < a1) { a2 = a1; a1 = a; nearest = c; } else if (a < a2) a2 = a;
     }
-    ctx.closePath();
-    ctx.fillStyle = fill;
-    ctx.fill();
-    ctx.strokeStyle = '#0a0a0a';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-  };
-
-  drawPent(size / 2, size / 2, 34, '#111111');
-  drawPent(size / 2 - 52, size / 2 - 30, 22, '#111111');
-  drawPent(size / 2 + 52, size / 2 - 30, 22, '#111111');
-  drawPent(size / 2 - 52, size / 2 + 34, 22, '#111111');
-  drawPent(size / 2 + 52, size / 2 + 34, 22, '#111111');
-  drawPent(size / 2, size / 2 - 72, 22, '#111111');
-  drawPent(size / 2, size / 2 + 72, 22, '#111111');
-
-  const tex = new THREE.CanvasTexture(canvas);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  return tex;
+    const col = a2 - a1 < 0.025 ? seam : (nearest.black ? black : white);
+    colors.set([col.r, col.g, col.b], i * 3);
+  }
+  geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  return geo;
 }
 
 export function createBallMesh() {
   const grp = new THREE.Group();
   grp.name = 'Football';
 
-  const geo = new THREE.SphereGeometry(BALL_CONFIG.radius, 16, 12);
-  const mat = new THREE.MeshStandardMaterial({ map: createFootballTexture(), roughness: 0.45, metalness: 0.08 });
+  const geo = createClassicBallGeometry(BALL_CONFIG.radius);
+  const mat = new THREE.MeshPhysicalMaterial({
+    vertexColors: true, roughness: 0.38, metalness: 0, clearcoat: 0.7, clearcoatRoughness: 0.25,
+  });
   const ball = new THREE.Mesh(geo, mat);
   ball.frustumCulled = false;
   ball.renderOrder = 8;

@@ -2,6 +2,7 @@
  * FootballArena.js — 3D football pitch with goals, stadium lighting, ball physics.
  */
 import * as THREE from 'three';
+import { stadiumCrowd } from './FootballStadiumKit.js';
 import { createFootballEngine, resolveFootballLayout, PITCH_HALF_X, PITCH_HALF_Z, GOAL_Z } from './football-match-engine.js';
 import { createBallMesh, syncBallMesh } from './football-physics.js';
 import { alignFighterToRingSurface } from './FightingArena.js';
@@ -220,7 +221,7 @@ export function buildFootballArena(scene, challenge = {}, playerConfig = {}) {
   ].forEach(([x, z]) => pitchGrp.add(buildCornerFlag(x, z)));
   scene.add(pitchGrp);
 
-  buildStadiumLighting(scene, layout.kind === 'fifa', { fifaLite: layout.kind === 'fifa' && layout.teamSize >= 3 });
+  buildStadiumLighting(scene, false, { fifaLite: layout.kind === 'fifa' && layout.teamSize >= 3 });
   if (layout.kind !== 'fifa' || layout.teamSize < 3) {
     finalizeFootballArenaLighting(scene, tier);
   }
@@ -313,7 +314,7 @@ export function buildFootballArena(scene, challenge = {}, playerConfig = {}) {
     if (!mesh.userData.isGltfFootballPlayer) {
       mesh.scale.setScalar(1.0);
     }
-    clampFootballActorScale(mesh, 1.68);
+    clampFootballActorScale(mesh, 1.95);
     alignFighterToRingSurface(mesh, PITCH_SURFACE_Y);
     const noShadow = scene.userData.footballFifa3v3;
     mesh.traverse((o) => {
@@ -338,26 +339,28 @@ export function buildFootballArena(scene, challenge = {}, playerConfig = {}) {
   scene.userData.footballCamMode = scene.userData.footballCamMode || 'broadcast';
   if (layout.cam === 'sideline') {
     scene.userData.footballCamPreset = {
-      position: new THREE.Vector3(24, 7.2, 0),
-      lookAt: new THREE.Vector3(0, 0.85, 0),
-      fov: 48,
+      position: new THREE.Vector3(5.2, 2.4, -3.2),
+      lookAt: new THREE.Vector3(0, 0.9, 0),
+      fov: 40,
     };
   } else if (layout.cam === 'penalty') {
     scene.userData.footballCamPreset = {
-      position: new THREE.Vector3(8.8, 3.5, (layout.ball?.z ?? 6) - 5.5),
-      lookAt: new THREE.Vector3(0, 1.15, GOAL_Z - 0.4),
-      fov: 38,
+      position: new THREE.Vector3((layout.ball?.x ?? 0) * 0.4 + 1.2, 2.4, (layout.ball?.z ?? 6) - 6.2),
+      lookAt: new THREE.Vector3(0, 1.0, GOAL_Z),
+      fov: 42,
+      fixedZ: true,
     };
   } else if (layout.cam === 'keeper') {
     scene.userData.footballCamPreset = {
-      position: new THREE.Vector3(9.2, 4.0, -GOAL_Z + 5.5),
-      lookAt: new THREE.Vector3(0, 1.0, -GOAL_Z + 1.2),
-      fov: 40,
+      position: new THREE.Vector3(2.4, 2.6, -GOAL_Z + 2.8),
+      lookAt: new THREE.Vector3(0, 0.85, -GOAL_Z + 6),
+      fov: 48,
+      fixedZ: true,
     };
   } else {
     scene.userData.footballCamPreset = {
-      position: new THREE.Vector3(14, 5.8, 10),
-      lookAt: new THREE.Vector3(0, 0.85, 0),
+      position: new THREE.Vector3(5.2, 2.4, -3.2),
+      lookAt: new THREE.Vector3(0, 0.9, 0),
       fov: 40,
     };
   }
@@ -404,6 +407,9 @@ export function buildFootballArena(scene, challenge = {}, playerConfig = {}) {
         ring.visible = kickoffOn;
         if (kickoffOn) ring.scale.setScalar(ringScale);
       }
+      // fans bounce all match and leap up when a goal goes in
+      if ((st.goalFlash || 0) > 0) stadiumCrowd.cheer(dt * 4);
+      stadiumCrowd.update(t, dt);
       const pulse = (st.goalFlash || 0) > 0 ? 1.1 : 0.35;
       for (const fascia of crowdFascia) {
         if (fascia.material?.emissiveIntensity != null) fascia.material.emissiveIntensity = pulse;

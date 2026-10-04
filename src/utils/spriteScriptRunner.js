@@ -273,12 +273,18 @@ export function buildScriptChains(spriteId, liveSprites) {
   const isHat = (b) => {
     const t = String(b.type || b.blocklyType || '');
     return (
-      t.startsWith('event-')
-      || t.startsWith('bb_event_')
+      (
+        t.startsWith('event-')
+        && t !== 'event-broadcast'
+        && t !== 'event-broadcast-wait'
+      )
+      || (t.startsWith('bb_event_') && !t.includes('broadcast'))
       || t === 'event_whenflagclicked'
       || t === 'event_whenkeypressed'
       || t === 'event_whenthisspriteclicked'
       || t === 'control_start_as_clone'
+      || t === 'func-define'
+      || t === 'myblock-define'
     );
   };
 

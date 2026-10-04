@@ -25,6 +25,11 @@ import { flashMicrobitHex, requestMicrobitUsbEarly } from '@flash/flashMicrobit.
 import { formatSignalBars } from '@flash/microbitWebBle.js';
 import { validateHexStrict } from '@flash/hexValidationStrict.js';
 import MicrobitDualFlashPanel from './MicrobitDualFlashPanel.jsx';
+import {
+  ROBOT_COMMANDS, ROBOT_CATEGORY_COLORS, darkenHex, ROBOT_PROFILES, MICROBIT_KIT_SETUPS,
+  requestRobotSerialPort, QUARKY_HELPER_SCRIPT, MICROBIT_FALLBACKS, generateFullProgram, generateQuarkyProgram,
+} from '../utils/robotProfiles.js';
+import { compileForRuntime, RUNTIME_KIT } from '../utils/runtimeCompiler.js';
 
 async function _idbCache(key, fetchFn) {
   try {
@@ -115,695 +120,6 @@ async function buildMicrobitHex(pythonCode, onStatus) {
     }
   }
 }
-
-/* ─── Robot command definitions ─── */
-const ROBOT_COMMANDS = [
-  // Movement
-  { cat: 'Movement', id: 'forward',    icon: '⬆️',  label: 'Forward',        color: '#f59e0b', params: [{ key: 'amount',  label: 'steps',  default: '80',   type: 'number' }] },
-  { cat: 'Movement', id: 'back',       icon: '⬇️',  label: 'Backward',       color: '#f59e0b', params: [{ key: 'amount',  label: 'steps', default: '80',   type: 'number' }] },
-  { cat: 'Movement', id: 'move_left',  icon: '⬅️',  label: 'Move Left',      color: '#f59e0b', params: [{ key: 'amount',  label: 'steps',  default: '80',   type: 'number' }] },
-  { cat: 'Movement', id: 'move_right', icon: '➡️',  label: 'Move Right',     color: '#f59e0b', params: [{ key: 'amount',  label: 'steps',  default: '80',   type: 'number' }] },
-  { cat: 'Movement', id: 'left',       icon: '↺',   label: 'Turn Left',      color: '#f59e0b', params: [{ key: 'degrees', label: '°',   default: '90',   type: 'number' }] },
-  { cat: 'Movement', id: 'right',      icon: '↻',   label: 'Turn Right',     color: '#f59e0b', params: [{ key: 'degrees', label: '°',   default: '90',   type: 'number' }] },
-  { cat: 'Movement', id: 'spin_left',  icon: '↺',   label: 'Spin Left',      color: '#f59e0b', params: [{ key: 'degrees', label: '°',   default: '360',  type: 'number' }] },
-  { cat: 'Movement', id: 'spin_right', icon: '↻',   label: 'Spin Right',     color: '#f59e0b', params: [{ key: 'degrees', label: '°',   default: '360',  type: 'number' }] },
-  { cat: 'Movement', id: 'stop',       icon: '⏹️',  label: 'Stop',           color: '#f59e0b', params: [] },
-  { cat: 'Movement', id: 'coast',      icon: '🌊',  label: 'Coast Stop',     color: '#f59e0b', params: [] },
-  { cat: 'Movement', id: 'speed',      icon: '⚡',  label: 'Set Speed',      color: '#f59e0b', params: [{ key: 'pct',     label: '%',   default: '75',   type: 'number' }] },
-  { cat: 'Movement', id: 'motor_l',    icon: '◀',   label: 'Motor Left',     color: '#f59e0b', params: [{ key: 'power',   label: '%',   default: '50',   type: 'number' }] },
-  { cat: 'Movement', id: 'motor_r',    icon: '▶',   label: 'Motor Right',    color: '#f59e0b', params: [{ key: 'power',   label: '%',   default: '50',   type: 'number' }] },
-  { cat: 'Movement', id: 'motors',     icon: '⚙️',  label: 'Both Motors',    color: '#f59e0b', params: [{ key: 'left',    label: 'L%',  default: '50',   type: 'number' }, { key: 'right', label: 'R%', default: '50', type: 'number' }] },
-
-  // Sensors
-  { cat: 'Sensors', id: 'if_dist',     icon: '📡',  label: 'If Distance <',  color: '#f59e0b', params: [{ key: 'cm',      label: 'cm',  default: '20',   type: 'number' }] },
-  { cat: 'Sensors', id: 'if_line',     icon: '〰️',  label: 'If Line Found',  color: '#f59e0b', params: [] },
-  { cat: 'Sensors', id: 'if_btn_a',    icon: '🔘',  label: 'If Button A',    color: '#f59e0b', params: [] },
-  { cat: 'Sensors', id: 'if_btn_b',    icon: '🔘',  label: 'If Button B',    color: '#f59e0b', params: [] },
-  { cat: 'Sensors', id: 'if_touch',    icon: '👆',  label: 'If Touch Pin',   color: '#f59e0b', params: [{ key: 'pin',     label: 'pin', default: '0',    type: 'number' }] },
-  { cat: 'Sensors', id: 'if_shake',    icon: '📳',  label: 'If Shaken',      color: '#f59e0b', params: [] },
-  { cat: 'Sensors', id: 'if_tilt',     icon: '📐',  label: 'If Tilted',      color: '#f59e0b', params: [{ key: 'dir', label: 'dir', default: 'left', type: 'select', options: ['left','right','forward','back'] }] },
-  { cat: 'Sensors', id: 'if_light',    icon: '☀️',  label: 'If Light <',     color: '#f59e0b', params: [{ key: 'val',     label: 'lux', default: '100',  type: 'number' }] },
-  { cat: 'Sensors', id: 'wait_dist',   icon: '⏳',  label: 'Wait Until Dist <', color: '#f59e0b', params: [{ key: 'cm',   label: 'cm',  default: '20',   type: 'number' }] },
-  { cat: 'Sensors', id: 'wait_line',   icon: '⏳',  label: 'Wait for Line',  color: '#f59e0b', params: [] },
-  { cat: 'Sensors', id: 'read_dist',   icon: '📏',  label: 'Read Distance → var', color: '#f59e0b', params: [{ key: 'var', label: 'var', default: 'dist', type: 'text' }] },
-  { cat: 'Sensors', id: 'read_light',  icon: '💡',  label: 'Read Light → var',   color: '#f59e0b', params: [{ key: 'var', label: 'var', default: 'light', type: 'text' }] },
-  { cat: 'Sensors', id: 'follow_line', icon: '🛤️',  label: 'Follow Line',    color: '#f59e0b', params: [{ key: 'secs',   label: 's',   default: '3',    type: 'number' }] },
-  { cat: 'Sensors', id: 'avoid_wall',  icon: '🧱',  label: 'Avoid Walls',    color: '#f59e0b', params: [{ key: 'secs',   label: 's',   default: '5',    type: 'number' }] },
-  { cat: 'Sensors', id: 'read_temp',   icon: '🌡️',  label: 'Read Temp → var',    color: '#f59e0b', params: [{ key: 'var', label: 'var', default: 'temp', type: 'text' }] },
-  { cat: 'Sensors', id: 'read_compass',icon: '🧭',  label: 'Read Compass → var', color: '#f59e0b', params: [{ key: 'var', label: 'var', default: 'heading', type: 'text' }] },
-  { cat: 'Sensors', id: 'read_accel',  icon: '📐',  label: 'Read Accel → var',   color: '#f59e0b', params: [{ key: 'var', label: 'var', default: 'ax', type: 'text' }, { key: 'axis', label: 'axis', default: 'x', type: 'select', options: ['x','y','z'] }] },
-  { cat: 'Sensors', id: 'read_btn_a',  icon: '🔘',  label: 'Read Button A → var',color: '#f59e0b', params: [{ key: 'var', label: 'var', default: 'btnA', type: 'text' }] },
-  { cat: 'Sensors', id: 'read_btn_b',  icon: '🔘',  label: 'Read Button B → var',color: '#f59e0b', params: [{ key: 'var', label: 'var', default: 'btnB', type: 'text' }] },
-  { cat: 'Sensors', id: 'if_temp',     icon: '🌡️',  label: 'If Temp >',      color: '#f59e0b', params: [{ key: 'val', label: '°C', default: '25', type: 'number' }] },
-  { cat: 'Sensors', id: 'if_compass',  icon: '🧭',  label: 'If Heading >',   color: '#f59e0b', params: [{ key: 'val', label: '°', default: '180', type: 'number' }] },
-
-  // Math
-  { cat: 'Math', id: 'math_random',    icon: '🎲',  label: 'Random Number',  color: '#f59e0b', params: [{ key: 'var', label: 'var', default: 'n', type: 'text' }, { key: 'min', label: 'min', default: '1', type: 'number' }, { key: 'max', label: 'max', default: '10', type: 'number' }] },
-  { cat: 'Math', id: 'math_abs',       icon: '±',   label: 'Abs Value',      color: '#f59e0b', params: [{ key: 'var', label: 'result', default: 'x', type: 'text' }, { key: 'src', label: 'of', default: 'x', type: 'text' }] },
-  { cat: 'Math', id: 'math_map',       icon: '🗺️',  label: 'Map Value',      color: '#f59e0b', params: [{ key: 'var', label: 'result', default: 'mapped', type: 'text' }, { key: 'src', label: 'from', default: 'x', type: 'text' }, { key: 'low1', label: 'lo1', default: '0', type: 'number' }, { key: 'hi1', label: 'hi1', default: '100', type: 'number' }, { key: 'low2', label: 'lo2', default: '0', type: 'number' }, { key: 'hi2', label: 'hi2', default: '1023', type: 'number' }] },
-  { cat: 'Math', id: 'math_constrain', icon: '📏',  label: 'Constrain',      color: '#f59e0b', params: [{ key: 'var', label: 'var', default: 'x', type: 'text' }, { key: 'min', label: 'min', default: '0', type: 'number' }, { key: 'max', label: 'max', default: '100', type: 'number' }] },
-  { cat: 'Math', id: 'math_expr',      icon: '🧮',  label: 'Set var = expr', color: '#f59e0b', params: [{ key: 'var', label: 'var', default: 'x', type: 'text' }, { key: 'expr', label: '=', default: 'x + 1', type: 'text' }] },
-
-  // Control
-  { cat: 'Control', id: 'on_start',    icon: '🚀',  label: 'On Start',       color: '#f59e0b', params: [] },
-  { cat: 'Control', id: 'wait',        icon: '⏱️',  label: 'Wait',           color: '#f59e0b', params: [{ key: 'secs',   label: 's',   default: '1',    type: 'number' }] },
-  { cat: 'Control', id: 'forever',     icon: '♾️',  label: 'Forever',        color: '#f59e0b', params: [] },
-  { cat: 'Control', id: 'repeat',      icon: '🔁',  label: 'Repeat',         color: '#f59e0b', params: [{ key: 'times',  label: 'x',   default: '3',    type: 'number' }] },
-  { cat: 'Control', id: 'repeat_end',  icon: '🔚',  label: 'End Repeat',     color: '#f59e0b', params: [] },
-  { cat: 'Control', id: 'while_do',    icon: '🔄',  label: 'While',          color: '#f59e0b', params: [{ key: 'cond', label: 'var', default: 'x', type: 'text' }, { key: 'op', label: 'op', default: '<', type: 'select', options: ['<','>','=','!=','<=','>='] }, { key: 'val', label: 'val', default: '10', type: 'number' }] },
-  { cat: 'Control', id: 'while_end',   icon: '🔚',  label: 'End While',      color: '#f59e0b', params: [] },
-  { cat: 'Control', id: 'for_range',   icon: '🔢',  label: 'Count',          color: '#f59e0b', params: [{ key: 'var', label: 'var', default: 'i', type: 'text' }, { key: 'from', label: 'from', default: '0', type: 'number' }, { key: 'to', label: 'to', default: '5', type: 'number' }] },
-  { cat: 'Control', id: 'for_end',     icon: '🔚',  label: 'End Count',      color: '#f59e0b', params: [] },
-  { cat: 'Control', id: 'if_then',     icon: '🔀',  label: 'If / Then',      color: '#f59e0b', params: [{ key: 'cond',   label: 'var', default: 'dist',  type: 'text' }, { key: 'op', label: 'op', default: '<', type: 'select', options: ['<','>','=','!=','<=','>='] }, { key: 'val', label: 'val', default: '20', type: 'number' }] },
-  { cat: 'Control', id: 'else_branch', icon: '↔️',  label: 'Else',           color: '#f59e0b', params: [] },
-  { cat: 'Control', id: 'else_if',     icon: '↔️',  label: 'Else If',        color: '#f59e0b', params: [{ key: 'cond', label: 'var', default: 'x', type: 'text' }, { key: 'op', label: 'op', default: '<', type: 'select', options: ['<','>','=','!=','<=','>='] }, { key: 'val', label: 'val', default: '0', type: 'number' }] },
-  { cat: 'Control', id: 'if_end',      icon: '🔚',  label: 'End If',         color: '#f59e0b', params: [] },
-  { cat: 'Control', id: 'break',       icon: '✋',  label: 'Break Loop',     color: '#f59e0b', params: [] },
-  { cat: 'Control', id: 'stop_all',    icon: '🛑',  label: 'Stop Program',   color: '#f59e0b', params: [] },
-
-  // Outputs
-  { cat: 'Outputs', id: 'led',         icon: '💡',  label: 'LED Colour',     color: '#f59e0b', params: [{ key: 'color',  label: 'col', default: 'red',  type: 'select', options: ['red','green','blue','yellow','cyan','magenta','white','off'] }] },
-  { cat: 'Outputs', id: 'led_bright',  icon: '🔆',  label: 'LED Brightness', color: '#f59e0b', params: [{ key: 'pct',    label: '%',   default: '100',  type: 'number' }] },
-  { cat: 'Outputs', id: 'led_rgb',     icon: '🌈',  label: 'LED RGB',        color: '#f59e0b', params: [{ key: 'r', label: 'R', default: '255', type: 'number' }, { key: 'g', label: 'G', default: '0', type: 'number' }, { key: 'b', label: 'B', default: '0', type: 'number' }] },
-  { cat: 'Outputs', id: 'buzz',        icon: '🔔',  label: 'Buzzer',         color: '#f59e0b', params: [{ key: 'secs',   label: 's',   default: '0.5',  type: 'number' }] },
-  { cat: 'Outputs', id: 'play_note',   icon: '🎵',  label: 'Play Note',      color: '#f59e0b', params: [{ key: 'note', label: 'note', default: 'C4', type: 'select', options: ['C3','D3','E3','F3','G3','A3','B3','C4','D4','E4','F4','G4','A4','B4','C5'] }, { key: 'secs', label: 's', default: '0.5', type: 'number' }] },
-  { cat: 'Outputs', id: 'play_melody', icon: '🎶',  label: 'Play Melody',    color: '#f59e0b', params: [{ key: 'melody', label: 'tune', default: 'happy', type: 'select', options: ['happy','sad','power_up','siren','birthday','twinkle'] }] },
-  { cat: 'Outputs', id: 'display',     icon: '📟',  label: 'Show Text',      color: '#f59e0b', params: [{ key: 'text',   label: 'text', default: 'Hi!',  type: 'text' }] },
-  { cat: 'Outputs', id: 'show_num',    icon: '🔢',  label: 'Show Number',    color: '#f59e0b', params: [{ key: 'num',    label: 'val',  default: '42',   type: 'number' }] },
-  { cat: 'Outputs', id: 'show_icon',   icon: '😀',  label: 'Show Icon',      color: '#f59e0b', params: [{ key: 'icon', label: 'icon', default: 'HAPPY', type: 'select', options: ['HAPPY','SAD','HEART','SURPRISED','ANGRY','YES','NO','ARROW_N','ARROW_S','ARROW_E','ARROW_W','ASLEEP','CONFUSED','SKULL','DIAMOND'] }] },
-  { cat: 'Outputs', id: 'clear_disp',  icon: '🧹',  label: 'Clear Display',  color: '#f59e0b', params: [] },
-
-  // Servo & Actuators
-  { cat: 'Servo', id: 'servo',         icon: '🔧',  label: 'Servo Angle',    color: '#f59e0b', params: [{ key: 'pin', label: 'pin', default: '0', type: 'number' }, { key: 'angle', label: '°', default: '90', type: 'number' }] },
-  { cat: 'Servo', id: 'servo_sweep',   icon: '↔️',  label: 'Servo Sweep',    color: '#f59e0b', params: [{ key: 'pin', label: 'pin', default: '0', type: 'number' }, { key: 'from', label: 'from°', default: '0', type: 'number' }, { key: 'to', label: 'to°', default: '180', type: 'number' }] },
-  { cat: 'Servo', id: 'servo_stop',    icon: '🔧',  label: 'Servo Stop',     color: '#f59e0b', params: [{ key: 'pin', label: 'pin', default: '0', type: 'number' }] },
-  { cat: 'Servo', id: 'pin_high',      icon: '⬆️',  label: 'Pin HIGH',       color: '#f59e0b', params: [{ key: 'pin', label: 'pin', default: '0', type: 'number' }] },
-  { cat: 'Servo', id: 'pin_low',       icon: '⬇️',  label: 'Pin LOW',        color: '#f59e0b', params: [{ key: 'pin', label: 'pin', default: '0', type: 'number' }] },
-  { cat: 'Servo', id: 'pwm',           icon: '〰️',  label: 'Set PWM',        color: '#f59e0b', params: [{ key: 'pin', label: 'pin', default: '0', type: 'number' }, { key: 'val', label: '0-255', default: '128', type: 'number' }] },
-
-  // Variables
-  { cat: 'Variables', id: 'var_set',   icon: '📦',  label: 'Set Variable',   color: '#f59e0b', params: [{ key: 'name', label: 'name', default: 'x', type: 'text' }, { key: 'val', label: 'val', default: '0', type: 'number' }] },
-  { cat: 'Variables', id: 'var_inc',   icon: '📈',  label: 'Increase Var',   color: '#f59e0b', params: [{ key: 'name', label: 'name', default: 'x', type: 'text' }, { key: 'val', label: 'by',  default: '1', type: 'number' }] },
-  { cat: 'Variables', id: 'var_dec',   icon: '📉',  label: 'Decrease Var',   color: '#f59e0b', params: [{ key: 'name', label: 'name', default: 'x', type: 'text' }, { key: 'val', label: 'by',  default: '1', type: 'number' }] },
-  { cat: 'Variables', id: 'var_show',  icon: '📊',  label: 'Show Variable',  color: '#f59e0b', params: [{ key: 'name', label: 'name', default: 'x', type: 'text' }] },
-
-  // Communication
-  { cat: 'Comms', id: 'send_msg',      icon: '📤',  label: 'Send Message',   color: '#f59e0b', params: [{ key: 'msg', label: 'text', default: 'hello', type: 'text' }] },
-  { cat: 'Comms', id: 'radio_send',    icon: '📻',  label: 'Radio Send',     color: '#f59e0b', params: [{ key: 'msg', label: 'text', default: 'go',    type: 'text' }] },
-  { cat: 'Comms', id: 'radio_group',   icon: '📡',  label: 'Radio Group',    color: '#f59e0b', params: [{ key: 'grp', label: 'grp',  default: '1',     type: 'number' }] },
-  { cat: 'Comms', id: 'radio_recv',    icon: '📥',  label: 'Read Radio → var', color: '#f59e0b', params: [{ key: 'var', label: 'var', default: 'msg', type: 'text' }] },
-  { cat: 'Comms', id: 'log',           icon: '🖨️',  label: 'Log to Serial',  color: '#f59e0b', params: [{ key: 'msg', label: 'text', default: 'hello', type: 'text' }] },
-
-  // Lights — NeoPixel / WS2812B strips and robot headlights
-  { cat: 'Lights', id: 'neo_init',     icon: '💡',  label: 'NeoPixel Setup', color: '#f59e0b', params: [{ key: 'pin', label: 'pin', default: '0', type: 'number' }, { key: 'n', label: 'LEDs', default: '8', type: 'number' }] },
-  { cat: 'Lights', id: 'neo_color',    icon: '🎨',  label: 'Set LED Color',  color: '#f59e0b', params: [{ key: 'idx', label: 'LED#', default: '0', type: 'number' }, { key: 'color', label: 'colour', default: 'red', type: 'select', options: ['red','green','blue','yellow','cyan','magenta','white','off'] }] },
-  { cat: 'Lights', id: 'neo_rgb',      icon: '🌈',  label: 'Set LED RGB',    color: '#f59e0b', params: [{ key: 'idx', label: 'LED#', default: '0', type: 'number' }, { key: 'r', label: 'R', default: '255', type: 'number' }, { key: 'g', label: 'G', default: '0', type: 'number' }, { key: 'b', label: 'B', default: '0', type: 'number' }] },
-  { cat: 'Lights', id: 'neo_all',      icon: '✨',  label: 'Set All LEDs',   color: '#f59e0b', params: [{ key: 'r', label: 'R', default: '0', type: 'number' }, { key: 'g', label: 'G', default: '0', type: 'number' }, { key: 'b', label: 'B', default: '0', type: 'number' }] },
-  { cat: 'Lights', id: 'neo_show',     icon: '▶️',  label: 'NeoPixel Show',  color: '#f59e0b', params: [] },
-  { cat: 'Lights', id: 'neo_clear',    icon: '🗑️',  label: 'NeoPixel Off',   color: '#f59e0b', params: [] },
-  { cat: 'Lights', id: 'neo_bright',   icon: '🔆',  label: 'NeoPixel Brightness', color: '#f59e0b', params: [{ key: 'pct', label: '%', default: '50', type: 'number' }] },
-  { cat: 'Lights', id: 'headlight',    icon: '🔦',  label: 'Headlights Color', color: '#f59e0b', params: [{ key: 'r', label: 'R', default: '255', type: 'number' }, { key: 'g', label: 'G', default: '255', type: 'number' }, { key: 'b', label: 'B', default: '255', type: 'number' }] },
-  { cat: 'Lights', id: 'headlight_l',  icon: '◀️',  label: 'Left Headlight', color: '#f59e0b', params: [{ key: 'r', label: 'R', default: '255', type: 'number' }, { key: 'g', label: 'G', default: '0', type: 'number' }, { key: 'b', label: 'B', default: '0', type: 'number' }] },
-  { cat: 'Lights', id: 'headlight_r',  icon: '▶️',  label: 'Right Headlight',color: '#f59e0b', params: [{ key: 'r', label: 'R', default: '0', type: 'number' }, { key: 'g', label: 'G', default: '0', type: 'number' }, { key: 'b', label: 'B', default: '255', type: 'number' }] },
-  { cat: 'Lights', id: 'disp_pixel',   icon: '🔲',  label: 'Set Pixel',      color: '#f59e0b', params: [{ key: 'x', label: 'x', default: '2', type: 'number' }, { key: 'y', label: 'y', default: '2', type: 'number' }, { key: 'bright', label: 'brightness', default: '9', type: 'number' }] },
-  { cat: 'Lights', id: 'disp_image',   icon: '🖼️',  label: 'Show Image',     color: '#f59e0b', params: [{ key: 'icon', label: 'icon', default: 'HAPPY', type: 'select', options: ['HAPPY','SAD','HEART','SURPRISED','ANGRY','ASLEEP','CONFUSED','YES','NO','ARROW_N','ARROW_S','ARROW_E','ARROW_W','SKULL','DIAMOND','SNAKE','RABBIT','COW','DUCK','TORTOISE','BUTTERFLY','STICKFIGURE','GHOST','SWORD','TARGET','PITCHFORK','PACMAN','ROLLERSKATE','HOUSE','TSHIRT','CHESSBOARD','XMAS','UMBRELLA'], labels: ['😊 Happy','😢 Sad','❤️ Heart','😲 Surprised','😠 Angry','😴 Asleep','😕 Confused','✅ Yes','❌ No','⬆️ Arrow Up','⬇️ Arrow Down','➡️ Arrow Right','⬅️ Arrow Left','💀 Skull','💎 Diamond','🐍 Snake','🐰 Rabbit','🐮 Cow','🦆 Duck','🐢 Tortoise','🦋 Butterfly','🧍 Stick Figure','👻 Ghost','⚔️ Sword','🎯 Target','🔱 Pitchfork','👾 Pac-Man','⛸️ Rollerskate','🏠 House','👕 T-Shirt','♟️ Chessboard','🎄 Xmas','☂️ Umbrella'] }] },
-  { cat: 'Lights', id: 'disp_scroll',  icon: '📜',  label: 'Scroll Text',    color: '#f59e0b', params: [{ key: 'text', label: 'text', default: 'Hello!', type: 'text' }] },
-  { cat: 'Lights', id: 'disp_show',    icon: '📟',  label: 'Show Value',     color: '#f59e0b', params: [{ key: 'val', label: 'value', default: '42', type: 'text' }] },
-  { cat: 'Lights', id: 'disp_clear',   icon: '🧹',  label: 'Clear Screen',   color: '#f59e0b', params: [] },
-
-  // Sensors extras — line following, sonar read
-  { cat: 'Sensors', id: 'read_line_l', icon: '◀️',  label: 'Read Left Line Sensor', color: '#f59e0b', params: [{ key: 'var', label: 'var', default: 'lineL', type: 'text' }] },
-  { cat: 'Sensors', id: 'read_line_r', icon: '▶️',  label: 'Read Right Line Sensor', color: '#f59e0b', params: [{ key: 'var', label: 'var', default: 'lineR', type: 'text' }] },
-  { cat: 'Sensors', id: 'read_sonar',  icon: '📡',  label: 'Read Sonar (cm) → var',  color: '#f59e0b', params: [{ key: 'var', label: 'var', default: 'dist', type: 'text' }] },
-];
-
-const ROBOT_CATEGORY_COLORS = {
-  Movement: '#3b82f6',
-  Sensors: '#06b6d4',
-  Control: '#f59e0b',
-  Math: '#ef4444',
-  Outputs: '#8b5cf6',
-  Servo: '#f97316',
-  Variables: '#22c55e',
-  Comms: '#ec4899',
-  Lights: '#eab308',
-};
-
-function darkenHex(hex, amt = 34) {
-  const v = String(hex || '').replace('#', '');
-  if (v.length !== 6) return '#1f3f8a';
-  const n = parseInt(v, 16);
-  const r = Math.max(0, (n >> 16) - amt);
-  const g = Math.max(0, ((n >> 8) & 255) - amt);
-  const b = Math.max(0, (n & 255) - amt);
-  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
-}
-
-// Keep every block color aligned with its section.
-ROBOT_COMMANDS.forEach((cmd) => {
-  cmd.color = ROBOT_CATEGORY_COLORS[cmd.cat] || cmd.color;
-});
-
-/* ─── Supported robot profiles ─── */
-const ROBOT_PROFILES = {
-  microbit: {
-    name: 'micro:bit',
-    icon: '🔬',
-    baud: 115200,
-    buildCmd: (cmd, params) => {
-      // Short commands sent to REPL — helper functions defined at connect time
-      const p = params || {};
-      const ms = (steps) => Math.round((steps||20)*10);
-      const tms = (deg) => Math.round((deg||90)*5);
-      switch (cmd) {
-        case 'forward':    return `fw(${ms(p.amount)})\r\n`;
-        case 'back':       return `bk(${ms(p.amount)})\r\n`;
-        case 'left':       return `lt(${tms(p.degrees)})\r\n`;
-        case 'right':      return `rt(${tms(p.degrees)})\r\n`;
-        case 'spin_left':  return `lt(${tms(p.degrees)})\r\n`;
-        case 'spin_right': return `rt(${tms(p.degrees)})\r\n`;
-        case 'move_left':  return `lt(${ms(p.amount)})\r\n`;
-        case 'move_right': return `rt(${ms(p.amount)})\r\n`;
-        case 'stop':       return `sp()\r\n`;
-        case 'coast':      return `sp()\r\n`;
-        case 'speed':      return `# speed ${p.pct||75}%\r\n`;
-        case 'motor_l':    return `pin0.write_analog(${Math.round((p.power||50)*10.23)})\r\n`;
-        case 'motor_r':    return `pin2.write_analog(${Math.round((p.power||50)*10.23)})\r\n`;
-        case 'motors':     return `pin0.write_analog(${Math.round((p.left||50)*10.23)});pin2.write_analog(${Math.round((p.right||50)*10.23)})\r\n`;
-        case 'if_dist':    return `if sonar() < ${p.cm||20}:\r\n    `;
-        case 'if_line':    return `if ls()[0] == 1:\r\n    `;
-        case 'if_btn_a':   return `if button_a.is_pressed():\r\n    `;
-        case 'if_btn_b':   return `if button_b.is_pressed():\r\n    `;
-        case 'if_touch':   return `if pin${p.pin||0}.is_touched():\r\n    `;
-        case 'if_shake':   return `if accelerometer.is_gesture('shake'):\r\n    `;
-        case 'if_tilt':    return `if accelerometer.is_gesture('${p.dir||'left'}'):\r\n    `;
-        case 'if_light':   return `if display.read_light_level() < ${p.val||100}:\r\n    `;
-        case 'wait_dist':  return `while sonar() >= ${p.cm||20}: sleep(50)\r\n`;
-        case 'wait_line':  return `while ls()[0] == 0: sleep(50)\r\n`;
-        case 'read_dist':  return `${p.var||'dist'} = sonar()\r\n`;
-        case 'read_light': return `${p.var||'light'} = display.read_light_level()\r\n`;
-        case 'follow_line':return `fw(${Math.round((p.secs||3)*1000)})\r\n`;
-        case 'avoid_wall': return `sp()\r\n`;
-        case 'wait':       return `sleep(${Math.round((p.secs||1)*1000)})\r\n`;
-        case 'repeat':     return `for _i in range(${p.times||3}):\r\n`;
-        case 'repeat_end': return `pass\r\n`;
-        case 'if_then':    { const op = (p.op||'<') === '=' ? '==' : (p.op||'<'); return `if ${p.cond||'dist'} ${op} ${p.val||20}:\r\n`; }
-        case 'if_end':     return `pass\r\n`;
-        case 'forever':    return `while True:\r\n`;
-        case 'break':      return `break\r\n`;
-        case 'stop_all':   return `sp()\r\n`;
-        case 'led':        return `display.set_pixel(2,2,${(p.color||'off')!=='off'?9:0})\r\n`;
-        case 'led_bright': return `# brightness ${p.pct}\r\n`;
-        case 'led_rgb':    return `display.set_pixel(2,2,9)\r\n`;
-        case 'buzz':       return `music.pitch(440,${Math.round((p.secs||0.5)*1000)})\r\n`;
-        case 'play_note':  return `music.pitch(440,${Math.round((p.secs||0.5)*1000)})\r\n`;
-        case 'play_melody':return `music.play(music.${(p.melody||'happy').toUpperCase()})\r\n`;
-        case 'display':    return `display.scroll('${p.text||'Hi!'}')\r\n`;
-        case 'show_num':   return `display.show(str(${p.num||42}))\r\n`;
-        case 'show_icon':  return `display.show(Image.${p.icon||'HAPPY'})\r\n`;
-        case 'clear_disp': return `display.clear()\r\n`;
-        case 'servo':      return `pin${p.pin||0}.write_analog(int(${p.angle||90}/180*1023))\r\n`;
-        case 'servo_sweep':return `pin${p.pin||0}.write_analog(int(${p.to||180}/180*1023))\r\n`;
-        case 'servo_stop': return `pin${p.pin||0}.write_digital(0)\r\n`;
-        case 'pin_high':   return `pin${p.pin||0}.write_digital(1)\r\n`;
-        case 'pin_low':    return `pin${p.pin||0}.write_digital(0)\r\n`;
-        case 'pwm':        return `pin${p.pin||0}.write_analog(${p.val||128})\r\n`;
-        case 'var_set':    return `${p.name||'x'} = ${p.val||0}\r\n`;
-        case 'var_inc':    return `${p.name||'x'} += ${p.val||1}\r\n`;
-        case 'var_dec':    return `${p.name||'x'} -= ${p.val||1}\r\n`;
-        case 'var_show':   return `display.scroll(str(${p.name||'x'}))\r\n`;
-        case 'send_msg':   return `uart.write('${p.msg||'hello'}\\n')\r\n`;
-        case 'radio_send': return `radio.send('${p.msg||'go'}')\r\n`;
-        case 'radio_group':return `radio.config(group=${p.grp||1})\r\n`;
-        case 'radio_recv': return `${p.var||'msg'} = radio.receive()\r\n`;
-        case 'log':        return `print('${p.msg||'hello'}')\r\n`;
-        // Lights — NeoPixel / display / headlights
-        case 'neo_init':    return `_np = NeoPixel(pin${p.pin||0}, ${p.n||8})\r\n`;
-        case 'neo_color':   { const cols = {red:'(255,0,0)',green:'(0,255,0)',blue:'(0,0,255)',yellow:'(255,255,0)',cyan:'(0,255,255)',magenta:'(255,0,255)',white:'(255,255,255)',off:'(0,0,0)'}; return `_np[${p.idx||0}] = ${cols[p.color||'red']||'(255,0,0)'}\r\n`; }
-        case 'neo_rgb':     return `_np[${p.idx||0}] = (${p.r||255}, ${p.g||0}, ${p.b||0})\r\n`;
-        case 'neo_all':     return `for _i in range(len(_np)): _np[_i] = (${p.r||0}, ${p.g||0}, ${p.b||0})\r\n`;
-        case 'neo_show':    return `_np.show()\r\n`;
-        case 'neo_clear':   return `_np.clear()\r\n`;
-        case 'neo_bright':  return `# brightness ${p.pct||50}% (set per-pixel: multiply values by ${p.pct||50}/100)\r\n`;
-        case 'headlight':   return `hl(${p.r||255}, ${p.g||255}, ${p.b||255})\r\n`;
-        case 'headlight_l': return `hl_l(${p.r||255}, ${p.g||0}, ${p.b||0})\r\n`;
-        case 'headlight_r': return `hl_r(${p.r||0}, ${p.g||0}, ${p.b||255})\r\n`;
-        case 'disp_pixel':  return `display.set_pixel(${p.x||2}, ${p.y||2}, ${p.bright||9})\r\n`;
-        case 'disp_image':  return `display.show(Image.${p.icon||'HAPPY'})\r\n`;
-        case 'disp_scroll': return `display.scroll('${p.text||'Hello!'}')\r\n`;
-        case 'disp_show':   return `display.show(str(${p.val||42}))\r\n`;
-        case 'disp_clear':  return `display.clear()\r\n`;
-        // Extra sensors
-        case 'read_line_l': return `${p.var||'lineL'}, _ = ls()\r\n`;
-        case 'read_line_r': return `_, ${p.var||'lineR'} = ls()\r\n`;
-        case 'read_sonar':  return `${p.var||'dist'} = sonar()\r\n`;
-        // New control flow
-        case 'on_start':      return `# --- on start ---\r\n`;
-        case 'while_do':      { const op = (p.op||'<') === '=' ? '==' : (p.op||'<'); return `while ${p.cond||'x'} ${op} ${p.val||10}:\r\n`; }
-        case 'while_end':     return `pass\r\n`;
-        case 'for_range':     return `for ${p.var||'i'} in range(${p.from||0}, ${parseInt(p.to||5)+1}):\r\n`;
-        case 'for_end':       return `pass\r\n`;
-        case 'else_branch':   return `else:\r\n`;
-        case 'else_if':       { const op = (p.op||'<') === '=' ? '==' : (p.op||'<'); return `elif ${p.cond||'x'} ${op} ${p.val||0}:\r\n`; }
-        // New sensors
-        case 'read_temp':     return `${p.var||'temp'} = temperature()\r\n`;
-        case 'read_compass':  return `${p.var||'heading'} = compass.heading()\r\n`;
-        case 'read_accel':    return `${p.var||'ax'} = accelerometer.get_${p.axis||'x'}()\r\n`;
-        case 'read_btn_a':    return `${p.var||'btnA'} = button_a.is_pressed()\r\n`;
-        case 'read_btn_b':    return `${p.var||'btnB'} = button_b.is_pressed()\r\n`;
-        case 'if_temp':       return `if temperature() > ${p.val||25}:\r\n`;
-        case 'if_compass':    return `if compass.heading() > ${p.val||180}:\r\n`;
-        // Math
-        case 'math_random':   return `${p.var||'n'} = random.randint(${p.min||1}, ${p.max||10})\r\n`;
-        case 'math_abs':      return `${p.var||'x'} = abs(${p.src||p.var||'x'})\r\n`;
-        case 'math_map':      return `${p.var||'mapped'} = int((${p.src||'x'} - ${p.low1||0}) * (${p.hi2||1023} - ${p.low2||0}) / max(1, ${p.hi1||100} - ${p.low1||0}) + ${p.low2||0})\r\n`;
-        case 'math_constrain':return `${p.var||'x'} = max(${p.min||0}, min(${p.max||100}, ${p.var||'x'}))\r\n`;
-        case 'math_expr':     return `${p.var||'x'} = ${p.expr||'x + 1'}\r\n`;
-        default: return '';
-      }
-    },
-    codeHeader: '# micro:bit MicroPython\nfrom microbit import *\nimport music, radio\n\n',
-    setupCode: `# ✅ No flashing needed!\n# ByteBuddies connects directly to the micro:bit MicroPython REPL via USB.\n# Just plug in your micro:bit, click "Connect Robot", select the USB serial port, and press Run.\n#\n# The Robot class below is sent automatically at connect time.\n# For reference, here is what gets defined on the micro:bit:\n\nfrom microbit import *\nimport utime\n\nclass Robot:\n    def __init__(self): self.speed = 75\n    def drive(self, dist):\n        pin0.write_digital(1); pin1.write_digital(0 if dist>0 else 1)\n        pin2.write_digital(1); pin3.write_digital(1 if dist>0 else 0)\n        utime.sleep_ms(abs(dist)); self.stop()\n    def turn(self, deg):\n        pin0.write_digital(1); pin1.write_digital(1 if deg<0 else 0)\n        pin2.write_digital(1); pin3.write_digital(0 if deg<0 else 1)\n        utime.sleep_ms(abs(int(deg*5))); self.stop()\n    def stop(self): pin0.write_digital(0); pin2.write_digital(0)\n    def set_speed(self, pct): self.speed = pct\n\nrobot = Robot()\ndisplay.show(Image.HAPPY)\n`,
-  },
-  mbot: {
-    name: 'mBot',
-    icon: '🤖',
-    baud: 9600,
-    buildCmd: (cmd, params) => {
-      const p = params || {};
-      switch (cmd) {
-        case 'forward':    return `FWD:${Math.round(p.amount||20)}\n`;
-        case 'back':       return `BWD:${Math.round(p.amount||20)}\n`;
-        case 'left':       return `LFT:${p.degrees||90}\n`;
-        case 'right':      return `RGT:${p.degrees||90}\n`;
-        case 'spin_left':  return `SPL:${p.degrees||360}\n`;
-        case 'spin_right': return `SPR:${p.degrees||360}\n`;
-        case 'stop':       return `STP\n`;
-        case 'coast':      return `CST\n`;
-        case 'speed':      return `SPD:${p.pct||75}\n`;
-        case 'motor_l':    return `ML:${p.power||50}\n`;
-        case 'motor_r':    return `MR:${p.power||50}\n`;
-        case 'motors':     return `MV:${p.left||50}:${p.right||50}\n`;
-        case 'if_dist':    return `IFD:${p.cm||20}\n`;
-        case 'if_line':    return `IFL\n`;
-        case 'if_btn_a':   return `IFA\n`;
-        case 'if_btn_b':   return `IFB\n`;
-        case 'if_touch':   return `IFT:${p.pin||0}\n`;
-        case 'wait_dist':  return `WTD:${p.cm||20}\n`;
-        case 'wait_line':  return `WTL\n`;
-        case 'read_dist':  return `RDD:${p.var||'dist'}\n`;
-        case 'read_light': return `RDL:${p.var||'light'}\n`;
-        case 'follow_line':return `FLN:${Math.round((p.secs||3)*1000)}\n`;
-        case 'avoid_wall': return `AVW:${Math.round((p.secs||5)*1000)}\n`;
-        case 'wait':       return `DLY:${Math.round((p.secs||1)*1000)}\n`;
-        case 'repeat':     return `RPT:${p.times||3}\n`;
-        case 'repeat_end': return `RPE\n`;
-        case 'if_then':    return `IFC:${p.cond||'dist'}:${p.op||'<'}:${p.val||20}\n`;
-        case 'if_end':     return `IFE\n`;
-        case 'forever':    return `FVR\n`;
-        case 'break':      return `BRK\n`;
-        case 'stop_all':   return `STP\nEND\n`;
-        case 'led':        return `LED:${p.color||'off'}\n`;
-        case 'led_bright': return `LDB:${p.pct||100}\n`;
-        case 'led_rgb':    return `LDC:${p.r||255}:${p.g||0}:${p.b||0}\n`;
-        case 'buzz':       return `BZZ:${Math.round((p.secs||0.5)*1000)}\n`;
-        case 'play_note':  return `NTE:${p.note||'C4'}:${Math.round((p.secs||0.5)*1000)}\n`;
-        case 'play_melody':return `MLY:${p.melody||'happy'}\n`;
-        case 'display':    return `DSP:${p.text||'Hi!'}\n`;
-        case 'show_num':   return `DSN:${p.num||42}\n`;
-        case 'show_icon':  return `ICN:${p.icon||'HAPPY'}\n`;
-        case 'clear_disp': return `CLR\n`;
-        case 'servo':      return `SRV:${p.pin||0}:${p.angle||90}\n`;
-        case 'servo_sweep':return `SWP:${p.pin||0}:${p.from||0}:${p.to||180}\n`;
-        case 'servo_stop': return `SRS:${p.pin||0}\n`;
-        case 'pin_high':   return `PHI:${p.pin||0}\n`;
-        case 'pin_low':    return `PLO:${p.pin||0}\n`;
-        case 'pwm':        return `PWM:${p.pin||0}:${p.val||128}\n`;
-        case 'var_set':    return `VST:${p.name||'x'}:${p.val||0}\n`;
-        case 'var_inc':    return `VIN:${p.name||'x'}:${p.val||1}\n`;
-        case 'var_dec':    return `VDE:${p.name||'x'}:${p.val||1}\n`;
-        case 'var_show':   return `VSH:${p.name||'x'}\n`;
-        case 'send_msg':   return `MSG:${p.msg||'hello'}\n`;
-        case 'radio_send': return `RAD:${p.msg||'go'}\n`;
-        case 'radio_group':return `RGP:${p.grp||1}\n`;
-        case 'log':        return `LOG:${p.msg||'hello'}\n`;
-        case 'on_start':      return ``;
-        case 'while_do':      return `WHL:${p.cond||'x'}:${p.op||'<'}:${p.val||10}\n`;
-        case 'while_end':     return `WHE\n`;
-        case 'for_range':     return `FOR:${p.var||'i'}:${p.from||0}:${p.to||5}\n`;
-        case 'for_end':       return `FOE\n`;
-        case 'else_branch':   return `ELS\n`;
-        case 'else_if':       return `ELI:${p.cond||'x'}:${p.op||'<'}:${p.val||0}\n`;
-        case 'read_temp': case 'read_compass': case 'read_accel':
-        case 'read_btn_a': case 'read_btn_b': case 'if_temp': case 'if_compass':
-        case 'math_random': case 'math_abs': case 'math_map':
-        case 'math_constrain': case 'math_expr': return ``;
-        default: return '';
-      }
-    },
-    codeHeader: '// mBot Serial Protocol\n\n',
-    setupCode: `/* ByteBuddies — mBot v1 Controller\n   Requires: Makeblock library (Arduino IDE > Library Manager > search "Makeblock")\n   Board: Arduino Uno  |  Port: your mBot COM port  |  Baud: 9600\n   TIP: if Forward goes backward, swap the signs on FWD & BWD lines */\n\n#include <MeMCore.h>\nMeDCMotor motorL(M1), motorR(M2);  // M1=left, M2=right\nint spd = 200;                     // default speed 0-255\nunsigned long stopAt = 0;          // non-blocking auto-stop timer\n\nvoid drive(int l, int r, long ms) { motorL.run(l); motorR.run(r); stopAt = ms > 0 ? millis() + ms : 0; }\nvoid halt() { motorL.stop(); motorR.stop(); stopAt = 0; }\n\nString pCmd(String s) { int i=s.indexOf(':'); return i>=0?s.substring(0,i):s; }\nlong pVal(String s, int n) {\n  int p=0;\n  for(int k=0;k<n;k++){p=s.indexOf(':',p)+1;if(!p)return 0;}\n  int e=s.indexOf(':',p);\n  return e>=0?s.substring(p,e).toInt():s.substring(p).toInt();\n}\n\nvoid setup() { Serial.begin(9600); halt(); }\n\nvoid loop() {\n  // Auto-stop when timed move expires (non-blocking)\n  if (stopAt > 0 && millis() >= stopAt) halt();\n  if (!Serial.available()) return;\n  String s = Serial.readStringUntil('\\n'); s.trim();\n  if (!s.length()) return;\n  String c = pCmd(s); long v = pVal(s, 1);\n  if      (c=="STP"||c=="CST"||c=="END") halt();\n  else if (c=="FWD") drive(-spd,    spd,    v*50);  // both wheels forward\n  else if (c=="BWD") drive( spd,   -spd,    v*50);  // both wheels backward\n  else if (c=="LFT") drive(-spd/2,  spd,    v*8);   // arc left (left wheel slower)\n  else if (c=="RGT") drive(-spd,    spd/2,  v*8);   // arc right (right wheel slower)\n  else if (c=="SPL") drive( spd/2,  spd/2,  v*5);   // spin left in place\n  else if (c=="SPR") drive(-spd/2, -spd/2,  v*5);   // spin right in place\n  else if (c=="SPD") spd = map(v, 0, 100, 0, 255);\n  else if (c=="ML")  motorL.run(map(v, -100, 100, -255, 255));\n  else if (c=="MR")  motorR.run(map(v, -100, 100, -255, 255));\n  else if (c=="MV")  { long l=pVal(s,1),r=pVal(s,2); drive(map(l,-100,100,-255,255),map(r,-100,100,-255,255),0); }\n}`,
-  },
-  arduino: {
-    name: 'Arduino',
-    icon: '⚙️',
-    baud: 9600,
-    buildCmd: (cmd, params) => {
-      const p = params || {};
-      switch (cmd) {
-        case 'forward':    return `FWD:${Math.round(p.amount||20)}\n`;
-        case 'back':       return `BWD:${Math.round(p.amount||20)}\n`;
-        case 'left':       return `LFT:${p.degrees||90}\n`;
-        case 'right':      return `RGT:${p.degrees||90}\n`;
-        case 'spin_left':  return `SPL:${p.degrees||360}\n`;
-        case 'spin_right': return `SPR:${p.degrees||360}\n`;
-        case 'stop':       return `STP\n`;
-        case 'coast':      return `CST\n`;
-        case 'speed':      return `SPD:${p.pct||75}\n`;
-        case 'motor_l':    return `ML:${p.power||50}\n`;
-        case 'motor_r':    return `MR:${p.power||50}\n`;
-        case 'motors':     return `MV:${p.left||50}:${p.right||50}\n`;
-        case 'if_dist':    return `IFD:${p.cm||20}\n`;
-        case 'if_line':    return `IFL\n`;
-        case 'if_btn_a':   return `IFA\n`;
-        case 'if_btn_b':   return `IFB\n`;
-        case 'if_touch':   return `IFT:${p.pin||0}\n`;
-        case 'wait_dist':  return `WTD:${p.cm||20}\n`;
-        case 'wait_line':  return `WTL\n`;
-        case 'read_dist':  return `RDD:${p.var||'dist'}\n`;
-        case 'read_light': return `RDL:${p.var||'light'}\n`;
-        case 'follow_line':return `FLN:${Math.round((p.secs||3)*1000)}\n`;
-        case 'avoid_wall': return `AVW:${Math.round((p.secs||5)*1000)}\n`;
-        case 'wait':       return `DLY:${Math.round((p.secs||1)*1000)}\n`;
-        case 'repeat':     return `for(int _i=0;_i<${p.times||3};_i++) {\n`;
-        case 'repeat_end': return `} // end repeat\n`;
-        case 'if_then':    return `if(${p.cond||'dist'} ${p.op||'<'} ${p.val||20}) {\n`;
-        case 'if_end':     return `} // end if\n`;
-        case 'forever':    return `while(true) {\n`;
-        case 'break':      return `break;\n`;
-        case 'stop_all':   return `STP\n// program ended\nwhile(true){}\n`;
-        case 'led':        return `LED:${p.color||'off'}\n`;
-        case 'led_bright': return `LDB:${p.pct||100}\n`;
-        case 'led_rgb':    return `LDC:${p.r||255}:${p.g||0}:${p.b||0}\n`;
-        case 'buzz':       return `BZZ:${Math.round((p.secs||0.5)*1000)}\n`;
-        case 'play_note':  return `NTE:${p.note||'C4'}:${Math.round((p.secs||0.5)*1000)}\n`;
-        case 'play_melody':return `MLY:${p.melody||'happy'}\n`;
-        case 'display':    return `DSP:${p.text||'Hi!'}\n`;
-        case 'show_num':   return `DSN:${p.num||42}\n`;
-        case 'show_icon':  return `ICN:${p.icon||'HAPPY'}\n`;
-        case 'clear_disp': return `CLR\n`;
-        case 'servo':      return `SRV:${p.pin||0}:${p.angle||90}\n`;
-        case 'servo_sweep':return `SWP:${p.pin||0}:${p.from||0}:${p.to||180}\n`;
-        case 'servo_stop': return `SRS:${p.pin||0}\n`;
-        case 'pin_high':   return `PHI:${p.pin||0}\n`;
-        case 'pin_low':    return `PLO:${p.pin||0}\n`;
-        case 'pwm':        return `PWM:${p.pin||0}:${p.val||128}\n`;
-        case 'var_set':    return `int ${p.name||'x'} = ${p.val||0};\n`;
-        case 'var_inc':    return `${p.name||'x'} += ${p.val||1};\n`;
-        case 'var_dec':    return `${p.name||'x'} -= ${p.val||1};\n`;
-        case 'var_show':   return `Serial.println(${p.name||'x'});\n`;
-        case 'send_msg':   return `Serial.println("${p.msg||'hello'}");\n`;
-        case 'radio_send': return `// radio: ${p.msg||'go'}\n`;
-        case 'radio_group':return `// radio group: ${p.grp||1}\n`;
-        case 'log':        return `Serial.println("${p.msg||'hello'}");\n`;
-        case 'on_start':      return `// setup\n`;
-        case 'while_do':      return `while (${p.cond||'x'} ${p.op||'<'} ${p.val||10}) {\n`;
-        case 'while_end':     return `} // end while\n`;
-        case 'for_range':     return `for (int ${p.var||'i'} = ${p.from||0}; ${p.var||'i'} <= ${p.to||5}; ${p.var||'i'}++) {\n`;
-        case 'for_end':       return `} // end for\n`;
-        case 'else_branch':   return `} else {\n`;
-        case 'else_if':       return `} else if (${p.cond||'x'} ${p.op||'<'} ${p.val||0}) {\n`;
-        case 'math_random':   return `int ${p.var||'n'} = random(${p.min||1}, ${p.max||10});\n`;
-        case 'math_abs':      return `${p.var||'x'} = abs(${p.src||p.var||'x'});\n`;
-        case 'math_constrain':return `${p.var||'x'} = constrain(${p.var||'x'}, ${p.min||0}, ${p.max||100});\n`;
-        case 'math_expr':     return `${p.var||'x'} = ${p.expr||'x + 1'};\n`;
-        case 'read_temp': case 'read_compass': case 'read_accel':
-        case 'read_btn_a': case 'read_btn_b': case 'if_temp':
-        case 'if_compass': case 'math_map': return ``;
-        default: return '';
-      }
-    },
-    codeHeader: '// Arduino Serial Protocol\n\n',
-    setupCode: `/* ByteBuddies — Generic Arduino Robot\n   Adjust pin numbers below to match your motor driver (e.g. L298N).\n   Board: Arduino Uno  |  Baud: 9600\n   TIP: if Forward goes backward, flip the sign in driveL/driveR calls on FWD/BWD lines */\n\nconst int PIN_MA_DIR=2, PIN_MA_PWM=3;  // Left  motor  direction + PWM\nconst int PIN_MB_DIR=4, PIN_MB_PWM=5;  // Right motor  direction + PWM\n\nint spd = 200;\nunsigned long stopAt = 0;\n\nvoid driveL(int v) { digitalWrite(PIN_MA_DIR, v>=0?HIGH:LOW); analogWrite(PIN_MA_PWM, abs(v)); }\nvoid driveR(int v) { digitalWrite(PIN_MB_DIR, v>=0?HIGH:LOW); analogWrite(PIN_MB_PWM, abs(v)); }\nvoid drive(int l, int r, long ms) { driveL(l); driveR(r); stopAt = ms>0 ? millis()+ms : 0; }\nvoid halt() { analogWrite(PIN_MA_PWM,0); analogWrite(PIN_MB_PWM,0); stopAt=0; }\n\nString pCmd(String s){int i=s.indexOf(':');return i>=0?s.substring(0,i):s;}\nlong pVal(String s,int n){int p=0;for(int k=0;k<n;k++){p=s.indexOf(':',p)+1;if(!p)return 0;}int e=s.indexOf(':',p);return e>=0?s.substring(p,e).toInt():s.substring(p).toInt();}\n\nvoid setup() {\n  Serial.begin(9600);\n  pinMode(PIN_MA_DIR,OUTPUT);pinMode(PIN_MA_PWM,OUTPUT);\n  pinMode(PIN_MB_DIR,OUTPUT);pinMode(PIN_MB_PWM,OUTPUT);\n  halt();\n}\nvoid loop() {\n  if (stopAt>0 && millis()>=stopAt) halt();\n  if (!Serial.available()) return;\n  String s=Serial.readStringUntil('\\n');s.trim();\n  if (!s.length()) return;\n  String c=pCmd(s);long v=pVal(s,1);\n  if      (c=="STP"||c=="CST"||c=="END") halt();\n  else if (c=="FWD") drive( spd,  spd,  v*50);\n  else if (c=="BWD") drive(-spd, -spd,  v*50);\n  else if (c=="LFT") drive( spd/2, spd, v*8);\n  else if (c=="RGT") drive( spd, spd/2, v*8);\n  else if (c=="SPL") drive(-spd,  spd,  v*5);\n  else if (c=="SPR") drive( spd, -spd,  v*5);\n  else if (c=="SPD") spd=map(v,0,100,0,255);\n  else if (c=="ML")  driveL(map(v,-100,100,-255,255));\n  else if (c=="MR")  driveR(map(v,-100,100,-255,255));\n  else if (c=="MV")  { long l=pVal(s,1),r=pVal(s,2); drive(map(l,-100,100,-255,255),map(r,-100,100,-255,255),0); }\n}`,
-  },
-  quarky: {
-    name: 'Quarky',
-    icon: '🤖',
-    baud: 115200,
-    buildCmd: (cmd, params) => {
-      // ESP32 MicroPython commands for Quarky
-      const p = params || {};
-      const ms  = (steps) => Math.round((steps||20)*10);
-      const tms = (deg)   => Math.round((deg||90)*5);
-      const colMap = { red:'255,0,0', green:'0,255,0', blue:'0,0,255', yellow:'255,255,0',
-                       cyan:'0,255,255', magenta:'255,0,255', white:'255,255,255', off:'0,0,0' };
-      const iconCol = { HAPPY:'0,255,0', SAD:'255,0,0', HEART:'255,0,100', ANGRY:'255,80,0',
-                        YES:'0,255,0', NO:'255,0,0', ARROW_N:'0,0,255' };
-      switch (cmd) {
-        case 'forward':    return `fw(${ms(p.amount)})\r\n`;
-        case 'back':       return `bk(${ms(p.amount)})\r\n`;
-        case 'left':       return `lt(${tms(p.degrees)})\r\n`;
-        case 'right':      return `rt(${tms(p.degrees)})\r\n`;
-        case 'spin_left':  return `lt(${tms(p.degrees)})\r\n`;
-        case 'spin_right': return `rt(${tms(p.degrees)})\r\n`;
-        case 'move_left':  return `lt(${ms(p.amount)})\r\n`;
-        case 'move_right': return `rt(${ms(p.amount)})\r\n`;
-        case 'stop':       return `sp()\r\n`;
-        case 'coast':      return `sp()\r\n`;
-        case 'speed':      return `# speed ${p.pct||75}%\r\n`;
-        case 'motor_l':    return `_LA.duty(${Math.round((p.power||50)*10.23)});_LB.duty(0)\r\n`;
-        case 'motor_r':    return `_RA.duty(${Math.round((p.power||50)*10.23)});_RB.duty(0)\r\n`;
-        case 'motors':     return `_LA.duty(${Math.round((p.left||50)*10.23)});_LB.duty(0);_RA.duty(${Math.round((p.right||50)*10.23)});_RB.duty(0)\r\n`;
-        case 'if_dist':    return `if ls()[0]==1 or ls()[1]==1:\r\n    `;
-        case 'if_line':    return `if ls()[0]==1:\r\n    `;
-        case 'if_btn_a':   return `if not Pin(0,Pin.IN,Pin.PULL_UP).value():\r\n    `;
-        case 'if_btn_b':   return `if not Pin(35,Pin.IN,Pin.PULL_UP).value():\r\n    `;
-        case 'if_touch':   return `if Pin(${p.pin||4},Pin.IN).value():\r\n    `;
-        case 'if_shake':   return `if True:  # shake gesture not available on Quarky\r\n    `;
-        case 'if_tilt':    return `if True:  # tilt gesture not available on Quarky\r\n    `;
-        case 'if_light':   return `if True:  # light sensor not available on Quarky\r\n    `;
-        case 'wait_dist':  return `while ls()[0]==0 and ls()[1]==0: time.sleep_ms(50)\r\n`;
-        case 'wait_line':  return `while ls()[0]==0: time.sleep_ms(50)\r\n`;
-        case 'read_dist':  return `${p.var||'dist'} = 0  # no sonar on Quarky\r\n`;
-        case 'read_light': return `${p.var||'light'} = 0  # no light sensor\r\n`;
-        case 'follow_line':return `fw(${Math.round((p.secs||3)*1000)})\r\n`;
-        case 'avoid_wall': return `sp()\r\n`;
-        case 'wait':       return `time.sleep_ms(${Math.round((p.secs||1)*1000)})\r\n`;
-        case 'repeat':     return `for _i in range(${p.times||3}):\r\n`;
-        case 'repeat_end': return `pass\r\n`;
-        case 'if_then':    { const op=(p.op||'<')==='='?'==':(p.op||'<'); return `if ${p.cond||'x'} ${op} ${p.val||20}:\r\n`; }
-        case 'if_end':     return `pass\r\n`;
-        case 'forever':    return `while True:\r\n`;
-        case 'break':      return `break\r\n`;
-        case 'stop_all':   return `sp()\r\n`;
-        case 'led':        return `hl(${colMap[p.color||'red']||'255,0,0'})\r\n`;
-        case 'led_bright': return `# brightness ${p.pct||100}%\r\n`;
-        case 'led_rgb':    return `hl(${p.r||255},${p.g||0},${p.b||0})\r\n`;
-        case 'buzz':       return `# buzzer: ${p.secs||0.5}s (not available on Quarky)\r\n`;
-        case 'play_note':  return `# note (not available on Quarky)\r\n`;
-        case 'play_melody':return `# melody (not available on Quarky)\r\n`;
-        case 'display':    return `print('${(p.text||'Hi!').replace(/'/g,"\\'")}' )\r\n`;
-        case 'show_num':   return `print(${p.num||42})\r\n`;
-        case 'show_icon':  return `hl(${iconCol[p.icon||'HAPPY']||'0,255,0'})\r\n`;
-        case 'clear_disp': return `hl(0,0,0)\r\n`;
-        case 'servo':      return `_s${p.pin||1}=PWM(Pin(${p.pin===2?17:16}),freq=50,duty=int(40+${p.angle||90}/180*102));time.sleep_ms(300);_s${p.pin||1}.deinit()\r\n`;
-        case 'servo_sweep':return `_s${p.pin||1}=PWM(Pin(${p.pin===2?17:16}),freq=50,duty=int(40+${p.to||180}/180*102));time.sleep_ms(300);_s${p.pin||1}.deinit()\r\n`;
-        case 'servo_stop': return `Pin(${p.pin===2?17:16},Pin.OUT).value(0)\r\n`;
-        case 'pin_high':   return `Pin(${p.pin||0},Pin.OUT).value(1)\r\n`;
-        case 'pin_low':    return `Pin(${p.pin||0},Pin.OUT).value(0)\r\n`;
-        case 'pwm':        return `PWM(Pin(${p.pin||0}),freq=1000,duty=${p.val||128})\r\n`;
-        case 'var_set':    return `${p.name||'x'} = ${p.val||0}\r\n`;
-        case 'var_inc':    return `${p.name||'x'} += ${p.val||1}\r\n`;
-        case 'var_dec':    return `${p.name||'x'} -= ${p.val||1}\r\n`;
-        case 'var_show':   return `print(${p.name||'x'})\r\n`;
-        case 'send_msg':   return `print('${(p.msg||'hello').replace(/'/g,"\\'")}' )\r\n`;
-        case 'radio_send': return `print('radio:${(p.msg||'go').replace(/'/g,"\\'")}' )\r\n`;
-        case 'radio_group':return `# radio group ${p.grp||1} (WiFi/BLE not set up here)\r\n`;
-        case 'radio_recv': return `${p.var||'msg'} = None  # radio not available\r\n`;
-        case 'log':        return `print('${(p.msg||'hello').replace(/'/g,"\\'")}' )\r\n`;
-        case 'neo_init':   return `_NP2=neopixel.NeoPixel(Pin(${p.pin||0}),${p.n||8})\r\n`;
-        case 'neo_color':  { const c=colMap[p.color||'red']||'255,0,0'; return `_NP[${p.idx||0}]=(${c});_NP.write()\r\n`; }
-        case 'neo_rgb':    return `_NP[${p.idx||0}]=(${p.r||255},${p.g||0},${p.b||0});_NP.write()\r\n`;
-        case 'neo_all':    return `hl(${p.r||0},${p.g||0},${p.b||0})\r\n`;
-        case 'neo_show':   return `_NP.write()\r\n`;
-        case 'neo_clear':  return `hl(0,0,0)\r\n`;
-        case 'neo_bright': return `# brightness ${p.pct||50}%\r\n`;
-        case 'headlight':  return `hl(${p.r||255},${p.g||255},${p.b||255})\r\n`;
-        case 'headlight_l':return `_NP[0]=(${p.r||255},${p.g||0},${p.b||0});_NP.write()\r\n`;
-        case 'headlight_r':return `_NP[34]=(${p.r||0},${p.g||0},${p.b||255});_NP.write()\r\n`;
-        case 'disp_pixel': return `_NP[${p.x||0}+${p.y||0}*7]=(255,255,255);_NP.write()\r\n`;
-        case 'disp_image': return `hl(${iconCol[p.icon||'HAPPY']||'0,255,0'})\r\n`;
-        case 'disp_scroll':return `print('${(p.text||'Hello!').replace(/'/g,"\\'")}' )\r\n`;
-        case 'disp_show':  return `print(${p.val||42})\r\n`;
-        case 'disp_clear': return `hl(0,0,0)\r\n`;
-        case 'read_line_l':return `${p.var||'lineL'},_ = ls()\r\n`;
-        case 'read_line_r':return `_,${p.var||'lineR'} = ls()\r\n`;
-        case 'read_sonar': return `${p.var||'dist'} = 0  # no sonar on Quarky\r\n`;
-        case 'on_start':   return `# --- on start ---\r\n`;
-        case 'while_do':   { const op=(p.op||'<')==='='?'==':(p.op||'<'); return `while ${p.cond||'x'} ${op} ${p.val||10}:\r\n`; }
-        case 'while_end':  return `pass\r\n`;
-        case 'for_range':  return `for ${p.var||'i'} in range(${p.from||0}, ${parseInt(p.to||5)+1}):\r\n`;
-        case 'for_end':    return `pass\r\n`;
-        case 'else_branch':return `else:\r\n`;
-        case 'else_if':    { const op=(p.op||'<')==='='?'==':(p.op||'<'); return `elif ${p.cond||'x'} ${op} ${p.val||0}:\r\n`; }
-        case 'read_temp':  return `${p.var||'temp'} = 0  # temp sensor not available\r\n`;
-        case 'read_compass':return `${p.var||'heading'} = 0  # compass not available\r\n`;
-        case 'read_accel': return `${p.var||'ax'} = 0  # accelerometer not available\r\n`;
-        case 'read_btn_a': return `${p.var||'btnA'} = not Pin(0,Pin.IN,Pin.PULL_UP).value()\r\n`;
-        case 'read_btn_b': return `${p.var||'btnB'} = not Pin(35,Pin.IN,Pin.PULL_UP).value()\r\n`;
-        case 'if_temp':    return `if True:  # temp sensor not available\r\n`;
-        case 'if_compass': return `if True:  # compass not available\r\n`;
-        case 'math_random':return `${p.var||'n'} = random.randint(${p.min||1}, ${p.max||10})\r\n`;
-        case 'math_abs':   return `${p.var||'x'} = abs(${p.src||p.var||'x'})\r\n`;
-        case 'math_map':   return `${p.var||'mapped'} = int((${p.src||'x'} - ${p.low1||0}) * (${p.hi2||1023} - ${p.low2||0}) / max(1, ${p.hi1||100} - ${p.low1||0}) + ${p.low2||0})\r\n`;
-        case 'math_constrain':return `${p.var||'x'} = max(${p.min||0}, min(${p.max||100}, ${p.var||'x'}))\r\n`;
-        case 'math_expr':  return `${p.var||'x'} = ${p.expr||'x + 1'}\r\n`;
-        default: return '';
-      }
-    },
-    codeHeader: '# Quarky (ESP32 MicroPython)\nfrom machine import Pin, PWM\nimport time, neopixel, random\n\n',
-    setupCode: `# Quarky — ByteBuddies Setup\n# Flash MicroPython to your Quarky first (see setup guide below)\n\nfrom machine import Pin, PWM\nimport time, neopixel\n\n# Motor driver pins — Left: GPIO26/27, Right: GPIO14/12\n_LA = PWM(Pin(26), freq=1000, duty=0)  # Left forward\n_LB = PWM(Pin(27), freq=1000, duty=0)  # Left backward\n_RA = PWM(Pin(14), freq=1000, duty=0)  # Right forward\n_RB = PWM(Pin(12), freq=1000, duty=0)  # Right backward\n_NP = neopixel.NeoPixel(Pin(5), 35)   # 35-LED matrix\n\ndef sp(): _LA.duty(0); _LB.duty(0); _RA.duty(0); _RB.duty(0)\ndef fw(ms): _LA.duty(800); _LB.duty(0); _RA.duty(800); _RB.duty(0); time.sleep_ms(ms); sp()\ndef bk(ms): _LA.duty(0); _LB.duty(800); _RA.duty(0); _RB.duty(800); time.sleep_ms(ms); sp()\ndef lt(ms): _LA.duty(0); _LB.duty(600); _RA.duty(800); _RB.duty(0); time.sleep_ms(ms); sp()\ndef rt(ms): _LA.duty(800); _LB.duty(0); _RA.duty(0); _RB.duty(600); time.sleep_ms(ms); sp()\ndef hl(r, g, b):\n    for i in range(35): _NP[i] = (r, g, b)\n    _NP.write()\ndef ls(): return Pin(34, Pin.IN).value(), Pin(35, Pin.IN).value()\n\nhl(0, 255, 0)\ntime.sleep_ms(300)\nhl(0, 0, 0)\nprint("Quarky ready!")\n`,
-  },
-};
-
-/* ─── micro:bit kit setup code (sent at connect via raw REPL) ─── */
-const MICROBIT_KIT_SETUPS = {
-  generic: [
-    'from microbit import *',
-    'def fw(ms): pin0.write_digital(1);pin1.write_digital(0);pin2.write_digital(1);pin3.write_digital(1);sleep(ms);pin0.write_digital(0);pin2.write_digital(0)',
-    'def bk(ms): pin0.write_digital(0);pin1.write_digital(1);pin2.write_digital(0);pin3.write_digital(1);sleep(ms);pin0.write_digital(0);pin2.write_digital(0)',
-    'def lt(ms): pin0.write_digital(0);pin1.write_digital(1);pin2.write_digital(1);pin3.write_digital(0);sleep(ms);pin0.write_digital(0);pin2.write_digital(0)',
-    'def rt(ms): pin0.write_digital(1);pin1.write_digital(0);pin2.write_digital(0);pin3.write_digital(1);sleep(ms);pin0.write_digital(0);pin2.write_digital(0)',
-    'def sp(): pin0.write_digital(0);pin2.write_digital(0)',
-    'display.show(Image.HAPPY)',
-  ],
-  bitbot: [
-    'from microbit import *',
-    'def fw(ms): pin0.write_analog(700);pin8.write_digital(0);pin1.write_analog(700);pin12.write_digital(0);sleep(ms);pin0.write_digital(0);pin1.write_digital(0)',
-    'def bk(ms): pin0.write_analog(700);pin8.write_digital(1);pin1.write_analog(700);pin12.write_digital(1);sleep(ms);pin0.write_digital(0);pin1.write_digital(0)',
-    'def lt(ms): pin0.write_analog(0);pin8.write_digital(0);pin1.write_analog(700);pin12.write_digital(0);sleep(ms);pin0.write_digital(0);pin1.write_digital(0)',
-    'def rt(ms): pin0.write_analog(700);pin8.write_digital(0);pin1.write_analog(0);pin12.write_digital(0);sleep(ms);pin0.write_digital(0);pin1.write_digital(0)',
-    'def sp(): pin0.write_digital(0);pin1.write_digital(0)',
-    'display.show(Image.HAPPY)',
-  ],
-  maqueen: [
-    'from microbit import *',
-    // Maqueen I2C addr 0x10: [REG, DIR, SPD]  REG: 0=M1-left, 2=M2-right  DIR: 0=fwd 1=bck
-    'def _m(r,d,s): i2c.write(0x10,bytes([r,d,s]))',
-    'def sp(): _m(0,0,0);_m(2,0,0)',
-    'def fw(ms): _m(0,0,200);_m(2,0,200);sleep(ms);sp()',
-    'def bk(ms): _m(0,1,200);_m(2,1,200);sleep(ms);sp()',
-    'def lt(ms): _m(0,1,150);_m(2,0,200);sleep(ms);sp()',
-    'def rt(ms): _m(0,0,200);_m(2,1,150);sleep(ms);sp()',
-    // Line sensors: i2c.write(0x10,bytes([0x1D])); d=i2c.read(0x10,1); left=(d[0]>>1)&1; right=d[0]&1
-    'def ls(): i2c.write(0x10,bytes([0x1D]));d=i2c.read(0x10,1);return (d[0]>>1)&1,d[0]&1',
-    'display.show(Image.HAPPY)',
-  ],
-  move: [
-    'from microbit import *',
-    'i2c.write(0x62,bytes([0x00,0x00]))',
-    'i2c.write(0x62,bytes([0x01,0x0D]))',
-    'i2c.write(0x62,bytes([0x08,0xAA]))',
-    'def _pw(a,b,c,d): i2c.write(0x62,bytes([0xA2,a,b,c,d]))',
-    'def sp(): _pw(0,0,0,0)',
-    'def fw(ms): _pw(150,0,150,0);sleep(ms);sp()',
-    'def bk(ms): _pw(0,150,0,150);sleep(ms);sp()',
-    'def lt(ms): _pw(0,120,150,0);sleep(ms);sp()',
-    'def rt(ms): _pw(150,0,0,120);sleep(ms);sp()',
-    'display.show(Image.HAPPY)',
-  ],
-  cutebot: [
-    'from microbit import *',
-    // micro:bit v2 defaults to 400kHz I2C; Cutebot STM8 needs 100kHz
-    'i2c.init(freq=100000,sda=pin20,scl=pin19)',
-    // Reuse a single bytearray to avoid heap churn in forever loops
-    '_B=bytearray(4)',
-    'def _cb4(r,a,b,c):\n try:\n  _B[0]=r;_B[1]=a;_B[2]=b;_B[3]=c\n  i2c.write(0x10,_B)\n except: pass',
-    'def sp():\n _cb4(0x01,2,0,0)\n sleep(50)\n _cb4(0x02,2,0,0)',
-    'def fw(ms):\n _cb4(0x01,2,80,0)\n sleep(50)\n _cb4(0x02,2,80,0)\n sleep(ms)\n sp()',
-    'def bk(ms):\n _cb4(0x01,1,80,0)\n sleep(50)\n _cb4(0x02,1,80,0)\n sleep(ms)\n sp()',
-    'def lt(ms):\n _cb4(0x01,1,60,0)\n sleep(50)\n _cb4(0x02,2,60,0)\n sleep(ms)\n sp()',
-    'def rt(ms):\n _cb4(0x01,2,60,0)\n sleep(50)\n _cb4(0x02,1,60,0)\n sleep(ms)\n sp()',
-    // Headlights: reg 0x04=left, 0x08=right (NOT 0x05), format [reg, R, G, B]
-    'def hl(r,g,b):\n _cb4(0x04,r,g,b)\n sleep(10)\n _cb4(0x08,r,g,b)',
-    'def hl_l(r,g,b): _cb4(0x04,r,g,b)',
-    'def hl_r(r,g,b): _cb4(0x08,r,g,b)',
-    // Sonar: P1=trig, P2=echo (same as MakeCode pxt-cutebot)
-    'def sonar():\n pin1.write_digital(0);pin1.write_digital(1);pin1.write_digital(0)\n t=running_time()\n while pin2.read_digital()==0:\n  if running_time()-t>50:return 400\n t=running_time()\n while pin2.read_digital()==1:\n  if running_time()-t>50:return 400\n return (running_time()-t)*17',
-    // Line sensors: P14=left, P13=right (1=on line, 0=no line)
-    'def ls(): return pin14.read_digital(),pin13.read_digital()',
-    'hl(0,0,0)',
-    'display.show(Image.HAPPY)',
-  ],
-  cutebotpro: [
-    'from microbit import *',
-    // Cutebot Pro I2C addr 0x10: 5-byte packet [0x01, leftDir, leftSpd, rightDir, rightSpd]
-    // DIR: 0x01=forward, 0x02=backward for BOTH motors (symmetric convention)
-    'def _cbp(ld,ls,rd,rs): i2c.write(0x10,bytes([0x01,ld,ls,rd,rs]))',
-    'def _cb4(r,a,b,c): i2c.write(0x10,bytes([r,a,b,c]))',
-    'def sp(): _cbp(0,0,0,0)',
-    'def fw(ms): _cbp(0x01,80,0x01,80);sleep(ms);sp()',
-    'def bk(ms): _cbp(0x02,80,0x02,80);sleep(ms);sp()',
-    'def lt(ms): _cbp(0x02,60,0x01,60);sleep(ms);sp()',
-    'def rt(ms): _cbp(0x01,60,0x02,60);sleep(ms);sp()',
-    'def hl(r,g,b): _cb4(0x04,r,g,b);_cb4(0x05,r,g,b)',
-    'def hl_l(r,g,b): _cb4(0x04,r,g,b)',
-    'def hl_r(r,g,b): _cb4(0x05,r,g,b)',
-    'hl(0,0,0)',
-    'display.show(Image.HAPPY)',
-  ],
-  maqueenplus: [
-    'from microbit import *',
-    // Maqueen Plus I2C addr 0x10 — same protocol as Maqueen for drive motors
-    'def _m(r,d,s): i2c.write(0x10,bytes([r,d,s]))',
-    'def sp(): _m(0,0,0);_m(2,0,0)',
-    'def fw(ms): _m(0,0,200);_m(2,0,200);sleep(ms);sp()',
-    'def bk(ms): _m(0,1,200);_m(2,1,200);sleep(ms);sp()',
-    'def lt(ms): _m(0,1,150);_m(2,0,200);sleep(ms);sp()',
-    'def rt(ms): _m(0,0,200);_m(2,1,150);sleep(ms);sp()',
-    'def ls(): i2c.write(0x10,bytes([0x1D]));d=i2c.read(0x10,1);return (d[0]>>1)&1,d[0]&1',
-    // Headlights via I2C register 0x0B (right RGB) and 0x0F (left RGB)
-    'def hl(r,g,b): i2c.write(0x10,bytes([0x0B,r,g,b]));i2c.write(0x10,bytes([0x0F,r,g,b]))',
-    'hl(0,0,0)',
-    'display.show(Image.HAPPY)',
-  ],
-  ringbitcar: [
-    'from microbit import *',
-    // Ring:bit Car v2 uses continuous-rotation servos on P1 (right) and P2 (left)
-    // Servo: 75=stopped, 30=one dir, 120=other dir  (period=20ms for 50Hz)
-    'pin1.set_analog_period(20);pin2.set_analog_period(20)',
-    'def sp(): pin1.write_analog(75);pin2.write_analog(75)',
-    'def fw(ms): pin1.write_analog(30);pin2.write_analog(120);sleep(ms);sp()',
-    'def bk(ms): pin1.write_analog(120);pin2.write_analog(30);sleep(ms);sp()',
-    'def lt(ms): pin1.write_analog(75);pin2.write_analog(120);sleep(ms);sp()',
-    'def rt(ms): pin1.write_analog(30);pin2.write_analog(75);sleep(ms);sp()',
-    'display.show(Image.HAPPY)',
-  ],
-};
-
-/* ─── Quarky (ESP32 MicroPython) setup lines ─── */
-const QUARKY_SETUP = [
-  'from machine import Pin, PWM',
-  'import time, neopixel',
-  // Motor driver: DRV8833/L298N style — Left motor AIN1/AIN2, Right motor BIN1/BIN2
-  // Adjust pin numbers here if your Quarky hardware differs
-  '_LA=PWM(Pin(26),freq=1000,duty=0)',   // Left forward
-  '_LB=PWM(Pin(27),freq=1000,duty=0)',   // Left backward
-  '_RA=PWM(Pin(14),freq=1000,duty=0)',   // Right forward
-  '_RB=PWM(Pin(12),freq=1000,duty=0)',   // Right backward
-  '_NP=neopixel.NeoPixel(Pin(5),35)',    // 35-LED NeoPixel matrix
-  'def sp(): _LA.duty(0);_LB.duty(0);_RA.duty(0);_RB.duty(0)',
-  'def fw(ms): _LA.duty(800);_LB.duty(0);_RA.duty(800);_RB.duty(0);time.sleep_ms(ms);sp()',
-  'def bk(ms): _LA.duty(0);_LB.duty(800);_RA.duty(0);_RB.duty(800);time.sleep_ms(ms);sp()',
-  'def lt(ms): _LA.duty(0);_LB.duty(600);_RA.duty(800);_RB.duty(0);time.sleep_ms(ms);sp()',
-  'def rt(ms): _LA.duty(800);_LB.duty(0);_RA.duty(0);_RB.duty(600);time.sleep_ms(ms);sp()',
-  'def hl(r,g,b):\n for i in range(35): _NP[i]=(r,g,b)\n _NP.write()',
-  'def ls(): return Pin(34,Pin.IN).value(),Pin(35,Pin.IN).value()',
-  'hl(0,255,0)',
-  'time.sleep_ms(300)',
-  'hl(0,0,0)',
-  'print("Quarky ready!")',
-];
 
 /* ─── Sim robot type definitions ─── */
 const SIM_ROBOTS = [
@@ -2628,242 +1944,6 @@ const VirtualRobot = forwardRef(function VirtualRobot({ simRobotType, simTrack, 
   );
 });
 
-/* ─── Generate a complete MicroPython program from block list ─── */
-function generateFullProgram(blocks, kit) {
-  const kitLines = {
-    generic: [
-      'def fw(ms): pin0.write_digital(1);pin1.write_digital(0);pin2.write_digital(1);pin3.write_digital(1);sleep(ms);pin0.write_digital(0);pin2.write_digital(0)',
-      'def bk(ms): pin0.write_digital(0);pin1.write_digital(1);pin2.write_digital(0);pin3.write_digital(1);sleep(ms);pin0.write_digital(0);pin2.write_digital(0)',
-      'def lt(ms): pin0.write_digital(0);pin1.write_digital(1);pin2.write_digital(1);pin3.write_digital(0);sleep(ms);pin0.write_digital(0);pin2.write_digital(0)',
-      'def rt(ms): pin0.write_digital(1);pin1.write_digital(0);pin2.write_digital(0);pin3.write_digital(1);sleep(ms);pin0.write_digital(0);pin2.write_digital(0)',
-      'def sp(): pin0.write_digital(0);pin2.write_digital(0)',
-    ],
-    bitbot: [
-      'def fw(ms): pin0.write_analog(700);pin8.write_digital(0);pin1.write_analog(700);pin12.write_digital(0);sleep(ms);pin0.write_digital(0);pin1.write_digital(0)',
-      'def bk(ms): pin0.write_analog(700);pin8.write_digital(1);pin1.write_analog(700);pin12.write_digital(1);sleep(ms);pin0.write_digital(0);pin1.write_digital(0)',
-      'def lt(ms): pin0.write_analog(700);pin8.write_digital(1);pin1.write_analog(700);pin12.write_digital(0);sleep(ms);pin0.write_digital(0);pin1.write_digital(0)',
-      'def rt(ms): pin0.write_analog(700);pin8.write_digital(0);pin1.write_analog(700);pin12.write_digital(1);sleep(ms);pin0.write_digital(0);pin1.write_digital(0)',
-      'def sp(): pin0.write_digital(0);pin1.write_digital(0)',
-    ],
-    maqueen: [
-      'def _m(r,d,s): i2c.write(0x10,bytes([r,d,s]))',
-      'def sp(): _m(0,0,0);_m(2,0,0)',
-      'def fw(ms): _m(0,0,200);_m(2,0,200);sleep(ms);sp()',
-      'def bk(ms): _m(0,1,200);_m(2,1,200);sleep(ms);sp()',
-      'def lt(ms): _m(0,1,150);_m(2,0,200);sleep(ms);sp()',
-      'def rt(ms): _m(0,0,200);_m(2,1,150);sleep(ms);sp()',
-      'def ls(): i2c.write(0x10,bytes([0x1D]));d=i2c.read(0x10,1);return (d[0]>>1)&1,d[0]&1',
-    ],
-    move: [
-      'i2c.write(0x62,bytes([0x00,0x00]))',
-      'i2c.write(0x62,bytes([0x01,0x0D]))',
-      'i2c.write(0x62,bytes([0x08,0xAA]))',
-      'def _pw(a,b,c,d): i2c.write(0x62,bytes([0xA2,a,b,c,d]))',
-      'def sp(): _pw(0,0,0,0)',
-      'def fw(ms): _pw(150,0,150,0);sleep(ms);sp()',
-      'def bk(ms): _pw(0,150,0,150);sleep(ms);sp()',
-      'def lt(ms): _pw(0,120,150,0);sleep(ms);sp()',
-      'def rt(ms): _pw(150,0,0,120);sleep(ms);sp()',
-    ],
-    cutebot: [
-      // micro:bit v2 defaults to 400kHz I2C; Cutebot STM8 needs 100kHz
-      'i2c.init(freq=100000,sda=pin20,scl=pin19)',
-      // Reuse a single bytearray to avoid heap churn in forever loops
-      '_B=bytearray(4)',
-      'def _cb4(r,a,b,c):\n try:\n  _B[0]=r;_B[1]=a;_B[2]=b;_B[3]=c\n  i2c.write(0x10,_B)\n except: pass',
-      'def sp():\n _cb4(0x01,2,0,0)\n sleep(50)\n _cb4(0x02,2,0,0)',
-      'def fw(ms):\n _cb4(0x01,2,80,0)\n sleep(50)\n _cb4(0x02,2,80,0)\n sleep(ms)\n sp()',
-      'def bk(ms):\n _cb4(0x01,1,80,0)\n sleep(50)\n _cb4(0x02,1,80,0)\n sleep(ms)\n sp()',
-      'def lt(ms):\n _cb4(0x01,1,60,0)\n sleep(50)\n _cb4(0x02,2,60,0)\n sleep(ms)\n sp()',
-      'def rt(ms):\n _cb4(0x01,2,60,0)\n sleep(50)\n _cb4(0x02,1,60,0)\n sleep(ms)\n sp()',
-      // Headlights: reg 0x04=left, 0x08=right (NOT 0x05), format [reg, R, G, B]
-      'def hl(r,g,b):\n _cb4(0x04,r,g,b)\n sleep(10)\n _cb4(0x08,r,g,b)',
-      'def hl_l(r,g,b): _cb4(0x04,r,g,b)',
-      'def hl_r(r,g,b): _cb4(0x08,r,g,b)',
-      'def sonar():\n pin1.write_digital(0);pin1.write_digital(1);pin1.write_digital(0)\n t=running_time()\n while pin2.read_digital()==0:\n  if running_time()-t>50:return 400\n t=running_time()\n while pin2.read_digital()==1:\n  if running_time()-t>50:return 400\n return (running_time()-t)*17',
-      'def ls(): return pin14.read_digital(),pin13.read_digital()',
-    ],
-    cutebotpro: [
-      'def _cbp(ld,ls,rd,rs): i2c.write(0x10,bytes([0x01,ld,ls,rd,rs]))',
-      'def _cb4(r,a,b,c): i2c.write(0x10,bytes([r,a,b,c]))',
-      'def sp(): _cbp(0,0,0,0)',
-      'def fw(ms): _cbp(0x01,80,0x01,80);sleep(ms);sp()',
-      'def bk(ms): _cbp(0x02,80,0x02,80);sleep(ms);sp()',
-      'def lt(ms): _cbp(0x02,60,0x01,60);sleep(ms);sp()',
-      'def rt(ms): _cbp(0x01,60,0x02,60);sleep(ms);sp()',
-      'def hl(r,g,b): _cb4(0x04,r,g,b);_cb4(0x05,r,g,b)',
-    ],
-    maqueenplus: [
-      'def _m(r,d,s): i2c.write(0x10,bytes([r,d,s]))',
-      'def sp(): _m(0,0,0);_m(2,0,0)',
-      'def fw(ms): _m(0,0,200);_m(2,0,200);sleep(ms);sp()',
-      'def bk(ms): _m(0,1,200);_m(2,1,200);sleep(ms);sp()',
-      'def lt(ms): _m(0,1,150);_m(2,0,200);sleep(ms);sp()',
-      'def rt(ms): _m(0,0,200);_m(2,1,150);sleep(ms);sp()',
-      'def ls(): i2c.write(0x10,bytes([0x1D]));d=i2c.read(0x10,1);return (d[0]>>1)&1,d[0]&1',
-      'def hl(r,g,b): i2c.write(0x10,bytes([0x0B,r,g,b]));i2c.write(0x10,bytes([0x0F,r,g,b]))',
-    ],
-    ringbitcar: [
-      'pin1.set_analog_period(20);pin2.set_analog_period(20)',
-      'def sp(): pin1.write_analog(75);pin2.write_analog(75)',
-      'def fw(ms): pin1.write_analog(30);pin2.write_analog(120);sleep(ms);sp()',
-      'def bk(ms): pin1.write_analog(120);pin2.write_analog(30);sleep(ms);sp()',
-      'def lt(ms): pin1.write_analog(75);pin2.write_analog(120);sleep(ms);sp()',
-      'def rt(ms): pin1.write_analog(30);pin2.write_analog(75);sleep(ms);sp()',
-    ],
-  };
-
-  const profile = ROBOT_PROFILES.microbit;
-  const ordered = [...blocks].sort((a, b) => a.y - b.y);
-  let indent = 0;
-  const bodyLines = [];
-  const needsRandom = blocks.some(b => b.id === 'math_random');
-  const needsRadio  = blocks.some(b => ['radio_send', 'radio_group', 'radio_recv', 'send_msg'].includes(b.id));
-  const needsNeo    = blocks.some(b => b.id.startsWith('neo_'));
-
-  // Blocks that open an indented body
-  const INDENT_OPENERS = new Set([
-    'repeat', 'forever', 'while_do', 'for_range',
-    'if_then', 'if_temp', 'if_compass',
-    'if_dist', 'if_line', 'if_btn_a', 'if_btn_b',
-    'if_touch', 'if_shake', 'if_tilt', 'if_light',
-  ]);
-
-  for (const block of ordered) {
-    // Strip trailing \r\n (and optional indent spaces) from the raw command string
-    const raw = profile.buildCmd(block.id, block.params)
-      .replace(/\r\n\s*$/, '')
-      .replace(/\n\s*$/, '');
-
-    // Visual marker — no code
-    if (block.id === 'on_start') { bodyLines.push(''); bodyLines.push('# --- on start ---'); continue; }
-
-    // End blocks: emit pass at CURRENT (inner) indent FIRST, then decrement
-    if (['repeat_end', 'if_end', 'while_end', 'for_end'].includes(block.id)) {
-      bodyLines.push(' '.repeat(indent) + 'pass');
-      indent = Math.max(0, indent - 4);
-      continue;
-    }
-
-    // Else / elif: guard previous body with pass, close it, emit else/elif, reopen
-    if (block.id === 'else_branch') {
-      bodyLines.push(' '.repeat(indent) + 'pass');
-      indent = Math.max(0, indent - 4);
-      bodyLines.push(' '.repeat(indent) + 'else:');
-      indent += 4;
-      continue;
-    }
-    if (block.id === 'else_if') {
-      const op = block.params?.op === '=' ? '==' : (block.params?.op || '<');
-      bodyLines.push(' '.repeat(indent) + 'pass');
-      indent = Math.max(0, indent - 4);
-      bodyLines.push(' '.repeat(indent) + `elif ${block.params?.cond||'x'} ${op} ${block.params?.val||0}:`);
-      indent += 4;
-      continue;
-    }
-
-    if (!raw) continue;
-    bodyLines.push(' '.repeat(indent) + raw);
-
-    if (INDENT_OPENERS.has(block.id)) indent += 4;
-  }
-
-  const setup = kitLines[kit] || kitLines.generic;
-  return [
-    'from microbit import *',
-    'display.show(Image.YES)',
-    'sleep(400)',
-    ...(needsRandom ? ['import random'] : []),
-    ...(needsRadio  ? ['import radio', 'radio.on()'] : []),
-    ...(needsNeo    ? ['from neopixel import NeoPixel'] : []),
-    '',
-    '# Robot helpers',
-    ...setup,
-    '',
-    'display.show(Image.HAPPY)',
-    'sleep(500)',
-    '',
-    '# Your program',
-    ...bodyLines,
-  ].join('\n') + '\n';
-}
-
-/* ─── Quarky full-program generator (ESP32 MicroPython) ─── */
-function generateQuarkyProgram(blocks) {
-  const profile = ROBOT_PROFILES.quarky;
-  const ordered = [...blocks].sort((a, b) => a.y - b.y);
-  let indent = 0;
-  const bodyLines = [];
-  const needsRandom = blocks.some(b => b.id === 'math_random');
-
-  const INDENT_OPENERS = new Set([
-    'repeat', 'forever', 'while_do', 'for_range',
-    'if_then', 'if_temp', 'if_compass',
-    'if_dist', 'if_line', 'if_btn_a', 'if_btn_b',
-    'if_touch', 'if_shake', 'if_tilt', 'if_light',
-  ]);
-
-  for (const block of ordered) {
-    const raw = profile.buildCmd(block.id, block.params)
-      .replace(/\r\n\s*$/, '').replace(/\n\s*$/, '');
-
-    if (block.id === 'on_start') { bodyLines.push(''); bodyLines.push('# --- on start ---'); continue; }
-
-    if (['repeat_end','if_end','while_end','for_end'].includes(block.id)) {
-      bodyLines.push(' '.repeat(indent) + 'pass');
-      indent = Math.max(0, indent - 4);
-      continue;
-    }
-    if (block.id === 'else_branch') {
-      bodyLines.push(' '.repeat(indent) + 'pass');
-      indent = Math.max(0, indent - 4);
-      bodyLines.push(' '.repeat(indent) + 'else:');
-      indent += 4;
-      continue;
-    }
-    if (block.id === 'else_if') {
-      const op = block.params?.op === '=' ? '==' : (block.params?.op || '<');
-      bodyLines.push(' '.repeat(indent) + 'pass');
-      indent = Math.max(0, indent - 4);
-      bodyLines.push(' '.repeat(indent) + `elif ${block.params?.cond||'x'} ${op} ${block.params?.val||0}:`);
-      indent += 4;
-      continue;
-    }
-    if (!raw) continue;
-    bodyLines.push(' '.repeat(indent) + raw);
-    if (INDENT_OPENERS.has(block.id)) indent += 4;
-  }
-
-  return [
-    '# Quarky — ESP32 MicroPython (generated by ByteBuddies)',
-    'from machine import Pin, PWM',
-    'import time, neopixel',
-    ...(needsRandom ? ['import random'] : []),
-    '',
-    '# Motor driver (DRV8833) — left: GPIO26/27, right: GPIO14/12',
-    '_LA=PWM(Pin(26),freq=1000,duty=0)',
-    '_LB=PWM(Pin(27),freq=1000,duty=0)',
-    '_RA=PWM(Pin(14),freq=1000,duty=0)',
-    '_RB=PWM(Pin(12),freq=1000,duty=0)',
-    '_NP=neopixel.NeoPixel(Pin(5),35)',
-    '',
-    'def sp(): _LA.duty(0);_LB.duty(0);_RA.duty(0);_RB.duty(0)',
-    'def fw(ms): _LA.duty(800);_LB.duty(0);_RA.duty(800);_RB.duty(0);time.sleep_ms(ms);sp()',
-    'def bk(ms): _LA.duty(0);_LB.duty(800);_RA.duty(0);_RB.duty(800);time.sleep_ms(ms);sp()',
-    'def lt(ms): _LA.duty(0);_LB.duty(600);_RA.duty(800);_RB.duty(0);time.sleep_ms(ms);sp()',
-    'def rt(ms): _LA.duty(800);_LB.duty(0);_RA.duty(0);_RB.duty(600);time.sleep_ms(ms);sp()',
-    'def hl(r,g,b):\n    for i in range(35): _NP[i]=(r,g,b)\n    _NP.write()',
-    'def ls(): return Pin(34,Pin.IN).value(),Pin(35,Pin.IN).value()',
-    '',
-    '# Startup: flash green',
-    'hl(0,255,0)',
-    'time.sleep_ms(300)',
-    'hl(0,0,0)',
-    '',
-    '# Your program',
-    ...bodyLines,
-  ].join('\n') + '\n';
-}
 
 /* ─── Main RobotPanel component ─── */
 export default function RobotPanel({ onNavigate }) {
@@ -2903,6 +1983,9 @@ export default function RobotPanel({ onNavigate }) {
   const simFsRef = useRef(null);
   const writerRef = useRef(null);
   const readerRef = useRef(null);
+  const serialProtoRef = useRef(0);     // 2 = mBot/Arduino sketch that replies OK / V:value
+  const pendingReplyRef = useRef(null); // waiting for that reply
+  const runtimeRef = useRef(null);      // ByteBuddies Runtime on the micro:bit: { kit, board }
   const terminalRef = useRef(null);
   const connectedRef = useRef(false);
   const firmwareOkRef = useRef(null); // mirrors firmwareOk state for use inside async closures
@@ -2931,18 +2014,15 @@ export default function RobotPanel({ onNavigate }) {
     if (u.includes('6e400001-b5a3')) return BLE_NUS_VARIANTS[0];
     return null;
   };
-  const pickNusCharacteristics = (allChars, variant) => {
+  // micro:bit swaps the Nordic UART roles — choose characteristics by what they can do
+  const pickNusCharacteristics = (allChars) => {
     const norm = (u) => String(u || '').toLowerCase().replace(/-/g, '');
-    const writeUuid = norm(variant.write);
-    const notifyUuid = norm(variant.notify);
-    const writeChar =
-      allChars.find((c) => norm(c.uuid) === writeUuid) ||
-      allChars.find((c) => norm(c.uuid).includes('6e400002')) ||
-      allChars.find((c) => c.properties.writeWithoutResponse || c.properties.write);
-    const notifyChar =
-      allChars.find((c) => norm(c.uuid) === notifyUuid) ||
-      allChars.find((c) => norm(c.uuid).includes('6e400003')) ||
-      allChars.find((c) => c.properties.notify || c.properties.indicate);
+    const nus = allChars.filter((c) => /6e40000[23]/.test(norm(c.uuid)));
+    const pool = nus.length ? nus : allChars;
+    const canWrite = (c) => c.properties.write || c.properties.writeWithoutResponse;
+    const canNotify = (c) => c.properties.notify || c.properties.indicate;
+    const writeChar = pool.find((c) => canWrite(c) && !canNotify(c)) || pool.find(canWrite);
+    const notifyChar = pool.find((c) => canNotify(c) && c !== writeChar) || pool.find(canNotify);
     return { writeChar, notifyChar };
   };
   const btDeviceRef     = useRef(null);
@@ -2954,6 +2034,15 @@ export default function RobotPanel({ onNavigate }) {
   const bleBufferRef    = useRef('');
 
   const profile = ROBOT_PROFILES[robotType];
+  // The exact sketch users download, so the preview can never drift from it
+  const [sketchSource, setSketchSource] = useState('');
+  useEffect(() => {
+    const url = profile?.sketchUrl;
+    if (!url) { setSketchSource(profile?.setupCode || ''); return undefined; }
+    let alive = true;
+    fetch(url).then((r) => r.text()).then((t) => { if (alive) setSketchSource(t); }).catch(() => {});
+    return () => { alive = false; };
+  }, [robotType]);
 
 
   useEffect(() => {
@@ -2974,6 +2063,47 @@ export default function RobotPanel({ onNavigate }) {
 
   /* ─── Web Serial connect ─── */
   // Process incoming BLE data — same buffer logic as the USB readLoop
+  /** Device-specific steps for copying a .hex onto the micro:bit by hand. */
+  const showCopySteps = (file) => {
+    const ua = navigator.userAgent;
+    const ios = /iPad|iPhone|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+    if (ios || /Android/.test(ua)) {
+      addTerminal(`📱 ${ios ? 'iPad / iPhone' : 'Android'}: install the free “micro:bit” app, then open ${file} from Downloads → Share → micro:bit → Flash.`, 'info');
+      addTerminal('   The app sends it over Bluetooth — follow its pairing steps (hold A+B, press reset).', 'info');
+    } else if (/Windows/.test(ua)) {
+      addTerminal(`💻 Windows: open File Explorer, then drag ${file} from Downloads onto the MICROBIT drive.`, 'info');
+    } else if (/CrOS/.test(ua)) {
+      addTerminal(`💻 Chromebook: open the Files app, then drag ${file} from Downloads onto MICROBIT.`, 'info');
+    } else {
+      addTerminal(`💻 Mac / Linux: drag ${file} from Downloads onto the MICROBIT drive (Finder → Locations on a Mac).`, 'info');
+    }
+    addTerminal('   The yellow light flashes while it copies. When it stops, the micro:bit restarts by itself.', 'info');
+  };
+
+  const attachRuntime = async (hello) => {
+    const [, , , board = 'v2', saved = '0'] = hello.split(':');
+    runtimeRef.current = { board, saved: Number(saved) || 0 };
+    setFirmwareOk(true);
+    firmwareOkRef.current = true;
+    const want = RUNTIME_KIT[microbitKit];
+    if (want === null) addTerminal('⚠️ This robot kit isn’t in the runtime yet — it will use Generic motor pins. Pick Cutebot, Maqueen, Bit:Bot, Move or Ring:bit, or use MicroPython.', 'warn');
+    await serialAsk(`KIT ${want || 'generic'}\n`, 2500);
+    addTerminal(`✅ ByteBuddies Runtime found (micro:bit ${board.toUpperCase()}). Press ▶ Run — your program is sent and saved on the micro:bit.`, 'success');
+    if (board === 'v1') addTerminal('ℹ️ micro:bit V1 runs the runtime over USB only (no room for Bluetooth). Melodies, follow-line and avoid-walls are V2 only.', 'info');
+  };
+
+  /** Replies from mBot/Arduino sketches and the ByteBuddies Runtime. Returns true if handled. */
+  const routeLine = (clean) => {
+    if (/^(OK|V:|BB:|ERR)/.test(clean)) {
+      const pending = pendingReplyRef.current;
+      if (pending) { pendingReplyRef.current = null; pending.resolve(clean); }
+      return true;
+    }
+    if (clean === 'DONE') { if (runtimeRef.current) addTerminal('🏁 Program finished on the micro:bit', 'success'); return true; }
+    if (clean.startsWith('LOG:')) { addTerminal(`🤖 micro:bit says: ${clean.slice(4)}`, 'recv'); return true; }
+    return false;
+  };
+
   const handleBleData = useCallback((event) => {
     const chunk = new TextDecoder().decode(event.target.value);
     bleBufferRef.current += chunk;
@@ -3004,6 +2134,7 @@ export default function RobotPanel({ onNavigate }) {
     buffer = lines.pop();
     lines.forEach(line => {
       const clean = line.replace(/[\x00-\x09\x0b-\x1f\x7f-\x9f]/g, '').trim();
+      if (routeLine(clean)) return;
       if (clean && !clean.includes('\x04')) addTerminal(`← ${clean}`, 'recv');
     });
     bleBufferRef.current = buffer;
@@ -3063,11 +2194,18 @@ export default function RobotPanel({ onNavigate }) {
           const chunk = ev.detail || '';
           if (chunk) handleBleData({ target: { value: new TextEncoder().encode(chunk) } });
         });
-        addTerminal('✅ Connected — MakeCode Bluetooth (Cutebot)', 'success');
-        addTerminal('💡 Press ▶ Run — move/LED blocks work wirelessly. Loops/variables: use 🔌 USB + MicroPython.', 'info');
-        try {
-          await conn.uartService.sendText('ping\n');
-        } catch (_) { /* optional */ }
+        connectionTypeRef.current = 'bluetooth';
+        runtimeRef.current = null;
+        const hello = await serialAsk('HELLO\n', 2500);
+        if (hello && hello.startsWith('BB:RT')) {
+          await attachRuntime(hello);
+        } else {
+          addTerminal('✅ Connected — MakeCode Bluetooth (Cutebot bridge)', 'success');
+          addTerminal('💡 For loops, sensors and saving programs over Bluetooth: ⚡ Flash → ⭐ ByteBuddies Runtime (once).', 'info');
+          try {
+            await conn.uartService.sendText('ping\n');
+          } catch (_) { /* optional */ }
+        }
       } else {
         conn.onNotify?.(handleBleData);
         addTerminal('✅ Connected — MicroPython Bluetooth bridge', 'success');
@@ -3078,7 +2216,7 @@ export default function RobotPanel({ onNavigate }) {
           addTerminal('⚠️ No ping — flash via python.microbit.org (bytebuddies_cutebot_bluetooth.py)', 'warn');
         } else {
           addTerminal('✅ Link OK', 'success');
-          const lines = MICROBIT_KIT_SETUPS[microbitKit] || MICROBIT_KIT_SETUPS.generic;
+          const lines = [...(MICROBIT_KIT_SETUPS[microbitKit] || MICROBIT_KIT_SETUPS.generic), ...MICROBIT_FALLBACKS];
           let setupOk = 0;
           for (const line of lines) {
             bleBufferRef.current = '';
@@ -3138,9 +2276,7 @@ export default function RobotPanel({ onNavigate }) {
     }
     setConnecting(true);
     try {
-      const port = await navigator.serial.requestPort({
-        filters: [{ usbVendorId: 0x0d28 }],
-      }).catch(() => navigator.serial.requestPort());
+      const port = await requestRobotSerialPort(robotType);
       // If port is already open (leftover from a previous session), close it first
       if (port.readable) {
         try {
@@ -3150,7 +2286,17 @@ export default function RobotPanel({ onNavigate }) {
         } catch (_) {}
         await new Promise(r => setTimeout(r, 200));
       }
-      await port.open({ baudRate: profile.baud });
+      await port.open({
+        baudRate: profile.baud,
+        bufferSize: 1024,
+        dataBits: 8,
+        stopBits: 1,
+        parity: 'none',
+        flowControl: 'none',
+      });
+      try {
+        await port.setSignals({ dataTerminalReady: true, requestToSend: false });
+      } catch (_) { /* some adapters do not support setSignals */ }
       portRef.current = port;
 
       // Set up writer
@@ -3201,6 +2347,7 @@ export default function RobotPanel({ onNavigate }) {
             buffer = lines.pop();
             lines.forEach(line => {
               const clean = line.replace(/[\x00-\x09\x0b-\x1f\x7f-\x9f]/g, '').trim();
+              if (routeLine(clean)) return; // replies are handled by the runner, not printed
               if (clean && !clean.includes('\x04')) addTerminal(`← ${clean}`, 'recv');
             });
           }
@@ -3219,7 +2366,36 @@ export default function RobotPanel({ onNavigate }) {
       setConnected(true);
       setConnectionKind('usb');
 
+      if (robotType === 'arduino' || robotType === 'mbot') {
+        addTerminal(`⏳ Waiting for ${profile.name} to reboot after USB connect…`, 'info');
+        await new Promise((r) => setTimeout(r, 2200));
+        serialProtoRef.current = 0;
+        let hello = null;
+        for (let attempt = 0; attempt < 3 && !hello; attempt++) hello = await serialAsk('PNG\n', 1200);
+        if (hello && hello.startsWith('V:')) {
+          serialProtoRef.current = 2;
+          await serialAsk('STP\n', 1500);
+          addTerminal(`✅ ${profile.name} connected — sensors, lights and sound ready. Press ▶ Run`, 'success');
+        } else {
+          try { await writerRef.current.write(new TextEncoder().encode('STP\n')); } catch (_) { /* ignore */ }
+          addTerminal(`⚠️ Connected, but this ${profile.name} has an older ByteBuddies sketch (or none).`, 'warn');
+          addTerminal(`⬇️ Download the ${profile.name} sketch from the Setup Guide and upload it once — then moves, sensors, lights and sound all work.`, 'info');
+        }
+      }
+
       // For micro:bit and Quarky: detect firmware then set up raw REPL if MicroPython is present
+      if (robotType === 'microbit') {
+        runtimeRef.current = null;
+        await new Promise((r) => setTimeout(r, 400));
+        let hello = null;
+        for (let attempt = 0; attempt < 2 && !hello; attempt++) hello = await serialAsk('HELLO\n', 1200);
+        if (hello && hello.startsWith('BB:RT')) {
+          await attachRuntime(hello);
+          addTerminal(`✅ Connected! (${profile.name})`, 'success');
+          return;
+        }
+      }
+
       if (robotType === 'microbit' || robotType === 'quarky') {
         const enc = new TextEncoder();
         const writeChunked = async (data) => {
@@ -3292,11 +2468,18 @@ export default function RobotPanel({ onNavigate }) {
           const kitLabel = robotType === 'quarky' ? 'Quarky' : 'kit';
           addTerminal(`✅ MicroPython detected — loading ${kitLabel}…`, 'success');
 
+          if (robotType === 'quarky') {
+            const done = new Promise((resolve) => {
+              rawReplDoneRef.current = () => { rawReplDoneRef.current = null; resolve(); };
+              setTimeout(() => { if (rawReplDoneRef.current) { rawReplDoneRef.current = null; resolve(); } }, 8000);
+            });
+            await writeChunked(QUARKY_HELPER_SCRIPT + '\x04');
+            await done;
+            addTerminal('🔬 Quarky motors and lights ready — Press ▶ Run!', 'success');
+          } else {
           // Step 3: send kit setup lines one by one via raw REPL
           // Device stays in raw REPL between executions — just send each line + \x04.
-          const lines = robotType === 'quarky'
-            ? QUARKY_SETUP
-            : (MICROBIT_KIT_SETUPS[microbitKit] || MICROBIT_KIT_SETUPS.generic);
+          const lines = [...(MICROBIT_KIT_SETUPS[microbitKit] || MICROBIT_KIT_SETUPS.generic), ...MICROBIT_FALLBACKS];
           let setupOk = 0;
           for (const line of lines) {
             const done = new Promise(resolve => {
@@ -3309,6 +2492,7 @@ export default function RobotPanel({ onNavigate }) {
           }
           addTerminal(`🔬 Kit ready (${setupOk}/${lines.length} lines sent) — Press ▶ Run!`, 'success');
           localStorage.setItem('cv_mb_kit', microbitKit);
+          }
         } catch (e) {
           addTerminal(`⚠️ Setup error: ${e.message}`, 'warn');
         }
@@ -3345,6 +2529,10 @@ export default function RobotPanel({ onNavigate }) {
     }
     connectionTypeRef.current = null;
     connectedRef.current = false;
+    serialProtoRef.current = 0;
+    runtimeRef.current = null;
+    pendingReplyRef.current?.resolve(null);
+    pendingReplyRef.current = null;
     firmwareOkRef.current = null;
     bridgeModeRef.current = false;
     setConnected(false);
@@ -3424,6 +2612,50 @@ export default function RobotPanel({ onNavigate }) {
     }
   }, [writeChunked, addTerminal]);
 
+  /* ─── mBot / Arduino: send one line and wait for the robot's reply ─── */
+  const estimateMs = (line) => {
+    const [c, a, b] = line.trim().split(':');
+    const n = Number(a) || 0;
+    switch (c) {
+      case 'FWD': case 'BWD': return n * 10;
+      case 'LFT': case 'RGT': case 'SPL': case 'SPR': return n * 5;
+      case 'DLY': case 'BZZ': return n;
+      case 'NTE': return Number(b) || 0;
+      case 'SWP': return (Math.abs((Number(b) || 0) - n) / 2) * 15 + 300;
+      case 'SRV': return 300;
+      default: return 0;
+    }
+  };
+  const serialAsk = async (line, timeoutMs) => {
+    const ble = connectionTypeRef.current === 'bluetooth';
+    if (!ble && !writerRef.current) return null;
+    const wait = new Promise((resolve) => {
+      let timer = null;
+      const done = (v) => { clearTimeout(timer); resolve(v); };
+      pendingReplyRef.current = { resolve: done };
+      timer = setTimeout(() => {
+        if (pendingReplyRef.current?.resolve === done) pendingReplyRef.current = null;
+        resolve(null);
+      }, timeoutMs ?? estimateMs(line) + 2500);
+    });
+    try {
+      if (ble && btUartServiceRef.current) await btUartServiceRef.current.sendText(line);
+      else if (ble) await writeChunked(line);
+      else {
+        await writerRef.current.ready;
+        await writerRef.current.write(new TextEncoder().encode(line));
+      }
+    } catch (e) {
+      addTerminal(`❌ Send error: ${e.message}`, 'error');
+      pendingReplyRef.current?.resolve(null);
+      return null;
+    }
+    if (!/^(Q|PNG|HELLO|L |KIT|BEGIN)/.test(line)) addTerminal(`→ ${line.trim()}`, 'send');
+    const reply = await wait;
+    if (reply === null && runningRef.current) addTerminal(`⚠️ ${profile.name} didn’t answer “${line.trim()}” — check the cable and that the latest sketch is uploaded.`, 'warn');
+    return reply;
+  };
+
   /* ─── Send raw command ─── */
   const sendRaw = async (text) => {
     if (connectionTypeRef.current === 'bluetooth' && btUartServiceRef.current) {
@@ -3448,6 +2680,16 @@ export default function RobotPanel({ onNavigate }) {
       addTerminal(`❌ Send error: ${e.message}`, 'error');
       return false;
     }
+  };
+
+  const sendLive = async (cmd, params = {}) => {
+    const text = profile.buildCmd(cmd, params);
+    if (!text) return;
+    if (robotType === 'microbit' || robotType === 'quarky') {
+      await sendMicrobitRaw(text, { quiet: true });
+      return;
+    }
+    await sendRaw(text);
   };
 
   /* ─── Run program ─── */
@@ -3553,95 +2795,205 @@ export default function RobotPanel({ onNavigate }) {
         break;
     }
   };
-  // Execute a sorted block list.
-  // Rule: when a "loop-repeat" or "loop-forever" block is encountered,
-  //       ALL blocks that follow it (by y-position) become its body.
-  //       Blocks BEFORE it run once first.
-  //       For nested loops, the same rule applies recursively within the body.
+  /* ─── Block runner ───────────────────────────────────────────────────────
+     Loops, ifs and whiles nest properly (depth-matched ends). On mBot/Arduino
+     every block waits for the robot's "OK", and sensor blocks ask the robot
+     for real readings. */
+  const OPEN_FOR_END = {
+    repeat_end: ['repeat', 'forever'], for_end: ['for_range'], while_end: ['while_do'],
+    if_end: ['if_then', 'if_dist', 'if_line', 'if_btn_a', 'if_btn_b', 'if_touch', 'if_shake', 'if_tilt', 'if_light', 'if_temp', 'if_compass'],
+  };
+  const END_FOR = {};
+  Object.entries(OPEN_FOR_END).forEach(([end, opens]) => opens.forEach((o) => { END_FOR[o] = end; }));
+  const findEnd = (blocks, i) => {
+    const end = END_FOR[blocks[i].id];
+    let depth = 0;
+    for (let j = i + 1; j < blocks.length; j++) {
+      const id = blocks[j].id;
+      if (END_FOR[id] === end) depth++;
+      else if (id === end) { if (depth === 0) return j; depth--; }
+    }
+    return -1;
+  };
+  const compare = (a, op, b) => {
+    switch (op) {
+      case '>': return a > b; case '=': case '==': return a === b; case '!=': return a !== b;
+      case '<=': return a <= b; case '>=': return a >= b; default: return a < b;
+    }
+  };
+  const serialBoard = () => (robotType === 'mbot' || robotType === 'arduino') && serialProtoRef.current === 2;
+  const query = async (cmd) => {
+    const r = await serialAsk(`${cmd}\n`, 2500);
+    if (!r || !r.startsWith('V:')) return null;
+    return r.slice(2).split(':').map(Number);
+  };
+  /** Read a sensor: real value from mBot/Arduino, otherwise a pretend value for the simulator. */
+  const readSensor = async (kind, step) => {
+    if (connectedRef.current && serialBoard()) {
+      if (kind === 'dist') return (await query('QDS'))?.[0] ?? 400;
+      if (kind === 'line') return (await query('QLN')) || [0, 0];
+      if (kind === 'light') return (await query('QLT'))?.[0] ?? 0;
+      if (kind === 'btn_a') return (await query('QBA'))?.[0] ?? 0;
+      if (kind === 'btn_b') return (await query('QBB'))?.[0] ?? 0;
+      if (kind === 'touch') return (await query(`QTP:${step?.params?.pin || 0}`))?.[0] ?? 0;
+    }
+    return { dist: 15, line: [1, 1], light: 50, btn_a: 1, btn_b: 1, touch: 1 }[kind];
+  };
+  const unsupportedNote = useRef(new Set());
+  const noteOnce = (msg) => { if (!unsupportedNote.current.has(msg)) { unsupportedNote.current.add(msg); addTerminal(msg, 'warn'); } };
+  /** Is this condition true right now? */
+  const testCondition = async (step) => {
+    const p = step.params || {};
+    const live = connectedRef.current && serialBoard();
+    switch (step.id) {
+      case 'if_then': case 'else_if': case 'while_do':
+        return compare(resolveVarValue(p.cond), p.op || '<', resolveVarValue(p.val));
+      case 'if_dist': return (await readSensor('dist')) < numOr(p.cm, 20);
+      case 'if_line': { const [l, r] = await readSensor('line'); return !!(l || r); }
+      case 'if_btn_a': return !!(await readSensor('btn_a'));
+      case 'if_btn_b': return !!(await readSensor('btn_b'));
+      case 'if_touch': return !!(await readSensor('touch', step));
+      case 'if_light': return (await readSensor('light')) < numOr(p.val, 100);
+      default:
+        if (live) { noteOnce(`ℹ️ ${profile.name} has no sensor for “${step.id.replace('if_', '')}” — that check counts as false.`); return false; }
+        return true; // simulator: show what the body does
+    }
+  };
+
   const executeBlocks = async (blocks, simOnly = false) => {
     let i = 0;
     while (i < blocks.length) {
-      if (!runningRef.current) return;
+      if (!runningRef.current) return 'stop';
       const step = blocks[i];
+      const live = connectedRef.current && !simOnly;
 
-      if (step.id === 'repeat' || step.id === 'forever') {
-        const times = step.id === 'forever' ? Infinity : (parseInt(step.params?.times) || 1);
-        // Find matching repeat_end, or use everything after as body
-        const endIdx = blocks.findIndex((b, j) => j > i && b.id === 'repeat_end');
+      if (step.id === 'break') return 'break';
+
+      if (step.id === 'repeat' || step.id === 'forever' || step.id === 'for_range' || step.id === 'while_do') {
+        const endIdx = findEnd(blocks, i);
         const body = endIdx === -1 ? blocks.slice(i + 1) : blocks.slice(i + 1, endIdx);
-        for (let t = 0; t < times; t++) {
-          if (!runningRef.current) break;
-          await executeBlocks(body);
+        setActiveBlockUid(step.uid);
+        if (step.id === 'for_range') {
+          const name = String(step.params?.var || 'i');
+          const from = Math.round(resolveVarValue(step.params?.from ?? 0));
+          const to = Math.round(resolveVarValue(step.params?.to ?? 5));
+          for (let t = from; t <= to && runningRef.current; t++) {
+            runtimeVarsRef.current[name] = t;
+            if (await executeBlocks(body, simOnly) === 'break') break;
+          }
+        } else if (step.id === 'while_do') {
+          let guard = 0;
+          while (runningRef.current && guard++ < 10000 && await testCondition(step)) {
+            if (await executeBlocks(body, simOnly) === 'break') break;
+            await new Promise((r) => setTimeout(r, 0));
+          }
+        } else {
+          const times = step.id === 'forever' ? Infinity : Math.max(0, Math.round(resolveVarValue(step.params?.times ?? 1)));
+          for (let t = 0; t < times && runningRef.current; t++) {
+            if (await executeBlocks(body, simOnly) === 'break') break;
+            await new Promise((r) => setTimeout(r, 0));
+          }
         }
-        // Skip past the end block if present
         i = endIdx === -1 ? blocks.length : endIdx + 1;
         continue;
       }
-      if (step.id === 'repeat_end') { i++; continue; } // standalone end block, skip
 
-      if (step.id === 'for_range') {
-        const endIdx = blocks.findIndex((b, j) => j > i && b.id === 'for_end');
-        const body = endIdx === -1 ? blocks.slice(i + 1) : blocks.slice(i + 1, endIdx);
-        const from = parseInt(step.params?.from) || 0;
-        const to = parseInt(step.params?.to) || 5;
-        for (let t = from; t <= to; t++) {
-          if (!runningRef.current) break;
-          await executeBlocks(body);
+      if (OPEN_FOR_END.if_end.includes(step.id)) {
+        const endIdx = findEnd(blocks, i);
+        const all = endIdx === -1 ? blocks.slice(i + 1) : blocks.slice(i + 1, endIdx);
+        // Split into branches at else_if / else that belong to THIS if (depth 0)
+        const branches = [{ cond: step, body: [] }];
+        let depth = 0;
+        for (const b of all) {
+          if (END_FOR[b.id]) depth++;
+          else if (OPEN_FOR_END[b.id]) depth--;
+          if (depth === 0 && b.id === 'else_if') { branches.push({ cond: b, body: [] }); continue; }
+          if (depth === 0 && b.id === 'else_branch') { branches.push({ cond: null, body: [] }); continue; }
+          branches[branches.length - 1].body.push(b);
+        }
+        setActiveBlockUid(step.uid);
+        for (const br of branches) {
+          if (br.cond === null || await testCondition(br.cond)) {
+            const r = await executeBlocks(br.body, simOnly);
+            if (r === 'break') return 'break';
+            break;
+          }
         }
         i = endIdx === -1 ? blocks.length : endIdx + 1;
         continue;
       }
-      if (step.id === 'for_end') { i++; continue; }
 
-      if (step.id === 'while_do') {
-        // In sim mode we run up to 50 iterations (no real variable evaluation)
-        const endIdx = blocks.findIndex((b, j) => j > i && b.id === 'while_end');
-        const body = endIdx === -1 ? blocks.slice(i + 1) : blocks.slice(i + 1, endIdx);
-        let guard = 0;
-        while (guard++ < 50 && runningRef.current) await executeBlocks(body);
-        i = endIdx === -1 ? blocks.length : endIdx + 1;
-        continue;
-      }
-      if (step.id === 'while_end') { i++; continue; }
+      if (['on_start', 'else_branch', 'else_if', 'if_end', 'repeat_end', 'for_end', 'while_end'].includes(step.id)) { i++; continue; }
 
-      // Handle if-type blocks: in simulation always run the "true" body
-      // (we can't read real sensor values, so we simulate condition = true)
-      const IF_BLOCKS = ['if_then', 'if_dist', 'if_line', 'if_btn_a', 'if_btn_b',
-                         'if_touch', 'if_shake', 'if_tilt', 'if_light', 'if_temp', 'if_compass'];
-      if (IF_BLOCKS.includes(step.id)) {
-        const endIdx = blocks.findIndex((b, j) => j > i && b.id === 'if_end');
-        const allBody = endIdx === -1 ? blocks.slice(i + 1) : blocks.slice(i + 1, endIdx);
-        // Only run up to else_branch/else_if (the "true" body)
-        const elseIdx = allBody.findIndex(b => ['else_branch', 'else_if'].includes(b.id));
-        const trueBody = elseIdx === -1 ? allBody : allBody.slice(0, elseIdx);
-        if (!connectedRef.current && trueBody.length > 0) await executeBlocks(trueBody);
-        i = endIdx === -1 ? blocks.length : endIdx + 1;
-        continue;
-      }
-
-      // Skip purely structural markers
-      if (['on_start', 'else_branch', 'else_if', 'if_end'].includes(step.id)) { i++; continue; }
-
-      // Normal block
       setActiveBlockUid(step.uid);
       applyRuntimeMathAndVars(step);
-      if (connectedRef.current && !simOnly) {
+      const p = step.params || {};
+
+      // Sensor reads and waits
+      if (['read_dist', 'read_sonar', 'read_light', 'read_line_l', 'read_line_r', 'read_btn_a', 'read_btn_b'].includes(step.id) && (simOnly || !live || serialBoard())) {
+        const name = String(p.var || 'value');
+        let v;
+        if (step.id === 'read_dist' || step.id === 'read_sonar') v = await readSensor('dist');
+        else if (step.id === 'read_light') v = await readSensor('light');
+        else if (step.id === 'read_line_l') v = (await readSensor('line'))[0];
+        else if (step.id === 'read_line_r') v = (await readSensor('line'))[1];
+        else v = await readSensor(step.id === 'read_btn_a' ? 'btn_a' : 'btn_b');
+        runtimeVarsRef.current[name] = Number(v) || 0;
+        addTerminal(`📏 ${name} = ${runtimeVarsRef.current[name]}`, 'recv');
+        if (!(live && !serialBoard())) { i++; continue; }
+      }
+      if ((step.id === 'wait_dist' || step.id === 'wait_line') && live && serialBoard()) {
+        const t0 = Date.now();
+        while (runningRef.current && Date.now() - t0 < 60000) {
+          const ok = step.id === 'wait_dist' ? (await readSensor('dist')) < numOr(p.cm, 20) : (await readSensor('line')).some(Boolean);
+          if (ok) break;
+          await new Promise((r) => setTimeout(r, 80));
+        }
+        i++; continue;
+      }
+      if ((step.id === 'follow_line' || step.id === 'avoid_wall') && live && serialBoard()) {
+        const until = Date.now() + numOr(p.secs, 3) * 1000;
+        while (runningRef.current && Date.now() < until) {
+          if (step.id === 'follow_line') {
+            const [l, r] = await readSensor('line');
+            await serialAsk(l && r ? 'MV:45:45\n' : l ? 'MV:10:45\n' : r ? 'MV:45:10\n' : 'MV:25:25\n');
+          } else if ((await readSensor('dist')) < 20) {
+            await serialAsk('BWD:20\n', 3000); await serialAsk('RGT:90\n', 3000);
+          } else await serialAsk('MV:50:50\n');
+          await new Promise((r) => setTimeout(r, 40));
+        }
+        await serialAsk('STP\n');
+        i++; continue;
+      }
+
+      // Things the mBot/Arduino can't show are shown in the terminal instead
+      const SAY = { display: p.text, show_num: p.num, show_icon: p.icon, disp_scroll: p.text, disp_show: p.val, send_msg: p.msg, log: p.msg, radio_send: p.msg };
+      if (live && (robotType === 'mbot' || robotType === 'arduino') && step.id in SAY) {
+        addTerminal(`🤖 ${profile.name} says: ${SAY[step.id]}`, 'recv');
+      }
+
+      if (live) {
         if (robotType === 'microbit' || robotType === 'quarky') {
-          // Run physical and simulation in parallel; physical uses raw REPL with completion wait
           await Promise.all([
             sendMicrobitRaw(profile.buildCmd(step.id, step.params)),
             robotRef.current ? robotRef.current.execute(step) : Promise.resolve(),
           ]);
+        } else if (serialBoard()) {
+          const lines = profile.buildCmd(step.id, step.params).split('\n').filter(Boolean);
+          const robotJob = (async () => { for (const ln of lines) { if (!runningRef.current) break; await serialAsk(`${ln}\n`); } })();
+          await Promise.all([robotJob, robotRef.current ? robotRef.current.execute(step) : Promise.resolve()]);
         } else {
+          // Older sketch without replies: send and give it time
           await sendRaw(profile.buildCmd(step.id, step.params));
           await new Promise(r => setTimeout(r, 200));
           if (robotRef.current) await robotRef.current.execute(step);
         }
-      } else {
-        if (robotRef.current) await robotRef.current.execute(step);
+      } else if (robotRef.current) {
+        await robotRef.current.execute(step);
       }
       i++;
     }
+    return 'done';
   };
 
   const saveProgram = () => {
@@ -3695,6 +3047,34 @@ export default function RobotPanel({ onNavigate }) {
       localStorage.setItem('cv_concepts', JSON.stringify(existing));
     } catch {}
 
+    // ByteBuddies Runtime: send the program (USB or Bluetooth); it is saved and runs on the micro:bit
+    if (robotType === 'microbit' && connectedRef.current && runtimeRef.current) {
+      const { lines, warnings } = compileForRuntime(program);
+      warnings.forEach((w) => addTerminal(`⚠️ ${w}`, 'warn'));
+      await serialAsk(`KIT ${RUNTIME_KIT[microbitKit] || 'generic'}\n`, 2500);
+      addTerminal(`📡 Sending your program to the micro:bit (${lines.length} steps)…`, 'info');
+      let ok = (await serialAsk('BEGIN\n', 3000)) !== null;
+      for (let k = 0; ok && k < lines.length && runningRef.current; k++) {
+        ok = (await serialAsk(`L ${lines[k]}\n`, 3000)) !== null;
+        if (k % 10 === 9) setFlashProgress(Math.round(((k + 1) / lines.length) * 100));
+      }
+      setFlashProgress(null);
+      const endReply = ok && runningRef.current ? await serialAsk('END\n', 8000) : null;
+      if (!endReply) {
+        if (runningRef.current) addTerminal('❌ The micro:bit stopped answering — move closer or reconnect, then press ▶ Run again.', 'error');
+      } else {
+        addTerminal(/SAVED/.test(endReply)
+          ? '💾 Saved on the micro:bit and running! It runs again when you press A or reset — even unplugged.'
+          : '▶ Running on the micro:bit (too long to save — it stays until the micro:bit is reset).', 'success');
+        robotRef.current?.resetState();
+        await executeBlocks(orderedSteps, true); // on-screen twin
+      }
+      runningRef.current = false;
+      setRunning(false);
+      setActiveBlockUid(null);
+      return;
+    }
+
     // If micro:bit is connected with MicroPython and the program has control-flow blocks,
     // send the full compiled program as one raw REPL exec (much more reliable than line-by-line)
     const COMPLEX_IDS = new Set(['if_then','if_dist','if_line','if_btn_a','if_btn_b',
@@ -3744,6 +3124,15 @@ export default function RobotPanel({ onNavigate }) {
 
   const stopProgram = async () => {
     runningRef.current = false;
+    pendingReplyRef.current?.resolve(null);
+    pendingReplyRef.current = null;
+    if (connectedRef.current && runtimeRef.current) {
+      setRunning(false);
+      setActiveBlockUid(null);
+      await serialAsk('STOP\n', 2000);
+      addTerminal('⏹ Stopped', 'warn');
+      return;
+    }
     setRunning(false);
     setActiveBlockUid(null);
     if (connectedRef.current) {
@@ -3902,8 +3291,7 @@ export default function RobotPanel({ onNavigate }) {
 
       if (flashResult?.method === 'download' || flashResult?.fallback === 'download') {
         addTerminal(`📥 Downloaded ${filename} — copy it to the MICROBIT drive (USB fallback).`, 'warn');
-        addTerminal('1️⃣ Eject MICROBIT in Finder  2️⃣ Drag the file onto the drive  3️⃣ Wait for ✓ on the display', 'info');
-        showDownloadInstructions();
+        showCopySteps(filename);
         setFlashProgress(null);
       } else if (flashResult?.method === 'ble' || flashResult?.method === 'webusb' || flashResult?.method === 'usb-msd') {
         addTerminal(`✅ Flash complete (${flashResult.method.toUpperCase()})`, 'success');
@@ -3945,6 +3333,23 @@ export default function RobotPanel({ onNavigate }) {
     setFlashMethod(null);
     setRightTab('terminal');
 
+    if (method === 'download-runtime') {
+      try {
+        const hexStr = await fetch('/bytebuddies-runtime.hex').then((r) => { if (!r.ok) throw new Error('Could not download the runtime'); return r.text(); });
+        const url = URL.createObjectURL(new Blob([hexStr], { type: 'application/octet-stream' }));
+        const a = document.createElement('a');
+        a.href = url; a.download = 'bytebuddies-runtime.hex';
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 4000);
+        addTerminal('📥 Downloaded bytebuddies-runtime.hex (works on micro:bit V1 and V2).', 'success');
+        showCopySteps('bytebuddies-runtime.hex');
+        addTerminal('Then: 🔌 USB or 📡 Bluetooth → ▶ Run. You never need to flash again.', 'info');
+      } catch (e) {
+        addTerminal(`❌ ${e.message}`, 'error');
+      }
+      return;
+    }
+
     let webUsbDevice = null;
     const needsUsb = method !== 'flash-prog-download' && method !== 'flash-prog-ble';
     if (needsUsb && typeof navigator !== 'undefined' && navigator.usb) {
@@ -3969,6 +3374,22 @@ export default function RobotPanel({ onNavigate }) {
         }
         addTerminal(`USB: ${e?.message || e}`, 'warn');
       }
+    }
+
+    if (method === 'flash-runtime') {
+      try {
+        addTerminal('📦 Loading the ByteBuddies Runtime…', 'info');
+        const hexStr = await fetch('/bytebuddies-runtime.hex').then((r) => { if (!r.ok) throw new Error('Could not download the runtime'); return r.text(); });
+        const res = await runCoordinatorFlash(hexStr, 'auto', 'bytebuddies-runtime.hex', webUsbDevice);
+        if (res?.fallback === 'download' || res?.method === 'download') {
+          showCopySteps('bytebuddies-runtime.hex');
+        } else if (res) {
+          addTerminal('✅ Runtime installed! The micro:bit shows B. Now 🔌 USB (or 📡 Bluetooth on V2) → ▶ Run.', 'success');
+        }
+      } catch (e) {
+        addTerminal(`❌ ${e.message}`, 'error');
+      }
+      return;
     }
 
     const needsProgram =
@@ -4641,6 +4062,7 @@ export default function RobotPanel({ onNavigate }) {
           </div>
           <ol style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 2 }}>
             {robotType === 'microbit' && <>
+              <li><strong>Easiest (any device):</strong> ⚡ Flash → <strong>⭐ ByteBuddies Runtime</strong> once. Then 🔌 USB or 📡 Bluetooth → ▶ Run — programs are saved on the micro:bit. On iPad, use “📥 Download runtime” and the free micro:bit app.</li>
               <li><strong>Flash once, code forever:</strong> ⚡ Flash → <strong>MicroPython (USB, flash once)</strong> — only needed one time per board</li>
               <li>Then: USB cable → <strong>🔌 USB</strong> → build blocks → <strong>▶ Run</strong> (sends code wirelessly over USB — no reflash)</li>
               <li><strong>Wireless:</strong> ⚡ Flash → <strong>Bluetooth bridge firmware</strong> once → wait for <strong>B</strong> → <strong>📡 Bluetooth</strong> → pick <strong>ByteBuddies</strong> → ▶ Run</li>
@@ -4649,9 +4071,8 @@ export default function RobotPanel({ onNavigate }) {
             </>}
             {robotType === 'quarky' && <>
               <li><strong>One-time setup:</strong> Flash <strong>MicroPython for ESP32</strong> to your Quarky using <a href="https://thonny.org" target="_blank" rel="noopener noreferrer" style={{color:'#6366f1'}}>Thonny IDE</a> (Tools → Options → Interpreter → ESP32 → Install MicroPython)</li>
-              <li>Plug in your Quarky via <strong>USB-C cable</strong></li>
-              <li>Click <strong>🔌 USB</strong> → select the Quarky COM/serial port → ByteBuddies loads motor helpers automatically</li>
-              <li>Build your blocks → click <strong>▶ Run</strong> — no re-flashing needed!</li>
+              <li>Plug in your Quarky via <strong>USB-C</strong>. Click <strong>🔌 USB</strong> and pick the CP210x, CH340, or ESP32 port (not the micro:bit).</li>
+              <li>ByteBuddies talks to the MicroPython REPL at 115200 baud and loads motors automatically. Then <strong>▶ Run</strong> — no re-flash each time.</li>
               <li><strong>LEDs:</strong> Use "LED RGB" or "Set All LEDs" blocks to light up the 35-pixel matrix</li>
               <li><strong>IR sensors:</strong> "If Line Found" reads the two infrared sensors (GPIO 34 &amp; 35)</li>
             </>}
@@ -4659,11 +4080,14 @@ export default function RobotPanel({ onNavigate }) {
               <li>Step 1 — <strong>Download &amp; upload the sketch</strong> to your mBot (Arduino IDE + Makeblock library)</li>
               <li>Step 2 — Connect mBot via USB cable</li>
               <li>Step 3 — Click <strong>Connect Robot</strong> → select the mBot port → click <strong>Run</strong></li>
+              <li><strong>Used ByteBuddies before?</strong> Upload the new sketch once more — it adds sensors (distance, line, light, button), lights, sound and servos, and Stop now works instantly.</li>
             </>}
             {robotType === 'arduino' && <>
-              <li>Step 1 — <strong>Download &amp; upload the sketch</strong> to your Arduino (Arduino IDE)</li>
-              <li>Step 2 — Connect Arduino via USB cable</li>
-              <li>Step 3 — Click <strong>Connect Robot</strong> → select the COM port → click <strong>Run</strong></li>
+              <li>Use <strong>Chrome or Edge</strong> (Web Serial). Upload <a href="/bytebuddies-arduino.ino" download style={{color:'#6366f1'}}>bytebuddies-arduino.ino</a> in Arduino IDE (Uno, 9600 baud).</li>
+              <li>Plug in USB. Click <strong>Connect Robot</strong> — pick Arduino, CH340, or CP210x. If the list is empty, cancel and the next picker shows every port.</li>
+              <li>Wiring is listed at the top of the sketch (motors 2/3 + 4/5, buzzer 8, ultrasonic 12/11, line sensors A0/A1, light A2, buttons 6/7) — change the numbers there if yours differ.</li>
+              <li><strong>Used ByteBuddies before?</strong> Upload the new sketch once more — it adds sensors, lights, sound and servos.</li>
+              <li>Wait 2 seconds after connect (the board resets). Then press <strong>▶ Run</strong> or use the arrow pad.</li>
             </>}
           </ol>
           {robotType === 'microbit' && (
@@ -4728,10 +4152,10 @@ export default function RobotPanel({ onNavigate }) {
               Show sketch source code →
             </summary>
             <pre style={{ marginTop: 8, padding: 10, background: ui.codeBg, borderRadius: 8, fontSize: 11, color: ui.codeText, overflowX: 'auto', maxHeight: 200 }}>
-              {profile.setupCode}
+              {sketchSource || 'Loading…'}
             </pre>
             <button style={{ ...s.btn('#6366f1'), marginTop: 6, fontSize: 12 }}
-              onClick={() => navigator.clipboard?.writeText(profile.setupCode).then(() => addTerminal('Code copied to clipboard!', 'success'))}>
+              onClick={() => navigator.clipboard?.writeText(sketchSource).then(() => addTerminal('Code copied to clipboard!', 'success'))}>
               📋 Copy Code
             </button>
           </details>
@@ -5241,6 +4665,29 @@ export default function RobotPanel({ onNavigate }) {
                     zIndex: 1000, minWidth: 300, maxHeight: 'min(360px, 50vh)', overflowY: 'auto',
                   }}>
                     <button
+                      onClick={() => handleFlashMethod('flash-runtime')}
+                      style={{
+                        display: 'block', width: '100%', padding: '12px 14px', textAlign: 'left',
+                        background: 'linear-gradient(90deg, rgba(250,204,21,0.22), rgba(34,197,94,0.12))', border: 'none', color: 'var(--text-primary)',
+                        cursor: 'pointer', fontSize: 13, borderBottom: '1px solid var(--border)', fontWeight: 700,
+                      }}
+                      title="Flash once — then send programs over USB or Bluetooth from any device. Programs are saved on the micro:bit."
+                    >
+                      ⭐ ByteBuddies Runtime — flash once (recommended)
+                      <div style={{ fontWeight: 500, fontSize: 11, opacity: 0.75, marginTop: 2 }}>Then ▶ Run sends programs over USB or Bluetooth and saves them on the micro:bit</div>
+                    </button>
+                    <button
+                      onClick={() => handleFlashMethod('download-runtime')}
+                      style={{
+                        display: 'block', width: '100%', padding: '10px 14px', textAlign: 'left',
+                        background: 'transparent', border: 'none', color: 'var(--text-primary)',
+                        cursor: 'pointer', fontSize: 13, borderBottom: '1px solid var(--border)', fontWeight: 600,
+                      }}
+                      title="For iPad, Safari, Firefox or any computer: download the runtime and copy it to the micro:bit"
+                    >
+                      📥 Download runtime — iPad, Safari, Firefox, any computer
+                    </button>
+                    <button
                       onClick={() => handleFlashMethod('flash-micropython-runtime')}
                       style={{
                         display: 'block', width: '100%', padding: '10px 14px', textAlign: 'left',
@@ -5551,17 +4998,17 @@ export default function RobotPanel({ onNavigate }) {
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr', gap: 5, maxWidth: 230, margin: '0 auto' }}>
                     {/* Row 1: empty, empty, up, empty, empty */}
                     <div /><div />
-                    <button title="Forward" style={{ ...s.btn('#22c55e'), justifyContent: 'center', padding: '7px 0' }} onClick={() => { robotRef.current?.execute({ id: 'forward', params: { amount: 40 } }); if (connected) sendRaw(profile.buildCmd('forward', { amount: 40 })); }}>⬆️</button>
+                    <button title="Forward" style={{ ...s.btn('#22c55e'), justifyContent: 'center', padding: '7px 0' }} onClick={() => { robotRef.current?.execute({ id: 'forward', params: { amount: 40 } }); if (connected) sendLive('forward', { amount: 40 }); }}>⬆️</button>
                     <div /><div />
                     {/* Row 2: turn-left, strafe-left, stop, strafe-right, turn-right */}
-                    <button title="Turn Left" style={{ ...s.btn('#3b82f6'), justifyContent: 'center', padding: '7px 0' }} onClick={() => { robotRef.current?.execute({ id: 'left', params: { degrees: 45 } }); if (connected) sendRaw(profile.buildCmd('left', { degrees: 45 })); }}>↺</button>
+                    <button title="Turn Left" style={{ ...s.btn('#3b82f6'), justifyContent: 'center', padding: '7px 0' }} onClick={() => { robotRef.current?.execute({ id: 'left', params: { degrees: 45 } }); if (connected) sendLive('left', { degrees: 45 }); }}>↺</button>
                     <button title="Move Left" style={{ ...s.btn('#06b6d4'), justifyContent: 'center', padding: '7px 0' }} onClick={() => robotRef.current?.execute({ id: 'move_left', params: { amount: 40 } })}>⬅️</button>
-                    <button title="Stop" style={{ ...s.btn('#f59e0b'), justifyContent: 'center', padding: '7px 0' }} onClick={() => { if (connected) sendRaw(profile.buildCmd('stop', {})); }}>⏹</button>
+                    <button title="Stop" style={{ ...s.btn('#f59e0b'), justifyContent: 'center', padding: '7px 0' }} onClick={() => { if (connected) sendLive('stop', {}); }}>⏹</button>
                     <button title="Move Right" style={{ ...s.btn('#06b6d4'), justifyContent: 'center', padding: '7px 0' }} onClick={() => robotRef.current?.execute({ id: 'move_right', params: { amount: 40 } })}>➡️</button>
-                    <button title="Turn Right" style={{ ...s.btn('#a855f7'), justifyContent: 'center', padding: '7px 0' }} onClick={() => { robotRef.current?.execute({ id: 'right', params: { degrees: 45 } }); if (connected) sendRaw(profile.buildCmd('right', { degrees: 45 })); }}>↻</button>
+                    <button title="Turn Right" style={{ ...s.btn('#a855f7'), justifyContent: 'center', padding: '7px 0' }} onClick={() => { robotRef.current?.execute({ id: 'right', params: { degrees: 45 } }); if (connected) sendLive('right', { degrees: 45 }); }}>↻</button>
                     {/* Row 3: empty, empty, down, empty, empty */}
                     <div /><div />
-                    <button title="Backward" style={{ ...s.btn('#ef4444'), justifyContent: 'center', padding: '7px 0' }} onClick={() => { robotRef.current?.execute({ id: 'back', params: { amount: 40 } }); if (connected) sendRaw(profile.buildCmd('back', { amount: 40 })); }}>⬇️</button>
+                    <button title="Backward" style={{ ...s.btn('#ef4444'), justifyContent: 'center', padding: '7px 0' }} onClick={() => { robotRef.current?.execute({ id: 'back', params: { amount: 40 } }); if (connected) sendLive('back', { amount: 40 }); }}>⬇️</button>
                     <div /><div />
                   </div>
                   <div style={{ textAlign: 'center', fontSize: 10, color: 'var(--text-muted)', marginTop: 5 }}>

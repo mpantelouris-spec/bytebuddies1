@@ -162,6 +162,7 @@ function buildCheckpointArches(scene, curve, accent) {
       const lx = p.x + Math.cos(yaw) * ox;
       const lz = p.z - Math.sin(yaw) * ox;
       post.position.set(lx, 1.3, lz);
+      post.name = 'MissionCpPost';
       scene.add(post);
     });
     arenaMover(scene, (time) => {
@@ -174,21 +175,24 @@ function buildCheckpointArches(scene, curve, accent) {
 
 function buildStartGantry(scene, curve, title, subtitle, accent) {
   if (scene.getObjectByName('MissionStartGantry')) return;
-  const start = curve.getPoint(0);
-  const tan = curve.getTangent(0).normalize();
+  // Stand the gate a few metres down the route, tall and wide enough for big
+  // robots: the chase camera then looks through it instead of across its beam.
+  const u = Math.min(0.2, 6 / Math.max(curve.getLength(), 1));
+  const start = curve.getPointAt(u);
+  const tan = curve.getTangentAt(u).normalize();
   const yaw = Math.atan2(tan.x, tan.z);
   const gantry = new THREE.Group();
   gantry.name = 'MissionStartGantry';
   const poleMat = new THREE.MeshStandardMaterial({ color: accent, emissive: accent, emissiveIntensity: 0.35 });
-  [-3.2, 3.2].forEach((ox) => {
+  [-4, 4].forEach((ox) => {
     const lx = start.x + Math.cos(yaw) * ox;
     const lz = start.z - Math.sin(yaw) * ox;
-    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.24, 4.2, 10), poleMat);
-    pole.position.set(lx, 2.1, lz);
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.24, 5.6, 10), poleMat);
+    pole.position.set(lx, 2.8, lz);
     gantry.add(pole);
   });
-  const beam = new THREE.Mesh(new THREE.BoxGeometry(7.2, 0.35, 0.35), poleMat);
-  beam.position.set(start.x, 4.0, start.z);
+  const beam = new THREE.Mesh(new THREE.BoxGeometry(8.8, 0.35, 0.35), poleMat);
+  beam.position.set(start.x, 5.4, start.z);
   beam.rotation.y = yaw;
   gantry.add(beam);
 
@@ -215,7 +219,7 @@ function buildStartGantry(scene, curve, title, subtitle, accent) {
     new THREE.PlaneGeometry(5.5, 1.0),
     new THREE.MeshBasicMaterial({ map: signTexture, transparent: true, depthWrite: false, side: THREE.DoubleSide }),
   );
-  sign.position.set(start.x, 4.8, start.z);
+  sign.position.set(start.x, 6.2, start.z);
   // Face the incoming robot; route tangents point away from the start camera.
   sign.rotation.y = yaw + Math.PI;
   gantry.add(sign);

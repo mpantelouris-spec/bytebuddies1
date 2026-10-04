@@ -2,7 +2,154 @@
  * Code.org-style block puzzle levels — 4 progressive puzzles per lesson.
  * Merged with learnInteractiveActivities for the activity step.
  */
-import { getCodingLabConfig } from './learnCodingConfig.js';
+import { buddyForLesson, isCodingLesson } from './learnCodingConfig.js';
+import { COURSES } from './learnKs2Courses.js';
+import { sequenceStepsForLesson } from './ks2LessonInteractives.js';
+import { funGamesFor } from './funActivities.js';
+
+/** Guaranteed on-platform tasks for any KS2 bible week (152 lessons). */
+export function buildKs2FallbackPuzzles(lesson, yr, lessonIdx) {
+  if (!lesson) return [];
+  const primary = lesson.statutory?.primary || lesson.ukCurriculum?.[0] || 'CS-1';
+  const concept = lesson.conceptName || 'computing';
+  const gridSize = 5;
+  const puzzles = [
+    {
+      type: 'codeRacerSeq',
+      title: 'CodeRacer sequence sprint',
+      description: 'Short sequence practice — order the steps before the green flag.',
+      xp: 15,
+      duration: '3 min',
+      level: 1,
+      steps: sequenceStepsForLesson(lesson),
+      instructions: `Order the steps for ${lesson.title?.slice(0, 48) || 'this week'}.`,
+      context: 'CodeRacer · KS2 sequence practice',
+    },
+    {
+      type: 'trace',
+      title: 'Micro-debug trace',
+      description: lesson.codeDebug || 'Trace line by line and find the bug.',
+      xp: 20,
+      duration: '4 min',
+      level: 2,
+      config: {
+        lines: ['FORWARD 2', 'TURN_RIGHT', 'FORWARD 2', 'TURN_LEFT'],
+        bugIdx: 3,
+        instructions: 'Which line would send the robot the wrong way?',
+      },
+    },
+  ];
+
+  if (['CS-1', 'CS-2', 'CS-3'].includes(primary)) {
+    puzzles.push({
+      type: 'grid',
+      title: 'Human robot grid',
+      description: 'Guide the robot to the star on the grid.',
+      xp: 20,
+      duration: '4 min',
+      level: 3,
+      config: {
+        size: gridSize,
+        startPos: { x: 0, y: Math.floor(gridSize / 2) },
+        goalPos: { x: gridSize - 1, y: Math.floor(gridSize / 2) },
+        instructions: 'Plan exactly five moves — then try your route!',
+      },
+    });
+    puzzles.push({
+      type: 'debug',
+      title: 'Fix the turn',
+      description: 'Find and fix the wrong command.',
+      xp: 25,
+      duration: '5 min',
+      level: 4,
+      blocks: ['FORWARD 3', 'TURN_RIGHT', 'FORWARD 2', 'TURN_RIGHT', 'FORWARD 1'],
+      bugIdx: 3,
+      fixOptions: ['TURN_LEFT', 'TURN_RIGHT', 'TURN_BACK'],
+      correctFix: 0,
+      instructions: 'Which block should change so the robot reaches the goal?',
+    });
+  } else if (primary === 'DL-1') {
+    puzzles.push({
+      type: 'matching',
+      title: 'Stay safe online',
+      description: 'Match situations to the safest response.',
+      xp: 20,
+      duration: '4 min',
+      level: 3,
+      config: {
+        pairs: [
+          { left: 'Someone asks for your password', right: 'Tell a trusted adult — never share' },
+          { left: 'Mean message in chat', right: 'Screenshot, block, tell an adult' },
+          { left: 'Pop-up prize click', right: 'Close it and ask an adult if unsure' },
+          { left: 'Friend wants your address', right: 'Keep personal details private' },
+        ],
+      },
+    });
+    puzzles.push({
+      type: 'quiz',
+      title: 'Digital citizenship check',
+      description: 'Quick safety quiz.',
+      xp: 15,
+      duration: '3 min',
+      level: 4,
+      config: {
+        questions: [
+          { question: 'Who should you tell if something online worries you?', options: ['Nobody', 'A trusted adult', 'A stranger'], correct: 1 },
+          { question: 'Is it OK to share your full name with everyone online?', options: ['Yes', 'No — keep personal data private'], correct: 1 },
+        ],
+      },
+    });
+  } else {
+    puzzles.push({
+      type: 'prediction',
+      title: 'Predict the outcome',
+      description: 'Trace the algorithm before you run it.',
+      xp: 20,
+      duration: '4 min',
+      level: 3,
+      sequence: ['R', 'R', 'D', 'D'],
+      start: { x: 0, y: 0 },
+      size: gridSize,
+      options: ['(2, 2)', '(0, 2)', '(4, 0)', '(1, 3)'],
+      answer: 0,
+      instructions: 'Where does the robot finish?',
+    });
+    puzzles.push({
+      type: 'multiSeq',
+      title: 'Break it down',
+      description: 'Match tasks with sensible step order.',
+      xp: 25,
+      duration: '5 min',
+      level: 4,
+      tasks: [{
+        name: lesson.title?.slice(0, 48) || 'Class task',
+        steps: ['Plan steps', 'Test one change', 'Fix the bug', 'Share learning'],
+      }],
+    });
+  }
+
+  if (lesson.codingLab) {
+    const coding = getCodingLabConfig(yr, lessonIdx);
+    if (coding?.editor === 'blocks') {
+      puzzles[0] = {
+        type: 'blocks',
+        title: 'Warm-up blocks',
+        description: coding.challenge,
+        xp: coding.xp || 20,
+        duration: '5 min',
+        level: 1,
+        config: {
+          mission: coding.mission,
+          starterBlocks: coding.starterBlocks,
+          solutionBlocks: coding.solutionBlocks,
+          hints: coding.hints,
+        },
+      };
+    }
+  }
+
+  return puzzles.slice(0, 4);
+}
 
 const PUZZLE_OVERRIDES = {
   'y3-0': [
@@ -181,44 +328,63 @@ const PUZZLE_OVERRIDES = {
   ],
 };
 
-/** Build 4 puzzle levels for any lesson — prioritize Y3_ACTIVITIES, then overrides, then coding config */
+export function withCodingActivity(puzzles, yr, lessonIdx) {
+  const list = Array.isArray(puzzles) ? puzzles.filter(Boolean) : [];
+  // Coding weeks get one full Coding Lab under the puzzles, so a second
+  // mini blocks lab here would just repeat it.
+  if (isCodingLesson(COURSES[yr]?.lessons?.[lessonIdx])) {
+    const rest = list.filter((p) => p.type !== 'blocks');
+    return rest.length ? rest : buildKs2FallbackPuzzles(COURSES[yr]?.lessons?.[lessonIdx], yr, lessonIdx).filter((p) => p.type !== 'blocks');
+  }
+  return list;
+}
+
+/** Build 4 puzzle levels for any lesson — KS2 bible interactives, overrides, then coding config */
 export function getPuzzleLevels(yr, lessonIdx, fallbackInteractives = []) {
   const key = `${yr}-${lessonIdx}`;
-  
-  // Prioritize Y3_ACTIVITIES when they have 2+ activities (new lesson-matched content)
+  const fun = funGamesFor(yr, lessonIdx);
+  if (fun.length) return stampBuddy(fun, yr, lessonIdx);
+
   const fromInteractives = fallbackInteractives.slice(0, 4);
-  if (fromInteractives.length >= 2) return fromInteractives;
-  
-  // Fall back to PUZZLE_OVERRIDES for lessons without Y3_ACTIVITIES
-  if (PUZZLE_OVERRIDES[key]) return PUZZLE_OVERRIDES[key];
-
-  if (fromInteractives.length >= 4) return fromInteractives;
-
-  const coding = getCodingLabConfig(yr, lessonIdx);
-  const puzzles = [...fromInteractives];
-
-  if (coding && coding.editor === 'blocks' && puzzles.length < 4) {
-    puzzles.unshift({
-      type: 'blocks',
-      title: 'Block Coding Challenge',
-      description: coding.challenge,
-      xp: coding.xp || 20,
-      duration: '5 min',
-      level: 1,
-      config: {
-        mission: coding.mission,
-        starterBlocks: coding.starterBlocks,
-        solutionBlocks: coding.solutionBlocks,
-        hints: coding.hints,
-      },
-    });
+  if (fromInteractives.length >= 2) {
+    return stampBuddy(withCodingActivity(fromInteractives, yr, lessonIdx).slice(0, 4), yr, lessonIdx);
   }
+
+  if (PUZZLE_OVERRIDES[key]) {
+    return stampBuddy(withCodingActivity(PUZZLE_OVERRIDES[key], yr, lessonIdx).slice(0, 4), yr, lessonIdx);
+  }
+
+  const puzzles = withCodingActivity([...fromInteractives], yr, lessonIdx);
 
   while (puzzles.length < 4 && fallbackInteractives[puzzles.length]) {
     puzzles.push(fallbackInteractives[puzzles.length]);
   }
 
-  return puzzles.slice(0, 4);
+  if (puzzles.length === 0) {
+    const lesson = COURSES[yr]?.lessons?.[lessonIdx];
+    puzzles.push(...buildKs2FallbackPuzzles(lesson, yr, lessonIdx));
+  }
+
+  return stampBuddy(withCodingActivity(puzzles, yr, lessonIdx).slice(0, 4), yr, lessonIdx);
+}
+
+function stampBuddy(puzzles, yr, lessonIdx) {
+  const buddy = buddyForLesson(COURSES[yr]?.lessons?.[lessonIdx], yr);
+  return puzzles.map((p) => ({
+    ...p,
+    characterName: buddy.name,
+    characterImage: buddy.image,
+    config: p.config
+      ? {
+        ...p.config,
+        characterName: buddy.name,
+        characterImage: buddy.image,
+        mission: p.config.mission
+          ? { ...p.config.mission, charName: buddy.name, charImage: buddy.image, char: undefined, tEmoji: undefined }
+          : p.config.mission,
+      }
+      : p.config,
+  }));
 }
 
 export function hasCustomPuzzles(yr, lessonIdx) {

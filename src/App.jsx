@@ -4,7 +4,7 @@ import { lazyWithRetry, isChunkLoadError } from './utils/lazyWithRetry';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { UserProvider, useUser } from './contexts/UserContext';
 import { ProjectProvider } from './contexts/ProjectContext';
-import { ClassroomProvider } from './contexts/ClassroomContext';
+import { pushMyProgress, syncMyWork } from './utils/classroomStore';
 import TopBar from './components/TopBar';
 const Sidebar = lazyWithRetry(() => import('./components/Sidebar'));
 import Dashboard from './components/Dashboard';
@@ -19,7 +19,7 @@ const WorkspaceEditor = lazyWithRetry(() => import('./components/WorkspaceEditor
 const LearnSection = lazyWithRetry(() => import('./components/learn/LearnSection.jsx'));
 const LearningHub = lazyWithRetry(() => import('./components/LearningHub'));
 const Community = lazyWithRetry(() => import('./components/Community'));
-const Classroom = lazyWithRetry(() => import('./components/Classroom'));
+const StudentClassroom = lazyWithRetry(() => import('./components/classroom/StudentClassroom.jsx'));
 const GameBuilder = lazyWithRetry(() => import('./components/GameBuilder'));
 const Settings = lazyWithRetry(() => import('./components/Settings'));
 const Challenges = lazyWithRetry(() => import('./components/Challenges'));
@@ -135,7 +135,9 @@ function AppInner() {
   const [showExport, setShowExport] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
   const [authRole, setAuthRole] = useState(null);
-  const { user, isLoggedIn } = useUser();
+  const [authMode, setAuthMode] = useState('login');
+  const { user, isLoggedIn, login } = useUser();
+  const learnWithoutLogin = currentPage === 'learn';
 
   const navigate = (page) => {
     window.location.hash = page;
@@ -180,6 +182,40 @@ function AppInner() {
     return undefined;
   }, [isLoggedIn]);
 
+  useEffect(() => {
+    if (isLoggedIn) return;
+    const { page, raw } = parseHash();
+    if (page === 'login') {
+      setAuthRole(null);
+      setShowAuth(true);
+      return;
+    }
+    if (page && KNOWN_PAGES.has(page)) {
+      sessionStorage.setItem('bb_post_login_hash', page === 'classroom' ? raw : page);
+    }
+  }, [isLoggedIn, currentPage]);
+
+  // Pupils in a class share their lesson/mission progress with their teacher as they move around.
+  useEffect(() => {
+    if (isLoggedIn && user.role !== 'teacher' && user.classroomId) {
+      pushMyProgress(user.classroomId, user);
+      syncMyWork(user.classroomId, user);
+    }
+  }, [currentPage, isLoggedIn, user.classroomId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (currentPage === 'learningHub') {
+      window.location.replace('#learn');
+    }
+  }, [currentPage]);
+
+  const finishLocalLogin = (profile) => {
+    login(profile);
+    const dest = sessionStorage.getItem('bb_post_login_hash') || 'dashboard';
+    sessionStorage.removeItem('bb_post_login_hash');
+    window.location.hash = dest;
+  };
+
   const renderPage = () => {
     if (currentPage === 'gamebuilder' && !isLoggedIn) {
       return <Dashboard onNavigate={navigate} />;
@@ -190,22 +226,22 @@ function AppInner() {
         ? <TeacherHome onNavigate={navigate} />
         : <SparkStudioDashboard onNavigate={navigate} />;
       case 'workspace':  return <WorkspaceEditor />;
-      case 'learn':      return <LearnSection />;
+      case 'learn':      return <LearnSection subPath={subPath} />;
       case 'learningHub':return <LearningHub />;
       case 'community':  return <Community />;
       case 'classroom':  return user.role === 'teacher'
-        ? <TeacherDashboard onNavigate={navigate} />
-        : <Classroom />;
+        ? <TeacherDashboard onNavigate={navigate} subPath={subPath} />
+        : <StudentClassroom />;
       case 'gamebuilder':return <GameBuilder />;
       case 'settings':   return <Settings />;
       case 'challenges': return <Challenges onNavigate={navigate} />;
       case 'parent':     return <ParentDashboard onNavigate={navigate} />;
       case 'vrd':        return <RobotDesignerPage />;
       case 'academy':    return <VirtualRobotDesignerApp />;
-      case 'studio':     return <ByteBuddiesStudio />;
+      case 'studio':     return <ByteBuddiesStudio onExit={() => navigate('dashboard')} />;
       case 'robot':      return <RobotPanel onNavigate={navigate} />;
       case 'admin':      return <AdminPanel />;
-      case 'missions':   return <MissionMode onNavigate={navigate} />;
+      case 'missions':   return <MissionMode onNavigate={navigate} subPath={subPath} />;
       case 'portfolio':  return <Portfolio onNavigate={navigate} />;
       case 'whitepaper': return <WhitePaper />;
       case 'rainbow-sim': return <RainbowSimulatorPage />;
@@ -238,15 +274,46 @@ function AppInner() {
     );
   }
 
-  if (!isLoggedIn) return (
+  // Standalone 3D apps skip the main shell.
+
+  if (!isLoggedIn && !learnWithoutLogin) return (
     <>
       <LandingPage
-        onLogin={() => { setAuthRole('teacher'); setShowAuth(true); }}
-        onSignup={() => { setAuthRole('student'); setShowAuth(true); }}
+        onLogin={() => { setAuthRole(null); setAuthMode('login'); setShowAuth(true); }}
+        onSignup={() => { setAuthRole(null); setAuthMode('signup'); setShowAuth(true); }}
+        onDevGuest={import.meta.env.DEV ? () => {
+          sessionStorage.setItem('bb_post_login_hash', 'learn');
+          finishLocalLogin({
+            name: 'Local Guest',
+            role: 'student',
+            avatar: 'LG',
+            avatarEmoji: '🎓',
+            email: 'guest@localhost.dev',
+          });
+        } : undefined}
       />
-      {showAuth && <AuthModal key={authRole} onClose={() => { setShowAuth(false); setAuthRole(null); }} initialRole={authRole} />}
+      {showAuth && (
+        <AuthModal
+          key={`${authMode}-${authRole || 'pick'}`}
+          onClose={() => { setShowAuth(false); setAuthRole(null); }}
+          initialRole={authRole}
+          initialMode={authMode}
+        />
+      )}
     </>
   );
+
+  if (!isLoggedIn && learnWithoutLogin) {
+    return (
+      <div className="app-layout" style={{ height: '100vh', height: '100dvh' }}>
+        <ErrorBoundary key="learn-preview">
+          <Suspense fallback={<PageLoader />}>
+            <LearnSection subPath={subPath} />
+          </Suspense>
+        </ErrorBoundary>
+      </div>
+    );
+  }
 
   const mobileNav = [
     { id: 'dashboard',  icon: '🏠', label: 'Home' },
@@ -309,9 +376,7 @@ export default function App() {
     <ThemeProvider>
       <UserProvider>
         <ProjectProvider>
-          <ClassroomProvider>
-            <AppInner />
-          </ClassroomProvider>
+          <AppInner />
         </ProjectProvider>
       </UserProvider>
     </ThemeProvider>

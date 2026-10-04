@@ -1,14 +1,64 @@
 import React, { useState, useEffect, useCallback, useMemo, Component } from 'react';
-import { COURSES, CHARACTERS, COURSE_ORDER, getLevelInfo } from '../../data/learnWorldData';
-import { getLessonInteractives } from '../../data/learnInteractiveActivities';
+import { CHARACTERS, getLevelInfo } from '../../data/learnWorldData';
+import { COURSES, COURSE_ORDER, KS2_LESSON_COUNT } from '../../data/learnKs2Courses';
+import { KS2_STATUTORY } from '../../data/curriculum/ks2Statutory';
+import { buildKs2LessonInteractives } from '../../data/ks2LessonInteractives.js';
 import { getPuzzleLevels } from '../../data/learnPuzzleLevels';
 import PuzzleProgression from './activities/PuzzleProgression';
 import ActivityRenderer from './activities/ActivityRenderer';
 import CodingLabPanel from './CodingLab/CodingLabPanel';
+import { YEAR_WORLDS } from '../../data/pupilMissions.js';
+import { TeacherHome, TeacherScheme, TeacherLesson } from './TeacherDesk.jsx';
+import ClassroomLesson from './ClassroomLesson.jsx';
+import { LessonPicture, lessonThemeId, pictureForSlide } from './LessonArt.jsx';
+import { UniqueHeader, HeaderMark, worldMarkKind, themeMarkKind } from './LessonHeaders.jsx';
+import { isCodingLesson } from '../../data/learnCodingConfig.js';
+import { useUser } from '../../contexts/UserContext';
+import { getTeaching } from '../../data/teaching/index.js';
+import PupilLearn from './PupilLearn.jsx';
+import { readWork, recordWork } from '../../utils/workLog.js';
 
 // Safe fallbacks - handle undefined imports gracefully
 const SAFE_COURSE_ORDER = COURSE_ORDER && Array.isArray(COURSE_ORDER) ? COURSE_ORDER : ['y3', 'y4', 'y5', 'y6'];
 const SAFE_COURSES = COURSES && typeof COURSES === 'object' ? COURSES : {};
+function parseLearnRoute(subPath) {
+  const parts = String(subPath || '').split('/').filter(Boolean);
+  if (parts[0] === 'world') return { screen: 'world', yr: 'y3', idx: 0 };
+  const yr = SAFE_COURSES[parts[0]] ? parts[0] : 'y3';
+  const lessons = SAFE_COURSES[yr]?.lessons || [];
+  if (parts[1] == null || parts[1] === '') return { screen: 'year', yr, idx: 0 };
+  const token = parts[1];
+  const idx = /^w/i.test(token) ? parseInt(token.slice(1), 10) - 1 : parseInt(token, 10);
+  if (!Number.isFinite(idx) || idx < 0 || idx >= lessons.length) return { screen: 'year', yr, idx: 0 };
+  if (String(parts[2] || '').toLowerCase() === 'plan') return { screen: 'plan', yr, idx };
+  return { screen: 'lesson', yr, idx };
+}
+
+const WORLD_PIC = { y3: 'algorithm', y4: 'network', y5: 'python', y6: 'project' };
+
+function FeaturedWeekCard({ yr = 'y3', idx = 0, onOpen, role = 'pupil' }) {
+  const lesson = SAFE_COURSES[yr]?.lessons?.[idx];
+  if (!lesson) return null;
+  const hook = lesson.pupilHook || lesson.mission;
+  const theme = pictureForSlide(lesson, 'title');
+  return (
+    <div style={{ maxWidth: 760, margin: '0 auto 28px', borderRadius: 22, overflow: 'hidden',
+      background: 'linear-gradient(160deg, rgba(16,185,129,0.18), rgba(99,102,241,0.12))',
+      border: '2px solid rgba(52,211,153,0.55)' }}>
+      <div className="bb-pupil-split" style={{ marginBottom: 0, gap: 0 }}>
+        <LessonPicture theme={theme} className="bb-pupil-split__art" style={{ minHeight: 150, borderRadius: 0, border: 'none' }} />
+        <div style={{ padding: '18px 18px 16px' }}>
+          <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 1.4, color: '#6ee7b7', marginBottom: 6 }}>
+            {role === 'teacher' ? 'This week' : 'Jump in here'}
+          </div>
+          <div style={{ fontSize: 20, fontWeight: 900, marginBottom: 8, lineHeight: 1.25 }}>{lesson.title}</div>
+          <div style={{ fontSize: 14, color: TEXT_DIM, lineHeight: 1.55, marginBottom: 14 }}>{hook}</div>
+          <Btn color="#10b981" onClick={onOpen}>{role === 'teacher' ? 'Open the lesson →' : 'Play this mission →'}</Btn>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // Error Boundary to catch rendering errors
 class LearnErrorBoundary extends Component {
@@ -44,9 +94,31 @@ class LearnErrorBoundary extends Component {
 
 // ─── STORAGE HELPERS ──────────────────────────────────────────────────────────
 const XP_KEY   = 'bb_world_xp';
+const KS2_MAX_YEAR_KEY = 'bb_ks2_max_year';
+const LEARN_ROLE_KEY = 'bb_learn_role';
+function getLearnRole() {
+  try {
+    if (localStorage.getItem('cv-loggedin') === 'true') {
+      const account = JSON.parse(localStorage.getItem('cv-user') || '{}');
+      if (account.role === 'student' || account.role === 'parent') return 'pupil';
+      if (account.role === 'teacher') return 'teacher';
+    }
+  } catch {}
+  return localStorage.getItem(LEARN_ROLE_KEY) === 'teacher' ? 'teacher' : 'pupil';
+}
+function setLearnRole(role) {
+  localStorage.setItem(LEARN_ROLE_KEY, role === 'teacher' ? 'teacher' : 'pupil');
+}
 const doneKey  = (yr, i) => `bb_world_${yr}_l${i}`;
 const badgeKey = (yr)    => `bb_world_badge_${yr}`;
 
+function getKs2MaxYear() {
+  const n = parseInt(localStorage.getItem(KS2_MAX_YEAR_KEY) || '6', 10);
+  return Number.isFinite(n) ? Math.min(6, Math.max(3, n)) : 6;
+}
+function setKs2MaxYear(year) {
+  localStorage.setItem(KS2_MAX_YEAR_KEY, String(Math.min(6, Math.max(3, year))));
+}
 function getTotalXP()         { return parseInt(localStorage.getItem(XP_KEY) || '0'); }
 function addXP(n)             { localStorage.setItem(XP_KEY, String(getTotalXP() + n)); }
 function isLessonDone(yr, i)  { return localStorage.getItem(doneKey(yr,i)) === '1'; }
@@ -134,6 +206,24 @@ function Chip({ label, color = '#818cf8', style = {} }) {
 
 function Stars3({ n }) {
   return <span style={{ letterSpacing:2 }}>{'★'.repeat(n)}<span style={{ opacity:0.25 }}>{'★'.repeat(3 - n)}</span></span>;
+}
+
+function ModeToggle({ role, onChange }) {
+  const { user, isLoggedIn } = useUser();
+  if (isLoggedIn && (user?.role === 'student' || user?.role === 'parent')) return null;
+  return (
+    <div style={{ display:'inline-flex', padding:4, borderRadius:14, background:'rgba(255,255,255,0.06)',
+      border:`1px solid ${CARD_BORDER}`, gap:4 }}>
+      {[['pupil', 'I’m a pupil'], ['teacher', 'I’m a teacher']].map(([id, label]) => (
+        <button key={id} type="button" onClick={() => onChange(id)}
+          style={{ padding:'8px 14px', borderRadius:10, border:'none', cursor:'pointer', fontWeight:800, fontSize:12,
+            background: role === id ? '#10b981' : 'transparent',
+            color: role === id ? '#042f2e' : TEXT_DIM }}>
+          {label}
+        </button>
+      ))}
+    </div>
+  );
 }
 
 function Btn({ children, onClick, color = '#6366f1', variant = 'solid', style = {}, disabled }) {
@@ -269,13 +359,20 @@ function CompanionActivitySection({ activity, color }) {
 // ════════════════════════════════════════════════════════════════════════════
 // SCREEN 1 — WORLD MAP
 // ════════════════════════════════════════════════════════════════════════════
-function WorldMap({ onSelectYear, onContinue }) {
+function WorldMap({ onSelectYear, onContinue, role, onRoleChange }) {
   const totalXP = getTotalXP();
   const lvl = getLevelInfo(totalXP);
   const cont = findContinue();
   const xpInLevel = totalXP - lvl.xpForLevel;
   const xpSpan = Math.max(1, lvl.xpToNext - lvl.xpForLevel);
   const lvlPct = Math.round((xpInLevel / xpSpan) * 100);
+  const [maxYear, setMaxYear] = useState(getKs2MaxYear);
+
+  function pickYear(yr) {
+    const y = SAFE_COURSES[yr]?.year;
+    if (y && y > maxYear) return;
+    onSelectYear(yr);
+  }
 
   return (
     <div style={{ minHeight:'100%', background:BG, color:TEXT, position:'relative',
@@ -285,23 +382,35 @@ function WorldMap({ onSelectYear, onContinue }) {
       <div style={{ position:'relative', padding:'48px 24px 36px', textAlign:'center', overflow:'hidden',
         background:'radial-gradient(120% 90% at 50% 0%, rgba(99,102,241,0.22), transparent 70%)' }}>
         <Stars count={70} />
-        <div style={{ position:'relative', zIndex:1 }}>
-          <div style={{ fontSize:'clamp(28px,5vw,46px)', fontWeight:900, letterSpacing:-1,
-            background:'linear-gradient(90deg,#818cf8,#a855f7,#ec4899)', WebkitBackgroundClip:'text',
-            WebkitTextFillColor:'transparent', marginBottom:6 }}>
-            🌍 ByteBuddies Learning World
+        <div style={{ position:'relative', zIndex:1, maxWidth: 720, margin: '0 auto' }}>
+          <UniqueHeader
+            tone="night"
+            color="#a78bfa"
+            kind="mission"
+            label={role === 'teacher' ? 'Staff planner' : 'ByteBuddies Learn'}
+            title={role === 'teacher' ? 'KS2 computing plans' : 'Pick your world'}
+          />
+          <div style={{ color:TEXT_DIM, fontSize:15, maxWidth:580, margin:'0 auto 18px', textAlign: 'left' }}>
+            {role === 'teacher'
+              ? 'Open a week for the classroom plan. Switch to pupil view to see the mission children play.'
+              : 'Year 3 garden, Year 4 city, Year 5 lab, Year 6 HQ. Click a world, then play Dot’s weekly mission.'}
           </div>
-          <div style={{ color:TEXT_DIM, fontSize:15, maxWidth:540, margin:'0 auto' }}>
-            Four worlds. Endless missions. Become a technology creator.
-          </div>
+          <ModeToggle role={role} onChange={onRoleChange} />
         </div>
       </div>
 
       {/* PLAYER LEVEL CARD */}
       <div style={{ maxWidth:760, margin:'0 auto', padding:'0 20px' }}>
+        {(() => {
+          const contYr = cont?.yr || 'y3';
+          const contIdx = cont?.idx ?? 0;
+          return <FeaturedWeekCard yr={contYr} idx={contIdx} role={role} onOpen={() => onContinue({ yr: contYr, idx: contIdx })} />;
+        })()}
         <div style={{ display:'flex', alignItems:'center', gap:18, background:`linear-gradient(135deg, ${lvl.color}22, ${lvl.color}08)`,
           border:`1px solid ${lvl.color}44`, borderRadius:20, padding:'18px 22px', marginBottom:28 }}>
-          <div style={{ fontSize:46, lineHeight:1, animation:'float 4s ease-in-out infinite' }}>{lvl.icon}</div>
+          <div style={{ fontSize:46, lineHeight:1, animation:'float 4s ease-in-out infinite' }}>
+            <HeaderMark kind="done" color={lvl.color} size={46} />
+          </div>
           <div style={{ flex:1 }}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:6, flexWrap:'wrap', gap:8 }}>
               <span style={{ fontWeight:900, fontSize:18 }}>Level {lvl.level} · {lvl.title}</span>
@@ -312,11 +421,27 @@ function WorldMap({ onSelectYear, onContinue }) {
           </div>
         </div>
 
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:12, flexWrap:'wrap',
+          marginBottom:22, padding:'12px 16px', borderRadius:16, background:CARD_BG, border:`1px solid ${CARD_BORDER}` }}>
+          <span style={{ fontSize:13, fontWeight:700, color:TEXT_DIM }}>My school year:</span>
+          {[3, 4, 5, 6].map(y => (
+            <button key={y} type="button"
+              onClick={() => { setKs2MaxYear(y); setMaxYear(y); }}
+              style={{ padding:'8px 14px', borderRadius:12, fontWeight:800, fontSize:13, cursor:'pointer',
+                border:`1.5px solid ${maxYear === y ? '#818cf8' : CARD_BORDER}`,
+                background: maxYear === y ? 'rgba(99,102,241,0.25)' : 'rgba(255,255,255,0.04)',
+                color: maxYear === y ? '#c7d2fe' : TEXT_DIM }}>
+              Year {y}
+            </button>
+          ))}
+          <span style={{ fontSize:11, color:TEXT_DIM, maxWidth:220 }}>Higher years unlock when you change this setting.</span>
+        </div>
+
         {/* CONTINUE BUTTON */}
         {cont && SAFE_COURSES[cont.yr]?.lessons?.[cont.idx] && (
           <div style={{ marginBottom:26, textAlign:'center' }}>
             <Btn color="#a855f7" variant="ghost" onClick={() => onContinue(cont)} style={{ animation:'pulse-glow 2.5s infinite' }}>
-              ▶ Continue Adventure — {SAFE_COURSES[cont.yr].lessons[cont.idx].emoji} {SAFE_COURSES[cont.yr].lessons[cont.idx].title}
+              Continue — {SAFE_COURSES[cont.yr].lessons[cont.idx].title}
             </Btn>
           </div>
         )}
@@ -328,30 +453,40 @@ function WorldMap({ onSelectYear, onContinue }) {
             if (!c) return null;
             const prog = getYearProgress(yr);
             const col = c.color || '#6366f1';
+            const locked = c.year > maxYear;
             return (
-              <button key={yr} onClick={() => onSelectYear(yr)}
-                style={{ textAlign:'left', cursor:'pointer', borderRadius:22, padding:'22px',
+              <button key={yr} onClick={() => pickYear(yr)} disabled={locked}
+                style={{ textAlign:'left', cursor: locked ? 'not-allowed' : 'pointer', borderRadius:22, padding:0,
                   background:`linear-gradient(135deg, ${col}20, ${col}08)`, border:`1px solid ${col}44`,
-                  color:TEXT, transition:'transform .2s, box-shadow .2s', position:'relative', overflow:'hidden' }}
-                onMouseEnter={e => { e.currentTarget.style.transform='translateY(-4px)'; e.currentTarget.style.boxShadow=`0 16px 40px ${col}33`; }}
+                  color:TEXT, opacity: locked ? 0.45 : 1,
+                  transition:'transform .2s, box-shadow .2s', position:'relative', overflow:'hidden' }}
+                onMouseEnter={e => { if (!locked) { e.currentTarget.style.transform='translateY(-4px)'; e.currentTarget.style.boxShadow=`0 16px 40px ${col}33`; }}}
                 onMouseLeave={e => { e.currentTarget.style.transform='none'; e.currentTarget.style.boxShadow='none'; }}>
+                <LessonPicture theme={WORLD_PIC[yr] || 'algorithm'} style={{ height: 130, minHeight: 130 }} wide />
+                <div style={{ padding: '18px 20px 20px' }}>
                 <div style={{ display:'flex', alignItems:'center', gap:14, marginBottom:12 }}>
-                  <div style={{ fontSize:48, lineHeight:1 }}>{c.icon}</div>
+                  <div style={{
+                    width: 52, height: 52, borderRadius: 16, background: col, display: 'grid', placeItems: 'center',
+                    transform: 'rotate(-5deg)', flexShrink: 0,
+                  }}>
+                    <HeaderMark kind={worldMarkKind(yr)} color="#fff" size={30} />
+                  </div>
                   <div>
-                    <div style={{ fontSize:11, fontWeight:800, color:col, letterSpacing:1 }}>YEAR {c.year} · {c.ages}</div>
-                    <div style={{ fontSize:20, fontWeight:900 }}>{c.regionName}</div>
+                    <div style={{ fontSize:11, fontWeight:800, color:col, letterSpacing:1 }}>YEAR {c.year} · {YEAR_WORLDS[yr]?.tag || c.ages}</div>
+                    <div style={{ fontSize:20, fontWeight:900 }}>{YEAR_WORLDS[yr]?.world || c.regionName}</div>
                   </div>
                 </div>
-                <div style={{ fontSize:13, fontWeight:800, color:col, marginBottom:4 }}>{c.storyTitle}</div>
-                <div style={{ fontSize:13, color:TEXT_DIM, lineHeight:1.5, marginBottom:14, fontStyle:'italic' }}>{c.tagline}</div>
+                <div style={{ fontSize:13, fontWeight:800, color:col, marginBottom:4 }}>{c.lessons?.[0]?.title ? `Week 1: ${c.lessons[0].title}` : c.storyTitle}</div>
+                <div style={{ fontSize:13, color:TEXT_DIM, lineHeight:1.5, marginBottom:14 }}>{YEAR_WORLDS[yr]?.blurb || c.tagline}</div>
                 <div style={{ display:'flex', justifyContent:'space-between', fontSize:12, color:TEXT_DIM, marginBottom:6 }}>
-                  <span>{prog.done}/{prog.total} lessons</span>
+                  <span>{prog.done}/{prog.total} lessons · {c.lessons?.length || prog.total} in path</span>
                   <span style={{ fontWeight:800, color:col }}>{prog.pct}%</span>
                 </div>
                 <ProgressBar pct={prog.pct} color={col} />
                 <div style={{ marginTop:16, display:'inline-block', padding:'8px 18px', borderRadius:12,
-                  background:col, color:'#fff', fontWeight:800, fontSize:13 }}>
-                  {prog.done === 0 ? '▶ Start' : prog.done === prog.total ? '✓ Complete' : '▶ Continue'}
+                  background: locked ? 'rgba(255,255,255,0.12)' : col, color:'#fff', fontWeight:800, fontSize:13 }}>
+                  {locked ? 'Unlocks in Year ' + c.year : prog.done === 0 ? 'Start' : prog.done === prog.total ? 'Complete' : 'Continue'}
+                </div>
                 </div>
               </button>
             );
@@ -365,7 +500,7 @@ function WorldMap({ onSelectYear, onContinue }) {
 // ════════════════════════════════════════════════════════════════════════════
 // SCREEN 2 — YEAR VIEW (Duolingo-style path)
 // ════════════════════════════════════════════════════════════════════════════
-function YearView({ yr, onBack, onSelectLesson }) {
+function YearView({ yr, onBack, onSelectLesson, role, onRoleChange }) {
   const c = SAFE_COURSES[yr];
   const lessons = c?.lessons || [];
   const prog = getYearProgress(yr);
@@ -383,16 +518,27 @@ function YearView({ yr, onBack, onSelectLesson }) {
           ← Worlds
         </button>
         <div style={{ display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
-          <div style={{ fontSize:36 }}>{c.icon}</div>
-          <div style={{ flex:1, minWidth:200 }}>
-            <div style={{ fontSize:11, fontWeight:800, color:col, letterSpacing:1 }}>YEAR {c.year} · {c.regionName}</div>
-            <div style={{ fontSize:22, fontWeight:900 }}>{c.storyTitle}</div>
+          <div style={{
+            width: 44, height: 44, borderRadius: 14, background: col, display: 'grid', placeItems: 'center',
+            transform: 'rotate(-6deg)',
+          }}>
+            <HeaderMark kind={worldMarkKind(yr)} color="#fff" size={26} />
           </div>
+          <div style={{ flex:1, minWidth:200 }}>
+            <div style={{ fontSize:11, fontWeight:800, color:col, letterSpacing:1 }}>{YEAR_WORLDS[yr]?.world || `YEAR ${c.year}`}</div>
+            <div style={{ fontSize:22, fontWeight:900 }}>{YEAR_WORLDS[yr]?.tag || `Year ${c.year} missions`}</div>
+          </div>
+          <ModeToggle role={role} onChange={onRoleChange} />
           <div style={{ minWidth:120 }}>
             <div style={{ fontSize:11, color:TEXT_DIM, marginBottom:4, textAlign:'right' }}>{prog.done}/{prog.total} · {prog.pct}%</div>
             <ProgressBar pct={prog.pct} color={col} />
           </div>
         </div>
+      </div>
+
+      <div style={{ padding: '20px 20px 0' }}>
+        <p style={{ textAlign:'center', color:TEXT_DIM, maxWidth:520, margin:'0 auto 12px', fontSize:14 }}>{YEAR_WORLDS[yr]?.blurb}</p>
+        <FeaturedWeekCard yr={yr} idx={0} role={role} onOpen={() => onSelectLesson(0)} />
       </div>
 
       {/* PATH */}
@@ -426,13 +572,13 @@ function YearView({ yr, onBack, onSelectLesson }) {
                       <button onClick={() => onSelectLesson(idx)}
                         title={lesson.title}
                         style={{ width:78, height:78, borderRadius:'50%', cursor:'pointer', position:'relative',
-                          border:`3px solid ${nodeColor}`, color:nodeColor,
+                          border:`3px solid ${nodeColor}`, color:'#fff',
                           background: done ? 'linear-gradient(135deg,#065f46,#10b981)' : isCurrent ? `linear-gradient(135deg, ${term.color}, ${term.color}88)` : 'rgba(255,255,255,0.05)',
-                          fontSize:30, display:'flex', alignItems:'center', justifyContent:'center',
+                          display:'flex', alignItems:'center', justifyContent:'center',
                           animation: isCurrent ? 'pulse-glow 2s infinite' : 'none', transition:'transform .15s' }}
                         onMouseEnter={e => e.currentTarget.style.transform='scale(1.08)'}
                         onMouseLeave={e => e.currentTarget.style.transform='scale(1)'}>
-                        {lesson.emoji}
+                        <HeaderMark kind={themeMarkKind(lessonThemeId(lesson))} color="#fff" size={34} />
                         <span style={{ position:'absolute', bottom:-6, right:-6, width:26, height:26, borderRadius:'50%',
                           background: done ? '#10b981' : isCurrent ? term.color : '#1e293b', color:'#fff',
                           fontSize:13, fontWeight:900, display:'flex', alignItems:'center', justifyContent:'center',
@@ -440,7 +586,13 @@ function YearView({ yr, onBack, onSelectLesson }) {
                           {done ? '✓' : isCurrent ? '►' : idx + 1}
                         </span>
                       </button>
-                      <div style={{ fontSize:12, fontWeight:700, maxWidth:150, textAlign:'center', color:TEXT }}>{lesson.title}</div>
+                      <div style={{ fontSize:12, fontWeight:700, maxWidth:180, textAlign:'center', color:TEXT }}>{lesson.title}</div>
+                      {role === 'teacher' && lesson.bibleActivities?.[0]?.title && (
+                        <div style={{ fontSize:10, color:TEXT_DIM, maxWidth:180, textAlign:'center' }}>
+                          {lesson.bibleActivities[0].title}
+                          {isCodingLesson(lesson) ? ' · coding' : ''}
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -456,12 +608,12 @@ function YearView({ yr, onBack, onSelectLesson }) {
 // ════════════════════════════════════════════════════════════════════════════
 // SCREEN 3 — LESSON PLAYER
 // ════════════════════════════════════════════════════════════════════════════
-const STEP_LABELS = ['Intro','Story','Learn','Learn','Learn','Learn','Activity','Code','Quiz','Reward'];
+const STEP_LABELS_PUPIL = ['Goal', 'Play', 'Quiz', 'Done'];
 
-function StepBar({ step, color }) {
+function StepBar({ step, color, labels = STEP_LABELS_PUPIL }) {
   return (
     <div style={{ display:'flex', gap:6, padding:'14px 0', alignItems:'center', justifyContent:'center', flexWrap:'wrap' }}>
-      {STEP_LABELS.map((lab, i) => (
+      {labels.map((lab, i) => (
         <div key={i} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:4, minWidth:28 }}>
           <div style={{ width: i === step ? 14 : 9, height: i === step ? 14 : 9, borderRadius:'50%',
             background: i < step ? '#10b981' : i === step ? color : 'rgba(255,255,255,0.18)',
@@ -491,6 +643,31 @@ function StepFrame({ children, color, onBack, onNext, nextLabel = 'Continue →'
 function cardsFor(lesson) {
   if (lesson.teachingCards && lesson.teachingCards.length) return lesson.teachingCards;
   const cn = lesson.conceptName || 'this concept';
+  if (lesson.teach) {
+    const mid = Math.max(180, Math.floor(lesson.teach.length / 2));
+    const splitAt = lesson.teach.lastIndexOf('. ', mid);
+    const cut = splitAt > 120 ? splitAt + 1 : mid;
+    const parts = lesson.teach.length > 360
+      ? [lesson.teach.slice(0, cut).trim(), lesson.teach.slice(cut).trim()]
+      : [lesson.teach];
+    const teachCards = parts.map((content, i) => ({
+      type: 'concept',
+      title: i === 0 ? 'Teacher-led input' : 'Continue learning',
+      emoji: '📖',
+      content,
+    }));
+    return [
+      ...teachCards,
+      { type:'realworld', title:'In the classroom', emoji:'🌍', content: lesson.conceptExplain || lesson.mission,
+        example: lesson.parentPrompt || lesson.challenge },
+      { type:'check', title:'Quick check!', emoji:'❓',
+        content: lesson.quiz?.[0]?.q || `What did we learn about ${cn}?`,
+        answer: lesson.quiz?.[0] ? lesson.quiz[0].options[lesson.quiz[0].answer] : 'Think it through!',
+        hint:'Aim for at least 3/4 on the end-of-lesson quiz.' },
+      { type:'transition', title:'Activities next', emoji:'🚀', content: lesson.mission,
+        characterQuote:'Three classroom activities — then the knowledge check!' },
+    ];
+  }
   return [
     { type:'concept', title:`What is ${cn}?`, emoji:'🧠', content: lesson.conceptExplain || 'A key computing idea.', example: lesson.mission },
     { type:'illustration', title:'How it works', emoji:'⚙️', content:`${cn} works step by step, helping computers do amazing things.`, example: lesson.challenge },
@@ -500,8 +677,81 @@ function cardsFor(lesson) {
   ];
 }
 
+function BibleActivitiesPanel({ activities, color, completed, onComplete, hideMark }) {
+  const [open, setOpen] = useState(() => new Set((activities || []).map((_, i) => i)));
+  if (!activities?.length) return null;
+  function toggle(ai) {
+    setOpen((prev) => {
+      const next = new Set(prev);
+      if (next.has(ai)) next.delete(ai);
+      else next.add(ai);
+      return next;
+    });
+  }
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+      {activities.map((act, ai) => (
+        <div key={ai} style={{ background:CARD_BG, border:`1px solid ${color}33`, borderRadius:18, overflow:'hidden' }}>
+          <button type="button" onClick={() => toggle(ai)}
+            style={{ width:'100%', padding:'14px 16px', display:'flex', justifyContent:'space-between', alignItems:'center',
+              background:'transparent', border:'none', cursor:'pointer', color:TEXT, textAlign:'left' }}>
+            <div>
+              <Chip label={act.label || act.type} color={color} style={{ marginBottom:6 }} />
+              <div style={{ fontWeight:800, fontSize:16 }}>{act.title}{act.mins ? ` · ${act.mins} min` : ''}</div>
+              {act.purpose && <div style={{ fontSize:12, color:TEXT_DIM, marginTop:4 }}>{act.purpose}</div>}
+            </div>
+            <span style={{ color:TEXT_DIM }}>{open.has(ai) ? '▲' : '▼'}</span>
+          </button>
+          {open.has(ai) && (
+            <div style={{ padding:'0 18px 16px' }}>
+              <ol style={{ margin:0, padding:'0 0 8px 20px', color:'#e2e8f0', fontSize:14, lineHeight:1.55 }}>
+                {(act.steps || []).map((step, si) => (
+                  <li key={si} style={{ marginBottom:8 }}>{step}</li>
+                ))}
+              </ol>
+              {act.check && <div style={{ fontSize:13, color:'#86efac', marginBottom:6 }}><b>Check:</b> {act.check}</div>}
+              {act.support && <div style={{ fontSize:13, color:TEXT_DIM, marginBottom:6 }}><b>Support:</b> {act.support}</div>}
+              {act.stretch && <div style={{ fontSize:13, color:'#fcd34d' }}><b>Stretch:</b> {act.stretch}</div>}
+            </div>
+          )}
+        </div>
+      ))}
+      {!hideMark && <Btn color={color} onClick={onComplete}>{completed ? '✓ Ready for next step' : 'Mark activities reviewed'}</Btn>}
+    </div>
+  );
+}
+
+function CodeDebugBanner({ lesson, color }) {
+  if (!lesson?.codeDebug) return null;
+  return (
+    <div style={{ marginBottom: 18, background: `linear-gradient(135deg, ${color}14, transparent)`,
+      border: `1px solid ${color}44`, borderRadius: 16, padding: '14px 18px' }}>
+      <div style={{ fontSize: 11, fontWeight: 800, color, letterSpacing: 1, marginBottom: 6 }}>
+        {lesson.codingLab ? '🚩 CODING / DEBUG' : '📝 MICRO-DEBUG'}
+      </div>
+      <div style={{ fontSize: 14, color: '#e2e8f0', lineHeight: 1.55 }}>{lesson.codeDebug}</div>
+      {lesson.reflection && (
+        <div style={{ fontSize: 12, color: TEXT_DIM, marginTop: 10, lineHeight: 1.5 }}>
+          <span style={{ fontWeight: 800, color: '#c4b5fd' }}>Reflect: </span>{lesson.reflection}
+        </div>
+      )}
+      {lesson.extension && (
+        <div style={{ fontSize: 12, color: TEXT_DIM, marginTop: 8, lineHeight: 1.5 }}>
+          <span style={{ fontWeight: 800, color: '#fcd34d' }}>Extension: </span>{lesson.extension}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function TeachingCards({ lesson, color, character, onDone, onBack }) {
-  const cards = cardsFor(lesson);
+  const hook = lesson.pupilHook || lesson.mission;
+  const cn = lesson.conceptName || 'this idea';
+  const cards = [
+    { type: 'concept', emoji: lesson.emoji || '🤖', title: 'Your mission', content: hook },
+    { type: 'concept', emoji: '💡', title: cn, content: lesson.conceptExplain || hook },
+    { type: 'transition', emoji: '🎮', title: 'Play time', content: 'Beat the games, then take the quiz.', characterQuote: hook },
+  ];
   const [ci, setCi] = useState(0);
   const [revealed, setRevealed] = useState(false);
   const card = cards[ci];
@@ -565,20 +815,22 @@ function buildFallbackQuiz(lesson) {
   ];
 }
 
-function QuizStep({ lesson, color, onScore, onBack }) {
+function QuizStep({ lesson, color, onScore, onBack, workKey }) {
   const questions = (lesson.quiz && lesson.quiz.length >= 2) ? lesson.quiz : buildFallbackQuiz(lesson);
   const [answers, setAnswers] = useState({});
   const [submitted, setSubmitted] = useState(false);
   const score = questions.filter((qz, i) => answers[i] === qz.answer).length;
-  const stars = score === questions.length ? 3 : score >= Math.ceil(questions.length * 0.6) ? 2 : score >= 1 ? 1 : 0;
+  const passMark = Math.ceil(questions.length * 0.75);
+  const passed = score >= passMark;
+  const stars = score === questions.length ? 3 : score >= passMark ? 2 : score >= 1 ? 1 : 0;
   const allAnswered = Object.keys(answers).length === questions.length;
   const letters = ['A','B','C','D','E'];
 
   return (
     <div style={{ display:'flex', flexDirection:'column', minHeight:'100%', animation:'fade-up .4s ease' }}>
       <div style={{ textAlign:'center', marginBottom:20 }}>
-        <div style={{ fontSize:26, fontWeight:900 }}>🎯 Knowledge Check</div>
-        <div style={{ color:TEXT_DIM, fontSize:13 }}>Answer all {questions.length} questions</div>
+        <div style={{ fontSize:26, fontWeight:900 }}>Dot’s quiz</div>
+        <div style={{ color:TEXT_DIM, fontSize:13 }}>Answer all {questions.length} questions · pass with {passMark}/{questions.length}+</div>
       </div>
       {questions.map((qz, qi) => (
         <div key={qi} style={{ marginBottom:22, background:CARD_BG, border:`1px solid ${CARD_BORDER}`, borderRadius:18, padding:'18px' }}>
@@ -609,24 +861,42 @@ function QuizStep({ lesson, color, onScore, onBack }) {
               ✓ Correct answer: {qz.options[qz.answer]}
             </div>
           )}
+          {submitted && qz.rationale && (
+            <div style={{ fontSize:12, color:TEXT_DIM, marginTop:8, lineHeight:1.5, fontStyle:'italic' }}>
+              {qz.rationale}
+            </div>
+          )}
         </div>
       ))}
 
       {!submitted ? (
         <div style={{ display:'flex', justifyContent:'space-between', gap:12 }}>
           <Btn variant="ghost" color="#94a3b8" onClick={onBack}>← Back</Btn>
-          <Btn color={color} disabled={!allAnswered} onClick={() => setSubmitted(true)}>Submit Answers</Btn>
+          <Btn color={color} disabled={!allAnswered} onClick={() => {
+            setSubmitted(true);
+            const prev = readWork(workKey);
+            recordWork(workKey, {
+              type: 'lesson', title: lesson.title, score, total: questions.length, stars, attempts: (prev?.attempts || 0) + 1, completedAt: new Date().toISOString(),
+              quiz: questions.map((qz, qi) => ({ q: qz.q, chosen: qz.options?.[answers[qi]] ?? '', correct: qz.options?.[qz.answer] ?? '', ok: answers[qi] === qz.answer })),
+            });
+          }}>Submit Answers</Btn>
         </div>
       ) : (
         <div style={{ textAlign:'center', background:CARD_BG, border:`1px solid ${color}44`, borderRadius:20, padding:'24px' }}>
           <div style={{ fontSize:38, color:'#fbbf24', marginBottom:6 }}><Stars3 n={stars} /></div>
           <div style={{ fontSize:22, fontWeight:900 }}>{score}/{questions.length} correct!</div>
           <div style={{ color:TEXT_DIM, fontSize:14, marginBottom:16 }}>
-            {stars === 3 ? 'Perfect! 🎉' : stars === 2 ? 'Great job! 👍' : 'Keep practising! 💪'}
+            {passed
+              ? (stars === 3 ? 'Perfect score!' : 'Great job — you passed!')
+              : `You need ${passMark} or more to pass. Read the notes and try again.`}
           </div>
-          <Chip label={`+${lesson.xp} XP ready to collect`} color="#fbbf24" style={{ fontSize:13 }} />
-          <div style={{ marginTop:18 }}>
-            <Btn color={color} onClick={() => onScore(score, questions.length, stars)}>Collect Reward →</Btn>
+          {passed && <Chip label={`+${lesson.xp} XP ready to collect`} color="#fbbf24" style={{ fontSize:13 }} />}
+          <div style={{ marginTop:18, display:'flex', gap:10, justifyContent:'center', flexWrap:'wrap' }}>
+            {passed ? (
+              <Btn color={color} onClick={() => onScore(score, questions.length, stars)}>Collect Reward →</Btn>
+            ) : (
+              <Btn color={color} onClick={() => { setSubmitted(false); setAnswers({}); }}>Try Quiz Again</Btn>
+            )}
           </div>
         </div>
       )}
@@ -659,8 +929,10 @@ function RewardStep({ lesson, color, score, quizTotal, stars, nextLesson, onNext
         ))}
       </div>
       <div style={{ position:'relative', zIndex:1 }}>
-        <div style={{ fontSize:70, animation:'bounce-in .6s ease' }}>🎉</div>
-        <div style={{ fontSize:28, fontWeight:900, marginBottom:4 }}>Lesson Complete!</div>
+        <div style={{ margin: '0 auto 8px', width: 72, height: 72, borderRadius: 22, background: color, display: 'grid', placeItems: 'center', transform: 'rotate(-8deg)' }}>
+          <HeaderMark kind="done" color="#fff" size={40} />
+        </div>
+        <div style={{ fontSize:28, fontWeight:900, marginBottom:4 }}>Mission complete</div>
         <div style={{ color:TEXT_DIM, marginBottom:20 }}>{lesson.title}</div>
 
         <div style={{ display:'inline-block', background:`linear-gradient(135deg, ${color}33, ${color}11)`,
@@ -673,15 +945,15 @@ function RewardStep({ lesson, color, score, quizTotal, stars, nextLesson, onNext
 
         {lesson.badge && (
           <div style={{ marginBottom:20, animation:'bounce-in .8s ease' }}>
-            <div style={{ fontSize:48 }}>{lesson.badge}</div>
-            <div style={{ fontSize:13, fontWeight:800, color }}>Badge Unlocked!</div>
+            <HeaderMark kind="cup" color={color} size={40} />
+            <div style={{ fontSize:13, fontWeight:800, color, marginTop: 6 }}>Badge unlocked</div>
           </div>
         )}
 
         {nextLesson && (
           <div style={{ background:CARD_BG, border:`1px solid ${CARD_BORDER}`, borderRadius:18, padding:'16px',
             maxWidth:360, margin:'0 auto 22px', display:'flex', alignItems:'center', gap:12 }}>
-            <div style={{ fontSize:34 }}>{nextLesson.emoji}</div>
+            <HeaderMark kind={themeMarkKind(lessonThemeId(nextLesson))} color={color} size={32} />
             <div style={{ textAlign:'left' }}>
               <div style={{ fontSize:11, color:TEXT_DIM, fontWeight:700 }}>UP NEXT</div>
               <div style={{ fontWeight:800 }}>{nextLesson.title}</div>
@@ -698,24 +970,30 @@ function RewardStep({ lesson, color, score, quizTotal, stars, nextLesson, onNext
   );
 }
 
-function LessonPlayer({ yr, idx, onBack, onComplete, onNextLesson, onMap }) {
+function kidTeach(lesson) {
+  const raw = String(lesson.teach || lesson.mission || '');
+  const cut = raw.split(/\s*International notes:/i)[0].trim();
+  return cut || lesson.storyLine || lesson.mission || '';
+}
+
+function LessonPlayer({ yr, idx, onBack, onComplete, onNextLesson, onMap, role, onRoleChange }) {
   const c = SAFE_COURSES[yr];
   const lessons = c?.lessons || [];
   const lesson = lessons[idx];
   const term = getTermForLesson(yr, idx);
   const color = (term && term.color) || c?.color || '#6366f1';
-  const [step, setStep] = useState(0);
   const [score, setScore] = useState(0);
   const [quizTotal, setQuizTotal] = useState(0);
   const [stars, setStars] = useState(0);
-  const [activityDone, setActivityDone] = useState(false);
-  const interactives = getLessonInteractives(yr, idx);
+  const [phase, setPhase] = useState('intro');
+  const interactives = buildKs2LessonInteractives(yr, idx);
   const puzzleLevels = getPuzzleLevels(yr, idx, interactives);
-  
-  // Guard against missing lesson
+
+  useEffect(() => { setPhase('intro'); }, [yr, idx, role]);
+
   if (!lesson) {
     return (
-      <div style={{ padding: 40, textAlign: 'center', color: 'rgba(255,255,255,0.5)' }}>
+      <div style={{ padding: 40, textAlign: 'center', color: 'rgba(255,255,255,0.5)', background: BG, height: '100%' }}>
         <p>Lesson not found.</p>
         <button onClick={onBack} style={{ marginTop: 20, padding: '10px 20px', background: '#6366f1', border: 'none', borderRadius: 8, color: '#fff', cursor: 'pointer' }}>
           ← Go Back
@@ -723,197 +1001,243 @@ function LessonPlayer({ yr, idx, onBack, onComplete, onNextLesson, onMap }) {
       </div>
     );
   }
-  
-  const activity = lesson.activity || null;
+
   const nextIdx = idx + 1 < lessons.length ? idx + 1 : null;
   const nextLesson = nextIdx != null ? lessons[nextIdx] : null;
+  const hasCodingLab = isCodingLesson(lesson);
+  const hook = lesson.pupilHook || lesson.mission;
+  const theme = pictureForSlide(lesson, 'title');
+  const mark = themeMarkKind(lessonThemeId(lesson));
+  const teaching = getTeaching(yr, idx);
+  const goals = (teaching?.objectives?.length ? teaching.objectives : lesson.objectives || []).slice(0, 3);
+  const words = (lesson.vocabulary || []).slice(0, 4).map((v) => v?.word || v).filter(Boolean);
+  const phaseLabel = { intro: 'Goal', learn: 'Learn', play: 'Play', quiz: 'Quiz', done: 'Done' }[phase] || 'Goal';
 
-  const go = useCallback(d => setStep(s => Math.max(0, Math.min(10, s + d))), []);
+  const shell = (inner) => (
+    <div style={{ height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column', background: BG, color: TEXT }}>
+      <GlobalStyles />
+      <div style={{
+        flexShrink: 0, background: BG, borderBottom: `1px solid ${CARD_BORDER}`,
+        padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
+      }}>
+        <button type="button" onClick={onBack} style={{ background: 'none', border: 'none', color, fontWeight: 800, cursor: 'pointer' }}>← Path</button>
+        <div style={{ flex: 1, fontWeight: 800, fontSize: 14 }}>Week {lesson.week || idx + 1} · {phaseLabel}</div>
+        <ModeToggle role={role} onChange={onRoleChange} />
+      </div>
+      <div style={{ flex: 1, minHeight: 0, overflow: 'auto', padding: '16px 16px 20px', maxWidth: 920, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
+        {inner}
+      </div>
+    </div>
+  );
 
-  useEffect(() => { document.querySelector('.bb-lesson-scroll')?.scrollTo(0, 0); }, [step]);
-
-  const diff = lesson.difficulty || 1;
-  const mins = lesson.estimatedMinutes || 20;
-  const objectives = lesson.objectives || [lesson.conceptName && `Understand ${lesson.conceptName}`, lesson.mission, 'Complete the mission challenge'].filter(Boolean);
-  const keywords = lesson.keywords || lesson.csTopics || [];
-
-  let content;
-  if (step === 0) {
-    // INTRO
-    content = (
-      <StepFrame color={color} onBack={onBack} onNext={() => go(1)} nextLabel="Begin Mission ▶">
-        <div style={{ textAlign:'center' }}>
-          <div style={{ fontSize:80, animation:'float 3s ease-in-out infinite' }}>{lesson.emoji}</div>
-          <div style={{ display:'flex', gap:8, justifyContent:'center', flexWrap:'wrap', margin:'8px 0 12px' }}>
-            <Chip label={`Year ${c.year} · Term ${term ? term.term : 1}`} color={color} />
-            <Chip label={`${'★'.repeat(diff)}${'☆'.repeat(3 - diff)} difficulty`} color="#fbbf24" />
-            <Chip label={`⏱ ${mins} min`} color="#94a3b8" />
-          </div>
-          <div style={{ fontSize:28, fontWeight:900, marginBottom:6 }}>{lesson.title}</div>
-          <div style={{ color:TEXT_DIM, fontSize:14, marginBottom:20 }}>{lesson.mission}</div>
-        </div>
-        <div style={{ background:CARD_BG, border:`1px solid ${CARD_BORDER}`, borderRadius:18, padding:'18px', marginBottom:16 }}>
-          <div style={{ fontSize:12, fontWeight:800, color, letterSpacing:1, marginBottom:10 }}>🎯 MISSION OBJECTIVES</div>
-          {objectives.slice(0, 3).map((o, i) => (
-            <div key={i} style={{ display:'flex', gap:10, marginBottom:8, fontSize:14, color:'#e2e8f0' }}>
-              <span style={{ color }}>{i + 1}.</span>{o}
-            </div>
-          ))}
-        </div>
-        <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:16 }}>
-          {keywords.slice(0, 5).map((k, i) => <Chip key={i} label={k} color="#a855f7" />)}
-        </div>
-        {(lesson.vocabulary || []).length > 0 && (
-          <div style={{ background:CARD_BG, border:`1px solid ${color}33`, borderRadius:18, padding:'16px 18px', marginBottom:16 }}>
-            <div style={{ fontSize:12, fontWeight:800, color, letterSpacing:1, marginBottom:10 }}>📚 KEY VOCABULARY</div>
-            {(lesson.vocabulary || []).slice(0, 4).map((v, i) => (
-              <div key={i} style={{ marginBottom:10 }}>
-                <div style={{ fontWeight:800, fontSize:14, color:'#e2e8f0' }}>{v.word}</div>
-                <div style={{ fontSize:13, color:TEXT_DIM, lineHeight:1.5 }}>{v.def}</div>
-              </div>
-            ))}
-          </div>
-        )}
-        <CharBubble characterId={lesson.character} text={CHARACTERS[lesson.character]?.quote || 'Let\'s get started!'} />
-        
-        {/* Companion Activity Section for Teachers */}
-        {lesson.companionActivity && (
-          <CompanionActivitySection activity={lesson.companionActivity} color={color} />
-        )}
-      </StepFrame>
-    );
-  } else if (step === 1) {
-    // STORY
-    content = (
-      <StepFrame color={color} onBack={() => go(-1)} onNext={() => go(1)} nextLabel="Next: Start Learning →">
-        <div style={{ background:'linear-gradient(160deg, #0a0a1f, #12122e)', border:`1px solid ${color}44`,
-          borderRadius:24, padding:'30px 26px', flex:1, display:'flex', flexDirection:'column', justifyContent:'center' }}>
-          <div style={{ textAlign:'center', marginBottom:18 }}>
-            {CHARACTERS[lesson.character]?.image ? (
-              <img 
-                src={CHARACTERS[lesson.character].image} 
-                alt={CHARACTERS[lesson.character].name}
-                style={{ width:120, height:120, objectFit:'contain', animation:'float 3.5s ease-in-out infinite' }}
-              />
-            ) : (
-              <div style={{ fontSize:48, animation:'float 3.5s ease-in-out infinite' }}>{CHARACTERS[lesson.character]?.emoji}</div>
-            )}
-            <div style={{ fontSize:15, fontWeight:800, color: CHARACTERS[lesson.character]?.color, marginTop:8 }}>
-              {CHARACTERS[lesson.character]?.name}
-            </div>
-            <div style={{ fontSize:11, color:'#94a3b8', fontStyle:'italic' }}>
-              {CHARACTERS[lesson.character]?.role}
-            </div>
-          </div>
-          <div style={{ fontSize:17, lineHeight:1.8, fontStyle:'italic', color:'#e2e8f0', textAlign:'center',
-            fontFamily:'Georgia, serif' }}>
-            “{lesson.storyLine}”
-          </div>
-        </div>
-      </StepFrame>
-    );
-  } else if (step >= 2 && step <= 6) {
-    // TEACHING CARDS (spans steps 2-6)
-    content = (
-      <TeachingCards lesson={lesson} color={color} character={lesson.character}
-        onDone={() => setStep(7)} onBack={() => setStep(1)} />
-    );
-  } else if (step === 7) {
-    // PUZZLE PROGRESSION (Code.org-style 4 levels)
-    content = (
-      <StepFrame color={color} onBack={() => setStep(2)} onNext={() => go(1)}
-        nextLabel="Continue →" canNext={activityDone || puzzleLevels.length === 0}>
-        <div style={{ textAlign:'center', marginBottom:16 }}>
-          <div style={{ fontSize:11, fontWeight:800, color, letterSpacing:1 }}>🎮 PUZZLE PROGRESSION</div>
-          <div style={{ fontSize:22, fontWeight:900 }}>{lesson.challenge || 'Mission Challenge'}</div>
-          <div style={{ color:TEXT_DIM, fontSize:13 }}>Complete all 4 levels — warm-up → challenge → hard → bonus</div>
-        </div>
-        {puzzleLevels.length > 0 ? (
-          <PuzzleProgression puzzles={puzzleLevels} color={color} onAllComplete={() => setActivityDone(true)} />
-        ) : activity ? (
-          <ActivityRenderer activity={activity} color={color} completed={activityDone}
-            onComplete={() => setActivityDone(true)} />
-        ) : (
-          <div style={{ background:CARD_BG, border:`1px solid ${CARD_BORDER}`, borderRadius:20, padding:'30px',
-            textAlign:'center', animation:'fade-up .5s ease' }}>
-            <div style={{ fontSize:54, marginBottom:12, animation:'float 3s infinite' }}>🛠️</div>
-            <div style={{ fontSize:16, color:'#e2e8f0', lineHeight:1.6, marginBottom:18 }}>{lesson.challenge}</div>
-            <Btn color={color} onClick={() => setActivityDone(true)}>
-              {activityDone ? '✓ Completed' : 'Mark as Complete'}
-            </Btn>
-          </div>
-        )}
-      </StepFrame>
-    );
-  } else if (step === 8) {
-    // CODE
-    content = (
-      <StepFrame color={color} onBack={() => setStep(7)} onNext={() => go(1)} nextLabel="On to the Quiz →">
-        <div style={{ textAlign:'center', marginBottom:14 }}>
-          <div style={{ fontSize:11, fontWeight:800, color, letterSpacing:1 }}>💻 CODING LAB</div>
-          <div style={{ fontSize:22, fontWeight:900 }}>Try it in code!</div>
-          <div style={{ color:TEXT_DIM, fontSize:13 }}>Experiment with what you learned.</div>
-        </div>
-        <div style={{ flex:1 }}>
-          <CodingLabPanel yr={yr} idx={idx} lesson={lesson} color={color} />
-        </div>
-      </StepFrame>
-    );
-  } else if (step === 9) {
-    // QUIZ
-    content = (
-      <QuizStep lesson={lesson} color={color} onBack={() => setStep(8)}
+  if (phase === 'quiz') {
+    return shell(
+      <QuizStep workKey={`lesson:${yr}:${idx}`} lesson={lesson} color={color} onBack={() => setPhase('play')}
         onScore={(s, total, st) => {
           setScore(s); setQuizTotal(total); setStars(st);
           onComplete(yr, idx, lesson.xp);
-          setStep(10);
+          setPhase('done');
         }} />
     );
-  } else {
-    // REWARD (step 10)
-    content = (
+  }
+
+  if (phase === 'done') {
+    return shell(
       <RewardStep lesson={lesson} color={color} score={score} quizTotal={quizTotal} stars={stars} nextLesson={nextLesson}
         onNextLesson={() => nextIdx != null && onNextLesson(yr, nextIdx)} onMap={onMap} />
     );
   }
 
-  return (
-    <div style={{ height:'100%', background:BG, color:TEXT, display:'flex', flexDirection:'column' }}>
-      <GlobalStyles />
-      <div style={{ borderBottom:`1px solid ${CARD_BORDER}`, padding:'0 16px' }}>
-        <StepBar step={Math.min(step, 9)} color={color} />
+  if (phase === 'learn') {
+    return shell(
+      <StepFrame color={color} onBack={() => setPhase('intro')} onNext={() => setPhase('play')} nextLabel="Play now →">
+        <UniqueHeader tone="night" color={color} kind="learn" label="Learn" title={lesson.title} />
+        <PupilLearn teaching={teaching} color={color} />
+      </StepFrame>
+    );
+  }
+
+  if (phase === 'play') {
+    return shell(
+      <StepFrame color={color} onBack={() => setPhase(teaching ? 'learn' : 'intro')} onNext={() => setPhase('quiz')} nextLabel="Take the quiz →">
+        <UniqueHeader tone="night" color={color} kind="play" label="Play" title="Beat Dot’s challenges" />
+        <p style={{ color: TEXT_DIM, margin: '0 0 16px', fontSize: 15, lineHeight: 1.5 }}>{hook}</p>
+        {puzzleLevels.length > 0 ? (
+          <PuzzleProgression puzzles={puzzleLevels} color={color} minLevelsToPass={1} />
+        ) : (
+          <ActivityRenderer activity={{ type: 'seq', title: 'Sequence sprint', steps: ['Plan', 'Predict', 'Run', 'Check'],
+            instructions: 'Put the steps in order.' }} color={color} />
+        )}
+        {hasCodingLab && (
+          <div style={{ marginTop: 20 }}>
+            <UniqueHeader tone="night" color="#fbbf24" kind="blocks" label="Studio" title="Build it in code" />
+            <CodingLabPanel yr={yr} idx={idx} lesson={lesson} color={color} />
+          </div>
+        )}
+      </StepFrame>
+    );
+  }
+
+  return shell(
+    <StepFrame color={color} onBack={onBack} onNext={() => setPhase(teaching ? 'learn' : 'play')} nextLabel={teaching ? 'Start learning →' : 'Play now →'}>
+      <div className="bb-pupil-split">
+        <LessonPicture theme={theme} className="bb-pupil-split__art" />
+        <div>
+          <UniqueHeader
+            tone="night"
+            color={color}
+            kind={mark}
+            label={`Year ${c.year} · Week ${lesson.week || idx + 1} · ${term?.name || 'Term'}`}
+            title={lesson.title}
+          />
+          <p style={{ color: '#e2e8f0', fontSize: 16, lineHeight: 1.6, margin: '0 0 10px' }}>{hook}</p>
+          {words.length > 0 && (
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
+              {words.map((w) => <Chip key={w} label={w} color={color} />)}
+            </div>
+          )}
+        </div>
       </div>
-      <div className="bb-lesson-scroll bb-scroll" style={{ flex:1, overflowY:'auto', padding:'20px',
-        maxWidth: step === 7 ? 920 : 640, margin:'0 auto', width:'100%', boxSizing:'border-box' }}>
-        {content}
-      </div>
-    </div>
+      {goals.length > 0 && (
+        <ul className="bb-pupil-goals">
+          {goals.map((g, i) => (
+            <li key={i}>
+              <b style={{ background: color }}>{i + 1}</b>
+              <span>{g}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </StepFrame>
   );
 }
 
 // ════════════════════════════════════════════════════════════════════════════
 // ROOT
 // ════════════════════════════════════════════════════════════════════════════
-function LearnSectionInner() {
-  const [screen, setScreen] = useState('world'); // world | year | lesson
-  const [activeYr, setActiveYr] = useState('y3');
-  const [activeIdx, setActiveIdx] = useState(0);
+function LearnSectionInner({ subPath = '' }) {
+  const { user, isLoggedIn } = useUser();
+  const accountLocksPupil = isLoggedIn && (user?.role === 'student' || user?.role === 'parent');
+  const initial = parseLearnRoute(subPath);
+  const [screen, setScreen] = useState(initial.screen);
+  const [activeYr, setActiveYr] = useState(initial.yr);
+  const [activeIdx, setActiveIdx] = useState(initial.idx);
+  const [role, setRole] = useState(() => (accountLocksPupil ? 'pupil' : getLearnRole()));
   const [, force] = useState(0);
   const refresh = useCallback(() => force(n => n + 1), []);
 
+  function changeRole(next) {
+    if (accountLocksPupil) {
+      setLearnRole('pupil');
+      setRole('pupil');
+      return;
+    }
+    setLearnRole(next);
+    setRole(next);
+  }
+
+  useEffect(() => {
+    if (accountLocksPupil) {
+      setLearnRole('pupil');
+      setRole('pupil');
+    }
+  }, [accountLocksPupil]);
+
+  useEffect(() => {
+    const next = parseLearnRoute(subPath);
+    setScreen(next.screen);
+    setActiveYr(next.yr);
+    setActiveIdx(next.idx);
+  }, [subPath]);
+
+  function hashYear(yr) { window.location.hash = `learn/${yr}`; }
+  function hashLesson(yr, idx) {
+    window.location.hash = `learn/${yr}/w${String(idx + 1).padStart(2, '0')}`;
+  }
+  function hashPlan(yr, idx) {
+    window.location.hash = `learn/${yr}/w${String(idx + 1).padStart(2, '0')}/plan`;
+  }
+  function hashWorld() { window.location.hash = 'learn/world'; }
+
   function handleComplete(yr, idx, xp) {
-    if (!isLessonDone(yr, idx)) { markDone(yr, idx); addXP(xp); }
+    if (!isLessonDone(yr, idx)) {
+      markDone(yr, idx);
+      if (xp) addXP(xp);
+    }
     const prog = getYearProgress(yr);
     if (prog.done === prog.total && !isBadgeShown(yr)) markBadgeShown(yr);
     refresh();
   }
 
+  if (role === 'teacher') {
+    if (screen === 'world') {
+      return (
+        <div className="bb-learn-screen">
+          <TeacherHome
+            onPupil={() => changeRole('pupil')}
+            onSelectYear={hashYear}
+            onOpenLesson={(yr, idx) => hashLesson(yr, idx)}
+            onOpenPlan={(yr, idx) => hashPlan(yr, idx)}
+          />
+        </div>
+      );
+    }
+    if (screen === 'year') {
+      return (
+        <div className="bb-learn-screen">
+          <TeacherScheme
+            yr={activeYr}
+            onBack={hashWorld}
+            onPupil={() => changeRole('pupil')}
+            onSelectYear={hashYear}
+            onSelectLesson={(idx) => hashPlan(activeYr, idx)}
+          />
+        </div>
+      );
+    }
+    const lessons = SAFE_COURSES[activeYr]?.lessons || [];
+    if (screen === 'plan' || screen === 'lesson') {
+      if (screen === 'plan') {
+        return (
+          <div className="bb-learn-screen bb-learn-screen--staff">
+            <TeacherLesson
+              yr={activeYr}
+              idx={activeIdx}
+              onBack={() => { window.location.hash = `learn/${activeYr}`; }}
+              onPupil={() => changeRole('pupil')}
+              onComplete={handleComplete}
+              onOpenLesson={() => hashLesson(activeYr, activeIdx)}
+              onPrev={activeIdx > 0 ? () => hashPlan(activeYr, activeIdx - 1) : null}
+              onNext={activeIdx + 1 < lessons.length ? () => hashPlan(activeYr, activeIdx + 1) : null}
+            />
+          </div>
+        );
+      }
+      return (
+        <div className="bb-learn-screen bb-learn-screen--lesson">
+          <ClassroomLesson
+            key={`${activeYr}-${activeIdx}-teacher`}
+            yr={activeYr} idx={activeIdx}
+            role="teacher" onRoleChange={changeRole}
+            onBack={() => window.location.hash = `learn/${activeYr}`}
+            onPlan={() => hashPlan(activeYr, activeIdx)}
+            onComplete={handleComplete}
+            onNextLesson={(yr, idx) => hashLesson(yr, idx)}
+            onMap={() => { window.location.hash = 'learn/world'; }}
+          />
+        </div>
+      );
+    }
+  }
+
   if (screen === 'world') {
     return (
-      <div style={{ position:'absolute', inset:0, overflowY:'auto' }}>
+      <div className="bb-learn-screen">
         <WorldMap
-          onSelectYear={yr => { setActiveYr(yr); setScreen('year'); }}
-          onContinue={({ yr, idx }) => { setActiveYr(yr); setActiveIdx(idx); setScreen('lesson'); }}
+          role={role}
+          onRoleChange={changeRole}
+          onSelectYear={hashYear}
+          onContinue={({ yr, idx }) => hashLesson(yr, idx)}
         />
       </div>
     );
@@ -921,32 +1245,34 @@ function LearnSectionInner() {
 
   if (screen === 'year') {
     return (
-      <div style={{ position:'absolute', inset:0, overflowY:'auto' }}>
-        <YearView yr={activeYr} onBack={() => setScreen('world')}
-          onSelectLesson={idx => { setActiveIdx(idx); setScreen('lesson'); }} />
+      <div className="bb-learn-screen">
+        <YearView yr={activeYr} role={role} onRoleChange={changeRole} onBack={hashWorld}
+          onSelectLesson={idx => hashLesson(activeYr, idx)} />
       </div>
     );
   }
 
-  // lesson
   return (
-    <div style={{ position:'absolute', inset:0 }}>
+    <div className="bb-learn-screen bb-learn-screen--lesson">
       <LessonPlayer
-        key={`${activeYr}-${activeIdx}`}
+        key={`${activeYr}-${activeIdx}-pupil`}
         yr={activeYr} idx={activeIdx}
-        onBack={() => setScreen('year')}
+        role={role} onRoleChange={changeRole}
+        onBack={() => { window.location.hash = `learn/${activeYr}`; }}
         onComplete={handleComplete}
-        onNextLesson={(yr, idx) => { setActiveYr(yr); setActiveIdx(idx); setScreen('lesson'); }}
-        onMap={() => setScreen('world')}
+        onNextLesson={(yr, idx) => hashLesson(yr, idx)}
+        onMap={() => { window.location.hash = 'learn/world'; }}
       />
     </div>
   );
 }
 
-export default function LearnSection() {
+export default function LearnSection({ subPath = '' }) {
   return (
     <LearnErrorBoundary>
-      <LearnSectionInner />
+      <div className="bb-learn-hub">
+        <LearnSectionInner subPath={subPath} />
+      </div>
     </LearnErrorBoundary>
   );
 }

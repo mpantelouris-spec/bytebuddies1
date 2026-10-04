@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import {
   BLOCK_DEFS,
   SIDEBAR_TO_TYPE,
+  lookupSidebarType,
   createBlockFromDrop,
   BlockContent,
   resolveBlocklyNodeType,
@@ -10,7 +11,6 @@ import {
   readBlocklyFieldOrValue,
   shortTypeToBlocklyType,
 } from '../utils/blocks';
-import { saveSubmissionToFirestore } from '../firebase';
 import { useUser } from '../contexts/UserContext';
 import AppMode from '../utils/AppMode';
 import { assetUrl } from '../utils/assetUrl';
@@ -71,6 +71,13 @@ import {
   getQrState,
   cleanupQrSidebarOverlay,
 } from '../utils/extensionEngine';
+import {
+  executeExtensionGameBlock,
+  isExtensionGameType,
+  recordPenPoint,
+  drawPenTrails,
+  readExtensionReporter,
+} from '../utils/gameExtensionExec';
 import { executeCAMERABlock } from '../systems/camera';
 import { webcamManager } from '../systems/GlobalWebcamManager';
 import {
@@ -300,10 +307,10 @@ function conditionBlocklyNodeToEvaluatorBlock(node) {
   const blocklyType = resolveBlocklyNodeType(node) || node.type;
   const f = node.fields || {};
 
-  const operatorBlock = blocklyNodeToEvaluatorBlock(node);
+  const operatorBlock = blocklyNodeToEvaluatorBlock(node, reporterBlocklyNodeToEvaluatorBlock);
   if (operatorBlock) return operatorBlock;
 
-  const listBlock = blocklyListNodeToEvaluatorBlock(node);
+  const listBlock = blocklyListNodeToEvaluatorBlock(node, reporterBlocklyNodeToEvaluatorBlock);
   if (listBlock) return listBlock;
 
   if (blocklyType === 'bb_sense_timer') {
@@ -416,6 +423,90 @@ function conditionBlocklyNodeToEvaluatorBlock(node) {
   }
 
   return { type: 'logic-bool', params: { value: 'false' } };
+}
+
+const REPORTER_SLOT_SHADOWS = new Set(['text', 'math_number']);
+/** List statements evaluate their own `{ _nested }` item/index params. */
+const LIST_STATEMENT_TYPES = new Set(['list-add', 'list-delete', 'list-insert', 'list-replace']);
+
+const MOVE_SLOTS = { STEPS: 'steps' };
+const TURN_SLOTS = { DEGREES: 'degrees' };
+const XY_SLOTS = { X: 'x', Y: 'y' };
+const GLIDE_SLOTS = { SECS: 'secs', X: 'x', Y: 'y' };
+const CHANGE_XY_SLOTS = { DX: 'amount', DY: 'amount' };
+const SAY_SLOTS = { MESSAGE: 'text', SECS: 'secs' };
+/** Runtime block type → Blockly field/input name → params key, for reporters plugged into sockets. */
+const SLOT_PARAM_KEYS = {
+  'looks-say': SAY_SLOTS,
+  'sprite-say': SAY_SLOTS,
+  'looks-think': SAY_SLOTS,
+  'sprite-think': SAY_SLOTS,
+  'sprite-move': MOVE_SLOTS,
+  'motion-move': MOVE_SLOTS,
+  'sprite-turn': TURN_SLOTS,
+  'sprite-turn-right': TURN_SLOTS,
+  'sprite-turn-left': TURN_SLOTS,
+  'motion-turn': TURN_SLOTS,
+  'motion-turn-right': TURN_SLOTS,
+  'motion-turn-left': TURN_SLOTS,
+  'sprite-goto': XY_SLOTS,
+  'motion-goto': XY_SLOTS,
+  'motion-goto-xy': XY_SLOTS,
+  'sprite-glide': GLIDE_SLOTS,
+  'motion-glide': GLIDE_SLOTS,
+  'motion-glide-to-xy': GLIDE_SLOTS,
+  'sprite-changex': CHANGE_XY_SLOTS,
+  'sprite-changey': CHANGE_XY_SLOTS,
+  'motion-changex': CHANGE_XY_SLOTS,
+  'motion-changey': CHANGE_XY_SLOTS,
+  'sprite-setx': { X: 'x' },
+  'motion-setx': { X: 'x' },
+  'sprite-sety': { Y: 'y' },
+  'motion-sety': { Y: 'y' },
+  'sprite-point-dir': { DIRECTION: 'degrees', DEGREES: 'degrees' },
+  'sprite-setsize': { SIZE: 'size' },
+  'looks-change-size': { CHANGE: 'amount' },
+  'control-wait': { DURATION: 'secs' },
+  'loop-repeat': { TIMES: 'times' },
+  'var-set': { VALUE: 'value' },
+  'var-change': { AMOUNT: 'amount', VALUE: 'amount' },
+};
+
+/** Map any reporter/boolean Blockly node plugged into a slot to an evaluateCondition() block. */
+function reporterBlocklyNodeToEvaluatorBlock(node) {
+  if (!node) return null;
+  const blocklyType = resolveBlocklyNodeType(node) || node.type;
+  const f = node.fields || {};
+  switch (blocklyType) {
+    case 'motion_xposition':
+    case 'motion_yposition':
+    case 'motion_direction':
+    case 'sound_volume':
+      return { type: blocklyType, params: {} };
+    case 'bb_var_get': return { type: 'var-reporter', params: { name: String(f.NAME || 'myVar') } };
+    case 'sensing_mousex': return { type: 'sense-mouse-x', params: {} };
+    case 'sensing_mousey': return { type: 'sense-mouse-y', params: {} };
+    case 'sensing_mousedown': return { type: 'sense-mouse-down', params: {} };
+    case 'sensing_timer': return { type: 'sense-timer', params: {} };
+    case 'sensing_loudness': return { type: 'sense-loudness', params: {} };
+    case 'sensing_answer': return { type: 'sense-answer', params: {} };
+    case 'sensing_username': return { type: 'sense-username', params: {} };
+    case 'sensing_dayssince2000': return { type: 'sense-days-since-2000', params: {} };
+    case 'sensing_current': return { type: 'sense-current', params: { unit: f.CURRENTMENU || 'year' } };
+    case 'sensing_distanceto':
+      return { type: 'sense-distance', params: { target: f.OBJECT || f.DISTANCETOMENU || 'mouse-pointer' } };
+    case 'sensing_of':
+      return { type: 'sense-of', params: { property: f.PROPERTY || 'x', object: f.OBJECT || 'Stage' } };
+    default:
+      return conditionBlocklyNodeToEvaluatorBlock(node);
+  }
+}
+
+/** Reporter plugged into a slot → `{ _nested }`; plain shadow/no block → null (use the field value). */
+function slotNestedParam(node) {
+  if (!node || REPORTER_SLOT_SHADOWS.has(node.type)) return null;
+  const nested = reporterBlocklyNodeToEvaluatorBlock(node);
+  return nested ? { _nested: nested } : null;
 }
 
 function normalizeSpriteBlocks(blocks) {
@@ -621,11 +712,11 @@ function blocklyNodesToGameBlocks(nodes = []) {
       console.log('[pushNode] Body block detected! node.type:', node?.type, 'blocklyType:', blocklyType, 'final type:', type, 'BLOCK_DEFS has type:', !!BLOCK_DEFS[type]);
     }
     if (!type || !BLOCK_DEFS[type]) {
-      const label = String(f.LABEL || f.BLOCK_NAME || '').trim().toLowerCase();
-      const short = SIDEBAR_TO_TYPE[label];
+      const label = String(f.LABEL || f.BLOCK_NAME || '').trim();
+      const short = lookupSidebarType(label);
       if (short) {
-        const mapped = blocklyTypeToGameType(shortTypeToBlocklyType(short));
-        if (mapped && BLOCK_DEFS[mapped]) type = mapped;
+        const mapped = blocklyTypeToGameType(shortTypeToBlocklyType(short)) || short;
+        if (mapped) type = mapped;
       }
     }
     if (OPERATOR_GAME_TYPES.has(type)) {
@@ -637,7 +728,7 @@ function blocklyNodesToGameBlocks(nodes = []) {
     if (LIST_REPORTER_GAME_TYPES.has(type)) {
       return;
     }
-    if (!type || !BLOCK_DEFS[type]) {
+    if (!type || (!BLOCK_DEFS[type] && !isExtensionGameType(type))) {
       const isLibStub =
         rawType === 'bb_generic_stack'
         || String(rawType || '').startsWith('bb_lib_');
@@ -647,10 +738,16 @@ function blocklyNodesToGameBlocks(nodes = []) {
       }
       return;
     }
-    const base = { ...BLOCK_DEFS[type], params: { ...BLOCK_DEFS[type].params } };
+    const def = BLOCK_DEFS[type] || { label: type, icon: '⚡', color: '#ec4899', category: 'extension', params: {} };
+    const base = { ...def, type, params: { ...(def.params || {}) } };
     // "sprite" was the old dropdown value for Sprite1 before it was fixed to use the actual name
     const normSpriteName = (v) => (!v || v === 'sprite') ? 'Sprite1' : String(v);
     if (type === 'event-keypress') base.params.key = f.KEY || 'space';
+    if (type === 'event-backdropswitch') base.params.backdrop = String(f.BACKDROP ?? base.params.backdrop ?? '');
+    if (type === 'event-loudness') {
+      base.params.what = String(f.CONDITION ?? f.WHENGREATERTHANMENU ?? 'loudness');
+      base.params.threshold = String(f.VALUE ?? 10);
+    }
     if (type === 'sprite-move') base.params.steps = String(f.STEPS || 10);
     if (type === 'sprite-turn') base.params.degrees = String(f.DEGREES || 90);
     if (type === 'sprite-turn-right') {
@@ -825,43 +922,50 @@ function blocklyNodesToGameBlocks(nodes = []) {
     if (type === 'list-create') base.params.name = String(f.NAME ?? f.name ?? 'myList');
     if (type === 'list-add') {
       base.params.list = String(f.LIST ?? f.list ?? 'myList');
-      base.params.item = listBlocklyParam(node, f, 'ITEM', 'thing');
+      base.params.item = listBlocklyParam(node, f, 'ITEM', 'thing', reporterBlocklyNodeToEvaluatorBlock);
     }
     if (type === 'list-delete') {
       base.params.list = String(f.LIST ?? f.list ?? 'myList');
-      base.params.index = listBlocklyParam(node, f, 'INDEX', 1);
+      base.params.index = listBlocklyParam(node, f, 'INDEX', 1, reporterBlocklyNodeToEvaluatorBlock);
     }
     if (type === 'list-delete-all' || type === 'list-show' || type === 'list-hide') {
       base.params.list = String(f.LIST ?? f.list ?? 'myList');
     }
     if (type === 'list-insert') {
       base.params.list = String(f.LIST ?? f.list ?? 'myList');
-      base.params.index = listBlocklyParam(node, f, 'INDEX', 1);
-      base.params.item = listBlocklyParam(node, f, 'ITEM', 'thing');
+      base.params.index = listBlocklyParam(node, f, 'INDEX', 1, reporterBlocklyNodeToEvaluatorBlock);
+      base.params.item = listBlocklyParam(node, f, 'ITEM', 'thing', reporterBlocklyNodeToEvaluatorBlock);
     }
     if (type === 'list-replace') {
       base.params.list = String(f.LIST ?? f.list ?? 'myList');
-      base.params.index = listBlocklyParam(node, f, 'INDEX', 1);
-      base.params.item = listBlocklyParam(node, f, 'ITEM', 'thing');
+      base.params.index = listBlocklyParam(node, f, 'INDEX', 1, reporterBlocklyNodeToEvaluatorBlock);
+      base.params.item = listBlocklyParam(node, f, 'ITEM', 'thing', reporterBlocklyNodeToEvaluatorBlock);
     }
     if (type === 'list-item' || type === 'list-get') {
       base.params.list = String(f.LIST ?? f.list ?? 'myList');
-      base.params.index = listBlocklyParam(node, f, 'INDEX', 1);
+      base.params.index = listBlocklyParam(node, f, 'INDEX', 1, reporterBlocklyNodeToEvaluatorBlock);
     }
     if (type === 'list-index') {
       base.params.list = String(f.LIST ?? f.list ?? 'myList');
-      base.params.item = listBlocklyParam(node, f, 'ITEM', 'thing');
+      base.params.item = listBlocklyParam(node, f, 'ITEM', 'thing', reporterBlocklyNodeToEvaluatorBlock);
     }
     if (type === 'list-length') {
       base.params.list = String(f.LIST ?? f.list ?? 'myList');
     }
     if (type === 'list-contains') {
       base.params.list = String(f.LIST ?? f.list ?? 'myList');
-      base.params.item = listBlocklyParam(node, f, 'ITEM', 'thing');
+      base.params.item = listBlocklyParam(node, f, 'ITEM', 'thing', reporterBlocklyNodeToEvaluatorBlock);
     }
     if (type === 'var-create') { base.params.name = String(f.NAME || 'myVar'); base.params.value = String(f.VALUE ?? f.value ?? 0); }
-    if (type === 'var-set') { base.params.name = String(f.NAME || f.name || 'myVar'); base.params.value = String(f.VALUE ?? f.value ?? 0); }
-    if (type === 'var-change') { base.params.name = String(f.NAME || 'myVar'); base.params.amount = String(f.AMOUNT || 1); }
+    if (type === 'var-set') {
+      base.params.name = String(f.NAME || f.VARIABLE || f.name || 'myVar');
+      base.params.value = String(readBlocklyFieldOrValue(node, f, 'VALUE', f.value ?? 0));
+    }
+    if (type === 'var-show' || type === 'var-hide') base.params.name = String(f.VARIABLE || f.NAME || 'myVar');
+    if (type === 'var-change') {
+      base.params.name = String(f.NAME || f.VARIABLE || 'myVar');
+      base.params.amount = String(readBlocklyFieldOrValue(node, f, 'AMOUNT', readBlocklyFieldOrValue(node, f, 'VALUE', 1)));
+    }
     if (type === 'sprite-setsize') base.params.size = String(f.SIZE ?? f.size ?? 100);
     if (blocklyType === 'looks_setSizeTo') base.params.size = String(f.SIZE ?? f.size ?? 100);
     if (type === 'looks-grow' || type === 'looks-shrink') base.params.amount = String(f.AMOUNT ?? f.amount ?? 10);
@@ -1000,6 +1104,16 @@ function blocklyNodesToGameBlocks(nodes = []) {
       console.log('  Extracted transparency=', base.params.transparency);
     }
 
+    const slotKeys = SLOT_PARAM_KEYS[type];
+    if (slotKeys && node?.values) {
+      Object.entries(node.values).forEach(([inputName, child]) => {
+        const field = inputName.endsWith('_SLOT') ? inputName.slice(0, -5) : inputName;
+        const key = slotKeys[field];
+        const nested = key ? slotNestedParam(child) : null;
+        if (nested) base.params[key] = nested;
+      });
+    }
+
     const pushSynthetic = (synType) => {
       out.push({
         id: Date.now() + Math.random() + out.length,
@@ -1009,6 +1123,7 @@ function blocklyNodesToGameBlocks(nodes = []) {
         color: '#5c6bc0',
         category: 'logic',
         params: {},
+        stackOrder: stackOrder++,
         x: BLOCK_LANE_X,
         y,
       });
@@ -1093,6 +1208,8 @@ function blocklyNodesToGameBlocks(nodes = []) {
       out.push({
         id: Date.now() + Math.random() + out.length,
         type,
+        blocklyType: rawType || blocklyType,
+        stackOrder: stackOrder++,
         ...base,
         x: BLOCK_LANE_X,
         y,
@@ -1586,11 +1703,16 @@ export default function GameBuilder() {
 
   const applyPlayBackdrop = useCallback((nameOrNumber) => {
     const names = getPlayBackdropNames();
+    const before = playBackdropNameRef.current;
     applyStageBackdrop(names, nameOrNumber, {
       playBackdropRef,
       playBackdropNameRef,
       setBackground,
     });
+    const after = playBackdropNameRef.current;
+    if (after && after !== before) {
+      globalVarsRef.current._backdropJustSwitched = after;
+    }
     requestAnimationFrame(() => {
       drawRef.current?.(playSpritesRef.current || [], { playing: true });
     });
@@ -2237,6 +2359,8 @@ loadImages(function(){
       for (let y = 0; y < STAGE_H; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(STAGE_W, y); ctx.stroke(); }
     }
 
+    drawPenTrails(ctx, spritesToDraw);
+
     const sorted = [...spritesToDraw].sort((a, b) => (a.layer || 0) - (b.layer || 0));
     const visibleSprites = sorted.filter((s) => s.visible !== false);
     const spriteImages = await Promise.all(
@@ -2436,6 +2560,9 @@ loadImages(function(){
   function snapshotSpritesForPlay(baseSprites) {
     let snapshot = (baseSprites || spritesRef.current || sprites).map((s) => {
       const next = { ...s };
+      if (typeof window !== 'undefined' && window.localStorage?.getItem('bb_block_probe') === '1' && Array.isArray(s._probeBlocks)) {
+        next.blocks = s._probeBlocks.map((b) => ({ ...b, params: { ...(b.params || {}) } }));
+      }
       delete next.rotationStyle;
       delete next._rotationStyle;
       if (next.name === 'Star' || next.svgKey === 'Star') {
@@ -2451,7 +2578,9 @@ loadImages(function(){
       if (selectedSpriteObj) {
         let blocks = selectedSpriteObj.blocks || [];
         let blocklyXml = selectedSpriteObj.blocklyXml || '';
-        const flushed = blocklyWorkspaceRef.current?.flush?.();
+        const flushed = (typeof window !== 'undefined' && window.localStorage?.getItem('bb_block_probe') === '1')
+          ? null
+          : blocklyWorkspaceRef.current?.flush?.();
         if (flushed?.nodes?.length) {
           const converted = blocklyNodesToGameBlocks(flushed.nodes);
           if (converted.length) {
@@ -2490,6 +2619,21 @@ loadImages(function(){
     setSprites(snap);
     setScore(0);
     imgCacheRef.current = {};
+    if (typeof window !== 'undefined' && window.localStorage?.getItem('bb_block_probe') === '1') {
+      window.__bbPlayProbe = {
+        frames: 0,
+        playing: true,
+        sprites: (snap || []).map((s) => ({
+          id: s.id,
+          name: s.name,
+          x: s.x,
+          y: s.y,
+          visible: s.visible !== false,
+          say: s._sayText || '',
+        })),
+        spriteCount: (snap || []).length,
+      };
+    }
     setIsPlaying(true);
   }
 
@@ -2566,6 +2710,7 @@ loadImages(function(){
     // Key tracking for edge detection - must be local to game loop
     const keysPressed = {}; // Current frame key state
     const keysPressedPrev = {}; // Previous frame key state for edge detection
+    const keysTapped = {}; // Keys pressed since the last frame (catches taps shorter than one frame)
     let localScore = 0;
 
     const gameKeys = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', ' ', 'w', 'a', 's', 'd']);
@@ -2589,6 +2734,7 @@ loadImages(function(){
     globalVars._timerStart = Date.now();
     globalVars._lastAnswer = '';
     globalVars._askResolved = false;
+    globalVars._username = String(user?.name || user?.displayName || 'ByteBuddy');
 
     let stageImageData = null;
     const getStageImageData = () => {
@@ -2620,6 +2766,10 @@ loadImages(function(){
       keysPressed[e.key] = true;
       const friendlyKey = keyMap[e.key] || e.key.toLowerCase();
       keysPressed[friendlyKey] = true;
+      if (!e.repeat) {
+        keysTapped[e.key] = true;
+        keysTapped[friendlyKey] = true;
+      }
 
       // Notify GameRuntime of key press
       if (runtime) {
@@ -2772,6 +2922,8 @@ loadImages(function(){
           return evaluateOperatorBlock(block, sprite, evaluateCondition);
         case 'logic-bool':
           return p.value === 'true' || p.value === true;
+        case 'var-reporter':
+          return spriteVars[sprite.id]?._vars?.[p.name] ?? 0;
         // Sensing
         case 'sense-touching': {
           const target = p.target || p.OBJECT || 'edge';
@@ -2914,9 +3066,26 @@ loadImages(function(){
         default: {
           const opVal = evaluateOperatorBlock(block, sprite, evaluateCondition);
           if (opVal !== undefined) return opVal;
+          const extVal = readExtensionReporter(block.type, p, sprite);
+          if (extVal !== undefined) return extVal;
           return false;
         }
       }
+    }
+
+    /** Swap `{ _nested }` slot params (reporters plugged into sockets) for their current value. */
+    function resolveSlotParams(block, sprite) {
+      const p = block?.params;
+      if (!p || LIST_STATEMENT_TYPES.has(block.type)) return block;
+      let resolved = null;
+      Object.keys(p).forEach((k) => {
+        const v = p[k];
+        if (k === '_cond' || !v || typeof v !== 'object' || !v._nested) return;
+        if (!resolved) resolved = { ...p };
+        const value = evaluateCondition(v._nested, sprite);
+        resolved[k] = value == null ? '' : String(value);
+      });
+      return resolved ? { ...block, params: resolved } : block;
     }
 
     /** Scratch-vm-style safety: cap block executions per animation frame (see scratchVmMapping.js). */
@@ -3140,11 +3309,22 @@ loadImages(function(){
           break;
         }
         case 'var-create':
-        case 'var-set': spriteVars[sprite.id]._vars[p.name] = parseFloat(p.value) || 0; break;
-        case 'var-change': spriteVars[sprite.id]._vars[p.name] = (spriteVars[sprite.id]._vars[p.name] || 0) + (parseFloat(p.amount) || 0); break;
+        case 'var-set': {
+          const raw = String(p.value ?? '');
+          const n = Number(raw);
+          spriteVars[sprite.id]._vars[p.name] = raw.trim() !== '' && Number.isFinite(n) ? n : raw;
+          break;
+        }
+        case 'var-change': spriteVars[sprite.id]._vars[p.name] = (Number(spriteVars[sprite.id]._vars[p.name]) || 0) + (parseFloat(p.amount) || 0); break;
         case 'var-show':
           sprite._sayText = `${p.name || 'var'}=${spriteVars[sprite.id]._vars[p.name] ?? 0}`;
           sprite._sayUntil = Date.now() + 1500;
+          break;
+        case 'var-hide':
+          if (sprite._sayText && String(sprite._sayText).startsWith(`${p.name || 'var'}=`)) {
+            sprite._sayText = '';
+            sprite._sayUntil = 0;
+          }
           break;
         case 'math-add': globalVars._math = num(p.a, 0) + num(p.b, 0); break;
         case 'math-subtract': globalVars._math = num(p.a, 0) - num(p.b, 0); break;
@@ -3347,6 +3527,7 @@ loadImages(function(){
           globalVars._lastAnswer = '';
           flow.askWaiting = true;
           const question = txt(p.prompt, 'What is your name?').replace(/^"|"$/g, '') || '...';
+          globalVars._askQuestion = question;
           setAskDialog({ question });
           return true;
         }
@@ -3380,6 +3561,9 @@ loadImages(function(){
           const opt = String(p.stopOption || p.STOP_OPTION || 'all').toLowerCase();
           if (opt === 'all' || opt.includes('all')) {
             running = false;
+            if (typeof window !== 'undefined' && window.__bbPlayProbe) {
+              window.__bbPlayProbe.playing = false;
+            }
             stopAllScriptThreads(playSpritesRef.current || []);
           } else if (opt.includes('other')) {
             stopOtherScriptsOnSprite(sprite, currentExecThread);
@@ -3389,7 +3573,10 @@ loadImages(function(){
           break;
         }
         case 'game-pause': running = false; break;
-        case 'event-broadcast': vars._broadcast = txt(p.message, 'go'); break;
+        case 'event-broadcast':
+        case 'event-broadcast-wait':
+          vars._broadcast = txt(p.message, 'go');
+          break;
         // Control flow blocks
         case 'control-wait': {
           const secs = num(p.secs ?? p.SECONDS, 1);
@@ -3710,9 +3897,18 @@ loadImages(function(){
           break;
         }
         case 'face-analyze':
-          ensureCameraOn('face-analyze', sprite);
-          // Skip extension engine to avoid fullscreen camera
+        case 'face-analyse-camera':
+        case 'face-analyse-stage':
+          ensureCameraOn(blockType, sprite);
           vars._face_analyzed = true;
+          executeExtensionGameBlock(block, sprite, { ensureCameraOn, setCameraOn: (on) => { cameraStateRef.current.isOn = on; } });
+          break;
+        case 'object-analyze':
+        case 'object-analyse-camera':
+        case 'object-analyse-stage':
+          ensureCameraOn(blockType, sprite);
+          vars._object_analyzed = true;
+          executeExtensionGameBlock(block, sprite, { ensureCameraOn, setCameraOn: (on) => { cameraStateRef.current.isOn = on; } });
           break;
         case 'face-count':
           ensureCameraOn('face-count', sprite);
@@ -3735,11 +3931,6 @@ loadImages(function(){
           cameraStateRef.current.isOn = false;
           break;
         }
-        case 'object-analyze':
-          ensureCameraOn('object-analyze', sprite);
-          // Skip extension engine to avoid fullscreen camera
-          vars._object_analyzed = true;
-          break;
         case 'object-count':
           ensureCameraOn('object-count', sprite);
           // Return safe fallback without triggering fullscreen camera
@@ -3781,26 +3972,47 @@ loadImages(function(){
           runExtensionGame('chat|ask|' + txt(p.question || p.QUESTION, 'How do I move the sprite?'), sprite);
           break;
         case 'tts-speak':
-          // Text-to-speech (simulated via say block)
-          sprite._sayText = txt(p.text, '');
-          sprite._sayUntil = Date.now() + 2000;
-          break;
-        // ═══ OTHER AI/ML BLOCKS ═══
-        case 'ml-train':
-          runExtensionGame('ml|train', sprite);
-          break;
-        case 'ml-training-open':
-          runExtensionGame('ml|training_open', sprite);
+          executeExtensionGameBlock(block, sprite);
           break;
         case 'ic-classify':
-          runExtensionGame('ic|classify', sprite);
+        case 'ic-analyse':
+          executeExtensionGameBlock({ ...block, type: 'ic-analyse' }, sprite);
           break;
         case 'pc-capture':
-          runExtensionGame('pc|capture', sprite);
+          executeExtensionGameBlock(block, sprite);
+          break;
+        case 'pen-down':
+        case 'pen-up':
+        case 'pen-clear':
+        case 'pen-erase':
+        case 'pen-color':
+        case 'pen-set-color':
+        case 'pen-size':
+        case 'pen-stamp':
+        case 'speech-listen':
+        case 'translate-text':
+        case 'ocr-scan':
+        case 'weather-city':
+        case 'weather-temp':
+        case 'weather-cond':
+        case 'body-video-on':
+        case 'face-show-box':
+        case 'face-hide-box':
+        case 'object-show-box':
+        case 'object-hide-box':
+          executeExtensionGameBlock(block, sprite, {
+            ensureCameraOn,
+            setCameraOn: (on) => { cameraStateRef.current.isOn = on; },
+          });
           break;
         // ═══ CAMERA SYSTEM BLOCKS ═══
-        // Catch-all for any video/camera blocks
         default:
+          if (executeExtensionGameBlock(block, sprite, {
+            ensureCameraOn,
+            setCameraOn: (on) => { cameraStateRef.current.isOn = on; },
+          })) {
+            break;
+          }
           // Handle blocks with 'video' in the name (for any missed block types)
           if (block.type && (block.type.includes('video') || block.type.includes('camera'))) {
             const state = (p && p.state) ? String(p.state).toLowerCase() : 'on';
@@ -3897,7 +4109,7 @@ loadImages(function(){
       }
 
       for (let i = startPc; i < body.length; i++) {
-        const blk = body[i];
+        const blk = resolveSlotParams(body[i], sprite);
 
         if (thread?.stopped || flow.stopped) {
           currentExecThread = null;
@@ -3932,6 +4144,7 @@ loadImages(function(){
             }
             if (b.type === 'logic-end-if') {
               depth--;
+              if (depth > 0) (inElse ? elseBody : ifBody).push(b);
               j++;
               continue;
             }
@@ -4074,6 +4287,18 @@ loadImages(function(){
           return false;
         }
 
+        if (blk.type === 'func-call' || blk.type === 'myblock-run') {
+          const name = blk.params?.name || (blk.type === 'myblock-run' ? 'my block' : 'myFunc');
+          const fn = sprite._functionRegistry?.functions?.[name];
+          if (fn?.body?.length) {
+            if (execBody(fn.body, sprite, 0, thread) !== false) {
+              currentExecThread = null;
+              return i;
+            }
+          }
+          continue;
+        }
+
         if (blk.type === 'control-wait-until') {
           const condBlk = blk.params?._cond;
           const ready = condBlk ? evaluateCondition(condBlk, sprite) : false;
@@ -4121,12 +4346,20 @@ loadImages(function(){
       return false;
     }
 
-    // Initialize global function registry
+    // Initialize global function registry from "define" hats
     const functionRegistry = new FunctionRegistry();
 
     let spriteChains = getSpriteChains();
 
     spriteChains.forEach(({ sprite, chains }) => {
+      sprite._functionRegistry = functionRegistry;
+      chains.forEach((chain) => {
+        const t = chain.trigger?.type;
+        if (t === 'func-define' || t === 'myblock-define') {
+          const name = chain.trigger.params?.name || (t === 'myblock-define' ? 'my block' : 'myFunc');
+          functionRegistry.define(name, [], chain.body || []);
+        }
+      });
       applyMotionFlagsFromChains(sprite, chains);
       initGreenFlagThreads(sprite, chains);
     });
@@ -4134,11 +4367,52 @@ loadImages(function(){
     // Run green-flag scripts before first paint so "set rotation style" applies immediately
     blockStepsRemaining = MAX_BLOCK_STEPS_PER_ANIMATION_FRAME;
     blockBudgetWarned = false;
-    stepGreenFlagChains(spriteChains, execBody);
-    (drawRef.current || draw)(playSpritesRef.current, { playing: true });
-
     let running = true;
     const messageQueue = [];
+    const greaterHatPrev = {};
+
+    stepGreenFlagChains(spriteChains, execBody);
+    if (globalVars._broadcast) {
+      messageQueue.push(globalVars._broadcast);
+      globalVars._broadcast = null;
+    }
+    while (messageQueue.length > 0) {
+      const msg = messageQueue.shift();
+      spriteChains.forEach(({ sprite, chains }) => {
+        chains.filter((c) => c.trigger.type === 'event-message').forEach((chain) => {
+          const triggerMsg = (chain.trigger.params?.message || 'go').toLowerCase();
+          if (String(msg).toLowerCase() === triggerMsg) execBody(chain.body, sprite);
+        });
+      });
+    }
+    (drawRef.current || draw)(playSpritesRef.current, { playing: true });
+    if (typeof window !== 'undefined' && window.localStorage?.getItem('bb_block_probe') === '1') {
+      const primed = playSpritesRef.current || [];
+      window.__bbPlayProbe = {
+        ...(window.__bbPlayProbe || {}),
+        frames: Math.max(1, window.__bbPlayProbe?.frames || 0),
+        playing: running,
+        sprites: primed.map((s) => ({
+          id: s.id,
+          name: s.name,
+          x: s.x,
+          y: s.y,
+          visible: s.visible !== false,
+          direction: s.direction,
+          rotationStyle: s.rotationStyle,
+          say: s._sayText || '',
+          think: s._thinkText || '',
+          size: s.sizePercent ?? 100,
+          costume: s.currentCostumeIndex ?? 0,
+          color: s.effects?.color ?? 0,
+          drag: s._dragMode,
+          bounce: !!s._edgeBounceEnabled,
+          isClone: !!s.isClone,
+          vars: spriteVars[s.id]?._vars || {},
+        })),
+        spriteCount: primed.length,
+      };
+    }
 
     // Track body video state for real-time changes during gameplay
     let lastBodyVideoState = null;
@@ -4180,11 +4454,12 @@ loadImages(function(){
       spriteChains.forEach(({ sprite, chains }) => {
         chains.filter(c => c.trigger.type === 'event-keypress').forEach(chain => {
           const triggerKey = chain.trigger.params?.key || '';
-          if (isKeyJustPressed(keysPressed, keysPressedPrev, triggerKey)) {
+          if (isKeyJustPressed(keysPressed, keysPressedPrev, triggerKey) || isKeyHeld(keysTapped, triggerKey)) {
             execBody(chain.body, sprite);
           }
         });
       });
+      Object.keys(keysTapped).forEach((key) => { delete keysTapped[key]; });
 
       // Update previous key state for next frame - track ALL keys
       Object.keys(keysPressed).forEach(key => {
@@ -4245,6 +4520,37 @@ loadImages(function(){
         globalVars._broadcast = null;
       }
 
+      // Backdrop-switch hats (Scratch: when backdrop switches to)
+      if (globalVars._backdropJustSwitched) {
+        const switched = String(globalVars._backdropJustSwitched);
+        globalVars._backdropJustSwitched = null;
+        spriteChains.forEach(({ sprite, chains }) => {
+          chains.filter((c) => c.trigger.type === 'event-backdropswitch').forEach((chain) => {
+            const want = String(chain.trigger.params?.backdrop || chain.trigger.params?.BACKDROP || '').toLowerCase();
+            const got = switched.toLowerCase();
+            if (!want || want === 'any' || got === want || got.includes(want) || want.includes(got)) {
+              execBody(chain.body, sprite);
+            }
+          });
+        });
+      }
+
+      // When [loudness/timer] > threshold hats (edge-triggered)
+      spriteChains.forEach(({ sprite, chains }) => {
+        chains.filter((c) => c.trigger.type === 'event-loudness').forEach((chain) => {
+          const menu = String(chain.trigger.params?.what || chain.trigger.params?.WHENGREATERTHANMENU || 'loudness').toLowerCase();
+          const thresh = Number(chain.trigger.params?.threshold ?? chain.trigger.params?.VALUE ?? 10);
+          const value = menu.includes('timer')
+            ? getTimerSeconds(globalVars._timerStart)
+            : (loudnessMonitorRef.current?.getLevel() ?? 0);
+          const key = `${sprite.id}:${chain.trigger.id || menu}:${thresh}`;
+          const nowTrue = value > thresh;
+          const wasTrue = !!greaterHatPrev[key];
+          greaterHatPrev[key] = nowTrue;
+          if (nowTrue && !wasTrue) execBody(chain.body, sprite);
+        });
+      });
+
       // Phase 6 — forever loops (one cooperative step per thread per frame)
       blockStepsRemaining = MAX_BLOCK_STEPS_PER_ANIMATION_FRAME;
       blockBudgetWarned = false;
@@ -4255,6 +4561,7 @@ loadImages(function(){
       // Advance move/glide + edge bounce after scripts (so green-flag enables drift same frame)
       ps.forEach((sprite) => {
         if (sprite.visible !== false) tickSpriteAnimations(sprite, dtSec);
+        recordPenPoint(sprite);
       });
 
       // Phase 7 — platformer physics (skipped while scratch move/glide controls position)
@@ -4333,6 +4640,48 @@ loadImages(function(){
 
       // Phase 8 — render
       (drawRef.current || draw)(ps, { playing: true });
+      if (typeof window !== 'undefined' && window.localStorage?.getItem('bb_block_probe') === '1') {
+        const listVisible = {};
+        Object.entries(listVisibleRef.current || {}).forEach(([k, v]) => {
+          listVisible[k] = !!(v && v.visible);
+        });
+        window.__bbPlayProbe = {
+          frames: (window.__bbPlayProbe?.frames || 0) + 1,
+          playing: true,
+          score: localScore,
+          math: globalVars._math,
+          text: globalVars._text,
+          bool: globalVars._bool,
+          volume: globalVars._volume,
+          username: globalVars._username,
+          ask: globalVars._askQuestion || '',
+          answer: globalVars._lastAnswer || '',
+          lists: { ...(listStoreRef.current || {}) },
+          listVisible,
+          backdrop: playBackdropNameRef.current,
+          spriteCount: ps.length,
+          sprites: ps.map((s) => ({
+            id: s.id,
+            name: s.name,
+            x: s.x,
+            y: s.y,
+            visible: s.visible !== false,
+            direction: s.direction,
+            rotationStyle: s.rotationStyle,
+            say: s._sayText || '',
+            think: s._thinkText || '',
+            size: s.sizePercent ?? 100,
+            costume: s.currentCostumeIndex ?? 0,
+            color: s.effects?.color ?? 0,
+            drag: s._dragMode,
+            bounce: !!s._edgeBounceEnabled,
+            isClone: !!s.isClone,
+            volume: s._sound?.volume,
+            pitch: s._sound?.effects?.pitch,
+            vars: spriteVars[s.id]?._vars || {},
+          })),
+        };
+      }
       animRef.current = requestAnimationFrame(loop);
     };
 
@@ -4784,14 +5133,19 @@ loadImages(function(){
   /* ═══ Render ═══ */
   const submitToAssignment = async () => {
     if (!pendingAssignment) return;
-    const ok = await saveSubmissionToFirestore(pendingAssignment.id, user?.email || user?.name || 'student', {
-      sprites,
-      background,
-      studentId: user?.email || user?.name,
-      studentName: user?.name,
-      classId: pendingAssignment.classId,
-      assignType: 'blocks',
-    });
+    let ok = false;
+    try {
+      // The project goes in its own document so the class stays small and fast.
+      const { handIn } = await import('../utils/classroomStore.js');
+      await handIn(pendingAssignment.classId, pendingAssignment, user || {}, {
+        assignType: 'blocks',
+        answer: `Game: ${currentProjectName || 'My game'} (${sprites.length} sprite${sprites.length === 1 ? '' : 's'})`,
+        file: { sprites, background },
+      });
+      ok = true;
+    } catch (e) {
+      console.error('[GameBuilder] hand-in failed', e);
+    }
     if (ok) {
       sessionStorage.removeItem('bb-pending-assignment');
       setSubmitFlash(true);
@@ -4925,6 +5279,7 @@ loadImages(function(){
               selectedSpriteBlocks={selectedSpriteBlocks}
               selectedSpriteXml={selectedSpriteXml}
               onModelChange={(nodes, xmlText = '') => {
+                if (typeof window !== 'undefined' && window.localStorage?.getItem('bb_block_probe') === '1') return;
                 if (!selected) return;
                 const selectedSpriteObj = sprites.find(s => s.id === selected);
                 if (!selectedSpriteObj) {
@@ -5168,7 +5523,7 @@ loadImages(function(){
                       onMouseLeave={(e) => { e.currentTarget.style.borderColor = background === bg.name ? 'var(--accent-primary)' : 'var(--border-color)'; }}
                     >
                       {bg.image
-                        ? <img src={bg.image} alt={bg.name} style={{ width: '100%', height: 56, objectFit: 'cover', borderRadius: 4, display: 'block' }} />
+                        ? <img src={bg.thumb || bg.image} alt={bg.name} loading="lazy" style={{ width: '100%', height: 56, objectFit: 'cover', borderRadius: 4, display: 'block' }} />
                         : <div style={{ width: '100%', height: 56, background: '#ffffff', borderRadius: 4, border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>⬜</div>
                       }
                       <span style={{ fontSize: 9, fontWeight: 600, color: 'var(--text-primary)', textAlign: 'center', lineHeight: 1.2, maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -5346,7 +5701,7 @@ loadImages(function(){
                     onMouseLeave={(e) => { e.currentTarget.style.borderColor = background === bg.name ? 'var(--accent-primary)' : 'var(--border-color)'; e.currentTarget.style.transform = 'scale(1)'; }}
                   >
                     {bg.image
-                      ? <img src={bg.image} alt={bg.name} style={{ width: '100%', height: 100, objectFit: 'cover', borderRadius: 6, display: 'block' }} />
+                      ? <img src={bg.thumb || bg.image} alt={bg.name} loading="lazy" style={{ width: '100%', height: 100, objectFit: 'cover', borderRadius: 6, display: 'block' }} />
                       : <div style={{ width: '100%', height: 100, background: '#ffffff', borderRadius: 6, border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           <span style={{ fontSize: 22 }}>⬜</span>
                         </div>

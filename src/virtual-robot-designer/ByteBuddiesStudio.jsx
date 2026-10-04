@@ -5,15 +5,18 @@
  */
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import BuildPage          from './studio/BuildPage.jsx';
-import ModularBuilderPage from './studio/ModularBuilderPage.jsx';
-import CodePage           from './studio/CodePage.jsx';
-import SimulatorPage      from './studio/SimulatorPage.jsx';
 import LiveLabPage        from './studio/LiveLabPage.jsx';
 import MyRobotsPage       from './studio/MyRobotsPage.jsx';
 import ChallengesPage     from './studio/ChallengesPage.jsx';
-import CustomPartsPage    from './studio/CustomPartsPage.jsx';
 import DevDebugPanel      from './studio/DevDebugPanel.jsx';
+import ArcadeLab          from './arcade/ArcadeLab.jsx';
+import CreateHub          from './create/CreateHub.jsx';
+import { makeArenaGame, BUILTIN_ARENAS, loadMyArenas } from './arcade/games/arena.js';
+import { isArcadeChassis, RENAMED_ARCADE } from './arcade/games/index.js';
+import { CHASSIS_DATA } from './services/studio-robot-builder.js';
 import { validateRobot, validateCode, runPreflight } from './services/robotValidator.js';
+import { GameProgress } from './services/game-progress.js';
+import { saveRobotToLibrary } from './services/studio-robot-store.js';
 import './styles/studio.css';
 
 const CP_LS_KEY = 'bb-studio-custom-parts';
@@ -25,7 +28,11 @@ function loadCustomParts() {
   try { return JSON.parse(localStorage.getItem(CP_LS_KEY)) || []; } catch { return []; }
 }
 function loadRobotConfig(def) {
-  try { return JSON.parse(localStorage.getItem(ROBOT_LS_KEY)) || def; } catch { return def; }
+  try {
+    const saved = JSON.parse(localStorage.getItem(ROBOT_LS_KEY));
+    if (saved && RENAMED_ARCADE[saved.chassisId]) saved.chassisId = RENAMED_ARCADE[saved.chassisId];
+    return saved ? { ...def, ...saved } : def;
+  } catch { return def; }
 }
 function loadRobotCode() {
   try { return JSON.parse(localStorage.getItem(CODE_LS_KEY)) || []; } catch { return []; }
@@ -80,7 +87,7 @@ function HealthBadge({ summary, onClick }) {
         border: `1px solid ${style.border}`,
         background: style.bg, color: style.color,
         fontSize: 11, fontWeight: 700, cursor: 'pointer',
-        transition: 'opacity 0.2s',
+        transition: 'opacity 0.2s', whiteSpace: 'nowrap', flexShrink: 0,
       }}
     >
       <span>{style.icon}</span>
@@ -138,7 +145,7 @@ function PipelineBar({ activeTab, onSelect }) {
 }
 
 // ─── Header ────────────────────────────────────────────────────────────────
-function StudioHeader({ activeTab, setActiveTab, robotConfig, userXP, robotValidation, onLogoClick }) {
+function StudioHeader({ activeTab, setActiveTab, robotConfig, userXP, robotValidation, onLogoClick, onExit }) {
   const tabs = [
     { id: 'challenges', icon: '🏆', label: 'Challenges' },
     { id: 'myrobots',   icon: '🤖', label: 'My Robots' },
@@ -154,6 +161,11 @@ function StudioHeader({ activeTab, setActiveTab, robotConfig, userXP, robotValid
         style={{ cursor: 'pointer', userSelect: 'none' }}
         title="ByteBuddies Studio"
       >
+        {onExit && (
+          <button type="button" className="bb-studio-exit" onClick={(e) => { e.stopPropagation(); onExit(); }} title="Back to ByteBuddies home" aria-label="Back to ByteBuddies home">
+            <span aria-hidden="true">←</span><span className="bb-studio-exit-label">Home</span>
+          </button>
+        )}
         <div className="bb-studio-logo-icon">🤖</div>
         <span className="bb-studio-logo-text">ByteBuddies</span>
       </div>
@@ -173,9 +185,11 @@ function StudioHeader({ activeTab, setActiveTab, robotConfig, userXP, robotValid
             key={tab.id}
             className={`bb-studio-nav-btn${activeTab === tab.id ? ' active' : ''}`}
             onClick={() => setActiveTab(tab.id)}
+            title={tab.label}
+            aria-label={tab.label}
           >
             <span className="bb-studio-nav-icon">{tab.icon}</span>
-            {tab.label}
+            <span className="bb-studio-nav-label">{tab.label}</span>
           </button>
         ))}
       </nav>
@@ -197,16 +211,23 @@ function StudioHeader({ activeTab, setActiveTab, robotConfig, userXP, robotValid
 }
 
 // ─── Main Studio ────────────────────────────────────────────────────────────
-export default function ByteBuddiesStudio() {
+export default function ByteBuddiesStudio({ onExit }) {
   const [activeTab, setActiveTab]       = useState('build');
   const [robotConfig, setRobotConfig]   = useState(() => loadRobotConfig(DEFAULT_CONFIG));
   const [robotCode, setRobotCode]       = useState(loadRobotCode);
-  const [userXP, setUserXP]             = useState(450);
+  const [userXP, setUserXP]             = useState(0);
+  const [labChallenge, setLabChallenge] = useState(null);
+  const [arenaPlay, setArenaPlay]       = useState({ id: null, key: 0 });
   const [customParts, setCustomParts]   = useState(loadCustomParts);
   const [devMode, setDevMode]           = useState(false);
   const [fps, setFps]                   = useState(null);
   const logoClickCount                  = useRef(0);
   const logoClickTimer                  = useRef(null);
+
+  useEffect(() => {
+    const name = robotConfig?.name || 'Robot';
+    setUserXP(GameProgress.get(name).xp || 0);
+  }, [activeTab, robotConfig?.name]);
 
   // ── Computed validation (live, memoized) ──────────────────────────────────
   const robotValidation = useMemo(
@@ -266,15 +287,47 @@ export default function ByteBuddiesStudio() {
     }
   }, []);
 
-  const goToCode      = useCallback(() => setActiveTab('lab'), []);
-  const goToSimulator = useCallback(() => setActiveTab('lab'), []);
+  const applyRobot = useCallback((cfg) => {
+    if (!cfg) return;
+    const next = { ...DEFAULT_CONFIG, ...cfg };
+    setRobotConfig(next);
+    try { saveRobotToLibrary(next); } catch { /* ignore */ }
+  }, []);
+
+  const goToLab = useCallback(() => setActiveTab('lab'), []);
 
   const editRobot = useCallback((robot) => {
-    setRobotConfig({ ...DEFAULT_CONFIG, ...robot });
+    setRobotConfig({ ...DEFAULT_CONFIG, ...robot, chassisId: RENAMED_ARCADE[robot?.chassisId] || robot?.chassisId });
     setActiveTab('build');
   }, []);
 
-  const startChallenge = useCallback(() => setActiveTab('lab'), []);
+  const testRobot = useCallback((robot) => {
+    setRobotConfig({ ...DEFAULT_CONFIG, ...robot, chassisId: RENAMED_ARCADE[robot?.chassisId] || robot?.chassisId });
+    setLabChallenge(null);
+    setActiveTab('lab');
+  }, []);
+
+  const startChallenge = useCallback((challenge) => {
+    setLabChallenge(challenge || null);
+    setActiveTab('lab');
+  }, []);
+
+  // Jump straight into an arcade game: switch to that robot (keeping the paint job) and open its game.
+  const playArcade = useCallback((chassisId) => {
+    if (chassisId === 'arenaquest') { setArenaPlay((a) => ({ id: null, key: a.key + 1 })); setActiveTab('arena'); return; }
+    const ch = CHASSIS_DATA.find((c) => c.id === chassisId);
+    setRobotConfig((prev) => (prev.chassisId === chassisId ? prev : {
+      ...prev,
+      chassisId,
+      name: ch?.name || prev.name,
+      primaryColor: ch?.primaryColor || prev.primaryColor,
+      accentColor: ch?.accentColor || prev.accentColor,
+      movementId: 'wheels',
+      socketAttachments: {},
+    }));
+    setLabChallenge(null);
+    setActiveTab('lab');
+  }, []);
 
   const renderBody = () => {
     switch (activeTab) {
@@ -283,7 +336,7 @@ export default function ByteBuddiesStudio() {
           <BuildPage
             robotConfig={robotConfig}
             setRobotConfig={setRobotConfig}
-            onSimulate={goToCode}
+            onSimulate={goToLab}
             customParts={customParts}
             onGoCreate={() => setActiveTab('create')}
             robotValidation={robotValidation}
@@ -292,6 +345,14 @@ export default function ByteBuddiesStudio() {
       case 'lab':
       case 'code':
       case 'simulator':
+        // Robots made in the Robot Designer play Arena Quest (including arenas the child built).
+        if (robotConfig?.chassisBuildKey === 'designer') {
+          return <ArcadeLab key={`designed-${arenaPlay.key}`} robotConfig={robotConfig} gameOverride={makeArenaGame([...BUILTIN_ARENAS, ...loadMyArenas()])} onBack={() => setActiveTab('build')} />;
+        }
+        // Arcade robots have their own game screen.
+        if (isArcadeChassis(robotConfig?.chassisId)) {
+          return <ArcadeLab key={robotConfig.chassisId} robotConfig={robotConfig} onBack={() => setActiveTab('build')} />;
+        }
         return (
           <LiveLabPage
             robotConfig={robotConfig}
@@ -299,20 +360,40 @@ export default function ByteBuddiesStudio() {
             setRobotCode={setRobotCode}
             preflight={preflight}
             onFpsUpdate={setFps}
+            initialChallenge={labChallenge}
+            initialCourseId={labChallenge?.id || labChallenge?.arenaType || null}
+            onChallengeConsumed={() => setLabChallenge(null)}
           />
         );
       case 'myrobots':
         return (
           <MyRobotsPage
             onEditRobot={editRobot}
-            onTestRobot={() => setActiveTab('simulator')}
+            onTestRobot={testRobot}
             onNewRobot={() => { setRobotConfig(DEFAULT_CONFIG); setActiveTab('build'); }}
           />
         );
       case 'challenges':
-        return <ChallengesPage onStartChallenge={startChallenge} />;
+        return <ChallengesPage onStartChallenge={startChallenge} onPlayArcade={playArcade} robotName={robotConfig.name} />;
       case 'create':
-        return <ModularBuilderPage onSimulate={goToCode} />;
+        return (
+          <CreateHub
+            robotConfig={robotConfig}
+            onSaveRobot={(cfg) => applyRobot(cfg)}
+            onPlayRobot={(cfg) => { applyRobot(cfg); setArenaPlay((a) => ({ id: null, key: a.key + 1 })); setActiveTab('lab'); }}
+            onPlayArena={(id) => { setArenaPlay((a) => ({ id, key: a.key + 1 })); setActiveTab('arena'); }}
+          />
+        );
+      case 'arena':
+        return (
+          <ArcadeLab
+            key={`arena-${arenaPlay.key}`}
+            robotConfig={robotConfig}
+            gameOverride={makeArenaGame([...BUILTIN_ARENAS, ...loadMyArenas()])}
+            startLevelId={arenaPlay.id}
+            onBack={() => setActiveTab('create')}
+          />
+        );
       default:
         return null;
     }
@@ -327,6 +408,7 @@ export default function ByteBuddiesStudio() {
         userXP={userXP}
         robotValidation={robotValidation}
         onLogoClick={handleLogoClick}
+        onExit={onExit}
       />
       {renderBody()}
 

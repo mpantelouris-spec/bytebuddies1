@@ -6,18 +6,12 @@
  * enhanced VFX (motion trails, spark bursts, shockwaves, block shields).
  */
 import * as THREE from 'three';
+import { buildSeatedCrowd, createCrowdDirector } from './CrowdKit.js';
 import { createCombatEngine } from './fighting-combat-engine.js';
-import { buildCombatFighterMesh } from '../services/studio-robot-builder.js';
-import { getRingSkinIndex, buildCombatRingBackdrop, applyRingSkinStyle } from './CombatRingSkins.js';
+import { buildCuteBoxer } from './fighter-character-models.js';
 // Optional enhanced VFX (safe import with fallback)
 import { createEnhancedCombatVFX } from './combat-vfx-enhanced.js';
 import { createCombatCamera } from './realistic-combat-animation.js';
-import { applyMissionKidClarity, CHASSIS_VISUAL_DNA } from './mission-world/MissionKidClarity.js';
-import {
-  applyKidMissionTeachingProps,
-  classifyKidMissionFeature,
-} from './mission-world/MissionKidTeachingProps.js';
-import { buildCombatMissionVisualKit } from './CombatMissionVisualKit.js';
 
 const COMBAT_ARCHETYPES = new Set(['striker', 'tank', 'blaster', 'ninja', 'berserker', 'dummy']);
 
@@ -60,21 +54,21 @@ function buildRingCanvas() {
   canvas.width = 512;
   canvas.height = 512;
   const ctx = canvas.getContext('2d');
-  ctx.fillStyle = '#121212';
+  ctx.fillStyle = '#c5cbd4';
   ctx.fillRect(0, 0, 512, 512);
-  ctx.strokeStyle = '#1c1c1c';
+  ctx.strokeStyle = '#9aa3ad';
   ctx.lineWidth = 1;
-  for (let i = 0; i <= 512; i += 32) {
+  for (let i = 0; i <= 512; i += 24) {
     ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, 512); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(512, i); ctx.stroke();
   }
-  ctx.strokeStyle = '#2a1515';
-  ctx.lineWidth = 4;
-  ctx.strokeRect(24, 24, 464, 464);
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 10;
+  ctx.strokeRect(18, 18, 476, 476);
 
   const tex = new THREE.CanvasTexture(canvas);
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-  const mat = new THREE.MeshStandardMaterial({ map: tex, metalness: 0.08, roughness: 0.9 });
+  const mat = new THREE.MeshStandardMaterial({ map: tex, metalness: 0.04, roughness: 0.92 });
   const plane = new THREE.Mesh(new THREE.PlaneGeometry(5.85, 5.85), mat);
   plane.rotation.x = -Math.PI / 2;
   plane.position.y = RING_SURFACE_Y + 0.005;
@@ -96,16 +90,25 @@ function buildRingPlatform() {
 }
 
 function buildRingApron() {
-  const apron = new THREE.Mesh(
-    new THREE.TorusGeometry(3.25, 0.32, 16, 100),
-    new THREE.MeshStandardMaterial({ color: 0xcc0000, metalness: 0.15, roughness: 0.82 }),
-  );
-  apron.rotation.x = Math.PI / 2;
-  apron.position.y = RING_PLATFORM_Y;
-  apron.castShadow = true;
-  apron.receiveShadow = true;
-  apron.name = 'RingApron';
-  return apron;
+  const g = new THREE.Group();
+  g.name = 'RingApron';
+  const red = new THREE.MeshStandardMaterial({ color: 0xdc2626, metalness: 0.12, roughness: 0.78 });
+  const blue = new THREE.MeshStandardMaterial({ color: 0x2563eb, metalness: 0.12, roughness: 0.78 });
+  const y = RING_PLATFORM_Y - 0.18;
+  const panels = [
+    [0, y, -3.18, 6.55, 0.42, 0.36, red],
+    [0, y, 3.18, 6.55, 0.42, 0.36, blue],
+    [-3.18, y, 0, 0.36, 0.42, 6.55, red],
+    [3.18, y, 0, 0.36, 0.42, 6.55, blue],
+  ];
+  panels.forEach(([x, py, z, w, h, d, mat]) => {
+    const panel = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+    panel.position.set(x, py, z);
+    panel.castShadow = true;
+    panel.receiveShadow = true;
+    g.add(panel);
+  });
+  return g;
 }
 
 function buildCornerPads() {
@@ -130,22 +133,21 @@ function buildRingPosts() {
   g.name = 'RingPosts';
 
   const postGeo = new THREE.CylinderGeometry(0.14, 0.16, 2.05, 16);
-  const postMat = new THREE.MeshStandardMaterial({ color: 0x080808, metalness: 0.92, roughness: 0.18 });
-  const capMat = new THREE.MeshStandardMaterial({ color: 0xcc0000, metalness: 0.3, roughness: 0.6 });
 
   const postPositions = [
-    [-RING_HALF, 1.02, -RING_HALF],
-    [RING_HALF, 1.02, -RING_HALF],
-    [-RING_HALF, 1.02, RING_HALF],
-    [RING_HALF, 1.02, RING_HALF],
+    [-RING_HALF, 1.02, -RING_HALF, 0xdc2626],
+    [RING_HALF, 1.02, -RING_HALF, 0x2563eb],
+    [-RING_HALF, 1.02, RING_HALF, 0xdc2626],
+    [RING_HALF, 1.02, RING_HALF, 0x2563eb],
   ];
 
   postPositions.forEach((pos) => {
+    const postMat = new THREE.MeshStandardMaterial({ color: pos[3], metalness: 0.25, roughness: 0.45 });
     const post = new THREE.Mesh(postGeo, postMat);
     post.position.set(pos[0], pos[1], pos[2]);
     post.castShadow = true;
     g.add(post);
-    const cap = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 10), capMat);
+    const cap = new THREE.Mesh(new THREE.SphereGeometry(0.14, 12, 10), postMat);
     cap.position.set(pos[0], 2.05, pos[2]);
     g.add(cap);
   });
@@ -173,14 +175,9 @@ function buildRingRopes() {
   const g = new THREE.Group();
   g.name = 'RingRopes';
 
-  const ropeMat = new THREE.MeshStandardMaterial({
-    color: 0xd4a574,
-    metalness: 0.12,
-    roughness: 0.55,
-  });
-  const turnbuckleMat = new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.85, roughness: 0.25 });
-
-  const ropeHeights = [0.55, 0.9, 1.25, 1.6];
+  const turnbuckleMat = new THREE.MeshStandardMaterial({ color: 0xd4d4d8, metalness: 0.85, roughness: 0.25 });
+  const ropeColors = [0xdc2626, 0xf8fafc, 0x2563eb];
+  const ropeHeights = [0.72, 1.08, 1.44];
   const h = RING_HALF;
 
   const sides = [
@@ -190,7 +187,12 @@ function buildRingRopes() {
     [h, -h, h, h],
   ];
 
-  ropeHeights.forEach((y) => {
+  ropeHeights.forEach((y, ri) => {
+    const ropeMat = new THREE.MeshStandardMaterial({
+      color: ropeColors[ri],
+      metalness: 0.12,
+      roughness: 0.5,
+    });
     sides.forEach(([x1, z1, x2, z2]) => {
       addRopeSegment(g, x1, y, z1, x2, z2, ropeMat);
     });
@@ -307,36 +309,53 @@ function buildAcademyEnvironment() {
   return g;
 }
 
-function buildCrowd(seed = 1) {
+function buildStadiumCrowd() {
   const g = new THREE.Group();
   g.name = 'Crowd';
-  const crowdMat = new THREE.MeshBasicMaterial({ color: 0x1a0d2e, transparent: true, opacity: 0.82 });
-  const figures = [];
-  let randomState = seed >>> 0;
-  const random = () => {
-    randomState = (Math.imul(randomState, 1664525) + 1013904223) >>> 0;
-    return randomState / 4294967296;
-  };
-
-  [[-12, -12], [12, -12], [-12, 12], [12, 12]].forEach(([bx, bz], si) => {
-    for (let i = 0; i < 16; i++) {
-      const h = 1.0 + random() * 0.75;
-      const fig = new THREE.Mesh(new THREE.BoxGeometry(0.42, h, 0.26), crowdMat.clone());
-      const t = (i / 15) - 0.5;
-      fig.position.set(
-        bx + (si < 2 ? t * 9 : 0),
-        h / 2,
-        bz + (si >= 2 ? t * 9 : 0),
-      );
-      fig.userData.baseY = fig.position.y;
-      fig.userData.phase = random() * Math.PI * 2;
-      g.add(fig);
-      figures.push(fig);
-    }
+  const director = createCrowdDirector();
+  const U = director.uniforms;
+  // Stepped stands on three sides of the ring (the camera looks in from the fourth)
+  const blocks = [
+    { w: 22, rows: 7, pos: [0, 0, 8.2], rot: Math.PI, shirts: [0xdc2626, 0x2563eb, 0xffffff, 0xfacc15, 0x111827], seed: 3 },
+    { w: 15, rows: 6, pos: [-8.2, 0, 0.5], rot: Math.PI / 2, shirts: [0x2563eb, 0x1d4ed8, 0xffffff, 0xfacc15], seed: 5 },
+    { w: 15, rows: 6, pos: [8.2, 0, 0.5], rot: -Math.PI / 2, shirts: [0xdc2626, 0xb91c1c, 0xffffff, 0xfacc15], seed: 9 },
+  ];
+  blocks.forEach((b) => {
+    const block = buildSeatedCrowd({
+      width: b.w, rows: b.rows, rowDepth: 0.9, rowRise: 0.5, y0: 0.2, zFront: 0,
+      shirts: b.shirts, seat: 0.6, fill: 0.93, scale: 1.05, steps: 0x1c2331, seed: b.seed, flags: 0.14, uniforms: U,
+    });
+    block.position.set(...b.pos);
+    block.rotation.y = b.rot;
+    g.add(block);
   });
-
-  g.userData.crowdFigures = figures;
+  g.userData.crowdFigures = [];
   g.userData.cheer = 0;
+  g.userData.tick = (t) => { U.uTime.value = t; U.uCheer.value = g.userData.cheer || 0; };
+  return g;
+}
+
+function buildSpotRigs() {
+  const g = new THREE.Group();
+  g.name = 'SpotRigs';
+  const poleMat = new THREE.MeshStandardMaterial({ color: 0x111827, metalness: 0.6, roughness: 0.4 });
+  const lampMat = new THREE.MeshStandardMaterial({
+    color: 0xfff7d6, emissive: 0xfff1b8, emissiveIntensity: 1.5, roughness: 0.25,
+  });
+  const beamMat = new THREE.MeshBasicMaterial({
+    color: 0xfff6d5, transparent: true, opacity: 0.03, depthWrite: false, side: THREE.DoubleSide,
+  });
+  [[-3.2, -3.2], [3.2, -3.2], [-3.2, 3.2], [3.2, 3.2]].forEach(([x, z]) => {
+    const lamp = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.22, 0.55), lampMat);
+    lamp.position.set(x, 8.4, z);
+    g.add(lamp);
+    const beam = new THREE.Mesh(new THREE.ConeGeometry(2.2, 7.4, 16, 1, true), beamMat);
+    beam.position.set(x, 4.7, z);
+    g.add(beam);
+  });
+  const truss = new THREE.Mesh(new THREE.BoxGeometry(8, 0.12, 0.12), poleMat);
+  truss.position.set(0, 8.55, 0);
+  g.add(truss);
   return g;
 }
 
@@ -393,31 +412,19 @@ function buildArenaLighting(scene) {
   scene.add(ambient);
   lights.push(ambient);
 
-  const ringGlow = tagCombatLight(new THREE.PointLight(0x00bfff, 1.2, 18, 2));
-  ringGlow.position.set(0, 2.5, 0);
+  const ringGlow = tagCombatLight(new THREE.PointLight(0xffe7b0, 0.7, 16, 2));
+  ringGlow.position.set(0, 3.4, 0);
   scene.add(ringGlow);
   lights.push(ringGlow);
 
   return lights;
 }
 
-function buildKidCombatLighting(scene) {
-  const hemi = tagCombatLight(new THREE.HemisphereLight(0xfffbeb, 0x93c5fd, 1.25));
-  scene.add(hemi);
-  const key = tagCombatLight(new THREE.DirectionalLight(0xfff4d6, 1.35));
-  key.position.set(-5, 9, -6);
-  key.castShadow = true;
-  key.shadow.mapSize.set(1024, 1024);
-  scene.add(key);
-  return [hemi, key];
-}
-
 function makeEnemyMesh(type) {
-  const archetype = type === 'dummy' ? 'dummy' : (COMBAT_ARCHETYPES.has(type) ? type : 'striker');
-  const fighter = buildCombatFighterMesh(archetype);
+  const fighter = buildCuteBoxer({ team: 'red' });
 
   const g = new THREE.Group();
-  g.name = archetype === 'dummy' ? 'TrainingDummy' : 'EnemyFighter';
+  g.name = type === 'dummy' ? 'TrainingDummy' : 'EnemyFighter';
   g.add(fighter);
   g.scale.setScalar(FIGHTER_SCALE);
   g.userData.isCombatFighter = true;
@@ -544,15 +551,6 @@ function addCombatIdentity(ringGroup, chassisId) {
 
 function buildCombatArenaForChassis(scene, challenge, playerArchetype) {
   const chassisId = challenge?.chassisId || playerArchetype;
-  const dna = CHASSIS_VISUAL_DNA[chassisId];
-
-  if (chassisId === 'tank') {
-    return { yard: buildTankCombatYard(scene), surfaceY: 0.05, isRing: false };
-  }
-  if (chassisId === 'mech') {
-    return { yard: buildMechScrapYard(scene), surfaceY: 0.05, isRing: false };
-  }
-
   const ringGroup = new THREE.Group();
   ringGroup.name = 'BoxingRing';
   ringGroup.add(buildGround());
@@ -562,83 +560,46 @@ function buildCombatArenaForChassis(scene, challenge, playerArchetype) {
   ringGroup.add(buildCornerPads());
   ringGroup.add(buildRingPosts());
   ringGroup.add(buildRingRopes());
-  ringGroup.add(buildRingMarkings());
-  const skinIdx = getRingSkinIndex(challenge);
-  applyRingSkinStyle(ringGroup, skinIdx);
-  addCombatIdentity(ringGroup, chassisId);
-
-  if (dna?.sky) {
-    scene.background = new THREE.Color(dna.sky);
-    scene.fog = new THREE.Fog(dna.fog ?? dna.sky, 32, 70);
-  }
-
-  if (chassisId === 'berserker') {
-    const crack = new THREE.Mesh(
-      new THREE.RingGeometry(2, 3.2, 24),
-      new THREE.MeshBasicMaterial({ color: 0xf97316, transparent: true, opacity: 0.6, side: THREE.DoubleSide }),
-    );
-    crack.rotation.x = -Math.PI / 2;
-    crack.position.y = RING_SURFACE_Y + 0.02;
-    ringGroup.add(crack);
-  }
+  const crowdGroup = buildStadiumCrowd();
+  ringGroup.add(crowdGroup);
+  ringGroup.add(buildSpotRigs());
 
   scene.add(ringGroup);
-  return { yard: ringGroup, surfaceY: RING_SURFACE_Y, isRing: true };
+  return { yard: ringGroup, crowdGroup, surfaceY: RING_SURFACE_Y, isRing: true };
 }
 
 export function buildFightingArena(scene, challenge = {}, playerArchetype = 'striker') {
-  const clarity = applyMissionKidClarity(scene, challenge);
   scene.userData.combatMode = true;
   scene.userData.finishZone = null;
   scene.userData.hideSpawnMarkers = true;
   scene.userData.skipSceneStylize = true;
   scene.userData.skipSoftEnvironment = true;
-  scene.userData.combatVisual = { ...clarity.post };
-  scene.userData.expMood = 1.04;
+  scene.userData.skipArenaAtmosphere = true;
+  scene.userData.customSky = true;
+  scene.userData.combatVisual = { bloom: 0.22, threshold: 0.82, radius: 0.22 };
+  scene.userData.expMood = 1.08;
   scene.userData.mkArena = true;
 
-  if (!CHASSIS_VISUAL_DNA[challenge?.chassisId || playerArchetype]?.sky) {
-    scene.background = new THREE.Color(0xc7d2fe);
-    scene.fog = new THREE.Fog(0xc7d2fe, 32, 70);
-  }
+  scene.background = new THREE.Color(0x070910);
+  scene.fog = new THREE.Fog(0x101827, 22, 58);
 
   scene.traverse((obj) => {
     if (obj.userData?.combatArenaLight) return;
     if (obj.isAmbientLight) obj.intensity = 0.04;
     if (obj.isHemisphereLight) obj.intensity = 0.03;
     if (obj.isDirectionalLight) obj.intensity *= 0.12;
+    if (obj.isPointLight) obj.intensity *= 0.08;
   });
 
-  const { surfaceY } = buildCombatArenaForChassis(scene, challenge, playerArchetype);
-  if (scene.fog) {
-    scene.fog.near = clarity.fogNear;
-    scene.fog.far = clarity.fogFar;
-  }
+  const { surfaceY, crowdGroup } = buildCombatArenaForChassis(scene, challenge, playerArchetype);
 
-  const combatFeature = classifyKidMissionFeature(challenge);
-  if (combatFeature !== 'opponent_only' && combatFeature !== 'capstone_course') {
-    const centered = ['sumo_zone', 'shield', 'mines', 'cooling_pads'].includes(combatFeature);
-    applyKidMissionTeachingProps(scene, challenge, null, {
-      mode: 'combat',
-      kind: combatFeature,
-      offsetZ: centered ? 0 : 2.25,
-    });
-  }
-  buildCombatMissionVisualKit(scene, challenge, challenge?.chassisId || playerArchetype);
+  buildArenaLighting(scene);
 
-  const crowdGroup = new THREE.Group();
-  crowdGroup.name = 'Crowd';
-  crowdGroup.userData.crowdFigures = [];
-  crowdGroup.userData.cheer = 0;
-  scene.add(crowdGroup);
-
-  buildKidCombatLighting(scene);
-
-  // Combat camera - side view framing both fighters
+  // 3/4 ring camera — both boxers, ropes, crowd, and spots in frame
   scene.userData.combatCamPreset = {
-    position: new THREE.Vector3(0, 2.8, -7.2),
-    lookAt: new THREE.Vector3(0, 1, 0),
-    fov: clarity.cameraRig.fov,
+    position: new THREE.Vector3(0.5, 2.55, -6.9),
+    lookAt: new THREE.Vector3(0.05, 1.45, 0),
+    fov: 46,
   };
   scene.userData.arenaBounds = {
     ...(scene.userData.arenaBounds || {}),
@@ -694,7 +655,9 @@ export function buildFightingArena(scene, challenge = {}, playerArchetype = 'str
         });
       }
       if (evt.type === 'hit_enemy' || evt.type === 'hit_player') {
-        crowdGroup.userData.cheer = Math.min(2, (crowdGroup.userData.cheer || 0) + (evt.heavy ? 1.2 : 0.5));
+        if (crowdGroup?.userData) {
+          crowdGroup.userData.cheer = Math.min(2, (crowdGroup.userData.cheer || 0) + (evt.heavy ? 1.2 : 0.5));
+        }
         scene.userData.onCombatImpact?.({
           x: evt.x ?? 0,
           y: 0,
@@ -744,7 +707,8 @@ export function buildFightingArena(scene, challenge = {}, playerArchetype = 'str
   scene.userData.collectibles = [];
   scene.userData.movers = [{
     update(t, dt) {
-      combat.tick(dt);
+      // Before Simulate the boxers just stand in guard; the bout starts with the code
+      if (scene.userData.combatSimActive) combat.tick(dt);
       if (enemyMesh.userData.animate) enemyMesh.userData.animate(t + 1.7, dt);
 
       // Enhanced VFX disabled for performance - uncomment when optimized
@@ -757,13 +721,14 @@ export function buildFightingArena(scene, challenge = {}, playerArchetype = 'str
       //   try { combatCameraController.tick(dt); } catch(e) { /* silent */ }
       // }
 
-      const cheer = crowdGroup.userData.cheer || 0;
-      if (cheer > 0) crowdGroup.userData.cheer = Math.max(0, cheer - dt * 0.8);
-      (crowdGroup.userData.crowdFigures || []).forEach((fig, i) => {
+      const cheer = crowdGroup?.userData?.cheer || 0;
+      if (crowdGroup?.userData && cheer > 0) crowdGroup.userData.cheer = Math.max(0, cheer - dt * 0.8);
+      crowdGroup?.userData?.tick?.(t);
+      (crowdGroup?.userData?.crowdFigures || []).forEach((fig, i) => {
         const wave = Math.sin(t * 3 + fig.userData.phase) * 0.04;
         const jump = cheer > 0.1 ? Math.abs(Math.sin(t * 12 + i * 0.3)) * cheer * 0.25 : 0;
         fig.position.y = fig.userData.baseY + wave + jump;
-        fig.material.opacity = 0.75 + cheer * 0.15;
+        if (fig.material) fig.material.opacity = 0.75 + cheer * 0.15;
       });
     },
   }];

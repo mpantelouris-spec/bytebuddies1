@@ -54,14 +54,24 @@ export function UserProvider({ children }) {
   useEffect(() => {
     const unsub = onFirebaseAuthChange((fbUser) => {
       if (fbUser) {
+        const alreadySession = localStorage.getItem('cv-loggedin') === 'true';
         const profile = firebaseUserToProfile(fbUser);
         setUser(prev => {
           const merged = { ...prev, ...profile };
-          saveUserProfile(merged);
+          if (alreadySession && prev.role) {
+            merged.role = prev.role;
+            saveUserProfile(merged);
+          } else if (!alreadySession) {
+            // New sign-in: do not inherit a leftover teacher role from this browser.
+            // AuthModal.login() sets the role the user actually picked.
+            merged.role = 'student';
+          }
           return merged;
         });
-        setIsLoggedIn(true);
-        localStorage.setItem('cv-loggedin', 'true');
+        if (alreadySession) {
+          setIsLoggedIn(true);
+          localStorage.setItem('cv-loggedin', 'true');
+        }
       } else if (localStorage.getItem('cv-loggedin') !== 'true') {
         setIsLoggedIn(false);
       }
@@ -125,6 +135,9 @@ export function UserProvider({ children }) {
 
   const updateRole = (role) => {
     setUser(prev => ({ ...prev, role }));
+    try {
+      localStorage.setItem('bb_learn_role', role === 'teacher' ? 'teacher' : 'pupil');
+    } catch {}
   };
 
   const completeQuest = (questId, xpReward = 50) => {
@@ -167,6 +180,11 @@ export function UserProvider({ children }) {
     if (userData) {
       setUser(prev => {
         const merged = { ...prev, ...userData };
+        if (merged.role === 'teacher') {
+          try { localStorage.setItem('bb_learn_role', 'teacher'); } catch {}
+        } else {
+          try { localStorage.setItem('bb_learn_role', 'pupil'); } catch {}
+        }
         saveUserProfile(merged);
         return merged;
       });
@@ -177,7 +195,10 @@ export function UserProvider({ children }) {
   const logout = async () => {
     try { await firebaseSignOut(); } catch (e) { console.error('[Auth] sign out failed:', e); }
     setIsLoggedIn(false);
+    setUser({ ...defaultUser });
     localStorage.setItem('cv-loggedin', 'false');
+    localStorage.setItem('cv-user', JSON.stringify(defaultUser));
+    try { localStorage.removeItem('bb_learn_role'); } catch {}
   };
 
   return (

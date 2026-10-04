@@ -3,6 +3,7 @@
  * Ages 7–11. No combat, missiles, dogfights, or developer hex labels.
  */
 import { PRIMARY_STUDIO_ARENAS } from './primary-arena-bible-sets.js';
+import { applyCarRacingArena } from './car-racing-tracks.js';
 
 export { PRIMARY_STUDIO_ARENAS };
 
@@ -44,8 +45,9 @@ export const PRIMARY_ROBOT_DISPLAY = {
   factorybot: { name: 'Factory Bot', emoji: '🏭' },
   spacerover: { name: 'Space Rover', emoji: '🚀' },
   legobot: { name: 'LEGO Bot', emoji: '🧱' },
+  blockbot: { name: 'Block Crafter', emoji: '🟩' },
   battlebot: { name: 'Mega Mech', emoji: '🦾' },
-  striker: { name: 'Sport Striker', emoji: '⚽' },
+  striker: { name: 'Boxing', emoji: '🥊' },
   footballbot: { name: 'Striker FC', emoji: '⚽' },
   blaster: { name: 'Elemental Maker', emoji: '🌈' },
   ninja: { name: 'Ninja Helper', emoji: '🥷' },
@@ -55,7 +57,12 @@ export const PRIMARY_ROBOT_DISPLAY = {
   jetplane: { name: 'Jet Explorer', emoji: '✈️' },
   steathjet: { name: 'Quiet Jet', emoji: '🌫️' },
   aerobat: { name: 'Aero Stunt', emoji: '🎪' },
-  birdbot: { name: 'Sling-B', emoji: '🐦' },
+  birdbot: { name: 'Flappy Bird', emoji: '🐦' },
+  pacbot: { name: 'Pac-Bot', emoji: '🟡' },
+  brickbot: { name: 'Brick Bot', emoji: '🧱' },
+  hopbot: { name: 'Hop Bot', emoji: '🐸' },
+  raiderbot: { name: 'Space Raider', emoji: '👾' },
+  snakebot: { name: 'Snake Bot', emoji: '🐍' },
   custom: { name: 'Custom Bot', emoji: '✨' },
 };
 
@@ -67,6 +74,7 @@ const FAMILY = {
   arm: 'arm',
   football: 'footballbot',
   birdbot: 'birdbot',
+  arcade: 'arcade',
 };
 
 export const CHASSIS_FAMILY = {
@@ -74,6 +82,7 @@ export const CHASSIS_FAMILY = {
   tank: FAMILY.wheeled, stealth: FAMILY.wheeled, miningbot: FAMILY.wheeled,
   securitybot: FAMILY.wheeled, farmbot: FAMILY.wheeled, spacerover: FAMILY.wheeled,
   legobot: FAMILY.wheeled,
+  blockbot: FAMILY.wheeled,
   drone: FAMILY.aerial, racedrone: FAMILY.aerial, rescuedrone: FAMILY.aerial,
   helicopter: FAMILY.aerial, hoverbot: FAMILY.aerial, hoverracer: FAMILY.aerial,
   jetplane: FAMILY.aerial, steathjet: FAMILY.aerial, aerobat: FAMILY.aerial,
@@ -85,6 +94,7 @@ export const CHASSIS_FAMILY = {
   footballbot: FAMILY.football,
   birdbot: FAMILY.birdbot,
   medbot: FAMILY.wheeled, firebot: FAMILY.wheeled,
+  pacbot: FAMILY.arcade, brickbot: FAMILY.arcade, hopbot: FAMILY.arcade, snakebot: FAMILY.arcade, raiderbot: FAMILY.arcade,
   custom: FAMILY.wheeled,
 };
 
@@ -93,13 +103,72 @@ export function getStudioRobotGroup(chassisId) {
   return CHASSIS_FAMILY[chassisId] || FAMILY.wheeled;
 }
 
+/** First-screen Studio Create picks — one robot per play family. The rest stay behind More robots. */
+export const STARTER_CHASSIS_IDS = [
+  'rover',
+  'droid',
+  'drone',
+  'spider',
+  'submarine',
+  'robotarm',
+  'footballbot',
+  'striker',
+  'birdbot',
+  'legobot',
+  'snakebot',
+  'pacbot',
+  'brickbot',
+  'hopbot',
+  'raiderbot',
+  'racedrone',
+  'jetplane',
+  'blockbot',
+];
+
+/**
+ * Robots taken out of the picker: they all played the same "drive to the checkpoints"
+ * game with a different skin. Saved robots using them still load and play.
+ */
+export const RETIRED_CHASSIS_IDS = new Set([
+  'medbot', 'firebot', 'securitybot', 'stealth', 'tank', 'crawler', 'scout', 'farmbot', 'miningbot',
+  'spacerover', 'battlebot', 'berserker', 'ninja', 'blaster', 'mech', 'steathjet', 'aerobat',
+  'hoverbot', 'hoverracer', 'rescuedrone', 'helicopter', 'deepseabot', 'factorybot',
+]);
+
+export const FAMILY_PICKER_LABEL = {
+  wheeled: 'Wheels',
+  aerial: 'Fly',
+  walker: 'Walk',
+  underwater: 'Swim',
+  arm: 'Arms',
+  footballbot: 'Football',
+  birdbot: 'Bird',
+  arcade: 'Arcade games',
+  custom: 'Your robots',
+};
+
+export function partitionByStarterIds(items, getId, starterIds) {
+  const order = new Map(starterIds.map((id, i) => [id, i]));
+  const starters = [];
+  const more = [];
+  for (const item of items) {
+    (order.has(getId(item)) ? starters : more).push(item);
+  }
+  starters.sort((a, b) => order.get(getId(a)) - order.get(getId(b)));
+  return { starters, more };
+}
+
+export function isStarterChassis(chassisId) {
+  return STARTER_CHASSIS_IDS.includes(chassisId);
+}
+
 export function getPrimaryRobotDisplay(chassisId) {
   return PRIMARY_ROBOT_DISPLAY[chassisId] || PRIMARY_ROBOT_DISPLAY.custom;
 }
 
 export function getPrimaryStudioArena(chassisId, modeIndex = 1) {
   const list = PRIMARY_STUDIO_ARENAS[chassisId] || PRIMARY_STUDIO_ARENAS.custom;
-  const mode = Math.max(1, Math.min(10, Math.floor(Number(modeIndex) || 1)));
+  const mode = Math.max(1, Math.min(list.length, Math.floor(Number(modeIndex) || 1)));
   return list[mode - 1] || list[0];
 }
 
@@ -108,6 +177,9 @@ export function getPrimaryStarterScript(chassisId, modeIndex = 1) {
   const family = getStudioRobotGroup(chassisId);
   const mode = arena.mode;
   const b = (id, label, paramValues = {}) => ({ id, label, paramValues });
+  if (arena.isRace) {
+    return [b('when_start', 'When START clicked'), b('follow_track_on', 'Follow track automatically')];
+  }
   const move = (steps = 2) => family === 'walker'
     ? b('step_forward', 'Step forward', { steps })
     : family === 'aerial'
@@ -129,7 +201,14 @@ export function getPrimaryStarterScript(chassisId, modeIndex = 1) {
       b('release', 'Release'),
     ];
   } else if (family === 'footballbot') {
-    body = [b('chase_ball', 'Chase ball'), b('face_ball', 'Face ball'), b('shoot', 'Shoot')];
+    body = [
+      b('forever', 'Forever'),
+      b('if_shooting_range', 'If in shooting range then'),
+      b('shoot', 'Shoot'),
+      b('if_have_ball', 'If I have the ball then'),
+      b('dribble', 'Dribble toward goal'),
+      b('chase_ball', 'Chase ball'),
+    ];
   } else if (family === 'birdbot') {
     body = [b('repeat', 'Repeat', { times: mode + 1 }), b('flap', 'Flap'), wait];
   } else {
@@ -162,6 +241,8 @@ export function kidSafeText(text = '') {
     .trim();
 }
 
+const FIGHT_TYPES = new Set(['Combat', 'Duel', 'Boss', 'Survival', 'Defense']);
+
 export function applyPrimaryStudioMeta(mode) {
   if (!mode?.chassisId) return mode;
   const modeIndex = mode.modeIndex || mode.modeNumber || 1;
@@ -169,11 +250,62 @@ export function applyPrimaryStudioMeta(mode) {
   const display = getPrimaryRobotDisplay(mode.chassisId);
   const family = getStudioRobotGroup(mode.chassisId);
   const keepFootball = family === 'footballbot' && (mode.linkedFootballCourse || mode.arenaType === 'robot_football');
+  // Only the Boxing robot plays in the ring; tanks, mechs and power bots get
+  // their own worlds instead of a boxing arena with garbled "challenge" names.
+  const keepFight = mode.chassisId === 'striker'
+    && !!(mode.linkedFightCourse || mode.arenaType === 'robot_fight');
   const keepFlappy = family === 'birdbot';
 
+  if (keepFight) {
+    return {
+      ...mode,
+      arenaBible: false,
+      physics: 'combat',
+      environmentId: 'boxing_mech',
+      environmentName: 'Robot Boxing Arena',
+      environmentEmoji: '🥊',
+      displayRobotName: display.name,
+      displayRobotEmoji: display.emoji,
+      genre: 'combat',
+      cat: 'combat',
+      arenaType: 'robot_fight',
+      linkedFightCourse: mode.linkedFightCourse,
+    };
+  }
+
+  if (arena.isRace) {
+    const race = applyCarRacingArena({ ...mode, modeIndex });
+    return {
+      ...race,
+      arenaBible: false,
+      raceThemeId: arena.raceThemeId,
+      name: arena.title,
+      shortName: arena.title,
+      catalogName: arena.title,
+      raceTrackLabel: arena.title,
+      environmentName: arena.title,
+      environmentEmoji: arena.emoji,
+      icon: arena.emoji,
+      desc: arena.objective,
+      tagline: `Mode ${arena.mode} · Race · ${arena.objective}`,
+      difficulty: arena.difficulty,
+      tryThis: arena.tryThis,
+      skillLearned: arena.skill,
+      studioGradient: arena.gradient,
+      displayRobotName: display.name,
+      displayRobotEmoji: display.emoji,
+      recommendedBlocks: ['Follow track automatically'],
+    };
+  }
+
+  const quick = mode.modeSpec?.quickInfo;
+  const modeSpec = quick
+    ? { ...mode.modeSpec, quickInfo: { ...quick, type: FIGHT_TYPES.has(quick.type) ? 'Mission' : quick.type, difficulty: arena.difficulty || quick.difficulty } }
+    : mode.modeSpec;
 
   return {
     ...mode,
+    modeSpec,
     arenaBible: true,
     physics: family === 'aerial' ? 'flight_3dof' : family === 'underwater' ? 'underwater' : 'ground',
     environmentId: arena.id,

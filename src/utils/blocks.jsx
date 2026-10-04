@@ -227,8 +227,12 @@ export const BLOCK_DEFS = {
   'chat-ask':         { label: 'Ask coding helper', icon: '✨', color: '#fb7185', category: 'chat', params: { question: 'How do I move the sprite?' } },
   'nlp-sentiment-val': { label: 'Sentiment (0–1)', icon: '💬', color: '#60a5fa', category: 'nlp', params: { text: 'I love coding' } },
   'nlp-positive':     { label: 'Is positive?', icon: '💬', color: '#60a5fa', category: 'nlp', params: { text: 'Great job!' } },
+  'weather-city':     { label: 'Weather city', icon: '⛅', color: '#38bdf8', category: 'weather', params: { city: 'London' } },
+  'weather-temp':     { label: 'Temperature', icon: '🌡️', color: '#38bdf8', category: 'weather', params: {} },
+  'weather-cond':     { label: 'Weather condition', icon: '☁️', color: '#38bdf8', category: 'weather', params: {} },
   // PEN EXTENSION
   'pen-erase':        { label: 'Erase all', icon: '🗑️', color: '#e74c3c', category: 'pen', params: {} },
+  'pen-clear':        { label: 'Clear pen', icon: '🗑️', color: '#e74c3c', category: 'pen', params: {} },
   'pen-stamp':        { label: 'Stamp', icon: '📍', color: '#e74c3c', category: 'pen', params: {} },
   'pen-down':         { label: 'Pen down', icon: '✏️', color: '#e74c3c', category: 'pen', params: {} },
   'pen-up':           { label: 'Pen up', icon: '📄', color: '#e74c3c', category: 'pen', params: {} },
@@ -491,7 +495,7 @@ export const SIDEBAR_TO_TYPE = {
   'when I receive [message1 v]': 'event-message', 'when I receive message': 'event-message',
   // CONTROL
   'wait seconds': 'control-wait', 'repeat': 'loop-repeat', 'forever': 'loop-forever',
-  'if then': 'logic-if', 'if then else': 'logic-if-else',
+  'if then': 'logic-if', 'if then else': 'logic-if',
   'wait until': 'control-wait-until', 'repeat until': 'control-repeat-until',
   'stop': 'control-stop',
   'when I start as a clone': 'event-clone',
@@ -508,12 +512,12 @@ export const SIDEBAR_TO_TYPE = {
   'mouse down?': 'sense-mouse-down', 'set drag mode [draggable v]': 'sense-set-drag-mode',
   'backdrop # of [Stage v]': 'sense-of', '[backdrop # v] of [Stage v]': 'sense-of',
   // OPERATORS
-  'add': 'math-add', 'subtract': 'math-add', 'multiply': 'math-mult', 'divide': 'math-mult',
+  'add': 'math-add', 'subtract': 'math-subtract', 'multiply': 'math-mult', 'divide': 'math-divide',
   'pick random to': 'math-random', 'greater than': 'logic-compare', 'less than': 'logic-compare', 'equals': 'logic-compare',
   'and': 'logic-and', 'or': 'logic-or', 'not': 'logic-not', 'join': 'text-join', 'letter of': 'text-letter',
   'length of': 'text-length', 'contains': 'text-contains', 'mod': 'math-modulo', 'round': 'math-round', 'math operation of': 'math-round',
   // VARIABLES
-  'set variable to': 'var-set', 'change variable by': 'var-change', 'show variable': 'var-show', 'hide variable': 'var-hide',
+  'variable': 'var-reporter', 'set variable to': 'var-set', 'change variable by': 'var-change', 'show variable': 'var-show', 'hide variable': 'var-hide',
   // LISTS
   'add to list': 'list-add', 'delete of list': 'list-delete', 'delete all of list': 'list-delete-all',
   'insert at of list': 'list-insert', 'replace item of list with': 'list-replace',
@@ -721,7 +725,7 @@ export const SIDEBAR_TO_TYPE = {
   '[http] make request': 'esp32-http-get', '[http] set body to': 'esp32-http-post',
   '[http] set content type to': 'esp32-http-post', '[http] get api response code': 'esp32-http-get',
   '[http] get body': 'esp32-http-get',
-  '[weather] city': 'action-ask', '[weather] temperature': 'sense-answer', '[weather] condition': 'sense-answer',
+  '[weather] city': 'weather-city', '[weather] temperature': 'weather-temp', '[weather] condition': 'weather-cond',
   '[webhook] post json': 'esp32-http-post', '[webhook] get text': 'esp32-http-get',
   '[QR] Turn video on stage with () % transparency': 'qr-video-on',
   '[QR] Turn video on stage with': 'qr-video-on',
@@ -978,8 +982,8 @@ export function resolveBlocklyNodeType(node) {
   if (extDirect) return t;
 
   if (t === 'bb_generic_stack') {
-    const label = String(node.fields?.LABEL || node.fields?.BLOCK_NAME || '').trim().toLowerCase();
-    const short = SIDEBAR_TO_TYPE[label];
+    const label = String(node.fields?.LABEL || node.fields?.BLOCK_NAME || '').trim();
+    const short = lookupSidebarType(label);
     return short ? blocklyTypeForShort(short) : null;
   }
   if (t !== 'bb_sidebar_item' && !(typeof t === 'string' && t.startsWith('bb_lib_'))) {
@@ -989,8 +993,8 @@ export function resolveBlocklyNodeType(node) {
     }
     return t;
   }
-  const label = String(node.fields?.BLOCK_NAME || node.fields?.LABEL || '').trim().toLowerCase();
-  const short = SIDEBAR_TO_TYPE[label];
+  const label = String(node.fields?.BLOCK_NAME || node.fields?.LABEL || '').trim();
+  const short = lookupSidebarType(label);
   return short ? blocklyTypeForShort(short) : null;
 }
 

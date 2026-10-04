@@ -91,6 +91,14 @@ export const FOOTBALL_STARTER_SCRIPT = [
   { id: 'chase_ball', label: 'Chase ball', icon: '🏃', catKey: 'Football', paramValues: {} },
 ];
 
+export const FOOTBALL_KEEPER_STARTER_SCRIPT = [
+  { id: 'when_start', label: 'When START clicked', icon: '▶️', catKey: 'Events', paramValues: {} },
+  { id: 'forever', label: 'Forever (keeper loop)', icon: '∞', catKey: 'Logic', paramValues: {} },
+  { id: 'if_ball_close', label: 'If ball is close then', icon: '❓', catKey: 'Logic', paramValues: {} },
+  { id: 'dive_save', label: 'Dive save', icon: '🧤', catKey: 'Goalkeeper', paramValues: {} },
+  { id: 'guard_goal', label: 'Guard goal', icon: '🥅', catKey: 'Goalkeeper', paramValues: {} },
+];
+
 export const FOOTBALL_ROLE_STARTERS = {
   defender: [
     { id: 'when_start', label: 'When START clicked', icon: '▶️', catKey: 'Events', paramValues: {} },

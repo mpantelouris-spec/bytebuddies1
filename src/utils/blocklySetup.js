@@ -11,11 +11,123 @@ import {
   CLONE_TARGET_BLOCKLY_DROPDOWN,
   STOP_OPTION_BLOCKLY_DROPDOWN,
 } from '../data/stageCloneOptions';
+import { EXTENSION_SHORT_TO_BLOCKLY } from './extensionBlockMaps';
 
 /**
  * Shared Blockly Setup Utility
  * Defines custom blocks and provides initialization functions for Blockly workspaces
  */
+
+/**
+ * Fields that also get a reporter socket (`<FIELD>_SLOT`). Saved XML keeps working because the
+ * field stays on the block; it is hidden while a reporter is plugged into its socket.
+ */
+const REPORTER_SLOT_FIELDS = {
+  looks_say: ['MESSAGE'],
+  looks_sayforsecs: ['MESSAGE', 'SECS'],
+  looks_think: ['MESSAGE'],
+  looks_thinkforsecs: ['MESSAGE', 'SECS'],
+  motion_movesteps: ['STEPS'],
+  motion_gotoxy: ['X', 'Y'],
+  motion_glideto: ['SECS', 'X', 'Y'],
+  motion_changex: ['DX'],
+  motion_changey: ['DY'],
+  motion_setx: ['X'],
+  motion_sety: ['Y'],
+  motion_pointindirection: ['DIRECTION'],
+  looks_setSizeTo: ['SIZE'],
+  looks_changeSizeBy: ['CHANGE'],
+  control_wait: ['DURATION'],
+  control_repeat: ['TIMES'],
+  bb_var_set: ['VALUE'],
+  bb_var_change: ['AMOUNT'],
+  operator_gt: ['OPERAND1', 'OPERAND2'],
+  operator_lt: ['OPERAND1', 'OPERAND2'],
+  operator_equals: ['OPERAND1', 'OPERAND2'],
+  operator_compare: ['OPERAND1', 'OPERAND2'],
+  operator_add: ['NUM1', 'NUM2'],
+  operator_multiply: ['NUM1', 'NUM2'],
+  operator_random: ['FROM', 'TO'],
+  operator_mod: ['NUM1', 'NUM2'],
+  operator_round: ['NUM'],
+  operator_mathop: ['NUM'],
+  operator_join: ['STRING1', 'STRING2'],
+  operator_letterof: ['LETTER', 'STRING'],
+  operator_length: ['STRING'],
+  operator_contains: ['STRING1', 'STRING2'],
+  operator_and: ['OPERAND1', 'OPERAND2'],
+  operator_or: ['OPERAND1', 'OPERAND2'],
+  operator_not: ['OPERAND'],
+};
+const BOOLEAN_SLOT_TYPES = new Set(['operator_and', 'operator_or', 'operator_not']);
+
+function syncReporterSlotFields(block) {
+  if (!block || block.isDeadOrDying?.()) return;
+  let changed = false;
+  block.inputList.forEach((input) => {
+    if (!input.name || !input.name.endsWith('_SLOT')) return;
+    const field = block.getField(input.name.slice(0, -5));
+    if (!field) return;
+    const show = !input.connection?.targetBlock();
+    if (field.isVisible() !== show) {
+      field.setVisible(show);
+      changed = true;
+    }
+  });
+  if (changed && block.rendered) block.queueRender?.();
+}
+
+/** Wrap a block's init so each listed field ends its input as a value socket. */
+function addReporterSlots(type, slotFields, check) {
+  const def = Blockly.Blocks[type];
+  if (!def?.init || def.__bbReporterSlots) return;
+  const slotSet = new Set(slotFields);
+  const origInit = def.init;
+  const origOnchange = def.onchange;
+  def.__bbReporterSlots = true;
+  def.init = function initWithReporterSlots() {
+    const block = this;
+    let pending = [];
+    const flush = () => {
+      if (!pending.length) return;
+      const input = Blockly.Block.prototype.appendDummyInput.call(block);
+      pending.forEach(([f, n]) => input.appendField(f, n));
+      pending = [];
+    };
+    const recorder = {
+      appendField(field, name) {
+        if (name && slotSet.has(name)) {
+          const input = Blockly.Block.prototype.appendValueInput.call(block, `${name}_SLOT`);
+          if (check) input.setCheck(check);
+          pending.forEach(([f, n]) => input.appendField(f, n));
+          input.appendField(field, name);
+          pending = [];
+        } else {
+          pending.push([field, name]);
+        }
+        return recorder;
+      },
+      setAlign() { return recorder; },
+      setCheck() { return recorder; },
+    };
+    block.appendDummyInput = () => { flush(); return recorder; };
+    block.appendValueInput = (n) => { flush(); return Blockly.Block.prototype.appendValueInput.call(block, n); };
+    block.appendStatementInput = (n) => { flush(); return Blockly.Block.prototype.appendStatementInput.call(block, n); };
+    try {
+      origInit.call(block);
+      flush();
+    } finally {
+      delete block.appendDummyInput;
+      delete block.appendValueInput;
+      delete block.appendStatementInput;
+    }
+    block.setInputsInline(true);
+  };
+  def.onchange = function onchangeWithReporterSlots(e) {
+    if (origOnchange) origOnchange.call(this, e);
+    syncReporterSlotFields(this);
+  };
+}
 
 /**
  * Define all custom Blockly blocks for ByteBuddies
@@ -1722,7 +1834,7 @@ export const defineBytebuddiesBlocks = () => {
       init: function() {
         this.appendDummyInput()
             .appendField("set")
-            .appendField(new Blockly.FieldTextInput("my variable"), "VARIABLE");
+            .appendField(new Blockly.FieldTextInput("myVar"), "VARIABLE");
         this.appendValueInput("VALUE");
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
@@ -1736,7 +1848,7 @@ export const defineBytebuddiesBlocks = () => {
       init: function() {
         this.appendDummyInput()
             .appendField("change")
-            .appendField(new Blockly.FieldTextInput("my variable"), "VARIABLE")
+            .appendField(new Blockly.FieldTextInput("myVar"), "VARIABLE")
             .appendField("by");
         this.appendValueInput("VALUE");
         this.setPreviousStatement(true, null);
@@ -1751,7 +1863,7 @@ export const defineBytebuddiesBlocks = () => {
       init: function() {
         this.appendDummyInput()
             .appendField("show variable")
-            .appendField(new Blockly.FieldTextInput("my variable"), "VARIABLE");
+            .appendField(new Blockly.FieldTextInput("myVar"), "VARIABLE");
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
         this.setColour('#FF8C1A');
@@ -1764,7 +1876,7 @@ export const defineBytebuddiesBlocks = () => {
       init: function() {
         this.appendDummyInput()
             .appendField("hide variable")
-            .appendField(new Blockly.FieldTextInput("my variable"), "VARIABLE");
+            .appendField(new Blockly.FieldTextInput("myVar"), "VARIABLE");
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
         this.setColour('#FF8C1A');
@@ -1780,7 +1892,7 @@ export const defineBytebuddiesBlocks = () => {
             .appendField("add");
         this.appendDummyInput()
             .appendField("to")
-            .appendField(new Blockly.FieldTextInput("my list"), "LIST");
+            .appendField(new Blockly.FieldTextInput("myList"), "LIST");
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
         this.setColour('#3498db');
@@ -1795,7 +1907,7 @@ export const defineBytebuddiesBlocks = () => {
             .appendField("delete");
         this.appendDummyInput()
             .appendField("of")
-            .appendField(new Blockly.FieldTextInput("my list"), "LIST");
+            .appendField(new Blockly.FieldTextInput("myList"), "LIST");
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
         this.setColour('#3498db');
@@ -1808,7 +1920,7 @@ export const defineBytebuddiesBlocks = () => {
       init: function() {
         this.appendDummyInput()
             .appendField("delete all of")
-            .appendField(new Blockly.FieldTextInput("my list"), "LIST");
+            .appendField(new Blockly.FieldTextInput("myList"), "LIST");
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
         this.setColour('#3498db');
@@ -1825,7 +1937,7 @@ export const defineBytebuddiesBlocks = () => {
             .appendField("at");
         this.appendDummyInput()
             .appendField("of")
-            .appendField(new Blockly.FieldTextInput("my list"), "LIST");
+            .appendField(new Blockly.FieldTextInput("myList"), "LIST");
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
         this.setColour('#3498db');
@@ -1841,7 +1953,7 @@ export const defineBytebuddiesBlocks = () => {
         this.appendValueInput("INDEX");
         this.appendDummyInput()
             .appendField("of")
-            .appendField(new Blockly.FieldTextInput("my list"), "LIST")
+            .appendField(new Blockly.FieldTextInput("myList"), "LIST")
             .appendField("with");
         this.appendValueInput("ITEM");
         this.setPreviousStatement(true, null);
@@ -1858,7 +1970,7 @@ export const defineBytebuddiesBlocks = () => {
             .appendField("(item");
         this.appendDummyInput()
             .appendField("of")
-            .appendField(new Blockly.FieldTextInput("my list"), "LIST")
+            .appendField(new Blockly.FieldTextInput("myList"), "LIST")
             .appendField(")");
         this.setOutput(true);
         this.setColour('#3498db');
@@ -1874,7 +1986,7 @@ export const defineBytebuddiesBlocks = () => {
         this.appendValueInput("ITEM");
         this.appendDummyInput()
             .appendField("in")
-            .appendField(new Blockly.FieldTextInput("my list"), "LIST")
+            .appendField(new Blockly.FieldTextInput("myList"), "LIST")
             .appendField(")");
         this.setOutput(true, 'Number');
         this.setColour('#3498db');
@@ -1887,7 +1999,7 @@ export const defineBytebuddiesBlocks = () => {
       init: function() {
         this.appendDummyInput()
             .appendField("(length of")
-            .appendField(new Blockly.FieldTextInput("my list"), "LIST")
+            .appendField(new Blockly.FieldTextInput("myList"), "LIST")
             .appendField(")");
         this.setOutput(true, 'Number');
         this.setColour('#3498db');
@@ -1899,7 +2011,7 @@ export const defineBytebuddiesBlocks = () => {
     Blockly.Blocks['data_listcontainsitem'] = {
       init: function() {
         this.appendDummyInput()
-            .appendField(new Blockly.FieldTextInput("my list"), "LIST")
+            .appendField(new Blockly.FieldTextInput("myList"), "LIST")
             .appendField("contains");
         this.appendValueInput("ITEM");
         this.appendDummyInput()
@@ -1915,7 +2027,7 @@ export const defineBytebuddiesBlocks = () => {
       init: function() {
         this.appendDummyInput()
             .appendField("show list")
-            .appendField(new Blockly.FieldTextInput("my list"), "LIST");
+            .appendField(new Blockly.FieldTextInput("myList"), "LIST");
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
         this.setColour('#3498db');
@@ -1928,7 +2040,7 @@ export const defineBytebuddiesBlocks = () => {
       init: function() {
         this.appendDummyInput()
             .appendField("hide list")
-            .appendField(new Blockly.FieldTextInput("my list"), "LIST");
+            .appendField(new Blockly.FieldTextInput("myList"), "LIST");
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
         this.setColour('#3498db');
@@ -4064,6 +4176,15 @@ export const defineBytebuddiesBlocks = () => {
     Object.entries(libDefs).forEach(([id, def]) => {
       Blockly.Blocks[id] = def;
     });
+    Object.values(EXTENSION_SHORT_TO_BLOCKLY || {}).forEach((id) => {
+      if (id && !Blockly.Blocks[id]) Blockly.Blocks[id] = Blockly.Blocks.bb_lib_stack;
+    });
+    [
+      'bb_pen_down', 'bb_pen_up', 'bb_pen_clear', 'bb_pen_erase', 'bb_pen_color', 'bb_pen_size',
+      'bb_weather_city', 'bb_weather_temp', 'bb_weather_cond',
+    ].forEach((id) => {
+      if (!Blockly.Blocks[id] && Blockly.Blocks.bb_lib_stack) Blockly.Blocks[id] = Blockly.Blocks.bb_lib_stack;
+    });
 
     // =============== CODE GENERATORS ===============
     if (BlocklyJS) {
@@ -4368,6 +4489,26 @@ export const defineBytebuddiesBlocks = () => {
         BlocklyJS.javascriptGenerator.forBlock[id] = libGen;
       });
     }
+
+    Blockly.Blocks['bb_var_get'] = {
+      init: function() {
+        this.appendDummyInput()
+          .appendField(new Blockly.FieldTextInput('myVar'), 'NAME');
+        this.setOutput(true, null);
+        this.setColour('#ff9800');
+        this.setTooltip('The value stored in this variable');
+      },
+    };
+    if (BlocklyJS?.javascriptGenerator?.forBlock) {
+      BlocklyJS.javascriptGenerator.forBlock.bb_var_get = (block) => [
+        String(block.getFieldValue('NAME') || 'myVar'),
+        BlocklyJS.Order?.ATOMIC ?? 0,
+      ];
+    }
+
+    Object.entries(REPORTER_SLOT_FIELDS).forEach(([type, fields]) => {
+      addReporterSlots(type, fields, BOOLEAN_SLOT_TYPES.has(type) ? 'Boolean' : null);
+    });
 
     return true;
   } catch (error) {

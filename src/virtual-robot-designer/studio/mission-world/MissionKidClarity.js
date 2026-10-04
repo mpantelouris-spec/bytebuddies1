@@ -75,6 +75,14 @@ export const CHASSIS_VISUAL_DNA = {
     pathStyle: 'Yellow stud mat with red brick lane markers',
     signatureProp: 'Oversized 2×4 brick stack',
   },
+  blockbot: {
+    label: 'Block world plains',
+    floorKind: 'farm_field',
+    sky: 0x87ceeb, ground: 0x5ea832, fog: 0xbae6fd,
+    surroundings: 'Checker grass blocks, cube trees, and a distant block tower on the horizon.',
+    pathStyle: 'Dirt path tiles through bright grass blocks',
+    signatureProp: 'Craft bench with glowing pickaxe',
+  },
   droid: {
     label: 'Humanoid training gym',
     floorKind: 'gym_mats',

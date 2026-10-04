@@ -1,301 +1,308 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useUser } from '../contexts/UserContext';
-import { getAllUsers } from '../firebase';
+import {
+  localClasses, localAssignments, fetchClass, fetchAssignments, fetchTeacherClasses,
+  findSub, safeKey, statusFor, dueLabel,
+} from '../utils/classroomStore.js';
+import { KIND_META } from './classroom/assignables.js';
+import { classGradient, GoogleClassroomLogo, timeAgo } from './classroom/ui.jsx';
+import './TeacherHome.css';
 
-const card = {
-  background: 'var(--bg-secondary)',
-  borderRadius: 16,
-  border: '1px solid var(--border-color)',
-  padding: 24,
-};
+const WEEK_MS = 7 * 86400000;
 
-const statBox = {
-  background: 'var(--bg-secondary)',
-  borderRadius: 16,
-  border: '1px solid var(--border-color)',
-  padding: 20,
-  textAlign: 'center',
-  flex: 1,
-  minWidth: 130,
-};
+function rosterOf(cls) {
+  const list = (cls.students || []).map((s) => ({ ...s, key: safeKey(s.email || s.id || s.name) }));
+  const keys = new Set(list.map((s) => s.key));
+  Object.entries(cls.progress || {}).forEach(([k, p]) => { if (!keys.has(k)) list.push({ name: p.name, email: p.email, key: k }); });
+  return list.map((s) => ({ ...s, progress: cls.progress?.[s.key] || null }));
+}
+
+/** Per-class numbers the home page needs: who is active, what to mark, who needs help. */
+function summarise(cls, assignments) {
+  const roster = rosterOf(cls);
+  const subs = cls.submissions || {};
+  let toMark = 0;
+  let missing = 0;
+  const work = assignments.map((a) => {
+    const counts = { done: 0, handed: 0, marked: 0, late: 0, todo: 0 };
+    roster.forEach((p) => { counts[statusFor(a, findSub(subs, a.id, p.key), p.progress)]++; });
+    toMark += counts.handed;
+    missing += counts.late;
+    return { a, counts, finished: counts.done + counts.handed + counts.marked };
+  });
+  const active = roster.filter((p) => p.progress?.updatedAt && Date.now() - new Date(p.progress.updatedAt) < WEEK_MS).length;
+  const help = Object.values(cls.help || {}).filter((h) => !h.resolved);
+  return { roster, work, toMark, missing, active, help, helpCount: help.length };
+}
+
+function greeting() {
+  const h = new Date().getHours();
+  if (h < 12) return 'Good morning';
+  if (h < 17) return 'Good afternoon';
+  return 'Good evening';
+}
 
 export default function TeacherHome({ onNavigate }) {
   const { user } = useUser();
-  const [classes, setClasses] = useState([]);
-  const [assignments, setAssignments] = useState([]);
-  const [studentCount, setStudentCount] = useState(0);
-  const [showGClassroom, setShowGClassroom] = useState(false);
+  const [classes, setClasses] = useState(() => localClasses().filter((c) => !c.archived));
+  const [assignments, setAssignments] = useState(() => localAssignments());
+  const [loading, setLoading] = useState(true);
 
+  // Freshen every class with its live doc (roster, progress, hand-ins, help) and its work.
   useEffect(() => {
-    const cls = JSON.parse(localStorage.getItem('bb-classes') || '[]');
-    const asgn = JSON.parse(localStorage.getItem('bb-assignments') || '[]');
-    setClasses(cls);
-    setAssignments(asgn);
-    setStudentCount(cls.reduce((sum, c) => sum + (c.students?.length || 0), 0));
-  }, []);
+    let cancelled = false;
+    (async () => {
+      try {
+        const remote = user.email ? await fetchTeacherClasses(user.email).catch(() => []) : [];
+        const map = new Map(localClasses().map((c) => [c.id, c]));
+        remote.forEach((r) => map.set(r.id, { ...map.get(r.id), ...r }));
+        const base = [...map.values()].filter((c) => !c.archived);
+        const live = await Promise.all(base.map(async (c) => {
+          const [doc, asg] = await Promise.all([fetchClass(c.id).catch(() => null), fetchAssignments(c.id).catch(() => [])]);
+          return { cls: doc ? { ...c, ...doc } : c, asg: asg || [] };
+        }));
+        if (cancelled) return;
+        const merged = new Map(localAssignments().map((a) => [a.id, a]));
+        live.forEach(({ asg }) => asg.forEach((a) => merged.set(a.id, { ...merged.get(a.id), ...a })));
+        setClasses(live.map((l) => l.cls));
+        setAssignments([...merged.values()]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [user.email]);
 
-  const now = new Date();
-  const upcoming = assignments
-    .filter(a => a.dueDate && new Date(a.dueDate) >= now)
-    .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate))
+  const summaries = useMemo(() => classes.map((cls) => ({
+    cls, ...summarise(cls, assignments.filter((a) => a.classId === cls.id)),
+  })), [classes, assignments]);
+
+  const totals = summaries.reduce((t, s) => ({
+    pupils: t.pupils + s.roster.length,
+    active: t.active + s.active,
+    toMark: t.toMark + s.toMark,
+    missing: t.missing + s.missing,
+    help: t.help + s.help.length,
+  }), { pupils: 0, active: 0, toMark: 0, missing: 0, help: 0 });
+
+  const upcoming = summaries
+    .flatMap((s) => s.work.map((w) => ({ ...w, cls: s.cls, n: s.roster.length })))
+    .filter(({ a }) => a.dueDate && new Date(`${a.dueDate}T23:59:59`) >= new Date())
+    .sort((x, y) => x.a.dueDate.localeCompare(y.a.dueDate))
+    .slice(0, 5);
+
+  const helpList = summaries.flatMap((s) => s.help.map((h) => ({ ...h, cls: s.cls })))
+    .sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''))
     .slice(0, 4);
-  const overdue = assignments.filter(a => a.dueDate && new Date(a.dueDate) < now).length;
 
-  const greeting = () => {
-    const h = now.getHours();
-    if (h < 12) return 'Good morning';
-    if (h < 17) return 'Good afternoon';
-    return 'Good evening';
+  const openClass = (cls, sub = '') => {
+    try { localStorage.setItem('bb-cr-selected', cls.id); } catch { /* ignore */ }
+    onNavigate(sub ? `classroom/${sub}` : 'classroom');
   };
 
-  const stats = [
-    { label: 'Classes', value: classes.length, icon: '🏫', color: '#6366f1', page: 'classroom' },
-    { label: 'Students', value: studentCount, icon: '👥', color: '#10b981', page: 'classroom' },
-    { label: 'Assignments', value: assignments.length, icon: '📋', color: '#f59e0b', page: 'classroom' },
-    { label: 'Overdue', value: overdue, icon: '⚠️', color: overdue > 0 ? '#ef4444' : '#6b7280', page: 'classroom' },
+  const today = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+  const allClear = classes.length > 0 && !totals.toMark && !totals.help && !totals.missing;
+
+  const attention = [
+    { key: 'mark', icon: '🖍️', value: totals.toMark, label: 'to mark', hint: 'Hand-ins waiting for feedback', tone: 'indigo', count: 'toMark', tab: 'marking' },
+    { key: 'help', icon: '🙋', value: totals.help, label: totals.help === 1 ? 'help request' : 'help requests', hint: 'Pupils asking for a hand', tone: 'amber', count: 'helpCount', tab: 'stream' },
+    { key: 'missing', icon: '⏰', value: totals.missing, label: 'missing', hint: 'Past the due date, not done', tone: 'red', count: 'missing', tab: 'pupils' },
   ];
 
-  const quickActions = [
-    {
-      icon: '🏫',
-      title: 'Manage Classes',
-      desc: 'View students, assignments and invite codes for your classes',
-      color: '#6366f1',
-      page: 'classroom',
-    },
-    {
-      icon: '🎮',
-      title: 'Game Builder',
-      desc: 'Open the block coding environment — great for demo lessons',
-      color: '#10b981',
-      page: 'gamebuilder',
-    },
-    {
-      icon: '📚',
-      title: 'Learning Hub',
-      desc: 'Browse lessons and courses available to your students',
-      color: '#f59e0b',
-      page: 'learn',
-    },
-    {
-      icon: '👥',
-      title: 'Community',
-      desc: 'See what students are building and sharing',
-      color: '#3b82f6',
-      page: 'community',
-    },
-    {
-      icon: '⚙️',
-      title: 'Settings',
-      desc: 'Update your profile, theme and preferences',
-      color: '#8b5cf6',
-      page: 'settings',
-    },
-    {
-      icon: '🛡️',
-      title: 'Admin Panel',
-      desc: 'Platform-wide overview — all users and classes',
-      color: '#ef4444',
-      page: 'admin',
-    },
+  const tools = [
+    { icon: '📚', title: 'Teach a lesson', desc: '152 KS2 computing lessons, ready to project', page: 'learn' },
+    { icon: '🎮', title: 'Game Builder', desc: 'Block coding for live demos', page: 'gamebuilder' },
+    { icon: '🚀', title: 'Missions', desc: 'Story-led coding campaigns', page: 'missions' },
+    { icon: '🤖', title: 'Robot Studio', desc: 'Design and test virtual robots', page: 'studio' },
+    { icon: '🌍', title: 'Community', desc: 'See what pupils are sharing', page: 'community' },
+    { icon: '⚙️', title: 'Settings', desc: 'Profile, theme and accessibility', page: 'settings' },
   ];
 
   return (
-    <div style={{ padding: '32px 24px', maxWidth: 1100, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 28 }}>
-
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+    <div className="th">
+      {/* ─── Header ─── */}
+      <header className="th-head">
         <div>
-          <h1 style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 6px' }}>
-            {greeting()}, {user.name}!
-          </h1>
-          <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0 }}>
-            Here's a snapshot of your ByteBuddies classroom today.
+          <div className="th-date">{today}</div>
+          <h1>{greeting()}, {user.name || 'Teacher'} 👋</h1>
+          <p>
+            {classes.length === 0
+              ? 'Create your first class to start setting work.'
+              : allClear
+                ? 'You’re all caught up — nothing needs you right now.'
+                : 'Here’s what needs you today.'}
           </p>
         </div>
-        <button
-          className="btn btn-primary"
-          style={{ padding: '10px 20px', fontSize: 14, fontWeight: 600 }}
-          onClick={() => onNavigate('classroom')}
-        >
-          Go to Classroom →
-        </button>
-      </div>
-
-      {/* Stats */}
-      <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
-        {stats.map(s => (
-          <button
-            key={s.label}
-            style={{ ...statBox, cursor: 'pointer', transition: 'transform 0.15s', border: '1px solid var(--border-color)' }}
-            onClick={() => onNavigate(s.page)}
-            onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
-            onMouseLeave={e => e.currentTarget.style.transform = 'none'}
-          >
-            <div style={{ fontSize: 28, marginBottom: 6 }}>{s.icon}</div>
-            <div style={{ fontSize: 32, fontWeight: 800, color: s.color, lineHeight: 1 }}>{s.value}</div>
-            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>{s.label}</div>
-          </button>
-        ))}
-      </div>
-
-      {/* Upcoming Assignments */}
-      <div style={card}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>
-            Upcoming Assignments
-          </h2>
-          <button
-            style={{ fontSize: 13, color: 'var(--accent-primary)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}
-            onClick={() => onNavigate('classroom')}
-          >
-            View all →
+        <div className="th-head-actions">
+          <button className="th-btn" onClick={() => onNavigate('learn')}>📚 Teach a lesson</button>
+          <button className="th-btn th-btn--primary" onClick={() => onNavigate('classroom')}>
+            {classes.length ? '＋ Set work' : '＋ Create a class'}
           </button>
         </div>
-        {upcoming.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '28px 0', color: 'var(--text-muted)' }}>
-            <div style={{ fontSize: 32, marginBottom: 8 }}>📋</div>
-            <p style={{ fontSize: 13, margin: 0 }}>
-              {assignments.length === 0
-                ? 'No assignments yet. Head to Classroom to create one.'
-                : 'No upcoming deadlines.'}
-            </p>
+      </header>
+
+      {/* ─── Needs attention ─── */}
+      {classes.length > 0 && (
+        <section className="th-attention" aria-label="Needs your attention">
+          {attention.map((t) => (
+            <button
+              key={t.key}
+              className={`th-attn th-attn--${t.tone}${t.value ? ' is-hot' : ''}`}
+              onClick={() => openClass((summaries.find((s) => s[t.count]) || summaries[0]).cls, t.tab)}
+            >
+              <span className="th-attn-icon">{t.icon}</span>
+              <span className="th-attn-copy">
+                <b>{loading && !t.value ? '–' : t.value}</b> <span>{t.label}</span>
+                <small>{t.value ? t.hint : 'All clear ✓'}</small>
+              </span>
+              <span className="th-attn-arrow">→</span>
+            </button>
+          ))}
+          <div className="th-attn th-attn--stat">
+            <span className="th-attn-icon">👥</span>
+            <span className="th-attn-copy">
+              <b>{totals.active}</b> <span>of {totals.pupils} active</span>
+              <small>Pupils who worked this week</small>
+            </span>
+          </div>
+        </section>
+      )}
+
+      {/* ─── Classes ─── */}
+      <section>
+        <div className="th-section-head">
+          <h2>Your classes</h2>
+          {classes.length > 0 && <button className="th-link" onClick={() => onNavigate('classroom')}>Manage classes →</button>}
+        </div>
+        {classes.length === 0 ? (
+          <div className="th-empty-grid">
+            <button className="th-empty-card" onClick={() => onNavigate('classroom')}>
+              <span className="th-empty-icon">🏫</span>
+              <b>Create a class</b>
+              <small>Get a 6-letter code your pupils type in to join.</small>
+            </button>
+            <button className="th-empty-card" onClick={() => onNavigate('classroom/google')}>
+              <span className="th-empty-icon"><GoogleClassroomLogo size={34} /></span>
+              <b>Import from Google Classroom</b>
+              <small>Bring classes and pupils across in one click.</small>
+            </button>
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {upcoming.map(a => {
-              const cls = classes.find(c => c.id === a.classId);
-              const daysLeft = Math.ceil((new Date(a.dueDate) - now) / (1000 * 60 * 60 * 24));
-              const urgent = daysLeft <= 2;
-              return (
-                <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 14px', background: 'var(--bg-primary)', borderRadius: 10, border: '1px solid var(--border-color)' }}>
-                  <div style={{ fontSize: 20 }}>{a.assignType === 'blocks' ? '🧩' : '💻'}</div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-primary)' }}>{a.title}</div>
-                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{cls?.name || '—'}</div>
+          <div className="th-classes">
+            {summaries.map(({ cls, roster, work, toMark, active, help }) => (
+              <button key={cls.id} className="th-class" onClick={() => openClass(cls)}>
+                <div className="th-class-band" style={{ background: classGradient(cls.color || '#6366f1') }}>
+                  <div>
+                    <small>{[cls.grade, cls.subject].filter(Boolean).join(' · ') || 'Computing'}</small>
+                    <strong>{cls.name}</strong>
                   </div>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: urgent ? '#f59e0b' : 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                    {daysLeft === 0 ? 'Due today' : daysLeft === 1 ? 'Due tomorrow' : `${daysLeft} days`}
+                  <span className="th-class-code">{cls.inviteCode}</span>
+                </div>
+                <div className="th-class-body">
+                  <div className="th-class-stats">
+                    <span><b>{roster.length}</b> pupils</span>
+                    <span><b>{active}</b> active</span>
+                    <span><b>{work.length}</b> set</span>
+                  </div>
+                  <div className="th-class-flags">
+                    {toMark > 0 && <span className="th-flag th-flag--indigo">🖍️ {toMark} to mark</span>}
+                    {help.length > 0 && <span className="th-flag th-flag--amber">🙋 {help.length} need help</span>}
+                    {cls.gcCourseId && <span className="th-flag"><GoogleClassroomLogo size={13} /> Linked</span>}
+                    {!toMark && !help.length && !cls.gcCourseId && <span className="th-flag th-flag--ok">✓ All caught up</span>}
                   </div>
                 </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {classes.length > 0 && (
+        <section className="th-two">
+          {/* ─── Deadlines ─── */}
+          <div className="th-card">
+            <div className="th-section-head th-section-head--card">
+              <h2>Coming up</h2>
+              <button className="th-link" onClick={() => onNavigate('classroom')}>All work →</button>
+            </div>
+            {upcoming.length === 0 ? (
+              <div className="th-empty">
+                <div>📋</div>
+                <p>No upcoming deadlines.</p>
+                <button className="th-btn th-btn--sm" onClick={() => onNavigate('classroom')}>＋ Set some work</button>
+              </div>
+            ) : upcoming.map(({ a, cls, finished, n }) => {
+              const meta = KIND_META[a.kind] || KIND_META.task;
+              const pct = n ? Math.round((finished / n) * 100) : 0;
+              return (
+                <button key={a.id} className="th-row" onClick={() => openClass(cls)}>
+                  <span className="th-row-icon" style={{ background: `${meta.color}1f` }}>{a.emoji || meta.emoji}</span>
+                  <span className="th-row-copy">
+                    <b>{a.title}</b>
+                    <small><span className="th-dot" style={{ background: cls.color || '#6366f1' }} />{cls.name} · {dueLabel(a.dueDate)}</small>
+                    <span className="th-meter"><i style={{ width: `${pct}%` }} /></span>
+                  </span>
+                  <span className="th-row-end">{finished}/{n}<small>done</small></span>
+                </button>
               );
             })}
           </div>
-        )}
-      </div>
 
-      {/* Google Classroom Banner */}
-      <div style={{ background: 'linear-gradient(135deg, rgba(66,133,244,0.12), rgba(66,133,244,0.06))', border: '1px solid rgba(66,133,244,0.25)', borderRadius: 16, padding: '20px 24px', display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap', cursor: 'pointer' }} onClick={() => setShowGClassroom(true)}>
-        <div style={{ width: 48, height: 48, borderRadius: 12, background: 'rgba(66,133,244,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-          <svg width="26" height="26" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect width="48" height="48" rx="10" fill="#4285F4"/>
-            <rect x="10" y="14" width="28" height="20" rx="2" fill="white"/>
-            <rect x="16" y="20" width="16" height="8" rx="1" fill="#4285F4"/>
-            <circle cx="24" cy="24" r="3" fill="white"/>
-          </svg>
-        </div>
-        <div style={{ flex: 1, minWidth: 200 }}>
-          <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-primary)', marginBottom: 4 }}>Connect Google Classroom</div>
-          <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Import your class roster automatically — no invite codes needed for students</div>
-        </div>
-        <button style={{ padding: '9px 20px', background: '#4285F4', border: 'none', borderRadius: 8, color: '#fff', fontWeight: 600, fontSize: 13, cursor: 'pointer', flexShrink: 0 }}>
-          Connect →
-        </button>
-      </div>
-
-      {/* Google Classroom Modal */}
-      {showGClassroom && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }} onClick={() => setShowGClassroom(false)}>
-          <div style={{ background: 'var(--bg-secondary)', borderRadius: 20, width: '100%', maxWidth: 440, border: '1px solid var(--border-color)', boxShadow: '0 24px 80px rgba(0,0,0,0.5)', padding: 32 }} onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-              <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(66,133,244,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <svg width="24" height="24" viewBox="0 0 48 48" fill="none"><rect width="48" height="48" rx="10" fill="#4285F4"/><rect x="10" y="14" width="28" height="20" rx="2" fill="white"/><rect x="16" y="20" width="16" height="8" rx="1" fill="#4285F4"/><circle cx="24" cy="24" r="3" fill="white"/></svg>
+          {/* ─── Help requests ─── */}
+          <div className="th-card">
+            <div className="th-section-head th-section-head--card">
+              <h2>Help requests</h2>
+              {helpList.length > 0 && <span className="th-count">{totals.help}</span>}
+            </div>
+            {helpList.length === 0 ? (
+              <div className="th-empty">
+                <div>🙌</div>
+                <p>No one needs help right now.</p>
               </div>
-              <div>
-                <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--text-primary)' }}>Google Classroom Sync</div>
-                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Import your class roster automatically</div>
-              </div>
-              <button onClick={() => setShowGClassroom(false)} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 20, cursor: 'pointer' }}>✕</button>
-            </div>
-            <div style={{ background: 'rgba(66,133,244,0.08)', border: '1px solid rgba(66,133,244,0.2)', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
-              <div style={{ fontSize: 13, color: '#4285F4', fontWeight: 600, marginBottom: 8 }}>How it works</div>
-              {['Sign in with your school Google account', 'Select which Classroom class to import', 'Students are added automatically — no invite codes needed', 'Assignments sync back to Google Classroom'].map((s, i) => (
-                <div key={i} style={{ fontSize: 13, color: 'var(--text-muted)', display: 'flex', gap: 8, marginBottom: 6 }}>
-                  <span style={{ color: '#4285F4', fontWeight: 700, minWidth: 18 }}>{i + 1}.</span>{s}
-                </div>
-              ))}
-            </div>
-            <div style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 8, padding: '10px 14px', marginBottom: 20, fontSize: 12, color: '#f59e0b' }}>
-              Available on the School plan — contact us to activate for your school.
-            </div>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={() => setShowGClassroom(false)} style={{ flex: 1, padding: '11px', background: 'none', border: '1px solid var(--border-color)', borderRadius: 8, color: 'var(--text-muted)', cursor: 'pointer', fontSize: 14 }}>Close</button>
-              <button onClick={() => { alert('Email us at hello@bytebuddies.io to activate Google Classroom for your school.'); setShowGClassroom(false); }} style={{ flex: 1, padding: '11px', background: '#4285F4', border: 'none', borderRadius: 8, color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 700 }}>Contact Us →</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Quick Actions */}
-      <div>
-        <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 16px' }}>Quick Navigation</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 14 }}>
-          {quickActions.map(action => (
-            <button
-              key={action.title}
-              onClick={() => onNavigate(action.page)}
-              style={{
-                background: 'var(--bg-secondary)',
-                borderRadius: 14,
-                border: '1px solid var(--border-color)',
-                padding: '18px 20px',
-                textAlign: 'left',
-                cursor: 'pointer',
-                transition: 'transform 0.15s, border-color 0.15s',
-              }}
-              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.borderColor = action.color + '60'; }}
-              onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.borderColor = 'var(--border-color)'; }}
-            >
-              <div style={{ fontSize: 28, marginBottom: 10 }}>{action.icon}</div>
-              <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)', marginBottom: 6 }}>{action.title}</div>
-              <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>{action.desc}</div>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Classes summary */}
-      {classes.length > 0 && (
-        <div style={card}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>Your Classes</h2>
-            <button
-              style={{ fontSize: 13, color: 'var(--accent-primary)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}
-              onClick={() => onNavigate('classroom')}
-            >
-              Manage →
-            </button>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
-            {classes.map(cls => (
-              <div
-                key={cls.id}
-                style={{ padding: '14px 16px', background: 'var(--bg-primary)', borderRadius: 10, border: '1px solid var(--border-color)', cursor: 'pointer' }}
-                onClick={() => onNavigate('classroom')}
-              >
-                <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)', marginBottom: 4 }}>{cls.name}</div>
-                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}>{cls.subject} · {cls.grade}</div>
-                <div style={{ display: 'flex', gap: 12 }}>
-                  <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>👥 {cls.students?.length || 0}</span>
-                  <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>📋 {assignments.filter(a => a.classId === cls.id).length}</span>
-                  <span style={{ marginLeft: 'auto', fontFamily: 'monospace', fontSize: 12, fontWeight: 800, color: 'var(--accent-primary)', letterSpacing: 1 }}>{cls.inviteCode}</span>
-                </div>
-              </div>
+            ) : helpList.map((h) => (
+              <button key={`${h.cls.id}-${h.id}`} className="th-row" onClick={() => openClass(h.cls, 'stream')}>
+                <span className="th-row-icon th-row-icon--round">{(h.name || '?').slice(0, 1).toUpperCase()}</span>
+                <span className="th-row-copy">
+                  <b>{h.name}</b>
+                  <small>{h.cls.name} · {timeAgo(h.createdAt)}</small>
+                  <span className="th-quote">{h.message}</span>
+                </span>
+              </button>
             ))}
           </div>
-        </div>
+        </section>
       )}
 
+      {/* ─── Google Classroom ─── */}
+      {!classes.some((c) => c.gcCourseId) && (
+        <button className="th-google" onClick={() => onNavigate('classroom/google')}>
+          <GoogleClassroomLogo size={40} />
+          <span className="th-google-copy">
+            <b>Connect Google Classroom</b>
+            <small>Import classes and pupils, post work and send grades back. Pupils sign in with Google.</small>
+          </span>
+          <span className="th-btn th-btn--sm">Connect →</span>
+        </button>
+      )}
+
+      {/* ─── Teaching tools ─── */}
+      <section>
+        <div className="th-section-head"><h2>Teaching tools</h2></div>
+        <div className="th-tools">
+          {tools.map((t) => (
+            <button key={t.title} className="th-tool" onClick={() => onNavigate(t.page)}>
+              <span className="th-tool-icon">{t.icon}</span>
+              <span><b>{t.title}</b><small>{t.desc}</small></span>
+            </button>
+          ))}
+          {user.role === 'admin' && (
+            <button className="th-tool" onClick={() => onNavigate('admin')}>
+              <span className="th-tool-icon">🛡️</span>
+              <span><b>Admin panel</b><small>All users and classes</small></span>
+            </button>
+          )}
+        </div>
+      </section>
     </div>
   );
 }

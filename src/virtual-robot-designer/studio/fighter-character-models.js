@@ -3,6 +3,7 @@
  * Geometry, materials, emissive values, and glow behavior match the design brief.
  */
 import * as THREE from 'three';
+import { buildXbotBoxer, loadXbotBoxer } from './fighter/XbotBoxerKit.js';
 
 const PI = Math.PI;
 
@@ -1263,13 +1264,216 @@ function buildArchetypeFighter(primary, accent, variant) {
 }
 
 /**
+ * Cute visor boxing robots — ByteBuddies look (round head, glowing eyes, big gloves).
+ * Blue corner vs red corner, same combat rig as the mech boxers.
+ */
+function buildCuteBoxerClassic({ team = 'blue', primary, accent } = {}) {
+  const isBlue = team !== 'red';
+  const kit = isBlue
+    ? { body: primary || '#3b82f6', dark: accent || '#1d4ed8', shoe: '#1e3a8a', lace: '#93c5fd' }
+    : { body: primary || '#ef4444', dark: accent || '#991b1b', shoe: '#7f1d1d', lace: '#fecaca' };
+  const silver = matStd('#d6dce3', 0.62, 0.28);
+  const bodyMat = matStd(kit.body, 0.16, 0.42);
+  const darkMat = matStd(kit.dark, 0.12, 0.48);
+  const shoeMat = matStd(kit.shoe, 0.18, 0.4);
+  const gloveMat = new THREE.MeshStandardMaterial({
+    color: new THREE.Color('#dc2626'),
+    roughness: 0.62,
+    metalness: 0.04,
+  });
+  const wristMat = matStd('#f8fafc', 0.08, 0.55);
+  const visorMat = new THREE.MeshStandardMaterial({
+    color: new THREE.Color('#7dd3fc'),
+    emissive: new THREE.Color('#38bdf8'),
+    emissiveIntensity: 0.45,
+    metalness: 0.42,
+    roughness: 0.16,
+  });
+  const eyeMat = matStd('#38bdf8', 0.12, 0.22, '#38bdf8', 2.4);
+
+  const g = new THREE.Group();
+  const torsoGrp = new THREE.Group();
+  torsoGrp.name = 'Torso_Group';
+  g.add(torsoGrp);
+
+  const pelvis = mesh(new THREE.SphereGeometry(0.16, 12, 10), darkMat);
+  pelvis.position.y = 0.06;
+  torsoGrp.add(pelvis);
+  const shorts = mesh(new THREE.CylinderGeometry(0.2, 0.23, 0.28, 12), darkMat);
+  shorts.position.y = 0.16;
+  torsoGrp.add(shorts);
+  const body = mesh(new THREE.SphereGeometry(0.32, 16, 14), bodyMat);
+  body.scale.set(0.9, 1.02, 0.78);
+  body.position.y = 0.5;
+  torsoGrp.add(body);
+  const core = mesh(new THREE.SphereGeometry(0.07, 12, 10), visorMat);
+  core.position.set(0, 0.52, 0.24);
+  torsoGrp.add(core);
+
+  const headGrp = new THREE.Group();
+  headGrp.name = 'Head_Group';
+  headGrp.position.y = 0.92;
+  torsoGrp.add(headGrp);
+  const helm = mesh(new THREE.SphereGeometry(0.26, 18, 16), bodyMat);
+  helm.position.y = 0.16;
+  headGrp.add(helm);
+  const visor = mesh(new THREE.SphereGeometry(0.22, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.58), visorMat);
+  visor.position.set(0, 0.14, 0.06);
+  visor.rotation.x = 0.32;
+  headGrp.add(visor);
+  const eyeRefs = [];
+  [-0.075, 0.075].forEach((x) => {
+    const white = mesh(new THREE.SphereGeometry(0.07, 12, 10), matStd('#f8fbff', 0.05, 0.25));
+    white.position.set(x, 0.18, 0.2);
+    white.scale.set(0.85, 1.05, 0.5);
+    headGrp.add(white);
+    const pupil = mesh(new THREE.SphereGeometry(0.034, 10, 8), eyeMat);
+    pupil.position.set(x, 0.18, 0.24);
+    pupil.scale.set(0.7, 1, 0.45);
+    headGrp.add(pupil);
+    eyeRefs.push(pupil);
+  });
+  const earL = mesh(new THREE.SphereGeometry(0.065, 8, 8), silver);
+  earL.position.set(-0.24, 0.14, 0);
+  headGrp.add(earL);
+  const earR = earL.clone();
+  earR.position.x = 0.24;
+  headGrp.add(earR);
+
+  const gloveRefs = [];
+  const armGrps = [];
+  [[-0.3, 'left', 0], [0.3, 'right', 1]].forEach(([x, side, si]) => {
+    const armGrp = new THREE.Group();
+    armGrp.name = `${side}_arm`;
+    armGrp.position.set(x, 0.62, 0);
+    torsoGrp.add(armGrp);
+    const upper = mesh(new THREE.CylinderGeometry(0.065, 0.075, 0.24, 8), silver);
+    upper.position.y = -0.12;
+    armGrp.add(upper);
+    const forearmGrp = new THREE.Group();
+    forearmGrp.name = `${side}_forearm`;
+    forearmGrp.position.y = -0.24;
+    armGrp.add(forearmGrp);
+    const forearm = mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.2, 8), silver);
+    forearm.position.y = -0.1;
+    forearmGrp.add(forearm);
+    const wrist = mesh(new THREE.CylinderGeometry(0.075, 0.08, 0.08, 8), wristMat);
+    wrist.position.y = -0.22;
+    forearmGrp.add(wrist);
+    const glove = mesh(new THREE.SphereGeometry(0.13, 16, 12), gloveMat);
+    glove.scale.set(1.05, 0.92, 1.2);
+    glove.position.set(0, -0.34, 0.04);
+    glove.name = `${side}Glove`;
+    forearmGrp.add(glove);
+    gloveRefs.push({ glove, si });
+    if (side === 'left') g.userData.leftGlove = glove;
+    if (side === 'right') g.userData.rightGlove = glove;
+    armGrps.push({ grp: armGrp, forearmGrp, si });
+  });
+
+  const THIGH_LEN = 0.3;
+  const SHIN_LEN = 0.28;
+  const HIP_ATTACH_Y = 0.02;
+  const legGrps = [];
+  [[-0.12, 0], [0.12, 1]].forEach(([x, li]) => {
+    const hipGrp = new THREE.Group();
+    hipGrp.name = li === 0 ? 'left_hip' : 'right_hip';
+    hipGrp.position.set(x, HIP_ATTACH_Y, 0);
+    hipGrp.rotation.order = 'YXZ';
+    torsoGrp.add(hipGrp);
+    const thighGrp = new THREE.Group();
+    thighGrp.name = 'thigh_pivot';
+    hipGrp.add(thighGrp);
+    const thigh = mesh(new THREE.CylinderGeometry(0.08, 0.09, THIGH_LEN, 8), silver);
+    thigh.position.y = -THIGH_LEN / 2;
+    thighGrp.add(thigh);
+    const shinGrp = new THREE.Group();
+    shinGrp.name = 'shin_pivot';
+    shinGrp.position.y = -THIGH_LEN;
+    thighGrp.add(shinGrp);
+    const shin = mesh(new THREE.CylinderGeometry(0.07, 0.08, SHIN_LEN, 8), silver);
+    shin.position.y = -SHIN_LEN / 2;
+    shinGrp.add(shin);
+    const ankleGrp = new THREE.Group();
+    ankleGrp.name = 'ankle_pivot';
+    ankleGrp.position.y = -SHIN_LEN;
+    shinGrp.add(ankleGrp);
+    const boot = mesh(new THREE.BoxGeometry(0.14, 0.12, 0.28), shoeMat);
+    boot.position.set(0, -0.05, 0.05);
+    ankleGrp.add(boot);
+    const stripe = mesh(new THREE.BoxGeometry(0.145, 0.04, 0.08), matStd(kit.lace, 0.1, 0.45));
+    stripe.position.set(0, -0.02, 0.12);
+    ankleGrp.add(stripe);
+    legGrps.push({
+      hipGrp,
+      legGrp: hipGrp,
+      thighGrp,
+      shinGrp,
+      ankleGrp,
+      li,
+      hipX: x,
+      hipY: HIP_ATTACH_Y,
+      footY: -(THIGH_LEN + SHIN_LEN + 0.1),
+    });
+  });
+
+  g.name = isBlue ? 'BlueBoxer' : 'RedBoxer';
+  attachSpecCombatRig(g, {
+    variant: isBlue ? 'striker' : 'dummy',
+    isDummy: !isBlue,
+    torsoGrp,
+    headGrp,
+    armGrps,
+    legGrps,
+    core,
+    coreLight: null,
+    coreParticles: null,
+    gloveRefs,
+    eyeRefs,
+    visorRef: visor,
+    glowCol: '#38bdf8',
+    guardX: -1.15,
+    energyLines: [],
+  });
+  g.userData.isFighterHumanoid = true;
+  g.userData.isCuteBoxer = true;
+  g.userData.combatPBR = true;
+  g.scale.setScalar(1.18);
+  return g;
+}
+
+// The robot boxer stands exactly where the classic boxer stood (same height and feet)
+const BOXER_HEIGHT = 2.37;
+const BOXER_FOOT_Y = -0.79;
+
+/**
+ * Robot boxer on the animated X Bot body. Until that model has loaded the
+ * classic boxer stands in, then swaps to the robot boxer in place.
+ */
+export function buildCuteBoxer(opts = {}) {
+  const xbot = buildXbotBoxer({ ...opts, height: BOXER_HEIGHT, footY: BOXER_FOOT_Y });
+  if (xbot) return xbot;
+  const g = buildCuteBoxerClassic(opts);
+  loadXbotBoxer().then(() => {
+    const s = g.scale.x || 1;
+    const next = buildXbotBoxer({ ...opts, height: BOXER_HEIGHT / s, footY: BOXER_FOOT_Y / s });
+    if (!next) return;
+    g.getObjectByName('Torso_Group')?.removeFromParent();
+    next.children.slice().forEach((c) => g.add(c));
+    const keep = ['setAnimState', 'animate', 'setTimeScale', 'setHealthPct', 'setSkeletonDriven', 'leftGlove', 'rightGlove', 'isXbotBoxer', 'skipStudioPaint'];
+    keep.forEach((k) => { g.userData[k] = next.userData[k]; });
+    g.userData.rig = undefined;
+  });
+  return g;
+}
+
+/**
  * Build a production-quality fighting humanoid.
  * Striker and Dummy use spec-accurate geometry from the design brief.
  */
 export function buildProfessionalFighterHumanoid(primary, accent, variant = 'striker') {
-  if (variant === 'striker') return buildSpecStriker();
-  if (variant === 'dummy') return buildSpecTrainingDummy();
-  return buildArchetypeFighter(primary, accent, variant);
+  const team = (variant === 'berserker' || variant === 'tank') ? 'red' : 'blue';
+  return buildCuteBoxer({ team, primary, accent });
 }
 
 export default buildProfessionalFighterHumanoid;

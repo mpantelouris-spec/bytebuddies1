@@ -5,6 +5,11 @@ const card = { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255
 const sectionLabel = { fontSize: 12, fontWeight: 700, letterSpacing: 3, color: '#6366f1', textTransform: 'uppercase', marginBottom: 14 };
 const gradText = { background: 'linear-gradient(90deg, #818cf8, #c084fc)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' };
 
+export const CONTACT_EMAIL = 'bytebuddies.technology@gmail.com';
+const DEMO_VIDEO = '/media/bytebuddies-tour.mp4?v=neural-voice';
+const DEMO_POSTER = '/media/bytebuddies-tour-poster.jpg';
+const fieldStyle = { width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '11px 14px', fontSize: 14, color: '#fff', marginBottom: 12, boxSizing: 'border-box', outline: 'none' };
+
 const RESPONSIVE_CSS = `
   .lp-nav {
     display: flex;
@@ -120,9 +125,30 @@ const RESPONSIVE_CSS = `
   }
 `;
 
-export default function LandingPage({ onLogin, onSignup }) {
+export default function LandingPage({ onLogin, onSignup, onDevGuest }) {
   const [xp, setXp] = useState(340);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [enquiry, setEnquiry] = useState({ type: 'Book a demo', school: '', name: '', email: '', pupils: '', country: '', message: '' });
+  const [enquiryState, setEnquiryState] = useState({ sent: false, error: '' });
+  const setField = (k) => (e) => { setEnquiry((q) => ({ ...q, [k]: e.target.value })); setEnquiryState({ sent: false, error: '' }); };
+  const askFor = (type) => { setEnquiry((q) => ({ ...q, type })); document.getElementById('book-demo')?.scrollIntoView({ behavior: 'smooth' }); };
+  const sendEnquiry = () => {
+    const q = enquiry;
+    if (!q.school.trim() || !q.name.trim()) { setEnquiryState({ sent: false, error: 'Please add your school and your name.' }); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(q.email.trim())) { setEnquiryState({ sent: false, error: 'Please add a valid email address so we can reply.' }); return; }
+    const body = [
+      `Enquiry: ${q.type}`,
+      `School: ${q.school}`,
+      `Name and role: ${q.name}`,
+      `Email: ${q.email}`,
+      `Number of pupils: ${q.pupils || '-'}`,
+      `Country / city: ${q.country || '-'}`,
+      '',
+      q.message || '',
+    ].join('\n');
+    window.location.href = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(`ByteBuddies: ${q.type} - ${q.school}`)}&body=${encodeURIComponent(body)}`;
+    setEnquiryState({ sent: true, error: '' });
+  };
 
   useEffect(() => {
     const root = document.getElementById('root');
@@ -147,7 +173,7 @@ export default function LandingPage({ onLogin, onSignup }) {
     return () => clearInterval(t);
   }, []);
 
-  const navLinks = [['How It Works', 'how-it-works'], ['Results', 'outcomes'], ['For Schools', 'book-demo'], ['Pricing', 'pricing']];
+  const navLinks = [['Watch Demo', 'demo-video'], ['Curriculum', 'how-it-works'], ['For Schools', 'book-demo'], ['Pricing', 'pricing']];
 
   return (
     <div style={{ minHeight: '100vh', background: 'linear-gradient(160deg, #080812 0%, #0f0f23 40%, #0a1628 100%)', display: 'flex', flexDirection: 'column', fontFamily: 'Inter, sans-serif', color: '#fff' }}>
@@ -167,6 +193,12 @@ export default function LandingPage({ onLogin, onSignup }) {
         </div>
 
         <div className="lp-nav-actions">
+          {onDevGuest && (
+            <button type="button" onClick={onDevGuest} title="Local dev only — no Firebase"
+              style={{ padding: '9px 14px', background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.35)', borderRadius: 8, color: '#6ee7b7', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>
+              Dev guest
+            </button>
+          )}
           <button onClick={onLogin} style={{ padding: '9px 20px', background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, color: '#94a3b8', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>Log In</button>
           <button onClick={onSignup} style={{ padding: '9px 22px', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', border: 'none', borderRadius: 8, color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 700, boxShadow: '0 0 20px rgba(99,102,241,0.4)' }}>Start Free</button>
         </div>
@@ -193,7 +225,7 @@ export default function LandingPage({ onLogin, onSignup }) {
 
         <div style={{ ...pill, marginBottom: 28, fontSize: 13 }}>
           <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} />
-          Now accepting students — limited cohort spots remaining
+          Now booking free school pilots for 2026–27
         </div>
 
         <h1 style={{ fontSize: 'clamp(32px, 7vw, 76px)', fontWeight: 900, lineHeight: 1.08, marginBottom: 24, maxWidth: 860, letterSpacing: '-1.5px' }}>
@@ -205,20 +237,23 @@ export default function LandingPage({ onLogin, onSignup }) {
           ByteBuddies turns screen time into building time. Kids aged 7–16 go from passive scrollers to confident creators — building real games, apps, and AI projects in weeks, not years.
         </p>
         <p style={{ fontSize: 14, color: '#6366f1', fontWeight: 600, marginBottom: 32, letterSpacing: 0.3 }}>
-          Trusted by 12,000+ families and 400+ schools worldwide
+          Built for British curriculum schools worldwide · KS2 Computing, Years 3–6
         </p>
 
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center', marginBottom: 20 }}>
           <button onClick={onSignup} style={{ padding: 'clamp(14px,3vw,18px) clamp(24px,5vw,44px)', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', border: 'none', borderRadius: 14, color: '#fff', cursor: 'pointer', fontSize: 'clamp(15px,2.5vw,18px)', fontWeight: 800, boxShadow: '0 8px 40px rgba(99,102,241,0.55)', letterSpacing: '-0.3px' }}>
             Claim Your Free First Lesson
           </button>
-          <button onClick={() => document.getElementById('outcomes')?.scrollIntoView({ behavior: 'smooth' })} style={{ padding: 'clamp(14px,3vw,18px) clamp(18px,3vw,32px)', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 14, color: '#cbd5e1', cursor: 'pointer', fontSize: 'clamp(14px,2vw,16px)', fontWeight: 600 }}>
-            See What Kids Build →
+          <button onClick={() => { window.location.hash = 'learn/y3/w01'; }} style={{ padding: 'clamp(14px,3vw,18px) clamp(18px,3vw,32px)', background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.4)', borderRadius: 14, color: '#6ee7b7', cursor: 'pointer', fontSize: 'clamp(14px,2vw,16px)', fontWeight: 700 }}>
+            📚 Open Year 3 Week 1 (no login)
+          </button>
+          <button onClick={() => document.getElementById('demo-video')?.scrollIntoView({ behavior: 'smooth' })} style={{ padding: 'clamp(14px,3vw,18px) clamp(18px,3vw,32px)', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 14, color: '#cbd5e1', cursor: 'pointer', fontSize: 'clamp(14px,2vw,16px)', fontWeight: 600 }}>
+            ▶ Watch the Demo
           </button>
         </div>
 
         <div style={{ display: 'flex', gap: 'clamp(12px,3vw,28px)', flexWrap: 'wrap', justifyContent: 'center' }}>
-          {['No credit card required', '30-day money-back guarantee', 'Cancel any time'].map(t => (
+          {['Free school pilot', 'No robot kits needed', 'Runs in any browser'].map(t => (
             <div key={t} style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 13, color: '#475569' }}>
               <span style={{ color: '#22c55e', fontSize: 15 }}>✓</span>{t}
             </div>
@@ -226,10 +261,50 @@ export default function LandingPage({ onLogin, onSignup }) {
         </div>
       </section>
 
+      <section style={{ maxWidth: 920, margin: '0 auto 8px', padding: '0 16px 8px' }}>
+        <div style={{ borderRadius: 22, padding: '22px 22px 18px', background: 'linear-gradient(160deg, rgba(16,185,129,0.14), rgba(99,102,241,0.1))', border: '1px solid rgba(52,211,153,0.4)', textAlign: 'left' }}>
+          <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 1.4, color: '#6ee7b7', marginBottom: 6 }}>NEW · GLOBAL PRIMARY COMPUTING · DETAILED EDITION</div>
+          <div style={{ fontSize: 22, fontWeight: 900, marginBottom: 8 }}>152 classroom-ready lessons · Years 3–6</div>
+          <p style={{ fontSize: 15, color: '#cbd5e1', lineHeight: 1.6, margin: '0 0 14px' }}>
+            Week 1 is live: <b>Welcome to ByteBuddies — safe, smart computing</b>. Teach notes, vocabulary, Device charter, three activities with support and stretch, plus a 4-question quiz with reasons — not a generic world map.
+          </p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+            {['Device charter', 'Password vs PIN', 'Dot the robot', 'Quiz with why'].map((t) => (
+              <span key={t} style={{ fontSize: 12, fontWeight: 700, padding: '6px 10px', borderRadius: 10, background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.12)' }}>{t}</span>
+            ))}
+          </div>
+          <button type="button" onClick={() => { window.location.hash = 'learn/y3/w01'; }} style={{ padding: '12px 20px', borderRadius: 12, border: 'none', background: '#10b981', color: '#042f2e', fontWeight: 800, cursor: 'pointer', fontSize: 15 }}>
+            Start Week 1 now →
+          </button>
+        </div>
+      </section>
+
+      {/* ── DEMO VIDEO ── */}
+      <section id="demo-video" className="lp-section-pad" style={{ textAlign: 'center' }}>
+        <div style={{ maxWidth: 960, margin: '0 auto' }}>
+          <div style={sectionLabel}>See It In Action</div>
+          <h2 style={{ fontSize: 'clamp(22px, 4vw, 44px)', fontWeight: 900, marginBottom: 12, letterSpacing: '-0.5px' }}>
+            A 5-minute tour of ByteBuddies
+          </h2>
+          <p style={{ color: '#64748b', fontSize: 'clamp(13px,2vw,16px)', lineHeight: 1.7, maxWidth: 620, margin: '0 auto 28px' }}>
+            See everything pupils and teachers get: KS2 lessons, missions, 3D Robot Studio, game design, classroom tools, marking, Google Classroom and lesson plans, with a full voiceover.
+          </p>
+          <div style={{ borderRadius: 20, overflow: 'hidden', border: '1px solid rgba(99,102,241,0.35)', boxShadow: '0 20px 80px rgba(99,102,241,0.25)', background: '#000', aspectRatio: '16 / 9' }}>
+            <video src={DEMO_VIDEO} poster={DEMO_POSTER} controls playsInline preload="metadata" aria-label="Narrated tour of ByteBuddies for pupils and teachers" style={{ width: '100%', height: '100%', display: 'block', objectFit: 'cover' }}>
+              Your browser cannot play this video.
+            </video>
+          </div>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center', marginTop: 24 }}>
+            <button onClick={() => askFor('Book a demo')} style={{ padding: '13px 26px', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', border: 'none', borderRadius: 12, color: '#fff', cursor: 'pointer', fontSize: 15, fontWeight: 800 }}>Book a live demo →</button>
+            <button onClick={() => askFor('Free school pilot')} style={{ padding: '13px 26px', background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.4)', borderRadius: 12, color: '#6ee7b7', cursor: 'pointer', fontSize: 15, fontWeight: 700 }}>Start a free pilot</button>
+          </div>
+        </div>
+      </section>
+
       {/* TRUST BAR */}
       <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', borderBottom: '1px solid rgba(255,255,255,0.05)', background: 'rgba(255,255,255,0.02)', padding: '20px 16px' }}>
         <div className="lp-trust-bar" style={{ maxWidth: 900, margin: '0 auto', display: 'flex', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
-          {[['12,000+', 'Students'], ['50,000+', 'Projects Built'], ['400+', 'Schools'], ['98%', 'Parent Satisfaction'], ['7–16', 'Age Range']].map(([n, l]) => (
+          {[['152', 'KS2 lessons'], ['Years 3–6', 'Ready to teach'], ['18', '3D robots to code'], ['37', 'Game worlds'], ['Blocks → Python', 'One platform']].map(([n, l]) => (
             <div key={l} style={{ textAlign: 'center', padding: '4px 8px' }}>
               <div style={{ fontWeight: 900, fontSize: 'clamp(18px,3vw,22px)', ...gradText }}>{n}</div>
               <div style={{ fontSize: 12, color: '#475569', letterSpacing: 0.5 }}>{l}</div>
@@ -415,60 +490,33 @@ export default function LandingPage({ onLogin, onSignup }) {
         </div>
       </section>
 
-      {/* ── 5. SOCIAL PROOF ── */}
+      {/* ── 5. WHAT PUPILS BUILD ── */}
       <section className="lp-section-pad">
         <div style={{ maxWidth: 960, margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: 48 }}>
-            <div style={sectionLabel}>Real Families, Real Results</div>
-            <h2 style={{ fontSize: 'clamp(22px, 4vw, 44px)', fontWeight: 900, letterSpacing: '-0.5px' }}>
-              Don't take our word for it.
+          <div style={{ textAlign: 'center', marginBottom: 40 }}>
+            <div style={sectionLabel}>Inside Robot Studio</div>
+            <h2 style={{ fontSize: 'clamp(22px, 4vw, 44px)', fontWeight: 900, letterSpacing: '-0.5px', marginBottom: 12 }}>
+              Not basic 3D. Real games, coded by pupils.
             </h2>
+            <p style={{ fontSize: 'clamp(13px,2vw,16px)', color: '#64748b', maxWidth: 620, margin: '0 auto', lineHeight: 1.75 }}>
+              Most 3D coding sites give you one robot in an empty room. In ByteBuddies the world is the game, and code is how pupils play it.
+            </p>
           </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 20, marginBottom: 48 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 20 }}>
             {[
-              { quote: "My son was glued to his iPad doing absolutely nothing. Within two weeks of ByteBuddies, he built a game that his whole class plays. I cried a little, honestly.", name: 'Sarah T.', role: 'Parent of Jake, 10', avatar: 'ST', color: '#6366f1' },
-              { quote: "I made my own game in a week! It's called Space Crusher and 40 people have played it. I want to be a game developer now.", name: 'Maya', role: 'Student, Age 11', avatar: 'M', color: '#ec4899' },
-              { quote: "We tried three other platforms. The kids were bored in a week. With ByteBuddies they're logging in at home without being asked. That has never happened before.", name: 'Priya K.', role: 'Parent of two, Ages 9 & 13', avatar: 'PK', color: '#10b981' },
-              { quote: "I didn't think I'd be into coding but the missions are like a game. I've already finished Python level 3 and now I'm learning about AI. It's actually cool.", name: 'Ethan', role: 'Student, Age 13', avatar: 'E', color: '#f59e0b' },
-              { quote: "As a teacher, the dashboard is a game-changer. I can see exactly who's stuck on loops vs. conditions and help them in real time. No other tool does this.", name: 'James M.', role: 'Computing Teacher, Bristol', avatar: 'JM', color: '#8b5cf6' },
-              { quote: "My daughter asked me to extend her screen time for the first time in her life — because she was halfway through a game she was building. That is the ByteBuddies effect.", name: 'David R.', role: 'Parent of Lily, 12', avatar: 'DR', color: '#06b6d4' },
-            ].map(t => (
-              <div key={t.name} style={{ ...card, textAlign: 'left', background: 'rgba(255,255,255,0.025)', position: 'relative' }}>
-                <div style={{ fontSize: 40, color: t.color, fontFamily: 'Georgia, serif', lineHeight: 0.8, marginBottom: 16, opacity: 0.35 }}>"</div>
-                <p style={{ fontSize: 14, color: '#94a3b8', lineHeight: 1.8, margin: '0 0 20px', fontStyle: 'italic' }}>{t.quote}</p>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{ width: 38, height: 38, borderRadius: '50%', background: `linear-gradient(135deg, ${t.color}, ${t.color}99)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 12, flexShrink: 0 }}>{t.avatar}</div>
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: 13, color: '#e2e8f0' }}>{t.name}</div>
-                    <div style={{ fontSize: 11, color: '#475569' }}>{t.role}</div>
-                  </div>
-                </div>
+              { icon: '🏟️', color: '#6366f1', title: 'Arena Quest', body: 'Guide a robot through mazes of lava, keys, doors, portals and bugs using loops, sensors and if-statements.' },
+              { icon: '🛠️', color: '#10b981', title: 'Build your own arena', body: 'Pupils design levels in 37 themed worlds (coral reef, moon base, jungle temple and more), then share them with a code.' },
+              { icon: '🤖', color: '#ec4899', title: 'Design your own robot', body: 'Choose body, head, eyes, arms, wheels or legs, gadgets and colours, then code it in 3D.' },
+              { icon: '👾', color: '#f59e0b', title: 'Classic arcade, in 3D', body: 'Space Raiders, Pac-Bot, Brick Bot, Hop Bot and Snake Bot, each played by writing code, not pressing keys.' },
+              { icon: '⚽', color: '#06b6d4', title: 'Sport and racing', body: 'Football, kart racing on cup tracks, drones and jets. Sensors and maths with an instant reason to care.' },
+              { icon: '🔌', color: '#8b5cf6', title: 'Real hardware when you have it', body: 'The same skills flash straight to micro:bit, Arduino and mBot. Kits are optional, never required.' },
+            ].map(f => (
+              <div key={f.title} style={{ ...card, textAlign: 'left', background: 'rgba(255,255,255,0.025)', borderTop: `3px solid ${f.color}` }}>
+                <div style={{ fontSize: 30, marginBottom: 12 }}>{f.icon}</div>
+                <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 8, color: '#e2e8f0' }}>{f.title}</div>
+                <div style={{ fontSize: 14, color: '#64748b', lineHeight: 1.7 }}>{f.body}</div>
               </div>
             ))}
-          </div>
-
-          {/* Example Projects */}
-          <div style={{ textAlign: 'center', marginBottom: 40 }}>
-            <div style={{ fontSize: 13, color: '#475569', fontWeight: 600, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 24 }}>Projects Built by Real Students</div>
-            <div style={{ display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap' }}>
-              {[
-                { name: 'Space Crusher', by: 'Maya, 11', type: 'Game', color: '#6366f1' },
-                { name: 'Quiz Master Pro', by: 'Ethan, 13', type: 'App', color: '#8b5cf6' },
-                { name: 'AI Story Writer', by: 'Lily, 12', type: 'AI Project', color: '#06b6d4' },
-                { name: 'Maze Runner', by: 'Jake, 10', type: 'Game', color: '#10b981' },
-                { name: 'Weather Bot', by: 'Priya, 14', type: 'App', color: '#ec4899' },
-              ].map(p => (
-                <div key={p.name} style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${p.color}25`, borderRadius: 12, padding: '16px 18px', minWidth: 130, textAlign: 'center' }}>
-                  <div style={{ width: 44, height: 44, background: `${p.color}18`, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, margin: '0 auto 10px' }}>
-                    {p.type === 'Game' ? '🎮' : p.type === 'AI Project' ? '🤖' : '📱'}
-                  </div>
-                  <div style={{ fontWeight: 700, fontSize: 13, color: '#e2e8f0', marginBottom: 3 }}>{p.name}</div>
-                  <div style={{ fontSize: 11, color: p.color, fontWeight: 600 }}>{p.type}</div>
-                  <div style={{ fontSize: 11, color: '#475569', marginTop: 2 }}>by {p.by}</div>
-                </div>
-              ))}
-            </div>
           </div>
         </div>
       </section>
@@ -577,13 +625,13 @@ export default function LandingPage({ onLogin, onSignup }) {
           <div style={{ flex: 1, minWidth: 260 }}>
             <div style={sectionLabel}>For Schools</div>
             <h2 style={{ fontSize: 'clamp(20px, 4vw, 40px)', fontWeight: 900, marginBottom: 16, lineHeight: 1.2 }}>
-              Free 30-day school pilot — no hoops, no cost.
+              Free one-term school pilot — no hoops, no cost.
             </h2>
             <p style={{ color: '#64748b', fontSize: 15, lineHeight: 1.8, marginBottom: 24 }}>
               We set up your classes, train your teachers, and give you a live walkthrough. You see exactly how ByteBuddies fits your curriculum before committing to anything.
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 28 }}>
-              {['Free 30-day pilot — no credit card needed', 'Dedicated onboarding and teacher training', 'Custom class setup done for you', 'Curriculum alignment report for your school', 'Google Classroom sync available on request'].map(item => (
+              {['Free one-term pilot for one class', 'Dedicated onboarding and teacher training', 'Custom class setup done for you', 'Curriculum alignment report for your school', 'Google Classroom sync available on request'].map(item => (
                 <div key={item} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, color: '#94a3b8' }}>
                   <span style={{ width: 18, height: 18, borderRadius: '50%', background: 'rgba(99,102,241,0.25)', border: '1px solid rgba(99,102,241,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, flexShrink: 0, color: '#818cf8' }}>✓</span>
                   {item}
@@ -592,80 +640,72 @@ export default function LandingPage({ onLogin, onSignup }) {
             </div>
           </div>
           <div style={{ flex: 1, minWidth: 260, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.09)', borderRadius: 20, padding: 28 }}>
-            <div style={{ fontWeight: 800, fontSize: 18, marginBottom: 4 }}>Book a free school demo</div>
+            <div style={{ fontWeight: 800, fontSize: 18, marginBottom: 4 }}>Book a demo or request a quote</div>
             <div style={{ fontSize: 13, color: '#475569', marginBottom: 20 }}>Usually responds within 1 school day</div>
-            {['School name', 'Your name and role', 'Email address', 'Number of students'].map((placeholder, i) => (
-              <input key={i} placeholder={placeholder} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '11px 14px', fontSize: 14, color: '#fff', marginBottom: 12, boxSizing: 'border-box', outline: 'none' }} />
+            <select value={enquiry.type} onChange={setField('type')} aria-label="What would you like?" style={{ ...fieldStyle, appearance: 'auto', background: '#121a33' }}>
+              {['Book a demo', 'Request a quote', 'Free school pilot', 'School group / multiple schools', 'Something else'].map(o => <option key={o}>{o}</option>)}
+            </select>
+            {[['school', 'School name *'], ['name', 'Your name and role *'], ['email', 'Email address *', 'email'], ['pupils', 'Number of pupils'], ['country', 'Country / city']].map(([k, placeholder, type]) => (
+              <input key={k} type={type || 'text'} value={enquiry[k]} onChange={setField(k)} placeholder={placeholder} aria-label={placeholder} style={fieldStyle} />
             ))}
-            <textarea placeholder="Anything specific you would like to see? (optional)" rows={3} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '11px 14px', fontSize: 14, color: '#fff', marginBottom: 16, boxSizing: 'border-box', outline: 'none', resize: 'vertical' }} />
-            <button onClick={() => alert('Thank you! We will be in touch within 1 school day.')} style={{ width: '100%', padding: '13px', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', border: 'none', borderRadius: 8, color: '#fff', cursor: 'pointer', fontSize: 15, fontWeight: 700, boxShadow: '0 4px 24px rgba(99,102,241,0.4)' }}>
-              Request a Free Demo →
+            <textarea value={enquiry.message} onChange={setField('message')} placeholder="Anything specific you would like to see? (optional)" rows={3} style={{ ...fieldStyle, marginBottom: 16, resize: 'vertical', fontFamily: 'inherit' }} />
+            {enquiryState.error && <div role="alert" style={{ color: '#fca5a5', fontSize: 13, marginBottom: 12 }}>{enquiryState.error}</div>}
+            <button onClick={sendEnquiry} style={{ width: '100%', padding: '13px', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', border: 'none', borderRadius: 8, color: '#fff', cursor: 'pointer', fontSize: 15, fontWeight: 700, boxShadow: '0 4px 24px rgba(99,102,241,0.4)' }}>
+              Send enquiry →
             </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Teacher Testimonials */}
-      <div className="lp-section-pad" style={{ maxWidth: 960, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
-        <div style={sectionLabel}>What Teachers Say</div>
-        <h2 style={{ fontSize: 'clamp(20px, 4vw, 40px)', fontWeight: 900, marginBottom: 40, lineHeight: 1.2 }}>Schools love ByteBuddies</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 20 }}>
-          {[
-            { quote: "My Year 5 students were building working games within the first lesson. The mission stories kept them engaged for the whole hour — no one asked to go to the toilet once!", name: 'Sarah M.', role: 'Year 5 Teacher, Manchester', avatar: 'SM' },
-            { quote: "The teacher dashboard is the best I've seen on any platform. I can see exactly which student is struggling with loops vs. conditions and help them directly.", name: 'James T.', role: 'Computing Coordinator, Bristol', avatar: 'JT' },
-            { quote: "We piloted ByteBuddies across 3 year groups. Engagement tripled compared to our previous platform. Kids come to my room at lunch to keep going.", name: 'Priya K.', role: 'STEM Lead, London', avatar: 'PK' },
-            { quote: "The curriculum alignment made it very easy to get sign-off from our Head. Everything mapped perfectly to our computing scheme of work.", name: 'David R.', role: 'Deputy Head & CS Teacher, Edinburgh', avatar: 'DR' },
-            { quote: "Parent evenings are so much easier now. I show parents the skill tracker and they immediately understand what their child has learned.", name: 'Amelia F.', role: 'KS2 Computing Teacher, Birmingham', avatar: 'AF' },
-            { quote: "My class has a leaderboard on the whiteboard every week. Students are logging in at home to do more missions. Never seen that with any other platform.", name: 'Tom W.', role: 'Year 6 Teacher, Leeds', avatar: 'TW' },
-          ].map(t => (
-            <div key={t.name} style={{ ...card, position: 'relative', background: 'rgba(255,255,255,0.02)' }}>
-              <div style={{ fontSize: 36, color: '#6366f1', fontFamily: 'Georgia, serif', lineHeight: 1, marginBottom: 12, opacity: 0.35 }}>"</div>
-              <p style={{ fontSize: 14, color: '#94a3b8', lineHeight: 1.8, margin: '0 0 20px', fontStyle: 'italic' }}>{t.quote}</p>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{ width: 38, height: 38, borderRadius: '50%', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 12, flexShrink: 0 }}>{t.avatar}</div>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: 13 }}>{t.name}</div>
-                  <div style={{ fontSize: 11, color: '#475569' }}>{t.role}</div>
-                </div>
+            {enquiryState.sent ? (
+              <div role="status" style={{ marginTop: 14, fontSize: 13, color: '#6ee7b7', lineHeight: 1.6 }}>
+                ✓ Your email app should now open with your enquiry ready to send. If it doesn't, email us at <a href={`mailto:${CONTACT_EMAIL}`} style={{ color: '#a5b4fc' }}>{CONTACT_EMAIL}</a>.
               </div>
-            </div>
-          ))}
+            ) : (
+              <div style={{ marginTop: 14, fontSize: 12, color: '#475569', textAlign: 'center' }}>
+                Or email us directly: <a href={`mailto:${CONTACT_EMAIL}`} style={{ color: '#a5b4fc' }}>{CONTACT_EMAIL}</a>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       {/* ── PRICING ── */}
       <div id="pricing" className="lp-section-pad" style={{ background: 'rgba(0,0,0,0.2)', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-        <div style={{ maxWidth: 820, margin: '0 auto', textAlign: 'center' }}>
+        <div style={{ maxWidth: 980, margin: '0 auto', textAlign: 'center' }}>
           <div style={sectionLabel}>Pricing</div>
-          <h2 style={{ fontSize: 'clamp(22px, 4vw, 44px)', fontWeight: 900, marginBottom: 12, letterSpacing: '-0.5px' }}>Simple. Transparent. Affordable.</h2>
-          <p style={{ color: '#475569', fontSize: 16, marginBottom: 44, lineHeight: 1.7 }}>Start free. No credit card. No commitment. Cancel any time.</p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 20, maxWidth: 600, margin: '0 auto' }}>
+          <h2 style={{ fontSize: 'clamp(22px, 4vw, 44px)', fontWeight: 900, marginBottom: 12, letterSpacing: '-0.5px' }}>Priced for your school</h2>
+          <p style={{ color: '#64748b', fontSize: 16, marginBottom: 44, lineHeight: 1.7, maxWidth: 620, marginLeft: 'auto', marginRight: 'auto' }}>
+            Every school is different, so we quote by school size and the year groups you teach. Get in touch and we'll send a tailored quote, usually within one school day.
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 20 }}>
             {[
               {
-                name: 'Classroom', price: 'AED 44', period: '/student/year', desc: 'Billed annually per student',
-                features: ['Full workspace & Game Builder', 'Robot Lab & Block Coding', 'AI Assistant & Challenges', 'Teacher dashboard & grading', 'Progress tracking & leaderboards', 'XP, badges & gamification'],
-                color: '#8b5cf6', highlight: true,
+                name: 'Free Pilot', tag: 'One class · one term', cta: 'Start a free pilot', type: 'Free school pilot', color: '#10b981',
+                features: ['Full platform for one class', 'Teacher setup and walkthrough', 'KS2 lessons, Robot Studio and Create Studio', 'Progress report at the end of the pilot'],
               },
               {
-                name: 'School', price: 'AED 15,000', period: '/year', desc: 'Unlimited classrooms and students',
-                features: ['Everything in Classroom', 'Unlimited teachers and students', 'Admin dashboard', 'Priority support', 'Custom branding', 'Onboarding and training session'],
-                color: '#ec4899',
+                name: 'Whole School', tag: 'Most schools choose this', cta: 'Request a quote', type: 'Request a quote', color: '#8b5cf6', highlight: true,
+                features: ['Every teacher and pupil in your school', '152-lesson KS2 scheme, Years 3–6', '18 robots, 37 worlds, arcade and arena games', 'Teacher dashboard, marking and hand-ins', 'Google Classroom sync and parent view', 'Staff training and onboarding'],
+              },
+              {
+                name: 'School Groups', tag: 'Multiple campuses', cta: 'Talk to us', type: 'School group / multiple schools', color: '#ec4899',
+                features: ['Everything in Whole School', 'Group-wide pricing', 'Shared reporting across schools', 'Priority support and custom branding'],
               },
             ].map(p => (
-              <div key={p.name} style={{ ...card, border: p.highlight ? '2px solid rgba(99,102,241,0.6)' : '1px solid rgba(255,255,255,0.08)', position: 'relative', padding: '32px 24px', background: p.highlight ? 'rgba(99,102,241,0.07)' : 'rgba(255,255,255,0.03)' }}>
+              <div key={p.name} style={{ ...card, border: p.highlight ? '2px solid rgba(99,102,241,0.6)' : '1px solid rgba(255,255,255,0.08)', position: 'relative', padding: '32px 24px', background: p.highlight ? 'rgba(99,102,241,0.07)' : 'rgba(255,255,255,0.03)', display: 'flex', flexDirection: 'column' }}>
                 {p.highlight && <div style={{ position: 'absolute', top: -13, left: '50%', transform: 'translateX(-50%)', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', borderRadius: 100, padding: '5px 16px', fontSize: 11, fontWeight: 800, whiteSpace: 'nowrap', letterSpacing: 0.5 }}>MOST POPULAR</div>}
-                <div style={{ fontSize: 13, fontWeight: 800, color: p.color, marginBottom: 14, letterSpacing: 0.5 }}>{p.name.toUpperCase()}</div>
-                <div style={{ fontSize: 'clamp(28px,5vw,38px)', fontWeight: 900, marginBottom: 4, letterSpacing: '-1px' }}>{p.price}<span style={{ fontSize: 14, color: '#475569', fontWeight: 400 }}>{p.period}</span></div>
-                <div style={{ fontSize: 12, color: '#475569', marginBottom: 24 }}>{p.desc}</div>
-                <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 24px', textAlign: 'left' }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: p.color, marginBottom: 10, letterSpacing: 0.5 }}>{p.name.toUpperCase()}</div>
+                <div style={{ fontSize: 'clamp(22px,4vw,28px)', fontWeight: 900, marginBottom: 4 }}>{p.name === 'Free Pilot' ? 'Free' : 'Contact us'}</div>
+                <div style={{ fontSize: 12, color: '#475569', marginBottom: 22 }}>{p.tag}</div>
+                <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 24px', textAlign: 'left', flex: 1 }}>
                   {p.features.map(f => <li key={f} style={{ fontSize: 13, color: '#94a3b8', padding: '6px 0', display: 'flex', gap: 9 }}><span style={{ color: '#22c55e', flexShrink: 0 }}>✓</span>{f}</li>)}
                 </ul>
-                <button onClick={onSignup} style={{ width: '100%', padding: '12px', background: p.highlight ? 'linear-gradient(135deg, #6366f1, #8b5cf6)' : 'rgba(255,255,255,0.07)', border: p.highlight ? 'none' : '1px solid rgba(255,255,255,0.12)', borderRadius: 8, color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 700, boxShadow: p.highlight ? '0 4px 20px rgba(99,102,241,0.35)' : 'none' }}>
-                  Get Started Free
+                <button onClick={() => askFor(p.type)} style={{ width: '100%', padding: '12px', background: p.highlight ? 'linear-gradient(135deg, #6366f1, #8b5cf6)' : 'rgba(255,255,255,0.07)', border: p.highlight ? 'none' : '1px solid rgba(255,255,255,0.12)', borderRadius: 8, color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 700, boxShadow: p.highlight ? '0 4px 20px rgba(99,102,241,0.35)' : 'none' }}>
+                  {p.cta} →
                 </button>
               </div>
             ))}
           </div>
+          <p style={{ marginTop: 28, fontSize: 13, color: '#64748b' }}>
+            Prefer email? <a href={`mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent('ByteBuddies quote request')}`} style={{ color: '#a5b4fc' }}>{CONTACT_EMAIL}</a>
+          </p>
         </div>
       </div>
 
@@ -674,19 +714,19 @@ export default function LandingPage({ onLogin, onSignup }) {
         <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: 600, height: 400, background: 'radial-gradient(ellipse, rgba(99,102,241,0.15) 0%, transparent 70%)', pointerEvents: 'none' }} />
         <div style={sectionLabel}>Get Started Today</div>
         <h2 style={{ fontSize: 'clamp(26px, 5vw, 56px)', fontWeight: 900, marginBottom: 16, letterSpacing: '-1px', lineHeight: 1.1 }}>
-          Your child's first lesson<br /><span style={gradText}>is completely free.</span>
+          Try ByteBuddies with your pupils<br /><span style={gradText}>free for a whole term.</span>
         </h2>
         <p style={{ color: '#64748b', fontSize: 'clamp(14px,2.5vw,17px)', marginBottom: 16, lineHeight: 1.7, maxWidth: 520, margin: '0 auto 16px' }}>
-          No credit card. No commitment. If your child doesn't build something in their first session, we'll refund every penny — no questions asked.
+          We set up a class, train the teacher and send you a progress report at the end. No cost, no commitment.
         </p>
         <p style={{ color: '#f59e0b', fontWeight: 700, fontSize: 14, marginBottom: 36, letterSpacing: 0.3 }}>
-          Cohort spots are limited. We cap class sizes to keep quality high.
+          Now booking pilots for the 2026–27 school year.
         </p>
-        <button onClick={onSignup} style={{ padding: 'clamp(14px,3vw,20px) clamp(28px,6vw,56px)', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', border: 'none', borderRadius: 16, color: '#fff', cursor: 'pointer', fontSize: 'clamp(16px,3vw,20px)', fontWeight: 900, boxShadow: '0 8px 48px rgba(99,102,241,0.6)', letterSpacing: '-0.3px', marginBottom: 24 }}>
-          Claim Your Free Lesson →
+        <button onClick={() => askFor('Free school pilot')} style={{ padding: 'clamp(14px,3vw,20px) clamp(28px,6vw,56px)', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', border: 'none', borderRadius: 16, color: '#fff', cursor: 'pointer', fontSize: 'clamp(16px,3vw,20px)', fontWeight: 900, boxShadow: '0 8px 48px rgba(99,102,241,0.6)', letterSpacing: '-0.3px', marginBottom: 24 }}>
+          Book a Free School Pilot →
         </button>
         <div style={{ display: 'flex', gap: 'clamp(12px,3vw,28px)', flexWrap: 'wrap', justifyContent: 'center' }}>
-          {['First lesson free', '30-day money-back guarantee', 'No credit card required'].map(t => (
+          {['One class, one term, free', 'Teacher training included', 'Google Classroom ready'].map(t => (
             <div key={t} style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 13, color: '#475569' }}>
               <span style={{ color: '#22c55e', fontSize: 15 }}>✓</span>{t}
             </div>
@@ -702,7 +742,8 @@ export default function LandingPage({ onLogin, onSignup }) {
         </div>
         <div style={{ fontSize: 13, color: '#334155' }}>© 2026 ByteBuddies · Built for the next generation of creators</div>
         <div style={{ display: 'flex', gap: 24, fontSize: 13, color: '#334155' }}>
-          {['Privacy', 'Terms', 'Contact'].map(l => <span key={l} style={{ cursor: 'pointer' }}>{l}</span>)}
+          {['Privacy', 'Terms'].map(l => <span key={l} style={{ cursor: 'pointer' }}>{l}</span>)}
+          <a href={`mailto:${CONTACT_EMAIL}`} style={{ color: '#334155', textDecoration: 'none' }}>Contact</a>
         </div>
       </div>
 

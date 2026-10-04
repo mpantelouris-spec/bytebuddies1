@@ -29,17 +29,22 @@ export function CarRobotTrackGrid({
     if (byArena) onSelectCourse?.(byArena);
   };
 
+  const courseModes = new Set(courses.map((c) => c.modeIndex).filter(Boolean));
+  const tiles = courseModes.size
+    ? CAR_KID_TRACK_TILES.filter((t) => courseModes.has(t.mode))
+    : CAR_KID_TRACK_TILES;
+
   return (
     <div className="bb-car-track-grid" role="navigation" aria-label="Car robot racing tracks">
       <div className="bb-car-track-grid-head">
         <span className="bb-car-track-grid-kicker">ByteBuddies</span>
         <h3 className="bb-car-track-grid-title">Car Robot Racing Tracks</h3>
         <p className="bb-car-track-grid-sub">
-          Ten unique circuits — pick a track, code your lap, then hit Run.
+          {tiles.length} unique circuits — pick a track, code your lap, then hit Run.
         </p>
       </div>
       <div className="bb-car-track-grid-tiles">
-        {CAR_KID_TRACK_TILES.map((tile) => {
+        {tiles.map((tile) => {
           const active = activeMode === tile.mode
             || (!activeMode && currentArenaType && currentArenaType === tile.arenaId);
           return (

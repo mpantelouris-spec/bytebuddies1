@@ -451,8 +451,8 @@ const BIOME_DRESSING = {
     twinGold: false, dashed: true, emi: 0.28, slab: 0xff9955, slabAccent: 0xffb366,
   },
   candy_carnival_01: {
-    moss: 0xffc8e8, lip: 0xff69b4, flower: 0xffd700, lane: 0xffd700, edge: 0xffd700,
-    twinGold: true, dashed: false, emi: 0.42, slab: 0xffb6d9, slabAccent: 0xffd0e8,
+    moss: 0xff9fcf, lip: 0xff69b4, flower: 0xffd700, lane: 0xffffff, edge: 0xffffff,
+    twinGold: false, dashed: false, emi: 0.2, slab: 0x6c7075, slabAccent: 0x7b8086,
   },
   neon_metro_01: {
     moss: 0x2a2a40, lip: 0x00ffff, flower: 0xff00ff, lane: 0xff00ff, edge: 0x00ffff,

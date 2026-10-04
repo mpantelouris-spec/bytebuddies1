@@ -1,0 +1,17 @@
+{
+  "name": "bytebuddies-runtime",
+  "version": "1.0.0",
+  "description": "ByteBuddies Runtime: run Robot Lab programs sent over Bluetooth or USB",
+  "dependencies": {
+    "core": "*",
+    "bluetooth": "*",
+    "flashstorage": "github:bsiever/microbit-pxt-flashstorage#v0.1.4"
+  },
+  "files": ["main.ts"],
+  "preferredEditor": "tsprj",
+  "yotta": {
+    "config": {
+      "microbit-dal": { "bluetooth": { "open": 1, "whitelist": 0, "security_level": null, "partial_flashing": 1 } }
+    }
+  }
+}

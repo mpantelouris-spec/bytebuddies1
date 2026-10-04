@@ -1,0 +1,188 @@
+/** Set 2 — aerial robots (Drone, Plane, Sky Scout, Helicopter). Props float near flight height; the ground sits `drop` below. */
+import { clouds, mountains, hills, trees, skyline, birds } from './common.js';
+
+const floatClouds = (n = 26, o = {}, y = [-10, 14]) => ({ p: 'cloud', at: 'float', n, r: [-30, 40], y, s: [1.1, 2.2], clear: 4, o });
+
+export const AERIAL_RECIPES = {
+  cloud_ring_school: {
+    sky: { top: 0x2f8fff, mid: 0x8fd0ff, horizon: 0xf0faff, sun: { yaw: 0.4 } },
+    accent: 0x22d3ee,
+    ground: { kind: 'grass', color: 0x7fd66a },
+    layers: [
+      floatClouds(34),
+      { p: 'floatingIsland', at: 'float', n: 5, r: [4, 40], y: [-6, 4], s: [0.9, 1.3], clear: 8 },
+      { p: 'hotAirBalloon', at: 'float', n: 4, r: [8, 50], y: [0, 12], s: 1.1, clear: 6 },
+      { p: 'rainbow', at: 'hero', where: 'end', d: 26, y: -4, s: 1.4 },
+      trees('treeRound', 50, [-10, 60], [1.2, 2]),
+      { p: 'house', at: 'area', n: 14, r: [-10, 40], s: [1.3, 1.6] },
+      hills(),
+      mountains(0x8fa8d0, 10),
+      clouds(14),
+      birds(4),
+    ],
+    fx: [{ k: 'sparkles', n: 140 }],
+  },
+
+  balloon_delivery: {
+    sky: { top: 0xff8fb0, mid: 0xffc4d4, horizon: 0xfff0e6, sun: { yaw: -0.5 } },
+    light: 'sunset', accent: 0xfb7185,
+    ground: { kind: 'grass', color: 0x8fd86a },
+    layers: [
+      { p: 'hotAirBalloon', at: 'near', n: 9, r: [3, 7], y: [1, 5], s: [1, 1.3], v: [{ color: 0xff5d8f }, { color: 0xffd23f }, { color: 0x3fa7ff }, { color: 0x3fcf7a }, { color: 0xb46bff }] },
+      { p: 'hotAirBalloon', at: 'float', n: 14, r: [0, 70], y: [-6, 16], s: [0.9, 1.4], clear: 6, v: [{ color: 0xff8a3d }, { color: 0xff5dd0 }, { color: 0x22d3ee }] },
+      floatClouds(22, { color: 0xfff2f6 }),
+      { p: 'floatingIsland', at: 'hero', where: 'end', d: 14, y: -5, s: 1.6, o: { tree: true } },
+      { p: 'house', at: 'area', n: 18, r: [-10, 40], s: [1.3, 1.6], v: [{ color: 0xfff0e0, roof: 0xff6b6b }, { color: 0xe8f4ff, roof: 0x3fa7ff }] },
+      trees('treeBlossom', 30, [-10, 50], [1.3, 1.8]),
+      hills([0x9ae07a, 0x7fd66a]),
+      mountains(0xc89ab8, 9),
+      birds(3),
+    ],
+    fx: [{ k: 'petals', n: 160 }],
+  },
+
+  rainbow_tunnel: {
+    sky: { top: 0x7c5cff, mid: 0xc4b5fd, horizon: 0xffe6fb, sun: { yaw: 0.2 } },
+    accent: 0xff5dd0,
+    ground: { kind: 'grass', color: 0xb49aff, alt: 0xc8b8ff },
+    layers: [
+      { p: 'rainbow', at: 'near', n: 9, from: 6, onRoute: true, y: -2.5, s: 0.6, sides: [1], face: 'along' },
+      floatClouds(30, { color: 0xfff4ff, glow: true }),
+      { p: 'giantStar', at: 'float', n: 12, r: [4, 40], y: [-2, 14], s: [0.8, 1.3], clear: 3, v: [{ color: 0xffd23f }, { color: 0xff8ad8 }, { color: 0x7fe8ff }] },
+      { p: 'crystal', at: 'area', n: 28, r: [-10, 40], s: [1.2, 2.4], v: [{ color: 0xff8ad8 }, { color: 0x9a8aff }, { color: 0x7fe8ff }] },
+      { p: 'rainbow', at: 'hero', where: 'end', d: 30, y: -8, s: 1.8 },
+      hills([0xc8a8ff, 0xa88aff, 0xffb8e8], 12),
+      mountains(0x9a7ae0, 10, { snow: false }),
+    ],
+    fx: [{ k: 'sparkles', n: 260 }],
+  },
+
+  floating_islands: {
+    sky: { top: 0x1fa8e8, mid: 0x7fe0ff, horizon: 0xe6fcff, sun: { yaw: -0.3 } },
+    accent: 0x4ade80,
+    ground: { kind: 'water', color: 0x2fa8d8, alt: 0x5fc8ec },
+    drop: 30,
+    layers: [
+      { p: 'floatingIsland', at: 'near', n: 9, r: [3, 8], y: [-5, -2], s: [0.8, 1.1], o: { tree: true } },
+      { p: 'floatingIsland', at: 'float', n: 16, r: [0, 60], y: [-14, 12], s: [0.9, 1.8], clear: 9, v: [{ tree: true }, { grass: 0x9ae06a }] },
+      floatClouds(20),
+      { p: 'windmill', at: 'hero', where: 'end', d: 14, y: -6, s: 1 },
+      { p: 'floatingIsland', at: 'hero', where: 'end', d: 14, y: -9, s: 2 },
+      { p: 'kite', at: 'float', n: 6, r: [0, 30], y: [2, 10], s: 1.2, clear: 4 },
+      { p: 'rock', at: 'area', n: 16, r: [-5, 60], s: [2, 4], o: { color: 0x9a9080 } },
+      birds(4),
+      clouds(10),
+    ],
+    fx: [{ k: 'sparkles', n: 120 }],
+  },
+
+  mountain_rescue: {
+    sky: { top: 0x5a9ae0, mid: 0xb8dcff, horizon: 0xf6fbff, sun: { yaw: 0.8 } },
+    accent: 0xef4444,
+    ground: { kind: 'snow', color: 0xf2f7ff, alt: 0xdfe9f7 },
+    lights: { hemiGround: 0xdde8ff },
+    layers: [
+      { p: 'mountain', at: 'ring', n: 10, r: [18, 50], s: [1.2, 1.9], o: { color: 0x8a9ab8, snow: true } },
+      mountains(0x9aaacc, 12, { snow: true }),
+      trees('treePine', 80, [-10, 50], [1.4, 2.2], [{ snow: true }]),
+      { p: 'cabin', at: 'hero', where: 'end', d: 12, s: 1.6, ground: true },
+      { p: 'flag', at: 'hero', where: 'end', d: 16, side: 5, s: 1.6, ground: true, o: { color: 0xef4444 } },
+      floatClouds(20, { color: 0xffffff }, [-12, 6]),
+      { p: 'rock', at: 'area', n: 24, r: [-10, 40], s: [1.5, 3], o: { color: 0x8b8f99 } },
+    ],
+    fx: [{ k: 'snow', n: 420 }],
+  },
+
+  photo_safari: {
+    sky: { top: 0x3f9bff, mid: 0xffd88a, horizon: 0xfff2c8, sun: { yaw: -0.8, height: 60 } },
+    light: 'warm', accent: 0xfacc15,
+    ground: { kind: 'grass', color: 0xd8c05a, alt: 0xc8a848 },
+    layers: [
+      { p: 'cameraSign', at: 'near', n: 12, r: [2, 3], y: [0, 0], s: 1.2 },
+      trees('treeRound', 34, [-10, 60], [1.6, 2.4], [{ color: 0x7ab04a }, { color: 0x8ac05a }]),
+      { p: 'grass', at: 'area', n: 90, r: [-10, 50], s: [1.5, 2.4], o: { color: 0xc8b04a } },
+      { p: 'rock', at: 'area', n: 20, r: [-10, 50], s: [1.5, 3], o: { color: 0xc4905a } },
+      { p: 'pond', at: 'area', n: 3, r: [0, 30], s: 1.5, clear: 10, o: { color: 0x4fb8d8 } },
+      { p: 'mesa', at: 'ring', n: 10, r: [60, 120], s: [1.2, 1.8] },
+      floatClouds(12, {}, [4, 16]),
+      { p: 'hotAirBalloon', at: 'float', n: 3, r: [10, 40], y: [4, 12], s: 1.2, clear: 6, o: { color: 0xff8a3d } },
+      birds(5),
+    ],
+    fx: [{ k: 'dust', n: 160 }],
+  },
+
+  wind_tunnel_lab: {
+    sky: { top: 0x3fa7e8, mid: 0xa8e0ff, horizon: 0xeefcff, sun: { yaw: 0.3 } },
+    accent: 0x0ea5e9,
+    ground: { kind: 'tiles', color: 0xdfe8f0, alt: 0xc8d4e0, tile: 8 },
+    layers: [
+      { p: 'windsock', at: 'near', n: 9, r: [3, 4], y: [-2, -2], s: 1.2 },
+      { p: 'windTurbine', at: 'ring', n: 14, r: [4, 40], s: [1.4, 2] },
+      { p: 'windTurbine', at: 'area', n: 10, r: [-5, 20], s: [1.6, 2] },
+      { p: 'kite', at: 'float', n: 12, r: [0, 40], y: [-4, 10], s: [1, 1.4], clear: 4 },
+      floatClouds(26),
+      { p: 'building', at: 'hero', where: 'end', d: 14, s: 1.6, ground: true, o: { text: 'WIND LAB', signBg: '#0ea5e9', trim: 0x0ea5e9, color: 0xf2f8ff, door: 0x0ea5e9 } },
+      hills([0x8fe07a, 0x7fd66a]),
+      mountains(0x9ab0d0, 8),
+      birds(3),
+    ],
+    fx: [{ k: 'leaves', n: 200, vx: 3 }],
+  },
+
+  festival_lights: {
+    light: 'night',
+    sky: { top: 0x0e0b2e, mid: 0x2a1a5e, horizon: 0x6a2a7a, fog: 0x2a1850, stars: 700 },
+    accent: 0xfbbf24,
+    ground: { kind: 'grass', color: 0x2a3a4a },
+    layers: [
+      { p: 'lantern', at: 'near', n: 4, r: [2, 5], y: [-1, 3], s: 1.2, v: [{ color: 0xff8a3d }, { color: 0xffd23f }, { color: 0xff5d8f }] },
+      { p: 'lantern', at: 'float', n: 60, r: [0, 60], y: [-10, 18], s: [0.9, 1.4], clear: 2, v: [{ color: 0xff8a3d }, { color: 0xffd23f }, { color: 0xff5d5d }] },
+      { p: 'fireworks', at: 'float', n: 6, r: [10, 60], y: [14, 26], s: 1.2 },
+      { p: 'ferrisWheel', at: 'hero', where: 'end', d: 20, s: 1.6, ground: true },
+      { p: 'carousel', at: 'area', n: 2, r: [-5, 20], s: 1.4, clear: 8 },
+      skyline(24, true, [30, 70]),
+      { p: 'stall', at: 'area', n: 14, r: [-10, 20], s: 1.3 },
+    ],
+    fx: [{ k: 'fireflies', n: 260 }],
+  },
+
+  space_dock: {
+    light: 'space',
+    sky: { top: 0x02030a, mid: 0x060a1e, horizon: 0x101a3a, fog: 0x060a1e, stars: 1400, near: 110, far: 420 },
+    accent: 0x22d3ee,
+    ground: { kind: 'dust', color: 0x5a6070, alt: 0x4a5060 },
+    drop: 40,
+    layers: [
+      { p: 'spaceStation', at: 'hero', where: 'end', d: 22, y: 0, s: 2 },
+      { p: 'satellite', at: 'float', n: 10, r: [0, 50], y: [-8, 12], s: [1.2, 1.8], clear: 5 },
+      { p: 'planet', at: 'hero', where: 'side', side: -140, t: 0.5, y: 30, s: 4, o: { color: 0x4fa8ff, ring: true } },
+      { p: 'planet', at: 'hero', where: 'side', side: 160, t: 0.2, y: 50, s: 2, o: { color: 0xff9a5c } },
+      { p: 'moonRock', at: 'float', n: 30, r: [0, 60], y: [-14, 14], s: [0.8, 2], clear: 3, o: { color: 0x7a7e8e } },
+      { p: 'glowPad', at: 'near', n: 8, r: [3, 4], y: [-1, -1], s: 1, o: { color: 0x22d3ee } },
+      { p: 'crater', at: 'area', n: 20, r: [-10, 60], s: [2, 4] },
+    ],
+    fx: [{ k: 'stars', n: 240, height: 40 }],
+  },
+
+  sky_academy: {
+    sky: { top: 0x2f7fff, mid: 0x8fc8ff, horizon: 0xfff4e0, sun: { yaw: 0.6 } },
+    light: 'warm', accent: 0xfbbf24,
+    ground: { kind: 'grass', color: 0x6fcf5a },
+    layers: [
+      { p: 'floatingIsland', at: 'hero', where: 'end', d: 16, y: -8, s: 2.4, o: { tree: false } },
+      { p: 'trophy', at: 'hero', where: 'end', d: 16, y: -2, s: 3 },
+      { p: 'flag', at: 'near', n: 8, r: [3, 4], y: [-3, -3], s: 1.2, v: [{ checker: true, color: 0xffffff }, { color: 0xfbbf24 }] },
+      { p: 'floatingIsland', at: 'float', n: 12, r: [0, 50], y: [-12, 8], s: [1, 1.6], clear: 9, o: { tree: true } },
+      { p: 'blimp', at: 'float', n: 2, r: [10, 40], y: [8, 14], s: 1.6, clear: 10 },
+      { p: 'hotAirBalloon', at: 'float', n: 6, r: [0, 50], y: [0, 14], s: 1.2, clear: 6 },
+      { p: 'fireworks', at: 'float', n: 4, r: [10, 40], y: [16, 24], s: 1 },
+      floatClouds(22),
+      { p: 'grandstand', at: 'area', n: 6, r: [-5, 20], s: 1.6, face: 'center' },
+      trees('treeRound', 40, [-10, 50], [1.4, 2]),
+      hills(),
+      mountains(),
+      birds(3),
+    ],
+    fx: [{ k: 'confetti', n: 240 }],
+  },
+};

@@ -102,6 +102,14 @@ export function createPrimaryProp(kind, accent = 0x29a6d2) {
     case 'goal':arch(0xffffff);for(let i=-2;i<=2;i++)box(.04,4,.04,0xc4e6df,i,2,-1);break;
     case 'target':ring(1.5,accent,0,2);ring(.8,0xffd04f,0,2);break;
     case 'ball':ball(.8,0xffffff);ring(.79,0x24465d,0,.8);break;
+    case 'web': {
+      // Framed spider web: two posts, eight spokes and four silk rings
+      [-2.4,2.4].forEach(x=>cyl(.16,5.2,0x8a6a4a,x));box(5,.25,.25,0x8a6a4a,0,5.1);
+      for(let i=0;i<8;i++){const s=box(.05,4.2,.05,0xf4f7ff,0,2.9);s.rotation.z=i*Math.PI/8;}
+      [.5,1,1.5,2].forEach(r=>mesh(new THREE.TorusGeometry(r,.035,4,32),0xf4f7ff,0,2.9));
+      ball(.18,accent,.9,3.5);break;
+    }
+    case 'vine': cyl(.18,5,0x5a8a3a);for(let i=0;i<6;i++)ball(.5,0x3fa84a,Math.sin(i)*.4,.8+i*.8);break;
     default:box(1.7,1.7,1.7,accent);
   }
   return root;

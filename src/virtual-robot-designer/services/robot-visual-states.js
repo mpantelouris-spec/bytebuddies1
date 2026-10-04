@@ -211,7 +211,8 @@ export function createRobotStateController(robot) {
         default: break;
       }
 
-      robot.scale.y = baseScaleY * scaleY;
+      // A game that resizes its robot sets userData.baseScaleY; otherwise keep the size it was built at
+      robot.scale.y = (robot.userData.baseScaleY ?? baseScaleY) * scaleY;
 
       // Update robot's ambient glow light
       if (robot.userData.robotGlow) {

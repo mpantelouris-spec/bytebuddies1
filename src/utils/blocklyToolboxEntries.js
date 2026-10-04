@@ -496,6 +496,8 @@ const LIBRARY_OPERATOR_BLOCK_OVERRIDES = {
   not: { type: 'operator_not' },
   mod: { type: 'operator_mod' },
   'math operation of': { type: 'operator_mathop', fields: { OPERATOR: 'abs' } },
+  'if then else': { type: 'control_if_else' },
+  variable: { type: 'bb_var_get', fields: { NAME: 'myVar' } },
 };
 
 /** True when a Blockly type is a library placeholder, not a real block implementation. */

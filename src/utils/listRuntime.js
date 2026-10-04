@@ -5,7 +5,8 @@ import { readBlocklyFieldOrValue } from './blocks.jsx';
 import { blocklyNodeToEvaluatorBlock } from './operatorsRuntime';
 
 export function normalizeListName(name) {
-  return String(name ?? 'myList').trim() || 'myList';
+  const n = String(name ?? 'myList').trim();
+  return !n || n.toLowerCase() === 'my list' ? 'myList' : n;
 }
 
 export function ensureList(store, name) {
@@ -99,10 +100,10 @@ export function listContains(store, name, value) {
 }
 
 /** Blockly value socket → literal or nested evaluator block. */
-export function listBlocklyParam(node, fields, key, fallback) {
+export function listBlocklyParam(node, fields, key, fallback, convertNested = blocklyNodeToEvaluatorBlock) {
   const child = node?.values?.[key] ?? node?.values?.[String(key).toUpperCase()];
-  if (child) {
-    const nested = blocklyNodeToEvaluatorBlock(child);
+  if (child && child.type !== 'text' && child.type !== 'math_number') {
+    const nested = convertNested(child);
     if (nested) return { _nested: nested };
   }
   return readBlocklyFieldOrValue(node, fields, key, fallback);
@@ -126,7 +127,7 @@ export function evalListIndex(val, evaluateNested, sprite) {
 }
 
 /** Map Blockly list reporter nodes for condition sockets. */
-export function blocklyListNodeToEvaluatorBlock(node) {
+export function blocklyListNodeToEvaluatorBlock(node, convertNested = blocklyNodeToEvaluatorBlock) {
   if (!node?.type) return null;
   const blocklyType = node.type;
   const f = node.fields || {};
@@ -138,7 +139,7 @@ export function blocklyListNodeToEvaluatorBlock(node) {
         type: 'list-item',
         params: {
           list: listName,
-          index: listBlocklyParam(node, f, 'INDEX', 1),
+          index: listBlocklyParam(node, f, 'INDEX', 1, convertNested),
         },
       };
     case 'data_itemnumoflist':
@@ -146,7 +147,7 @@ export function blocklyListNodeToEvaluatorBlock(node) {
         type: 'list-index',
         params: {
           list: listName,
-          item: listBlocklyParam(node, f, 'ITEM', ''),
+          item: listBlocklyParam(node, f, 'ITEM', '', convertNested),
         },
       };
     case 'data_lengthoflist':
@@ -156,7 +157,7 @@ export function blocklyListNodeToEvaluatorBlock(node) {
         type: 'list-contains',
         params: {
           list: listName,
-          item: listBlocklyParam(node, f, 'ITEM', ''),
+          item: listBlocklyParam(node, f, 'ITEM', '', convertNested),
         },
       };
     default:

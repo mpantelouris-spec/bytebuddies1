@@ -1,7 +1,7 @@
 // ByteBuddies Learn World Data — Y3–Y6
 // Foundation Spec v2.0 — Year 3 UK National Curriculum Aligned
 
-// Import the comprehensive Year 3 curriculum (72 lessons)
+// Legacy Y3 unit curriculum (still exported for tooling)
 import { Y3_LESSONS, Y3_TERMS, Y3_BADGES } from './y3Curriculum.js';
 export { Y3_LESSONS, Y3_TERMS, Y3_BADGES };
 
@@ -1550,116 +1550,6 @@ export const Y6_LESSONS = [
     badge:"⭐" },
 ];
 
-// ─────────────────────────────────────────────────────────────────────────────
-// TERMS METADATA (20 lessons/year — 5 per term, ages 7–11 Code.org pedagogy)
-// ─────────────────────────────────────────────────────────────────────────────
-
-export const TERMS = {
-  // Year 3: 72 lessons (12 units × 6 lessons) across 6 terms
-  y3: [
-    { term:1, name:'Digital Literacy & Algorithms', focus:'Units 1-2: Computer basics and computational thinking', color:'#10b981', range:[0,11]  },
-    { term:2, name:'Programming with Block Code', focus:'Units 3-4: Block coding and digital storytelling', color:'#3b82f6', range:[12,23] },
-    { term:3, name:'Data & Information', focus:'Units 5-6: Data handling and computer systems', color:'#8b5cf6', range:[24,35] },
-    { term:4, name:'Networks & Online Safety', focus:'Units 7-8: Internet safety and networks', color:'#ef4444', range:[36,47] },
-    { term:5, name:'Creative Computing', focus:'Units 9-10: Digital art, music, and advanced coding', color:'#f59e0b', range:[48,59] },
-    { term:6, name:'Capstone Projects & Showcase', focus:'Units 11-12: Portfolios and final showcase', color:'#ec4899', range:[60,71] },
-  ],
-  y4: [
-    { term:1, name:'Variables & Data',        focus:'Containers, tracking & storage',   color:'#10b981', range:[0,4]  },
-    { term:2, name:'Conditions & Logic',      focus:'If/then decisions & logic',          color:'#3b82f6', range:[5,9]  },
-    { term:3, name:'Advanced Loops',          focus:'Nested loops & efficiency',          color:'#8b5cf6', range:[10,14]},
-    { term:4, name:'Data & Analysis',         focus:'Collect, graph & analyse data',      color:'#f59e0b', range:[15,19]},
-  ],
-  y5: [
-    { term:1, name:'Functions & Modules',     focus:'Reusable code & decomposition',      color:'#10b981', range:[0,4]  },
-    { term:2, name:'Networks & Comms',        focus:'Internet, packets & cloud',          color:'#3b82f6', range:[5,9]  },
-    { term:3, name:'Cyber Security',          focus:'Passwords, encryption & defence',    color:'#ef4444', range:[10,14]},
-    { term:4, name:'Software Projects',       focus:'Design, build & test',               color:'#8b5cf6', range:[15,19]},
-  ],
-  y6: [
-    { term:1, name:'Artificial Intelligence', focus:'AI, ML & ethics',                    color:'#14b8a6', range:[0,4]  },
-    { term:2, name:'Databases',               focus:'Records, queries & search',          color:'#3b82f6', range:[5,9]  },
-    { term:3, name:'Advanced Algorithms',     focus:'Optimisation & efficiency',          color:'#f59e0b', range:[10,14]},
-    { term:4, name:'Software Dev Studio',     focus:'Capstone project & showcase',        color:'#a855f7', range:[15,19]},
-  ],
-};
-
-/** Pick canonical l0–l19 lessons in curriculum order (80 total across Y3–Y6). */
-function canonicalLessons(lessons) {
-  if (!Array.isArray(lessons) || lessons.length === 0) {
-    console.error('canonicalLessons: Invalid lessons array', lessons);
-    return [];
-  }
-  const byId = Object.fromEntries(lessons.map(l => [l.id, l]));
-  const out = [];
-  for (let i = 0; i < 20; i++) {
-    const id = `l${i}`;
-    if (byId[id]) out.push(byId[id]);
-  }
-  return out.length === 20 ? out : lessons.slice(0, 20);
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// COURSES
-// ─────────────────────────────────────────────────────────────────────────────
-
-export const COURSES = {
-  y3: {
-    id:'y3', year:3,
-    regionName:'ByteBuddies Academy',
-    storyTitle:'UK NATIONAL CURRICULUM',
-    storyText:'Welcome to ByteBuddies Academy! A full year of fun, interactive learning for Year 3 (Ages 7-8). Follow 10 amazing ByteBuddy mascots through 12 units covering digital literacy, algorithms, block coding, storytelling, data, networks, online safety, creative computing, and more!',
-    ages:'Ages 7–8', icon:'🌱', color:'#10b981',
-    gradient:'linear-gradient(135deg,#064e3b 0%,#10b981 100%)',
-    mainCharacter:'beemo',
-    tagline:'Every expert was once a beginner — 72 lessons, 12 units, 1 amazing year!',
-    completionBadge:'🏆', completionBadgeLabel:'ByteBuddy Graduate',
-    lessons: Y3_LESSONS, terms: TERMS.y3,
-    totalXP: Y3_LESSONS.reduce((s,l)=>s+l.xp,0),
-    lessonCount: 72,
-    unitCount: 12,
-  },
-  y4: {
-    id:'y4', year:4,
-    regionName:'Robot City',
-    storyTitle:'THE SMART CITY CRISIS',
-    storyText:'Robot City — the most advanced city in the world — is experiencing mysterious failures. Traffic jams, power outages, lost deliveries, broken systems. Students become City Engineers and must restore the Smart City using variables, conditions, loops, and data.',
-    ages:'Ages 8–9', icon:'🏙️', color:'#3b82f6',
-    gradient:'linear-gradient(135deg,#1e3a5f 0%,#3b82f6 100%)',
-    mainCharacter:'professorByte',
-    tagline:'Intelligent systems need intelligent programmers',
-    completionBadge:'🥈', completionBadgeLabel:'City Engineer',
-    lessons: canonicalLessons(Y4_LESSONS), terms: TERMS.y4,
-    totalXP: canonicalLessons(Y4_LESSONS).reduce((s,l)=>s+l.xp,0),
-  },
-  y5: {
-    id:'y5', year:5,
-    regionName:'Global Network HQ',
-    storyTitle:'THE GLOBAL NETWORK COLLAPSE',
-    storyText:'The world\'s interconnected robot network has suffered a catastrophic failure. Cities cannot communicate, exploration robots are stranded, and research stations are isolated. Students join the Global Technology Alliance to rebuild the world\'s technology infrastructure.',
-    ages:'Ages 9–10', icon:'🌐', color:'#8b5cf6',
-    gradient:'linear-gradient(135deg,#3b1f6e 0%,#8b5cf6 100%)',
-    mainCharacter:'professorByte',
-    tagline:'Big problems need modular solutions',
-    completionBadge:'🥇', completionBadgeLabel:'Technology Specialist',
-    lessons: canonicalLessons(Y5_LESSONS), terms: TERMS.y5,
-    totalXP: canonicalLessons(Y5_LESSONS).reduce((s,l)=>s+l.xp,0),
-  },
-  y6: {
-    id:'y6', year:6,
-    regionName:'AI Research Centre',
-    storyTitle:'THE FUTURE TECH INITIATIVE',
-    storyText:'A new futuristic technology network is being built — connecting Earth, Mars, and AI systems. But the project is experiencing major problems: AI systems are making mistakes, networks are unstable, and cyber threats are increasing. Students become Junior Technology Architects to design and secure the future.',
-    ages:'Ages 10–11', icon:'🔮', color:'#a855f7',
-    gradient:'linear-gradient(135deg,#3b0764 0%,#a855f7 100%)',
-    mainCharacter:'professorByte',
-    tagline:'Technology creators shape the world',
-    completionBadge:'🏆', completionBadgeLabel:'Master Innovator',
-    lessons: canonicalLessons(Y6_LESSONS), terms: TERMS.y6,
-    totalXP: canonicalLessons(Y6_LESSONS).reduce((s,l)=>s+l.xp,0),
-  },
-};
-
 export const COURSE_ORDER = ['y3','y4','y5','y6'];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1674,5 +1564,5 @@ export function getLevelInfo(totalXP) {
 }
 
 export function getTotalLessons() {
-  return COURSE_ORDER.reduce((s,id) => s + COURSES[id].lessons.length, 0);
+  return 152;
 }

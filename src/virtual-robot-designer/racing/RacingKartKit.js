@@ -5,10 +5,14 @@ import * as THREE from 'three';
 import { getCachedGltf, cloneGltfScene, normalizeObjectHeight } from './mk-tracks/TrackAssetLoader.js';
 import { KART_ASSET_MANIFEST } from './mk-tracks/TrackAssetManifest.js';
 
-function kartMat(color, { metalness = 0.45, roughness = 0.35, emissive = 0x000000, emi = 0, clearcoat = 0.5 } = {}) {
+function kartMat(color, { metalness = 0.18, roughness = 0.48, emissive = 0x000000, emi = 0, clearcoat = 0.25 } = {}) {
+  const col = new THREE.Color(color);
+  const lum = col.r * 0.2126 + col.g * 0.7152 + col.b * 0.0722;
+  const em = emissive === 0x000000 ? col.clone().multiplyScalar(0.4) : new THREE.Color(emissive);
   return new THREE.MeshPhysicalMaterial({
-    color, metalness, roughness, emissive, emissiveIntensity: emi,
-    clearcoat, clearcoatRoughness: 0.12,
+    color: col, metalness, roughness,
+    emissive: em, emissiveIntensity: emi || (lum < 0.12 ? 0 : 0.45),
+    clearcoat, clearcoatRoughness: 0.22,
   });
 }
 

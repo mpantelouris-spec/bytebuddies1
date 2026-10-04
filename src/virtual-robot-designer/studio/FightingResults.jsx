@@ -15,8 +15,8 @@ export function FightingResults({
 }) {
   const isFootball = variant === 'football';
   const title = won
-    ? (isFootball ? 'FULL TIME — WIN!' : 'VICTORY!')
-    : (isFootball ? 'FULL TIME — LOSS' : 'DEFEAT');
+    ? (isFootball ? (course?.matchMode === 'keeper' ? 'KEEPER HERO!' : 'FULL TIME — WIN!') : 'VICTORY!')
+    : (isFootball ? (course?.matchMode === 'keeper' ? 'OUT OF GLOVES' : 'FULL TIME — LOSS') : 'DEFEAT');
   const icon = won ? (isFootball ? '⚽' : '🏆') : (isFootball ? '😞' : '💔');
   const playerMax = stats.playerMax || 1000;
   const flawless = !isFootball && won && Math.round(stats.playerHp || 0) >= playerMax;
@@ -30,7 +30,13 @@ export function FightingResults({
         <p className="fight-results-mode">{course?.name || (isFootball ? 'Football' : 'Combat')}</p>
 
         <div className="fight-results-stats">
-          {isFootball ? (
+          {isFootball && course?.matchMode === 'keeper' ? (
+            <>
+              <div><span>Saves</span><strong>{stats.saves || 0}</strong></div>
+              <div><span>Goals conceded</span><strong>{stats.enemyGoals || 0}</strong></div>
+              <div><span>Shots faced</span><strong>{stats.shotsFaced || 0}</strong></div>
+            </>
+          ) : isFootball ? (
             <>
               <div><span>Your goals</span><strong>{stats.playerGoals || 0}</strong></div>
               <div><span>Opponent goals</span><strong>{stats.enemyGoals || 0}</strong></div>

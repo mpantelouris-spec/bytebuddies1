@@ -1,0 +1,30 @@
+/* Robot Arcade — only the few extras on top of the shared Live Lab styles. */
+.bb-arcade-root .scratch-panel { grid-area: code; }
+.bb-arcade-host { position: absolute; inset: 0; z-index: 0; }
+.bb-arcade-host canvas { display: block; width: 100%; height: 100%; }
+
+.bb-arcade-root .bb-arc-sblock .scratch-script-actions { display: flex; }
+.bb-arcade-root .bb-arc-sblock .scratch-param-select { max-width: 170px; }
+.bb-arcade-root .scratch-pal-block:disabled { opacity: .55; cursor: not-allowed; }
+
+.bb-arcade-banner {
+  position: absolute; top: 10px; left: 10px; z-index: 12; max-width: min(420px, calc(100% - 320px)); min-width: 220px;
+  display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 12px; pointer-events: none;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--mc) 27%, transparent), rgba(8,12,24,0.92));
+  border: 1px solid color-mix(in srgb, var(--mc) 40%, transparent); box-shadow: 0 8px 28px rgba(0,0,0,0.35);
+}
+.bb-arcade-banner-emoji { font-size: 28px; line-height: 1; }
+.bb-arcade-banner-kicker { font-size: 11px; font-weight: 800; color: var(--mc); letter-spacing: .06em; filter: brightness(1.45); text-shadow: 0 1px 3px rgba(0,0,0,.9); }
+.bb-arcade-banner-title { font-size: 14px; font-weight: 900; color: #f8fafc; margin-top: 2px; }
+.bb-arcade-banner-sub { font-size: 11px; font-weight: 600; color: #e2e8f0; margin-top: 2px; }
+
+.bb-arcade-no3d { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 24px;
+  color: #e2e8f0; font-weight: 700; background: #0b1022; z-index: 1; }
+
+@media (max-width: 760px) {
+  .bb-arcade-banner { max-width: calc(100% - 20px); }
+}
+.bb-arcade-root .bb-arc-sblock .scratch-script-body { flex-wrap: wrap; row-gap: 5px; min-width: 0; }
+.bb-arcade-root .bb-arc-sblock .scratch-blk-text { white-space: normal; flex: 0 1 auto; min-width: 0; }
+.bb-arcade-root .bb-arc-sblock .scratch-param-input { width: 52px; min-width: 52px; }
+.bb-arcade-root .bb-arc-sblock .scratch-script-actions { display: grid; grid-template-columns: repeat(2, auto); gap: 2px; align-content: center; }

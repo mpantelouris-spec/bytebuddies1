@@ -3,10 +3,9 @@
  * Bird stays fixed on Z; world scrolls toward camera. Cylindrical pipes, parallax, audio.
  */
 import * as THREE from 'three';
-import { createPlasticMaterial } from '../services/art-direction.js';
 import { playFlapSound, playScoreSound, playCollisionSound, playGameOverSound, playWinSound, playBeepSound } from './flappy-bird-audio.js';
 import { applyMissionKidClarity } from './mission-world/MissionKidClarity.js';
-import { buildFlappyMissionVisualKit } from './FlappyMissionVisualKit.js';
+import { buildClassicFlappyBackdrop, flappyGrassTexture, flappySoilTexture, pbr } from './flappy/FlappyClassicBackdrop.js';
 
 const SCROLL_SPEED = 5.5;
 const GRAVITY = -13;
@@ -31,13 +30,13 @@ function heightToY(h) {
 const PIPE_COUNT = 28;
 const FIRST_PIPE_Z = -6;
 const DESPAWN_Z = 16;
+const GROUND_SEGS = 6; // enough ground for the angled camera to see far down the course
 
 const PIPE_GREEN = 0x5ec637;
 const PIPE_DARK = 0x3a9e28;
-const PIPE_OUTLINE = 0x2d7a1e;
 
 const FLAPPY_VARIANTS = [
-  { skyTop: 0x87ceeb, skyBot: 0xc8e8f4, pipe: 0x5ec637, pipeDark: 0x3a9e28, grass: 0x78c850, label: 'Pipe Navigator' },
+  { skyTop: 0x5aaee0, skyBot: 0xcde9f2, pipe: 0x5fae2e, pipeDark: 0x3f7f1c, grass: 0x6aa53c, label: 'Pipe Navigator' },
   { skyTop: 0xfbbf24, skyBot: 0xfde68a, pipe: 0x22c55e, pipeDark: 0x15803d, grass: 0xa3e635, label: 'Slingshot Launch' },
   { skyTop: 0x38bdf8, skyBot: 0x7dd3fc, pipe: 0x06b6d4, pipeDark: 0x0891b2, grass: 0x4ade80, label: 'Endless Runner' },
   { skyTop: 0xfbbf24, skyBot: 0xf97316, pipe: 0x22c55e, pipeDark: 0x16a34a, grass: 0xfacc15, label: 'Golden Egg' },
@@ -85,11 +84,12 @@ function roundRect(ctx, x, y, w, h, r) {
 }
 
 function makePipeMaterial(pipeGreen = PIPE_GREEN, pipeDark = PIPE_DARK) {
-  const body = createPlasticMaterial(pipeGreen, { roughness: 0.55, metalness: 0.05 });
-  const cap = createPlasticMaterial(pipeDark, { roughness: 0.5, metalness: 0.05 });
-  const stripeColor = new THREE.Color(pipeGreen).lerp(new THREE.Color(0xffffff), 0.28).getHex();
-  const stripe = createPlasticMaterial(stripeColor, { roughness: 0.45, emissive: pipeDark, emissiveIntensity: 0.08 });
-  return { body, cap, stripe };
+  // Glossy painted steel, like the other arenas' props
+  const body = new THREE.MeshPhysicalMaterial({ color: pipeGreen, roughness: 0.32, metalness: 0.25, clearcoat: 0.6, clearcoatRoughness: 0.25 });
+  const cap = new THREE.MeshPhysicalMaterial({ color: new THREE.Color(pipeGreen).multiplyScalar(0.92), roughness: 0.3, metalness: 0.3, clearcoat: 0.6, clearcoatRoughness: 0.2 });
+  const flange = pbr(new THREE.Color(pipeDark).multiplyScalar(0.8).getHex(), { rough: 0.4, metal: 0.55 });
+  const bolt = pbr(0xb8c0c8, { rough: 0.3, metal: 0.9 });
+  return { body, cap, flange, bolt };
 }
 
 function createPipeLayoutGenerator(mode = 1, seed = 1) {
@@ -113,26 +113,45 @@ function createPipeLayoutGenerator(mode = 1, seed = 1) {
 
 function buildVerticalPipe(height, mats, withCapAtBottom) {
   const g = new THREE.Group();
-  const body = new THREE.Mesh(new THREE.CylinderGeometry(PIPE_RADIUS, PIPE_RADIUS, 1, 16), mats.body);
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(PIPE_RADIUS, PIPE_RADIUS, 1, 32), mats.body);
   body.scale.y = height;
+  body.castShadow = true;
+  body.receiveShadow = true;
   g.add(body);
-  const stripe = new THREE.Mesh(new THREE.CylinderGeometry(PIPE_RADIUS * 0.18, PIPE_RADIUS * 0.18, height, 8), mats.stripe);
-  stripe.position.x = PIPE_RADIUS * 0.55;
-  stripe.scale.y = height;
-  g.add(stripe);
-  const cap = new THREE.Mesh(
-    new THREE.CylinderGeometry(PIPE_RADIUS * 1.15, PIPE_RADIUS * 1.15, 0.42, 16),
-    mats.cap,
-  );
-  cap.position.y = withCapAtBottom ? -height / 2 + 0.21 : height / 2 - 0.21;
+  // Mouth: a wider collar with a rolled lip, a flange ring and bolts
+  const cap = new THREE.Group();
+  const collar = new THREE.Mesh(new THREE.CylinderGeometry(PIPE_RADIUS * 1.18, PIPE_RADIUS * 1.18, 0.62, 32), mats.cap);
+  collar.castShadow = true;
+  cap.add(collar);
+  const lip = new THREE.Mesh(new THREE.TorusGeometry(PIPE_RADIUS * 1.18, 0.08, 10, 40), mats.cap);
+  lip.rotation.x = Math.PI / 2;
+  lip.position.y = withCapAtBottom ? -0.31 : 0.31;
+  cap.add(lip);
+  const flange = new THREE.Mesh(new THREE.CylinderGeometry(PIPE_RADIUS * 1.08, PIPE_RADIUS * 1.08, 0.12, 32), mats.flange);
+  flange.position.y = withCapAtBottom ? 0.37 : -0.37;
+  cap.add(flange);
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    const bolt = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.1, 6), mats.bolt);
+    bolt.rotation.z = Math.PI / 2;
+    bolt.position.set(Math.cos(a) * PIPE_RADIUS * 1.18, 0, Math.sin(a) * PIPE_RADIUS * 1.18);
+    bolt.lookAt(0, 0, 0);
+    cap.add(bolt);
+  }
+  cap.position.y = withCapAtBottom ? -height / 2 + 0.31 : height / 2 - 0.31;
   g.add(cap);
-  const outline = new THREE.Mesh(
-    new THREE.CylinderGeometry(PIPE_RADIUS * 1.02, PIPE_RADIUS * 1.02, height + 0.08, 16, 1, true),
-    new THREE.MeshBasicMaterial({ color: PIPE_OUTLINE, side: THREE.BackSide, transparent: true, opacity: 0.35 }),
-  );
-  outline.scale.y = height;
-  g.add(outline);
-  return { group: g, body, cap };
+  // stripe/outline are kept as empty placeholders for the sizing code
+  const stripe = new THREE.Object3D();
+  const outline = new THREE.Object3D();
+  return { group: g, body, cap, stripe, outline };
+}
+
+function setPipeSegmentHeight(pipePart, height, cap, capAtBottom) {
+  const h = Math.max(0.5, height);
+  pipePart.body.scale.y = h;
+  pipePart.stripe.scale.y = h;
+  pipePart.outline.scale.y = h;
+  pipePart.cap.position.y = capAtBottom ? -h / 2 + 0.31 : h / 2 - 0.31;
 }
 
 function layoutPipePair(pipe, pz, layout) {
@@ -146,12 +165,10 @@ function layoutPipePair(pipe, pz, layout) {
   pipe.halfGap = halfGap;
   pipe.gapSize = gapSize;
   pipe.z = pz;
-  pipe.topBody.scale.y = topH;
+  setPipeSegmentHeight(pipe.topPart, topH, pipe.topCap, true);
   pipe.topGroup.position.set(0, topBottom + topH / 2, pz);
-  pipe.topCap.position.y = -topH / 2 + 0.21;
-  pipe.botBody.scale.y = botH;
+  setPipeSegmentHeight(pipe.botPart, botH, pipe.botCap, false);
   pipe.botGroup.position.set(0, GROUND_Y + botH / 2, pz);
-  pipe.botCap.position.y = botH / 2 - 0.21;
 }
 
 function makePipePair(scene, mats, pz, layout) {
@@ -164,6 +181,7 @@ function makePipePair(scene, mats, pz, layout) {
   const pipe = {
     z: pz, gapCY: layout.gapCY, halfGap: layout.gapSize / 2, gapSize: layout.gapSize,
     topGroup: top.group, botGroup: bot.group,
+    topPart: top, botPart: bot,
     topBody: top.body, botBody: bot.body, topCap: top.cap, botCap: bot.cap,
     scored: false,
   };
@@ -212,42 +230,66 @@ export function buildFlappyBirdArena(scene, challenge = {}) {
   skyCtx.fillStyle = grad;
   skyCtx.fillRect(0, 0, 2, 512);
   scene.background = new THREE.CanvasTexture(skyCanvas);
+  scene.background.colorSpace = THREE.SRGBColorSpace; // otherwise read as linear and washed out
   scene.background.mapping = THREE.EquirectangularReflectionMapping;
-  scene.fog = null;
 
-  scene.add(new THREE.AmbientLight(0xfff8e8, 0.85));
-  const sun = new THREE.DirectionalLight(0xfff4d0, 0.75);
-  sun.position.set(4, 14, 8);
-  scene.add(sun);
+  // Daylight like the other arenas: sky/ground fill plus a warm sun with soft
+  // shadows. The lab's generic lights are switched off on the first frame so
+  // they don't stack on top and wash the scene out.
+  const ambient = new THREE.HemisphereLight(0xcfe8ff, 0x5a7a3a, 1.0);
+  const sun = new THREE.DirectionalLight(0xfff1dc, 2.4);
+  sun.position.set(16, 26, 14);
+  sun.target.position.set(0, 0, -10);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.bias = -0.0004;
+  sun.shadow.normalBias = 0.03;
+  Object.assign(sun.shadow.camera, { left: -30, right: 30, top: 30, bottom: -30, near: 1, far: 90 });
+  ambient.userData.flappyLight = true;
+  sun.userData.flappyLight = true;
+  scene.add(ambient, sun, sun.target);
+  // Haze gives the distant hills and city real depth
+  scene.fog = new THREE.Fog(new THREE.Color(SKY_BOT).getHex(), 45, 150);
 
-  const parallaxLayers = [];
-  parallaxLayers.push(...buildFlappyMissionVisualKit(scene, challenge, variant, mode));
-  const hillMat = createPlasticMaterial(0x6db86a, { roughness: 0.82 });
-  for (let i = 0; i < 1; i++) {
-    const hill = new THREE.Mesh(
-      new THREE.SphereGeometry(5 + (i % 2) * 2, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2),
-      hillMat,
-    );
-    hill.position.set((i % 2 === 0 ? -1 : 1) * (16 + i * 3), GROUND_Y - 0.5, -40 - i * 22);
-    hill.scale.set(1.6, 0.5, 1.2);
-    scene.add(hill);
-    parallaxLayers.push({ mesh: hill, speed: 0.28, baseZ: hill.position.z });
-  }
+  // Classic side-scroller: the camera sits on +X looking across the course,
+  // with the bird on the left third and pipes arriving from the right.
+  // Raised three-quarter view: the course recedes to the right, so the pipes,
+  // ground and backdrop read with real depth while the bird stays on the left
+  const CAM = { x: 21, y: 9.5, z: 8, lookX: 0, lookY: 3.6, lookZ: -6.5, fov: 44 };
+  scene.userData.flappyCamPreset = CAM;
+  const faceCamera = (m) => m.lookAt(CAM.x, CAM.y, CAM.z);
+  scene.userData.qualityMetrics = {
+    ...(scene.userData.qualityMetrics || {}),
+    flappy: { classic3d: true, deterministic: true, sideCamera: true },
+  };
+  const parallaxLayers = buildClassicFlappyBackdrop(scene, variant);
+
+  const birdShadow = new THREE.Mesh(
+    new THREE.CircleGeometry(0.7, 24),
+    new THREE.MeshBasicMaterial({ color: 0x1f3a10, transparent: true, opacity: 0.3, depthWrite: false }),
+  );
+  birdShadow.rotation.x = -Math.PI / 2;
+  birdShadow.position.set(0, GROUND_Y + 0.02, BIRD_Z);
+  birdShadow.name = 'FlappyBirdShadow';
+  birdShadow.userData.flappyOwn = true;
+  scene.add(birdShadow);
 
   const clouds = [];
 
   const groundSegs = [];
-  const dirtMat = createPlasticMaterial(0xc4a574, { roughness: 0.88 });
-  const grassMat = createPlasticMaterial(variant.grass, { roughness: 0.78 });
-  for (let i = 0; i < 3; i++) {
+  const dirtMat = pbr(0xffffff, { map: flappySoilTexture(), rough: 0.95 });
+  const grassMat = pbr(0xffffff, { map: flappyGrassTexture(variant.grass), rough: 0.92 });
+  // Lawn over a deep soil bank, reaching under the camera
+  for (let i = 0; i < GROUND_SEGS; i++) {
     const seg = new THREE.Group();
-    const dirt = new THREE.Mesh(new THREE.BoxGeometry(70, 1.2, 28), dirtMat);
-    dirt.position.y = GROUND_Y - 0.6;
+    const dirt = new THREE.Mesh(new THREE.BoxGeometry(70, 12, 28), dirtMat);
+    dirt.position.set(-6, GROUND_Y - 6.45, 0);
     seg.add(dirt);
-    const grass = new THREE.Mesh(new THREE.BoxGeometry(70, 0.35, 28), grassMat);
-    grass.position.y = GROUND_Y - 0.05;
+    const grass = new THREE.Mesh(new THREE.BoxGeometry(70, 0.9, 28), grassMat);
+    grass.position.set(-6, GROUND_Y - 0.45, 0);
+    grass.receiveShadow = true;
     seg.add(grass);
-    seg.position.z = -28 + i * 28;
+    seg.position.z = 28 - i * 28;
     scene.add(seg);
     groundSegs.push(seg);
   }
@@ -273,33 +315,33 @@ export function buildFlappyBirdArena(scene, challenge = {}) {
       scoreLabel.material.map?.dispose();
       scoreLabel.material.dispose();
     }
+    // Big white outlined number, like the original score
     const cv = document.createElement('canvas');
-    cv.width = 280;
-    cv.height = gameOver ? 120 : 90;
+    cv.width = 320;
+    cv.height = 200;
     const ctx = cv.getContext('2d');
-    roundRect(ctx, 0, 0, 280, cv.height, 14);
-    ctx.fillStyle = 'rgba(0,0,0,0.55)';
-    ctx.fill();
-    if (gameOver) {
-      ctx.font = 'bold 22px Arial';
-      ctx.fillStyle = '#ff6b6b';
-      ctx.textAlign = 'center';
-      ctx.fillText('Game Over', 140, 28);
-    }
-    ctx.font = 'bold 38px Arial';
-    ctx.fillStyle = '#ffd700';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(`⭐ ${score}`, 140, gameOver ? 58 : 32);
-    ctx.font = '16px Arial';
-    ctx.fillStyle = '#fff';
-    ctx.fillText(`Best: ${best}`, 140, gameOver ? 92 : 62);
+    ctx.lineJoin = 'round';
+    const outlinedText = (text, y, size, fill) => {
+      ctx.font = `900 ${size}px "Arial Black", Arial, sans-serif`;
+      ctx.lineWidth = size * 0.16;
+      ctx.strokeStyle = '#3a2208';
+      ctx.strokeText(text, 160, y);
+      ctx.fillStyle = fill;
+      ctx.fillText(text, 160, y);
+    };
+    if (gameOver) outlinedText('GAME OVER', 34, 40, '#fca03c');
+    outlinedText(String(score), gameOver ? 105 : 80, 96, '#ffffff');
+    outlinedText(`BEST ${best}`, gameOver ? 172 : 160, 28, '#ffe9a8');
     const tex = new THREE.CanvasTexture(cv);
     scoreLabel = new THREE.Mesh(
-      new THREE.PlaneGeometry(3.8, gameOver ? 1.55 : 1.2),
-      new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, side: THREE.DoubleSide }),
+      new THREE.PlaneGeometry(3.4, 2.1),
+      new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, depthTest: false, side: THREE.DoubleSide }),
     );
-    scoreLabel.position.set(0, 10.5, BIRD_Z + 4);
+    scoreLabel.position.set(1, 9.2, -7);
+    faceCamera(scoreLabel);
+    scoreLabel.renderOrder = 20; // HUD-like: never hidden behind a pipe
     scene.add(scoreLabel);
   };
   updateScore(0, 0);
@@ -319,9 +361,11 @@ export function buildFlappyBirdArena(scene, challenge = {}) {
   const hintTex = new THREE.CanvasTexture(hintCv);
   const hint = new THREE.Mesh(
     new THREE.PlaneGeometry(6.2, 1),
-    new THREE.MeshBasicMaterial({ map: hintTex, transparent: true, depthWrite: false, side: THREE.DoubleSide }),
+    new THREE.MeshBasicMaterial({ map: hintTex, transparent: true, depthWrite: false, depthTest: false, side: THREE.DoubleSide }),
   );
-  hint.position.set(0, 8.8, BIRD_Z + 2);
+  hint.position.set(1, 7.4, -7);
+  faceCamera(hint);
+  hint.renderOrder = 20;
   scene.add(hint);
   setTimeout(() => { if (hint.parent) scene.remove(hint); }, 8000);
 
@@ -383,12 +427,13 @@ export function buildFlappyBirdArena(scene, challenge = {}) {
     }
     for (const seg of groundSegs) {
       seg.position.z += spd;
-      if (seg.position.z > 30) seg.position.z -= 84;
+      if (seg.position.z > 42) seg.position.z -= GROUND_SEGS * 28;
     }
     for (const layer of parallaxLayers) {
       layer.mesh.position.z += spd * layer.speed;
       if (layer.mesh.position.z > 20) {
-        layer.mesh.position.z = layer.baseZ - (layer.wrapDistance || 80);
+        // Repeating layers step back by exactly one period, so there is no seam
+        layer.mesh.position.z = layer.period ? layer.mesh.position.z - layer.period : layer.baseZ - (layer.wrapDistance || 80);
       }
     }
     for (const c of clouds) {
@@ -398,11 +443,12 @@ export function buildFlappyBirdArena(scene, challenge = {}) {
   };
 
   const recyclePipes = () => {
-    const minZ = Math.min(...pipes.map((p) => p.z));
+    let minZ = Math.min(...pipes.map((p) => p.z));
     for (const pipe of pipes) {
       if (pipe.z > DESPAWN_Z) {
         pipe.scored = false;
-        layoutPipePair(pipe, minZ - difficulty.pipeSpacing, layoutGenRun());
+        minZ -= difficulty.pipeSpacing;
+        layoutPipePair(pipe, minZ, layoutGenRun());
         pipe.topGroup.visible = true;
         pipe.botGroup.visible = true;
       }
@@ -441,7 +487,7 @@ export function buildFlappyBirdArena(scene, challenge = {}) {
       p.topGroup.visible = true;
       p.botGroup.visible = true;
     });
-    groundSegs.forEach((seg, i) => { seg.position.z = -28 + i * 28; });
+    groundSegs.forEach((seg, i) => { seg.position.z = 28 - i * 28; });
     updateScore(0, bestScore);
   };
 
@@ -505,22 +551,66 @@ export function buildFlappyBirdArena(scene, challenge = {}) {
     const tex = new THREE.CanvasTexture(cv);
     messageMesh = new THREE.Mesh(
       new THREE.PlaneGeometry(5.5, 0.9),
-      new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, side: THREE.DoubleSide }),
+      new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, depthTest: false, side: THREE.DoubleSide }),
     );
-    messageMesh.position.set(0, 7.5, BIRD_Z + 3);
+    messageMesh.position.set(1, 7.2, -5);
+    faceCamera(messageMesh);
+    messageMesh.renderOrder = 20;
     scene.add(messageMesh);
     messageTimer = secs;
   };
+  // "Show variable" panel under the score; redrawn only when a value changes
+  let varPanel = null;
+  let varText = '';
+  const drawVariables = () => {
+    const lines = [...variableOverlays.entries()].map(([k, v]) => `${k} = ${Math.round((Number(v) || 0) * 10) / 10}`);
+    const text = lines.join('\n');
+    if (text === varText) return;
+    varText = text;
+    if (varPanel) {
+      scene.remove(varPanel);
+      varPanel.material.map?.dispose();
+      varPanel.material.dispose();
+      varPanel.geometry.dispose();
+      varPanel = null;
+    }
+    if (!lines.length) return;
+    const cv = document.createElement('canvas');
+    cv.width = 360;
+    cv.height = 20 + lines.length * 44;
+    const ctx = cv.getContext('2d');
+    roundRect(ctx, 0, 0, cv.width, cv.height, 16);
+    ctx.fillStyle = 'rgba(15,23,42,0.72)';
+    ctx.fill();
+    ctx.font = 'bold 30px Arial, sans-serif';
+    ctx.fillStyle = '#7dd3fc';
+    ctx.textBaseline = 'middle';
+    lines.forEach((l, i) => ctx.fillText(l, 20, 32 + i * 44));
+    const tex = new THREE.CanvasTexture(cv);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    const h = (cv.height / cv.width) * 3.2;
+    varPanel = new THREE.Mesh(
+      new THREE.PlaneGeometry(3.2, h),
+      new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, depthTest: false, side: THREE.DoubleSide }),
+    );
+    varPanel.position.set(1, 7.6 - h / 2, -7);
+    faceCamera(varPanel);
+    varPanel.renderOrder = 20;
+    scene.add(varPanel);
+  };
   scene.userData.showFlappyVariable = (name, value) => {
     variableOverlays.set(name, value);
+    drawVariables();
   };
   scene.userData.hideFlappyVariable = (name) => {
     variableOverlays.delete(name);
+    drawVariables();
   };
   scene.userData.updateFlappyVariableOverlays = (vars = {}) => {
     Object.entries(vars).forEach(([k, v]) => {
       if (variableOverlays.has(k)) variableOverlays.set(k, v);
     });
+    drawVariables();
   };
   scene.userData.playFlappySound = (sound) => {
     const s = String(sound || 'beep');
@@ -555,12 +645,25 @@ export function buildFlappyBirdArena(scene, challenge = {}) {
       _rsRef = rs;
       if (_firstFrame) {
         _firstFrame = false;
+        // Only the flappy lights, and none of the lab's ground markers, which
+        // would float mid-air at y = 0 in this side view
+        scene.traverse((o) => {
+          if (o.isLight && !o.userData.flappyLight) o.visible = false;
+        });
+        // The flappy scene itself uses no ring or disc meshes, so any are lab markers
+        scene.traverse((o) => {
+          if (o.isMesh && !o.userData.flappyOwn && /^(Ring|Circle)Geometry$/.test(o.geometry?.type || '')) o.visible = false;
+        });
         rs.x = 0;
         rs.y = flappyY;
         rs.z = BIRD_Z;
         rs.angle = Math.PI;
       }
 
+      // Ground shadow follows the bird's height
+      const lift = Math.max(0, flappyY - GROUND_Y);
+      birdShadow.scale.setScalar(Math.max(0.35, 1.1 - lift * 0.05));
+      birdShadow.material.opacity = Math.max(0.08, 0.34 - lift * 0.015);
       if (wingFlapT > 0) wingFlapT -= dt;
       if (camShakeT > 0) camShakeT -= dt;
       rs.flappyVy = vy;
@@ -645,7 +748,8 @@ export function buildFlappyBirdArena(scene, challenge = {}) {
 
       if (scoreLabel && showScoreHud) {
         scoreLabel.visible = true;
-        scoreLabel.position.set(0, 10.5, BIRD_Z + 4);
+        scoreLabel.position.set(1, 9.2, -7);
+        faceCamera(scoreLabel);
       } else if (scoreLabel) scoreLabel.visible = false;
 
       if (flappyY > CEIL_Y - 0.5) {

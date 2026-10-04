@@ -2,6 +2,10 @@
  * RacingCourse.js — Mario Kart style game world racing.
  */
 import * as THREE from 'three';
+import { scheduleRaceRoadClearance, roadHalfWidth } from './RaceCorridorClearance.js';
+import { applyRoadsideDressing } from './mk-tracks/RoadsideDressingKit.js';
+import { hasThemeScenery } from './mk-tracks/ThemeSceneryKit.js';
+import { trackThemeFor } from './mk-tracks/TrackThemes.js';
 import {
   buildRacingStartLine,
   buildAxisStartGrid,
@@ -50,6 +54,10 @@ import { applyReferenceQualityPass } from './mk-tracks/BiomeQualityKit.js';
 import { isCarChassis } from '../data/car-racing-tracks.js';
 import { installKartRivals, animateKartRivals } from './KartRivalsKit.js';
 import { installRacePresentation } from './RacePresentationKit.js';
+import { installCandyRainbowScene } from './CandyRainbowSceneKit.js';
+import { hasRaceTheme, installRaceTheme } from './themes/index.js';
+import { applyMK8Showcase, hasMK8Showcase } from './mk-tracks/MK8ShowcaseKit.js';
+import { computeRouteGuide } from './RouteGuide.js';
 
 const CP_COLORS = [0xff2244, 0xff8800, 0xffee00, 0x22ff66, 0x00ccff, 0x4466ff, 0xcc44ff, 0xff44aa];
 const POWERUP_BURST_COLOR = { speed: 0x00d9ff, shield: 0x4488ff, magnet: 0xcc66ff, star: 0xffd700 };
@@ -185,13 +193,18 @@ function buildTrackMesh(mkTrack, curve, root, { halfWidth, is3D, trackLod = 1, s
 
 /** Build any MK circuit arena by arenaType id */
 export function buildMKTrackArena(scene, arenaType) {
-  const track = getMKTrack(arenaType);
+  // Car mode 10 asks for the classic 'rainbow_road'; the registered circuit is the master cup one
+  const track = getMKTrack(arenaType) || (arenaType === 'rainbow_road' ? getMKTrack('rainbow_road_master') : null);
   if (!track) return null;
   let zone = buildMKZoneConfig(track);
   if (track.isRainbow) {
     zone = mergeProRacingConfig({ ...ZONE_RAINBOW_ROAD, ...zone, arenaType: track.arenaType });
   }
-  return buildRacingCourse(scene, zone);
+  const built = buildRacingCourse(scene, zone);
+  // Scenery streams in after the road; keep sliding anything that lands on it.
+  scene.userData._raceClearanceCancel?.();
+  scene.userData._raceClearanceCancel = scheduleRaceRoadClearance(scene);
+  return built;
 }
 
 export function buildRacingCourse(scene, zoneConfig) {
@@ -310,6 +323,8 @@ export function buildRacingCourse(scene, zoneConfig) {
       if (needsPrimitives) {
         populateTrackScenery(worldGroup, curve, halfWidth, bounds, trackId, perfBudget, scene, finishT);
       }
+      // Themed worlds get their Kenney scenery from the roadside kit instead
+      if (hasThemeScenery(trackThemeFor(trackId).id)) worldGroup.userData.deferGltfEnrich = true;
       if (worldGroup.userData.awaitGltfScenery && !worldGroup.userData.gltfEnriched && !worldGroup.userData.deferGltfEnrich) {
         enrichTrackWorldGltf(worldGroup, curve, halfWidth, trackId, perfBudget, scene, finishT)
           .then((n) => {
@@ -333,10 +348,32 @@ export function buildRacingCourse(scene, zoneConfig) {
         skip: { gantry: true },
       });
     }
+    if (worldGroup) {
+      // Verge, fence and a track-name sign so every circuit reads like a kart game
+      const roadHw = roadHalfWidth(scene, curve);
+      scene.userData._raceClearHalfWidth = roadHw;
+      scene.userData._raceClearMargin = 4.6; // kerb + verge + fence
+      applyRoadsideDressing(worldGroup, curve, roadHw, trackId, {
+        startT: finishT,
+        name: mkTrack.label || mkTrack.name || '',
+        scene,
+      });
+    }
     if (carKid || mkTrack) {
       scene.userData.carKidRacing = !!carKid;
       scene.userData.raceHudTheme = trackId;
     }
+  }
+  if (mkTrack && !BIOME_ARENA_TYPES.has(mkTrack.arenaType) && !isRainbow) {
+    // Classic MK tracks (e.g. Dusty Dune Dash) get the same themed road and roadsides
+    const roadHw = roadHalfWidth(scene, curve);
+    scene.userData._raceClearHalfWidth = roadHw;
+    scene.userData._raceClearMargin = 4.6;
+    applyRoadsideDressing(root, curve, roadHw, mkTrack.arenaType, {
+      startT: racing.finishT ?? 0,
+      name: mkTrack.label || mkTrack.name || '',
+      scene,
+    });
   }
   scene.userData.sampleKartRoadY = (t) => sampleKartRoadSurfaceY(curve, t, { use3D: is3D });
 
@@ -423,11 +460,25 @@ export function buildRacingCourse(scene, zoneConfig) {
     spawnPosition: racing.spawnPosition ?? null,
     track3D: is3D,
   });
-  installRacePresentation(scene, curve, {
+  const presentationOpts = {
     halfWidth,
     spawn: gridSpawn,
     startT: gridSpawn.trackT ?? racing.spawnT ?? racing.finishT ?? 0,
-  });
+    world: worldId || '',
+  };
+  const raceThemeId = scene.userData.chassisModeChallenge?.raceThemeId;
+  if (hasRaceTheme(raceThemeId)) {
+    installRaceTheme(scene, curve, raceThemeId, presentationOpts);
+  } else if (mkTrack?.arenaType === 'candy_carnival_01') {
+    installCandyRainbowScene(scene, curve, presentationOpts);
+  } else {
+    installRacePresentation(scene, curve, presentationOpts);
+  }
+  if (!hasRaceTheme(raceThemeId) && mkTrack && hasMK8Showcase(mkTrack.arenaType)) {
+    applyMK8Showcase(scene, curve, scene.userData._raceClearHalfWidth || halfWidth, mkTrack.arenaType, {
+      startT: racing.finishT ?? 0,
+    });
+  }
   scene.userData.raceCameraPreset = {
     camBack: 6.6, camUp: 2.35, lookAhead: 16, lookHeight: 0.75, fov: 54,
   };
@@ -550,6 +601,15 @@ export function buildRacingCourse(scene, zoneConfig) {
   });
 
   scene.userData.raceSpawn = moverLogic.spawn;
+  // Turn-by-turn coding guide for the HUD (steps sized for "Set speed 60")
+  try {
+    scene.userData.raceRouteGuide = computeRouteGuide(curve, moverLogic.spawn?.trackT ?? racing.finishT ?? 0, {
+      speed: 60,
+      startPose: moverLogic.spawn,
+    });
+  } catch (e) {
+    console.warn('[RacingCourse] route guide failed', e);
+  }
 
   scene.userData.raceMode = true;
   scene.userData.getRaceSensors = () => getRaceSensors(scene.userData._raceState || {});

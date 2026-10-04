@@ -135,7 +135,7 @@ export default function Dashboard({ onNavigate }) {
           </p>
           <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
             <button className="btn" style={{ background:'white', color:'#6366f1', fontWeight:700 }} onClick={() => onNavigate('workspace')}>💻 Open Workspace</button>
-            <button className="btn" style={{ background:'rgba(255,255,255,0.18)', color:'white', border:'1px solid rgba(255,255,255,0.3)' }} onClick={() => onNavigate('learn')}>📚 Continue Learning</button>
+            <button className="btn" style={{ background:'rgba(255,255,255,0.18)', color:'white', border:'1px solid rgba(255,255,255,0.3)' }} onClick={() => onNavigate('learn/y3/w01')}>📚 Open Year 3 Week 1</button>
             <button className="btn" style={{ background:'rgba(255,0,110,0.25)', color:'#ff9ed2', border:'1px solid rgba(255,0,110,0.5)' }} onClick={() => onNavigate('studio')}>🤖 Robot Studio</button>
           </div>
         </div>

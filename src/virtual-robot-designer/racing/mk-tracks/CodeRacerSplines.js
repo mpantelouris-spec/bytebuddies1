@@ -79,6 +79,80 @@ function buildFigure8Circuit(n = 52, rx = 52, rz = 40) {
   return pts;
 }
 
+
+/**
+ * Polygon circuit with rounded corners — technical layouts with real straights and
+ * corners (so every turn can be coded as its own block). Points are emitted ~every
+ * 3.5 m so the Catmull-Rom curve hugs the design.
+ */
+function roundedPolygon(corners, radius = 10, y = 0) {
+  const n = corners.length;
+  const out = [];
+  const step = 3.5;
+  const V = (p) => ({ x: p[0], z: p[1] });
+  const fillets = corners.map((c, i) => {
+    const P = V(c), A = V(corners[(i - 1 + n) % n]), B = V(corners[(i + 1) % n]);
+    const da = { x: A.x - P.x, z: A.z - P.z }, db = { x: B.x - P.x, z: B.z - P.z };
+    const la = Math.hypot(da.x, da.z), lb = Math.hypot(db.x, db.z);
+    const ua = { x: da.x / la, z: da.z / la }, ub = { x: db.x / lb, z: db.z / lb };
+    const cosT = Math.max(-1, Math.min(1, ua.x * ub.x + ua.z * ub.z));
+    const theta = Math.acos(cosT);
+    const r = Math.min(radius, (Math.min(la, lb) * 0.45) * Math.tan(theta / 2));
+    const d = r / Math.tan(theta / 2);
+    const p1 = { x: P.x + ua.x * d, z: P.z + ua.z * d };
+    const p2 = { x: P.x + ub.x * d, z: P.z + ub.z * d };
+    const bis = { x: ua.x + ub.x, z: ua.z + ub.z };
+    const bl = Math.hypot(bis.x, bis.z) || 1;
+    const cd = r / Math.sin(theta / 2);
+    const C = { x: P.x + (bis.x / bl) * cd, z: P.z + (bis.z / bl) * cd };
+    return { p1, p2, C, r };
+  });
+  for (let i = 0; i < n; i++) {
+    const f = fillets[i], g = fillets[(i + 1) % n];
+    // arc around corner i from p1 to p2
+    const a1 = Math.atan2(f.p1.z - f.C.z, f.p1.x - f.C.x);
+    let a2 = Math.atan2(f.p2.z - f.C.z, f.p2.x - f.C.x);
+    let da = a2 - a1;
+    while (da > Math.PI) da -= Math.PI * 2;
+    while (da < -Math.PI) da += Math.PI * 2;
+    const arcN = Math.max(2, Math.ceil(Math.abs(da) * f.r / step));
+    for (let k = 0; k < arcN; k++) {
+      const a = a1 + (da * k) / arcN;
+      out.push({ x: f.C.x + Math.cos(a) * f.r, z: f.C.z + Math.sin(a) * f.r });
+    }
+    // straight from p2 of this corner to p1 of the next
+    const L = Math.hypot(g.p1.x - f.p2.x, g.p1.z - f.p2.z);
+    const segN = Math.max(1, Math.ceil(L / step));
+    for (let k = 0; k < segN; k++) {
+      out.push({ x: f.p2.x + ((g.p1.x - f.p2.x) * k) / segN, z: f.p2.z + ((g.p1.z - f.p2.z) * k) / segN });
+    }
+  }
+  return out.map((p, i) => ({ x: p.x, y: typeof y === 'function' ? y(i / out.length) : y, z: p.z }));
+}
+
+/** Smooth polar loop r(a) = base + wobble — flowing S-bends / lobes. */
+function polarLoop(base, amp, lobes, n = 96, y = 0, squashZ = 1) {
+  const pts = [];
+  for (let i = 0; i < n; i++) {
+    const t = i / n;
+    const a = Math.PI / 2 + t * Math.PI * 2;
+    const r = base + amp * Math.sin(lobes * a);
+    pts.push({ x: Math.cos(a) * r, y: typeof y === 'function' ? y(t) : y, z: Math.sin(a) * r * squashZ });
+  }
+  return pts;
+}
+
+/** Peanut / dog-bone — two hairpins joined by pinched curves. */
+function peanutLoop(rx, rz, pinch = 0.25, n = 96, y = 0) {
+  const pts = [];
+  for (let i = 0; i < n; i++) {
+    const t = i / n;
+    const a = Math.PI / 2 + t * Math.PI * 2;
+    pts.push({ x: Math.cos(a) * rx, y: typeof y === 'function' ? y(t) : y, z: Math.sin(a) * rz * (1 - pinch + pinch * Math.cos(2 * a)) });
+  }
+  return pts;
+}
+
 /** Mode 1 — Sunset Cove: scenic coastal loop (pier → ocean bend → bay return) */
 export const SUNSET_COVE_SPLINE = coastalElevation(SUNSET_COAST_RAW);
 
@@ -86,13 +160,16 @@ export const SUNSET_COVE_SPLINE = coastalElevation(SUNSET_COAST_RAW);
 export const CANDY_CARNIVAL_SPLINE = buildFigure8Circuit(52, 54, 42);
 
 /** Mode 6 — Frost Peak: alpine oval with gentle downhill */
-export const FROST_PEAK_SPLINE = loop(46, 40, 24, (t) => 8 - t * 5);
+/** Ice Valley — peanut with a hairpin at each end (difficulty 5). */
+export const FROST_PEAK_SPLINE = peanutLoop(56, 38, 0.3, 96, (t) => 5.5 + 2.5 * Math.cos(t * Math.PI * 2));
 
 /** Mode 7 — Lava Foundry: compact stadium */
-export const LAVA_FOUNDRY_SPLINE = stadium(36, 30, 28, 2.8, 0);
+/** Volcano Run — M-shape: long straight, then a sharp V dip across the top (difficulty 7). */
+export const LAVA_FOUNDRY_SPLINE = roundedPolygon([[-50, -34], [50, -34], [50, 36], [22, 36], [0, 8], [-22, 36], [-50, 36]], 9, 0);
 
 /** Mode 8 — Star Station: orbital ring */
-export const STAR_STATION_SPLINE = loop(46, 44, 24, 8);
+/** Space Station — five-point star ring of flowing bends (difficulty 6). */
+export const STAR_STATION_SPLINE = polarLoop(46, 6, 5, 120, 8);
 
 /** Mode 10 — Thunder Ridge: flowing oval with a mild pinch (still C2-smooth) */
 export const THUNDER_RIDGE_SPLINE = (() => {
@@ -110,13 +187,16 @@ export const THUNDER_RIDGE_SPLINE = (() => {
 })();
 
 /** Mode 3 — Neon Metro: stadium with round corners */
-export const NEON_METRO_SPLINE = stadium(46, 38, 28, 3.4, 0);
+/** City Circuit — L-shaped city blocks, six 90° corners (difficulty 2). */
+export const NEON_METRO_SPLINE = roundedPolygon([[-50, -36], [50, -36], [50, 4], [6, 4], [6, 36], [-50, 36]], 11, 0);
 
 /** Mode 4 — Cloud Citadel: high oval, gentle waves (no step dips) */
 export const CLOUD_CITADEL_SPLINE = loop(46, 40, 24, (t) => 10 + Math.sin(t * Math.PI * 2) * 1.4);
 
 /** Mode 5 — Jungle Ruins: smooth jungle oval */
-export const JUNGLE_RUINS_SPLINE = loop(44, 40, 24, 0);
+/** Jungle Ruins — snake S with eight corners and two switchbacks (difficulty 8). */
+export const JUNGLE_RUINS_SPLINE = roundedPolygon([[-56, -42], [56, -42], [56, -12], [-14, -12], [-14, 14], [56, 14], [56, 42], [-56, 42]], 10, 0);
 
 /** Mode 9 — Fairy Glen: garden oval */
-export const FAIRY_GLEN_SPLINE = loop(42, 38, 24, 0);
+/** Forest Trail — three flowing lobes with S-bends between them (difficulty 4). */
+export const FAIRY_GLEN_SPLINE = polarLoop(42, 8, 3, 108, 0);

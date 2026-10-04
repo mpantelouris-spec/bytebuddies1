@@ -2,7 +2,6 @@
  * Flappy BirdBot — Blockly compile + per-frame runtime executor.
  * Evaluates conditions, runs forever loops once per tick, handles wait/break.
  */
-import { parseEventScript } from './flappy-starter-script.js';
 
 function chainBlocks(startBlock) {
   const blocks = [];
@@ -180,14 +179,78 @@ export function compileFlappyWorkspace(ws) {
   return { handlers, tickLoops };
 }
 
-const EVENT_BLOCK_IDS = new Set([
-  'when_start', 'when_spacebar', 'when_collision', 'when_gap_passed', 'when_game_over',
-]);
+// ─── Scratch-style panel scripts ───────────────────────────────────────────
+// The panel is a flat list, so structure comes from the blocks themselves:
+// a loop or "if" block owns the blocks below it until an "End" block (or the
+// next event / sibling loop); "Else" switches an open "if" to its else-branch.
+
+const HAT_TO_EVENT = {
+  when_start: 'start',
+  when_spacebar: 'spacebar',
+  when_collision: 'collision',
+  when_gap_passed: 'gap_passed',
+  when_checkpoint: 'gap_passed', // each gap is the flappy checkpoint
+  when_collect: 'gap_passed',
+  when_game_over: 'game_over',
+  when_sensor: 'pipe_close',
+};
+const HATS = new Set([...Object.keys(HAT_TO_EVENT), 'when_key', 'when_timer', 'when_zone', 'when_battery',
+  'when_lap', 'when_race_won', 'when_goal', 'when_get_ball', 'when_goal_scored', 'when_concede',
+  'when_match_start', 'when_match_end', 'when_out_bounds']);
+
+/** Sensor readings a condition or "show" block can use. */
+const SENSOR_KEYS = {
+  bird_height: 'birdHeight',
+  gap_center: 'gapCenterHeight',
+  pipe_dist: 'distanceToPipe',
+  gap_size: 'gapSize',
+  score: 'score',
+  high_score: 'highScore',
+  time_alive: 'timeAlive',
+  falling: 'isFalling',
+};
+const SHOW_BLOCKS = {
+  distance_to_pipe: ['distanceToPipe', 'Pipe distance'],
+  num_pipe_dist: ['distanceToPipe', 'Pipe distance'],
+  bird_height: ['birdHeight', 'Bird height'],
+  num_bird_height: ['birdHeight', 'Bird height'],
+  gap_center_height: ['gapCenterHeight', 'Gap centre'],
+  num_gap_center: ['gapCenterHeight', 'Gap centre'],
+  gap_size: ['gapSize', 'Gap size'],
+  time_alive: ['timeAlive', 'Time alive'],
+  is_falling: ['isFalling', 'Falling'],
+  is_falling_bool: ['isFalling', 'Falling'],
+  read_score: ['score', 'Score'],
+  num_score: ['score', 'Score'],
+  read_high_score: ['highScore', 'High score'],
+  num_high_score: ['highScore', 'High score'],
+};
+
+function operand(key, pv) {
+  if (key === 'num') return { kind: 'num', value: Number(pv.n ?? pv.value ?? 0) || 0 };
+  if (key === 'var') return { kind: 'var', name: String(pv.name || 'myVar') };
+  return { kind: 'sensor', key: SENSOR_KEYS[key] || 'birdHeight' };
+}
+
+/** Condition from an "if" / "wait until" block's dropdowns. */
+function scratchCondition(b) {
+  const pv = b.paramValues || {};
+  if (b.id === 'if_falling') return { kind: 'sensor', key: 'isFalling' };
+  const fixed = { if_gt: 'gt', if_lt: 'lt', if_eq: 'eq' }[b.id];
+  const op = fixed || pv.op || 'lt';
+  const a = pv.a || 'bird_height';
+  if (a === 'falling') return { kind: 'sensor', key: 'isFalling' };
+  return { kind: 'compare', op, a: operand(a, pv), b: operand(pv.b || 'gap_center', pv) };
+}
 
 function compileScratchBlock(b) {
   if (!b?.id) return null;
   const id = b._uid || b.id;
   const pv = b.paramValues || {};
+  if (SHOW_BLOCKS[b.id]) {
+    const [key, label] = SHOW_BLOCKS[b.id];
+    return { op: 'show_value', key, label, id };
+  }
   switch (b.id) {
     case 'flap': return { op: 'flap', id };
     case 'set_flap_strength':
@@ -200,118 +263,165 @@ function compileScratchBlock(b) {
     case 'move_up': return { op: 'move_up', units: Number(pv.units) || 3, id };
     case 'move_down': return { op: 'move_down', units: Number(pv.units) || 3, id };
     case 'set_bird_height':
-      return { op: 'set_bird_height', height: { kind: 'num', value: Number(pv.height) || 10 }, id };
+      return { op: 'set_bird_height', height: { kind: 'num', value: Number(pv.height ?? 10) }, id };
     case 'break_loop': return { op: 'break', id };
     case 'wait':
-      return { op: 'wait', seconds: Number(pv.seconds) || 1, id };
+      return { op: 'wait', seconds: Math.max(0, Number(pv.seconds ?? 1)), id };
+    case 'wait_until':
+      return { op: 'wait_until', cond: scratchCondition(b), id };
     case 'show_score': return { op: 'show_score', id };
+    case 'hide_score': return { op: 'hide_score', id };
     case 'restart_game': return { op: 'restart_game', id };
     case 'pause':
       return { op: 'pause_game', seconds: Number(pv.seconds) || 1, id };
     case 'show_message':
-      return { op: 'show_message', text: String(pv.text || 'Nice!').slice(0, 40), id };
+      return { op: 'show_message', text: String(pv.text ?? 'Nice!').slice(0, 40), id };
     case 'play_sound':
       return { op: 'play_sound', sound: String(pv.sound || 'beep'), id };
     case 'create_var':
       return { op: 'var_create', name: String(pv.name || 'myVar'), id };
     case 'set_var':
-      return {
-        op: 'var_set', name: String(pv.name || 'myVar'),
-        value: { kind: 'num', value: Number(pv.value) || 0 }, id,
-      };
+      return { op: 'var_set', name: String(pv.name || 'myVar'), value: { kind: 'num', value: Number(pv.value) || 0 }, id };
     case 'change_var':
-      return { op: 'var_change', name: String(pv.name || 'myVar'), delta: Number(pv.value) || 1, id };
+      return { op: 'var_change', name: String(pv.name || 'myVar'), delta: Number(pv.value ?? 1) || 0, id };
+    case 'show_variable':
+      return { op: 'show_variable', name: String(pv.name || 'myVar'), id };
+    case 'hide_variable':
+      return { op: 'hide_variable', name: String(pv.name || 'myVar'), id };
+    case 'get_var':
+      return { op: 'show_var_value', name: String(pv.name || 'myVar'), id };
     default:
       return null;
   }
 }
 
-function compileScratchHandlerBlocks(blocks) {
-  const runStmts = [];
-  const tickLoops = [];
-  let i = 0;
-  while (i < blocks.length) {
-    const b = blocks[i];
-    if (b.id === 'forever') {
-      const inner = [];
-      i += 1;
-      while (i < blocks.length
-        && !['repeat', 'forever', 'repeat_until'].includes(blocks[i].id)
-        && !EVENT_BLOCK_IDS.has(blocks[i].id)) {
-        inner.push(blocks[i]);
-        i += 1;
-      }
-      const body = compileScratchHandlerBlocks(inner).runStmts;
-      if (body.length) tickLoops.push({ op: 'forever', body, id: b._uid || b.id });
+const LOOP_IDS = new Set(['repeat', 'forever', 'repeat_until']);
+const IF_IDS = new Set(['if_then', 'if_else', 'if_gt', 'if_lt', 'if_eq', 'if_falling']);
+
+/** Build nested statements from one event's flat block list. */
+function compileScratchSection(blocks) {
+  const root = [];
+  const stack = [{ list: root, kind: 'root' }];
+  const top = () => stack[stack.length - 1];
+  for (const b of blocks) {
+    const id = b._uid || b.id;
+    if (LOOP_IDS.has(b.id)) {
+      // A loop placed after another open loop is its sibling, as before
+      while (top().kind === 'loop') stack.pop();
+      const node = b.id === 'repeat'
+        ? { op: 'repeat', times: Math.min(100, Math.max(1, Number(b.paramValues?.times) || 3)), body: [], id }
+        : { op: b.id === 'forever' ? 'forever' : 'repeat_until_gameover', body: [], id };
+      top().list.push(node);
+      stack.push({ list: node.body, kind: 'loop', node });
       continue;
     }
-    if (b.id === 'repeat') {
-      const times = Math.max(1, Number(b.paramValues?.times) || 3);
-      const inner = [];
-      i += 1;
-      while (i < blocks.length
-        && !['repeat', 'forever', 'repeat_until'].includes(blocks[i].id)
-        && !EVENT_BLOCK_IDS.has(blocks[i].id)) {
-        inner.push(blocks[i]);
-        i += 1;
-      }
-      const body = compileScratchHandlerBlocks(inner).runStmts;
-      if (body.length) runStmts.push({ op: 'repeat', times, body, id: b._uid || b.id });
+    if (IF_IDS.has(b.id)) {
+      const node = { op: 'if_else', cond: scratchCondition(b), body: [], elseBody: [], id };
+      top().list.push(node);
+      stack.push({ list: node.body, kind: 'if', node });
       continue;
     }
-    if (b.id === 'repeat_until') {
-      const inner = [];
-      i += 1;
-      while (i < blocks.length
-        && !['repeat', 'forever', 'repeat_until'].includes(blocks[i].id)
-        && !EVENT_BLOCK_IDS.has(blocks[i].id)) {
-        inner.push(blocks[i]);
-        i += 1;
+    if (b.id === 'else') {
+      const frame = [...stack].reverse().find((f) => f.kind === 'if');
+      if (frame) {
+        while (top() !== frame) stack.pop();
+        frame.list = frame.node.elseBody;
       }
-      const body = compileScratchHandlerBlocks(inner).runStmts;
-      if (body.length) runStmts.push({ op: 'repeat_until_gameover', body, id: b._uid || b.id });
+      continue;
+    }
+    if (b.id === 'end' || b.id === 'end_if' || b.id === 'end_loop') {
+      if (stack.length > 1) stack.pop();
       continue;
     }
     const stmt = compileScratchBlock(b);
-    if (stmt) runStmts.push(stmt);
-    i += 1;
+    if (stmt) top().list.push(stmt);
   }
-  return { runStmts, tickLoops };
+  return root;
 }
 
-/** Compile scratch-style CustomCodePanel script into FlappyBlockRuntime program. */
+/** Compile the scratch-style panel script into a FlappyBlockRuntime program. */
 export function compileFlappyScratchScript(script) {
-  const raw = parseEventScript(script || []);
-  const handlers = {
-    start: [], spacebar: [], collision: [], gap_passed: [], game_over: [],
-  };
-  const tickLoops = [];
-  for (const key of Object.keys(handlers)) {
-    const { runStmts, tickLoops: loops } = compileScratchHandlerBlocks(raw[key] || []);
-    handlers[key] = runStmts;
-    loops.forEach((loop) => tickLoops.push(loop));
+  const handlers = { start: [], spacebar: [], collision: [], gap_passed: [], game_over: [], pipe_close: [] };
+  const timers = [];
+  const keys = [];
+  const sections = [];
+  let cur = { event: 'start', blocks: [] };
+  sections.push(cur);
+  for (const b of script || []) {
+    if (HATS.has(b.id)) {
+      const pv = b.paramValues || {};
+      let event = HAT_TO_EVENT[b.id] || null;
+      if (b.id === 'when_key') event = (pv.key ?? 'space') === 'space' ? 'spacebar' : `key:${pv.key}`;
+      if (b.id === 'when_timer') event = `timer:${Math.max(0, Number(pv.seconds ?? 5))}`;
+      cur = { event, blocks: [] };
+      sections.push(cur);
+      continue;
+    }
+    cur.blocks.push(b);
   }
-  return { handlers, tickLoops };
+  for (const sec of sections) {
+    if (!sec.event || !sec.blocks.length) continue;
+    const stmts = compileScratchSection(sec.blocks);
+    if (!stmts.length) continue;
+    if (sec.event.startsWith('timer:')) timers.push({ seconds: Number(sec.event.slice(6)), stmts });
+    else if (sec.event.startsWith('key:')) keys.push({ key: sec.event.slice(4), stmts });
+    else handlers[sec.event].push(...stmts);
+  }
+  return { handlers, tickLoops: [], timers, keys };
 }
 
+const BREAK = Symbol('break');
+const KEY_CODES = { up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight' };
+const MAX_THREADS = 40;
+
+/**
+ * Runs a compiled program. Every event starts its own thread (a generator), so
+ * "wait", "wait until", loops and nested ifs all behave like real code, several
+ * scripts can run side by side, and "forever" runs one pass per frame.
+ */
 export class FlappyBlockRuntime {
   constructor(program, scene, onBlockActive) {
-    this.handlers = program.handlers;
-    this.tickLoops = program.tickLoops;
     this.scene = scene;
     this.onBlockActive = onBlockActive;
-    this.vars = {};
-    this.breakFlag = false;
-    this.waitTimers = new Map();
-    this.startFired = false;
-    this._idx = 0;
+    this.load(program);
+  }
+
+  /** Swap in a freshly compiled program (e.g. after editing and pressing Simulate). */
+  load(program) {
+    const p = program || {};
+    this.handlers = { start: [], spacebar: [], collision: [], gap_passed: [], game_over: [], pipe_close: [], ...(p.handlers || {}) };
+    this.tickLoops = p.tickLoops || [];
+    this.timers = p.timers || [];
+    this.keys = p.keys || [];
+    this.reset();
   }
 
   reset() {
     this.vars = {};
-    this.breakFlag = false;
-    this.waitTimers.clear();
+    this.threads = [];
+    this.clock = 0;
+    this.lastNow = null;
     this.startFired = false;
+    this.timersFired = new Set();
+    this.pipeArmed = true;
+    this._idx = 0;
+    this.detachKeys();
+  }
+
+  attachKeys() {
+    if (this._onKey || typeof window === 'undefined' || !this.keys.length) return;
+    this._onKey = (e) => {
+      const hits = this.keys.filter((k) => KEY_CODES[k.key] === e.code);
+      if (!hits.length || !this.scene?.userData?.flappyMode) return;
+      e.preventDefault();
+      hits.forEach((k) => this.spawn(k.stmts));
+    };
+    window.addEventListener('keydown', this._onKey);
+  }
+
+  detachKeys() {
+    if (this._onKey) window.removeEventListener('keydown', this._onKey);
+    this._onKey = null;
   }
 
   sensors() {
@@ -328,19 +438,18 @@ export class FlappyBlockRuntime {
     switch (expr.kind) {
       case 'num': return expr.value;
       case 'sensor': {
-        const s = this.sensors();
-        const v = s[expr.key];
+        const v = this.sensors()[expr.key];
         if (expr.key === 'isFalling') return !!v;
         return typeof v === 'number' ? v : Number(v) || 0;
       }
       case 'var':
         return Number(this.vars[expr.name]) || 0;
       case 'compare': {
-        const a = this.evaluate(expr.a);
-        const b = this.evaluate(expr.b);
+        const a = Number(this.evaluate(expr.a));
+        const b = Number(this.evaluate(expr.b));
         if (expr.op === 'gt') return a > b;
         if (expr.op === 'lt') return a < b;
-        return a === b;
+        return Math.round(a) === Math.round(b); // heights are decimals; "=" means "about equal"
       }
       case 'and':
         return !!this.evaluate(expr.a) && !!this.evaluate(expr.b);
@@ -360,9 +469,6 @@ export class FlappyBlockRuntime {
   }
 
   evaluateBool(expr) {
-    if (!expr) return false;
-    if (expr.kind === 'sensor' && expr.key === 'isFalling') return !!this.sensors().isFalling;
-    if (expr.kind === 'and' || expr.kind === 'or' || expr.kind === 'compare') return !!this.evaluate(expr);
     return !!this.evaluate(expr);
   }
 
@@ -374,143 +480,131 @@ export class FlappyBlockRuntime {
     if (!stmt || !this.scene?.userData?.flappyMode) return;
     const ud = this.scene.userData;
     this.highlight(stmt.id, stmt.op);
-
     switch (stmt.op) {
-      case 'flap':
-        ud.flap?.(1.0);
+      case 'flap': ud.flap?.(1.0); break;
+      case 'set_flap_strength': ud.setFlapStrength?.(stmt.strength); break;
+      case 'set_gravity_strength': ud.setGravityStrength?.(stmt.strength); break;
+      case 'set_scroll_speed': ud.setScrollSpeed?.(stmt.speed); break;
+      case 'freeze_bird': ud.freezeBird?.(); break;
+      case 'move_up': ud.moveBirdBy?.(stmt.units); break;
+      case 'move_down': ud.moveBirdBy?.(-stmt.units); break;
+      case 'set_bird_height': ud.setBirdHeight?.(this.evaluate(stmt.height)); break;
+      case 'show_score': ud.setShowScoreHud?.(true); break;
+      case 'hide_score': ud.setShowScoreHud?.(false); break;
+      case 'show_message': ud.showFlappyMessage?.(stmt.text, 2); break;
+      case 'show_value': {
+        const v = this.sensors()[stmt.key];
+        const text = typeof v === 'boolean' ? (v ? 'yes' : 'no') : (Math.round((Number(v) || 0) * 10) / 10);
+        ud.showFlappyMessage?.(`${stmt.label}: ${text}`, 2);
         break;
-      case 'set_flap_strength':
-        ud.setFlapStrength?.(stmt.strength);
+      }
+      case 'show_var_value':
+        ud.showFlappyMessage?.(`${stmt.name} = ${Number(this.vars[stmt.name]) || 0}`, 2);
         break;
-      case 'set_gravity_strength':
-        ud.setGravityStrength?.(stmt.strength);
-        break;
-      case 'set_scroll_speed':
-        ud.setScrollSpeed?.(stmt.speed);
-        break;
-      case 'freeze_bird':
-        ud.freezeBird?.();
-        break;
-      case 'move_up':
-        ud.moveBirdBy?.(stmt.units);
-        break;
-      case 'move_down':
-        ud.moveBirdBy?.(-stmt.units);
-        break;
-      case 'set_bird_height':
-        ud.setBirdHeight?.(this.evaluate(stmt.height));
-        break;
-      case 'show_score':
-        ud.setShowScoreHud?.(true);
-        break;
-      case 'show_message':
-        ud.showFlappyMessage?.(stmt.text, 2);
-        break;
-      case 'play_sound':
-        ud.playFlappySound?.(stmt.sound);
-        break;
-      case 'pause_game':
-        ud.pauseFlappyGame?.(stmt.seconds);
-        break;
-      case 'restart_game':
-        ud.restartFlappyGame?.();
-        this.startFired = false;
-        break;
-      case 'var_create':
-        if (!(stmt.name in this.vars)) this.vars[stmt.name] = 0;
-        break;
-      case 'var_set':
-        this.vars[stmt.name] = this.evaluate(stmt.value);
-        break;
-      case 'var_change':
-        this.vars[stmt.name] = (Number(this.vars[stmt.name]) || 0) + stmt.delta;
-        break;
-      case 'show_variable':
-        ud.showFlappyVariable?.(stmt.name, Number(this.vars[stmt.name]) || 0);
-        break;
-      case 'hide_variable':
-        ud.hideFlappyVariable?.(stmt.name);
-        break;
-      default:
-        break;
+      case 'play_sound': ud.playFlappySound?.(stmt.sound); break;
+      case 'pause_game': ud.pauseFlappyGame?.(stmt.seconds); break;
+      case 'restart_game': ud.restartFlappyGame?.(); break;
+      case 'var_create': if (!(stmt.name in this.vars)) this.vars[stmt.name] = 0; break;
+      case 'var_set': this.vars[stmt.name] = this.evaluate(stmt.value); break;
+      case 'var_change': this.vars[stmt.name] = (Number(this.vars[stmt.name]) || 0) + stmt.delta; break;
+      case 'show_variable': ud.showFlappyVariable?.(stmt.name, Number(this.vars[stmt.name]) || 0); break;
+      case 'hide_variable': ud.hideFlappyVariable?.(stmt.name); break;
+      default: break;
     }
   }
 
-  execStatements(stmts, depth = 0) {
-    if (depth > 64) return;
+  /** Generator: yields a number of seconds to sleep (0 = until next frame). Returns BREAK to leave a loop. */
+  * run(stmts, depth = 0) {
+    if (depth > 40 || !stmts) return undefined;
     for (const stmt of stmts) {
-      if (this.breakFlag) { this.breakFlag = false; break; }
-      if (this.isDead() && stmt.op !== 'restart_game') break;
-
-      if (stmt.op === 'break') {
-        this.breakFlag = true;
-        break;
-      }
-      if (stmt.op === 'if') {
-        if (this.evaluateBool(stmt.cond)) this.execStatements(stmt.body, depth + 1);
-        continue;
-      }
-      if (stmt.op === 'if_else') {
-        if (this.evaluateBool(stmt.cond)) this.execStatements(stmt.body, depth + 1);
-        else this.execStatements(stmt.elseBody, depth + 1);
-        continue;
-      }
-      if (stmt.op === 'repeat') {
-        for (let i = 0; i < stmt.times; i++) {
-          if (this.breakFlag) { this.breakFlag = false; break; }
-          this.execStatements(stmt.body, depth + 1);
+      switch (stmt.op) {
+        case 'break':
+          this.highlight(stmt.id, 'break');
+          return BREAK;
+        case 'wait':
+          this.highlight(stmt.id, 'wait');
+          yield stmt.seconds;
+          break;
+        case 'wait_until': {
+          this.highlight(stmt.id, 'wait until');
+          for (let guard = 0; !this.evaluateBool(stmt.cond) && guard < 36000; guard++) yield 0;
+          break;
         }
-        continue;
-      }
-      if (stmt.op === 'repeat_with') {
-        for (let i = 1; i <= stmt.times; i++) {
-          if (this.breakFlag) { this.breakFlag = false; break; }
-          this.vars[stmt.varName] = i;
-          this.execStatements(stmt.body, depth + 1);
+        case 'if': case 'if_else': {
+          this.highlight(stmt.id, 'if');
+          const branch = this.evaluateBool(stmt.cond) ? stmt.body : (stmt.elseBody || []);
+          if ((yield* this.run(branch, depth + 1)) === BREAK) return BREAK;
+          break;
         }
-        continue;
+        case 'repeat': case 'repeat_with':
+          for (let i = 1; i <= stmt.times; i++) {
+            if (stmt.varName) this.vars[stmt.varName] = i;
+            if ((yield* this.run(stmt.body, depth + 1)) === BREAK) break;
+          }
+          break;
+        case 'repeat_until_gameover':
+          while (!this.isDead()) {
+            if ((yield* this.run(stmt.body, depth + 1)) === BREAK) break;
+            yield 0; // one pass per frame
+          }
+          break;
+        case 'forever':
+          for (;;) {
+            if (this.isDead()) { yield 0; continue; } // paused while crashed, resumes after a restart
+            if ((yield* this.run(stmt.body, depth + 1)) === BREAK) break;
+            yield 0;
+          }
+          break;
+        default:
+          this.execOne(stmt);
       }
-      if (stmt.op === 'repeat_until_gameover') {
-        let guard = 0;
-        while (!this.isDead() && guard < 500) {
-          if (this.breakFlag) { this.breakFlag = false; break; }
-          this.execStatements(stmt.body, depth + 1);
-          guard += 1;
-        }
-        continue;
-      }
-      if (stmt.op === 'forever') {
-        continue;
-      }
-      if (stmt.op === 'wait') {
-        this.execOne(stmt);
-        continue;
-      }
-      this.execOne(stmt);
     }
+    return undefined;
+  }
+
+  spawn(stmts) {
+    if (!stmts?.length || this.threads.length >= MAX_THREADS) return;
+    this.threads.push({ gen: this.run(stmts), wakeAt: -1 });
   }
 
   runEvent(key) {
-    const stmts = this.handlers[key] || [];
     if (key === 'start') {
       if (this.startFired) return;
       this.startFired = true;
+      this.attachKeys();
+      this.tickLoops.forEach((loop) => this.spawn([loop]));
       console.log('[Flappy] START event fired');
     }
-    this.execStatements(stmts);
+    this.spawn(this.handlers[key]);
   }
 
-  /** Called once per simulation frame — runs forever loops from start handler. */
+  /** Called once per simulation frame while running. */
   tick() {
-    if (this.isDead()) return;
-    for (const loop of this.tickLoops) {
-      if (this.breakFlag) { this.breakFlag = false; break; }
-      this.execStatements(loop.body);
+    const now = (typeof performance !== 'undefined' ? performance.now() : Date.now()) / 1000;
+    const dt = this.lastNow == null ? 0 : Math.min(0.1, Math.max(0, now - this.lastNow));
+    this.lastNow = now;
+    this.clock += dt;
+
+    this.timers.forEach((t, i) => {
+      if (!this.timersFired.has(i) && this.clock >= t.seconds) {
+        this.timersFired.add(i);
+        this.spawn(t.stmts);
+      }
+    });
+    if (this.handlers.pipe_close?.length && !this.isDead()) {
+      const d = this.sensors().distanceToPipe ?? 99;
+      if (this.pipeArmed && d < 4) { this.pipeArmed = false; this.spawn(this.handlers.pipe_close); }
+      else if (d > 6) this.pipeArmed = true;
     }
-    const ud = this.scene?.userData;
-    if (ud?.updateFlappyVariableOverlays) {
-      ud.updateFlappyVariableOverlays(this.vars);
+
+    for (let i = 0; i < this.threads.length; i++) {
+      const th = this.threads[i];
+      if (th.wakeAt > this.clock) continue;
+      const r = th.gen.next();
+      if (r.done) { this.threads.splice(i, 1); i--; continue; }
+      th.wakeAt = this.clock + Math.max(0, Number(r.value) || 0) + (r.value ? 0 : 1e-6);
     }
+    this.scene?.userData?.updateFlappyVariableOverlays?.(this.vars);
   }
 }
 

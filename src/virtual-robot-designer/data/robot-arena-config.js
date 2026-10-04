@@ -206,6 +206,7 @@ export const CHASSIS_ENVIRONMENT = {
   robotarm: 'industrial',
   factorybot: 'industrial',
   legobot: 'industrial',
+  blockbot: 'industrial',
   miningbot: 'industrial',
   farmbot: 'industrial',
   securitybot: 'industrial',

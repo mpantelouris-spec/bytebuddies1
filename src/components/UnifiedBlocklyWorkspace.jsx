@@ -250,6 +250,7 @@ const UnifiedBlocklyWorkspace = forwardRef(function UnifiedBlocklyWorkspace({
         const defaults = { ...(SCRATCH_BLOCK_DEFAULT_FIELDS[mappedType] || {}) };
         const params = { ...defaults, ...(gameBlock.params || {}) };
         Object.entries(params).forEach(([key, value]) => {
+          if (value && typeof value === 'object') return;
           const candidates = [key, String(key).toUpperCase()];
           for (const k of candidates) {
             try {

@@ -7,6 +7,7 @@ import { CLASSIC_RAINBOW_TRACK } from './MKTrackVisualSpec.js';
 import { buildProfessionalCircuitWaypoints } from '../ProfessionalRainbowTrack.js';
 import { BIOME_TRACKS, BIOME_ARENA_TYPES } from './BiomeTrackRegistry.js';
 import { mergeTrackStandard, buildTrackSegmentsFromSections } from './CodeRacerTrackStandards.js';
+import { KART_THEME_TRACKS } from '../../data/kart-theme-tracks.js';
 
 /** Simple flat oval */
 function ovalSpline(rx = 42, rz = 28, y = 0, segments = 16) {
@@ -490,10 +491,12 @@ export const CAR_MODE_ARENA_IDS = [
   'lava_foundry_01',
   'jungle_ruins_01',
   '__rainbow__',
-  'thunder_ridge_01',
+  'candy_carnival_01',
+  ...KART_THEME_TRACKS.map((t) => t.base),
 ];
 
 export const CAR_MODE_TRACK_LABELS = {
+  candy_carnival_01: 'Candy Rainbow Run',
   sunset_cove_01: 'Sunny Shores',
   neon_metro_01: 'City Circuit',
   dry_dry_desert: 'Desert Dunes',
@@ -506,7 +509,7 @@ export const CAR_MODE_TRACK_LABELS = {
 };
 
 export function getMKTrackForCarMode(chassisId, modeIndex = 1) {
-  const m = Math.max(1, Math.min(10, Number(modeIndex) || 1));
+  const m = Math.max(1, Math.min(CAR_MODE_ARENA_IDS.length, Number(modeIndex) || 1));
   const slot = CAR_MODE_ARENA_IDS[m - 1];
   if (slot === '__rainbow__') {
     return { ...CLASSIC_RAINBOW_TRACK, label: 'Prism Skyway', emoji: '🌈' };
@@ -520,7 +523,7 @@ export function getMKTrackForCarMode(chassisId, modeIndex = 1) {
 }
 
 export function getCarModeArenaId(modeIndex = 1) {
-  const m = Math.max(1, Math.min(10, Number(modeIndex) || 1));
+  const m = Math.max(1, Math.min(CAR_MODE_ARENA_IDS.length, Number(modeIndex) || 1));
   const slot = CAR_MODE_ARENA_IDS[m - 1];
   if (slot === '__rainbow__') return 'rainbow_road';
   return slot;
