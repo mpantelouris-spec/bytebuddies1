@@ -4,6 +4,10 @@
 import React, { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import { ACTION_BLOCKS, getMissionAction } from '../data/mission-actions.js';
 import PrimaryArenaThumbnail from './PrimaryArenaThumbnail.jsx';
+import CraftArenaThumbnail from './craft/CraftArenaThumbnail.jsx';
+import ArenaPreviewImage from './ArenaPreviewImage.jsx';
+import { cancelArenaPreviews } from './arena-preview.js';
+import JumpBotLevelPreview from '../arcade/JumpBotLevelPreview.jsx';
 import { RacingHUD } from '../racing/RacingHUD.jsx';
 import { CodeRacerHUD } from '../racing/CodeRacerHUD.jsx';
 import { isCodeRacerArena } from '../racing/CodeRacerWorldKit.js';
@@ -21,23 +25,34 @@ import { CRAFT_BLOCK_LIBRARY, isCraftCourse } from '../data/craft-blocks.js';
 import { FIGHTING_BLOCK_LIBRARY, isFightingCourse, FIGHTING_STARTER_SCRIPT } from '../data/fighting-blocks.js';
 import { FOOTBALL_BLOCK_LIBRARY, isFootballCourse, FOOTBALL_STARTER_SCRIPT, FOOTBALL_ROLE_STARTERS, FOOTBALL_TEAM_ROLES } from '../data/football-blocks.js';
 import { buildRaceBlockLibrary, isRaceCourse } from '../data/racing-blocks.js';
-import { isCarChassis } from '../data/car-racing-tracks.js';
+import { isCarChassis, CAR_KID_TRACK_TILES } from '../data/car-racing-tracks.js';
 import { CarRobotTrackGrid } from '../racing/CarRobotTrackGrid.jsx';
+import { COSMIC_SKYWAY_UI_TRACKS } from '../racing/mk-tracks/CosmicSkywayRegistry.js';
 import { getSecurityBotArena } from '../data/securitybot-arenas.js';
-import { getPrimaryRobotDisplay, getPrimaryStudioArena, getStudioRobotGroup, kidSafeText } from '../data/primary-robot-studio.js';
+import { getPrimaryRobotDisplay, getPrimaryStudioArena, getStudioRobotGroup, getRobotLearningFrame, kidSafeText } from '../data/primary-robot-studio.js';
 import { UNIVERSAL_EVENTS_CATEGORY, withUniversalEvents } from '../data/universal-event-blocks.js';
 import SavedCodeMenu, { readAutosave, writeAutosave } from './SavedCodeMenu.jsx';
 import './LiveLabGame.css';
+import PythonCodePane from './PythonCodePane.jsx';
+import CodingObjectiveCard from './CodingObjectiveCard.jsx';
+import { buildWorldBlockLibrary } from '../data/fight-worlds.js';
+import { getCodingObjective } from './codingObjective.js';
+import { blocksToPython, withScriptBlocks } from './robotPython.js';
+import { Icon, EmojiIcon, IconText } from '../../components/ui/Icon.jsx';
 
 /** Pick block library — course-scoped palettes; Events always universal */
 /** Pick block library — course-scoped palettes; Events always universal */
-export function getBlockLibraryForCourse(courseKey, arenaType) {
+export function getBlockLibraryForCourse(courseKey, arenaType, chassisId = '', fightWorld = '') {
   // Flappy has its own Events tab: only events that can happen in this game
   if (isFlappyBirdCourse(courseKey, arenaType)) return FLAPPY_BLOCK_LIBRARY;
   // Block Crafter: Minecraft-style mining, building and crafting blocks
-  if (isCraftCourse(courseKey, arenaType)) return CRAFT_BLOCK_LIBRARY;
+  if (isCraftCourse(courseKey, arenaType, chassisId)) return CRAFT_BLOCK_LIBRARY;
   if (isFootballCourse(courseKey, arenaType)) return withUniversalEvents(FOOTBALL_BLOCK_LIBRARY);
-  if (isFightingCourse(courseKey, arenaType) && arenaType === 'robot_fight') return withUniversalEvents(FIGHTING_BLOCK_LIBRARY);
+  if (isFightingCourse(courseKey, arenaType) && arenaType === 'robot_fight') {
+    // Fighting worlds (castle, dojo, ship…) swap the punches for their own moves
+    const lib = withUniversalEvents(FIGHTING_BLOCK_LIBRARY);
+    return fightWorld ? buildWorldBlockLibrary(lib, fightWorld) : lib;
+  }
   if (isRaceCourse(courseKey, arenaType) && arenaType !== 'sandbox') return buildRaceBlockLibrary(BLOCK_LIBRARY, arenaType);
   return withUniversalEvents(BLOCK_LIBRARY);
 }
@@ -225,11 +240,28 @@ const uid = () => `b${++_uidCounter}_${Date.now()}`;
 /* ════════════════════════════════════════════════════════════════════════════
    SCRATCH-STYLE CODING WORKSPACE
    ════════════════════════════════════════════════════════════════════════════ */
-function loadStarterBlocks(starterScript) {
-  if (!starterScript?.length) return [];
-  return starterScript
-    .filter((b) => b.id !== 'when_start')
-    .map((b) => ({ ...b, _uid: uid(), paramValues: { ...(b.paramValues || {}) } }));
+/**
+ * Starter / hint / saved blocks often carry only id + values. Give them the
+ * palette definition's settings (dropdowns, numbers) so the pupil can see and
+ * change them — e.g. the condition inside an "If" block.
+ */
+function withBlockDefs(blocks, library) {
+  if (!library) return blocks;
+  const cats = Object.entries(library).filter(([, c]) => c?.blocks);
+  return blocks.map((b) => {
+    if (b.params?.length) return b;
+    const own = b.catKey && library[b.catKey]?.blocks?.find((d) => d.id === b.id);
+    const def = own || cats.map(([, c]) => c.blocks.find((d) => d.id === b.id)).find(Boolean);
+    if (!def?.params?.length) return b;
+    const catKey = b.catKey || cats.find(([, c]) => c.blocks.includes(def))?.[0];
+    return { ...b, params: def.params, icon: b.icon || def.icon, ...(catKey ? { catKey } : {}) };
+  });
+}
+
+/** True when a saved program is just the starter blocks pupils used to be given, unchanged. */
+function isUntouchedStarter(saved, starterScript) {
+  const sig = (list) => JSON.stringify((list || []).filter((b) => b?.id && b.id !== 'when_start').map((b) => [b.id, b.paramValues || {}]));
+  return !!starterScript?.length && sig(saved) === sig(starterScript);
 }
 
 const FB_TEAM_SCRIPT_LS = 'bb-football-team-scripts-v2';
@@ -293,7 +325,7 @@ export function CourseCodeHintsPanel({ hints, defaultOpen = false }) {
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
       >
-        <span className="course-code-hints-toggle-icon">💡</span>
+        <span className="course-code-hints-toggle-icon"><EmojiIcon e="💡" /></span>
         <span className="course-code-hints-toggle-title">
           {open ? `Code hints — ${hints.courseName}` : 'Need help? Tap for code hints'}
         </span>
@@ -310,7 +342,7 @@ export function CourseCodeHintsPanel({ hints, defaultOpen = false }) {
             <p className="course-code-hints-tip">{hints.codeHint}</p>
           )}
           {hints.robotTip && (
-            <p className="course-code-hints-robot">🤖 {hints.robotTip}</p>
+            <p className="course-code-hints-robot"><EmojiIcon e="🤖" style={{ marginRight: '0.35em' }} />{hints.robotTip}</p>
           )}
 
           {hints.simpleSteps?.length > 0 && (
@@ -329,7 +361,7 @@ export function CourseCodeHintsPanel({ hints, defaultOpen = false }) {
                 onClick={() => setProOpen((v) => !v)}
                 aria-expanded={proOpen}
               >
-                <span>🚀 {hints.tierLabels?.advanced || 'Pro code'} ({hints.advancedSteps.length + 1} blocks)</span>
+                <span><EmojiIcon e="🚀" style={{ marginRight: '0.35em' }} />{hints.tierLabels?.advanced || 'Pro code'} ({hints.advancedSteps.length + 1} blocks)</span>
                 <span>{proOpen ? '▾' : '▸'}</span>
               </button>
               {proOpen && (
@@ -349,7 +381,7 @@ export function CourseCodeHintsPanel({ hints, defaultOpen = false }) {
                 onClick={() => setExpertOpen((v) => !v)}
                 aria-expanded={expertOpen}
               >
-                <span>🏆 {hints.tierLabels?.expert || 'Expert code'} ({hints.expertBlockCount || hints.expertSteps.length + 1} blocks)</span>
+                <span><EmojiIcon e="🏆" style={{ marginRight: '0.35em' }} />{hints.tierLabels?.expert || 'Expert code'} ({hints.expertBlockCount || hints.expertSteps.length + 1} blocks)</span>
                 <span>{expertOpen ? '▾' : '▸'}</span>
               </button>
               {expertOpen && (
@@ -364,7 +396,7 @@ export function CourseCodeHintsPanel({ hints, defaultOpen = false }) {
           {hints.racingSections?.length > 0 && (
             <div className="course-code-hints-section course-code-hints-racing">
               <div className="course-code-hints-label">
-                {hints.racingManual ? '🏎️ Each minimap bend' : '🏎️ Track section guide'}
+                <IconText>{hints.racingManual ? '🏎️ Each minimap bend' : '🏎️ Track section guide'}</IconText>
               </div>
               {hints.racingManual && (
                 <p className="course-code-hints-tier-note">
@@ -441,8 +473,8 @@ function paramDisplay(param, value) {
 
 export function CustomCodePanel({ robotType, scriptRef, clearRef, onBlockCountChange, onOpenLevels, activeStepIndex = -1, activeBlockUid = '', isRunning = false, starterScript = null, courseKey = '', arenaType = '', eventsFocusKey = 0, teamSize = 1, matchMode = '', footballScriptsRef = null, footballActiveRoleRef = null, footballExecBotId = null, footballSwitchRoleRef = null, challenge = null }) {
   const blockLibrary = useMemo(
-    () => getBlockLibraryForCourse(courseKey, arenaType),
-    [courseKey, arenaType],
+    () => getBlockLibraryForCourse(courseKey, arenaType, challenge?.chassisId, challenge?.fightWorld),
+    [courseKey, arenaType, challenge?.chassisId, challenge?.fightWorld],
   );
   const isFlappy = isFlappyBirdCourse(courseKey, arenaType);
   const isFighting = isFightingCourse(courseKey, arenaType);
@@ -452,10 +484,11 @@ export function CustomCodePanel({ robotType, scriptRef, clearRef, onBlockCountCh
   const paletteRobotType = isFootball ? 'footballbot' : (isRacing ? 'rover' : robotType);
   const paletteRobotGroup = getRobotGroup(paletteRobotType || 'rover');
   const [activeRole, setActiveRole] = useState('striker');
-  const [script, setScript]       = useState(() => loadStarterBlocks(starterScript));
+  // Pupils write their own code, so every mission opens with an empty program
+  const [script, setScript]       = useState([]);
   const [activeCat, setActiveCat] = useState('Movement');
   const [search, setSearch]       = useState('');
-  const [history, setHistory]     = useState(() => [loadStarterBlocks(starterScript)]);
+  const [history, setHistory]     = useState([[]]);
   const [histIdx, setHistIdx]     = useState(0);
   const [dragIdx, setDragIdx]     = useState(null);
   const [dragOver, setDragOver]   = useState(null);
@@ -463,7 +496,26 @@ export function CustomCodePanel({ robotType, scriptRef, clearRef, onBlockCountCh
   const paletteRef                = useRef(null);
   // Code is kept per robot + mission, so pupils come back to exactly what they built.
   const saveScope = `lab:${robotType || 'robot'}:${(courseKey || '').split(':')[0] || arenaType || 'lab'}`;
+  const defaultEventKey = `${saveScope}:default-event-hidden`;
+  const [showDefaultEvent, setShowDefaultEvent] = useState(() => {
+    try { return localStorage.getItem(defaultEventKey) !== '1'; } catch { return true; }
+  });
   const dirtyRef = useRef(false);
+  // Blocks or Python (Python works for the robots that use the main block set)
+  // Every robot can code in Python; the game robots use Python that fits how their game runs
+  const pythonOk = true;
+  const pythonStyle = isFlappy ? 'flappy' : isFighting ? 'fighting' : isFootball ? 'football' : blockLibrary === CRAFT_BLOCK_LIBRARY ? 'craft' : null;
+  const modeKey = `${saveScope}:code-mode`;
+  const [codeMode, setCodeModeState] = useState(() => { try { return localStorage.getItem(modeKey) === 'python' ? 'python' : 'blocks'; } catch { return 'blocks'; } });
+  const usePython = pythonOk && codeMode === 'python';
+  const usePythonRef = useRef(usePython);
+  usePythonRef.current = usePython;
+  const [pyProgram, setPyProgram] = useState({ blocks: [], code: '' });
+
+  useEffect(() => {
+    try { setShowDefaultEvent(localStorage.getItem(defaultEventKey) !== '1'); }
+    catch { setShowDefaultEvent(true); }
+  }, [defaultEventKey]);
 
   const focusEventsCategory = useCallback(() => {
     setActiveCat('Events');
@@ -473,7 +525,14 @@ export function CustomCodePanel({ robotType, scriptRef, clearRef, onBlockCountCh
     });
   }, []);
 
+  const setCodeMode = (m) => {
+    setCodeModeState(m);
+    try { localStorage.setItem(modeKey, m); } catch { /* ignore */ }
+    if (m === 'blocks') { usePythonRef.current = false; syncScriptRef(script); }
+  };
   const syncScriptRef = useCallback((next) => {
+    // In Python mode the Python program is what runs; block changes don't replace it
+    if (usePythonRef.current) return;
     if (scriptRef) scriptRef.current = next;
     if (multiRobotFootball && footballScriptsRef?.current) {
       footballScriptsRef.current[activeRole] = next;
@@ -484,11 +543,12 @@ export function CustomCodePanel({ robotType, scriptRef, clearRef, onBlockCountCh
 
   const switchFootballRole = useCallback((roleId) => {
     if (!multiRobotFootball || roleId === activeRole) return;
-    if (footballScriptsRef?.current) {
+    // In Python mode the role's program is its Python, already saved — don't overwrite it with the blocks
+    if (footballScriptsRef?.current && !usePythonRef.current) {
       footballScriptsRef.current[activeRole] = script;
       writeStoredFootballScripts(footballScriptsRef.current);
     }
-    const next = footballScriptsRef?.current?.[roleId] || loadStarterBlocks(FOOTBALL_ROLE_STARTERS[roleId]);
+    const next = footballScriptsRef?.current?.[roleId] || [];
     setActiveRole(roleId);
     syncScriptRef(next);
     setScript(next);
@@ -543,7 +603,7 @@ export function CustomCodePanel({ robotType, scriptRef, clearRef, onBlockCountCh
       const saved = stored?.[role.id];
       loaded[role.id] = Array.isArray(saved) && saved.length
         ? saved
-        : loadStarterBlocks(FOOTBALL_ROLE_STARTERS[role.id]);
+        : [];
     }
     if (footballScriptsRef) footballScriptsRef.current = loaded;
     const strikerScript = loaded.striker;
@@ -562,9 +622,10 @@ export function CustomCodePanel({ robotType, scriptRef, clearRef, onBlockCountCh
     if (loadKey === lastStarterSigRef.current) return;
     lastStarterSigRef.current = loadKey;
 
+    // Bring back the pupil's own program — but not an untouched copy of the old starter blocks
     const saved = readAutosave(saveScope);
-    const loaded = (saved || starterScript.filter((b) => b.id !== 'when_start'))
-      .map((b) => ({ ...b, _uid: uid(), paramValues: { ...(b.paramValues || {}) } }));
+    const loaded = withBlockDefs((saved && !isUntouchedStarter(saved, starterScript) ? saved : [])
+      .map((b) => ({ ...b, _uid: uid(), paramValues: { ...(b.paramValues || {}) } })), blockLibrary);
     lastCourseKeyRef.current = courseKey;
     syncScriptRef(loaded);
     setScript(loaded);
@@ -577,7 +638,7 @@ export function CustomCodePanel({ robotType, scriptRef, clearRef, onBlockCountCh
     if (multiRobotFootball || starterScript?.length) return;
     const saved = readAutosave(saveScope);
     if (!saved?.length) return;
-    const loaded = saved.map((b) => ({ ...b, _uid: uid(), paramValues: { ...(b.paramValues || {}) } }));
+    const loaded = withBlockDefs(saved.map((b) => ({ ...b, _uid: uid(), paramValues: { ...(b.paramValues || {}) } })), blockLibrary);
     syncScriptRef(loaded);
     setScript(loaded);
     setHistory([loaded]);
@@ -592,13 +653,14 @@ export function CustomCodePanel({ robotType, scriptRef, clearRef, onBlockCountCh
   }, [script, saveScope, multiRobotFootball]);
 
   // ── History ─────────────────────────────────────────────────────────────
-  const commit = useCallback((next) => {
+  const commit = useCallback((raw) => {
+    const next = withBlockDefs(raw, blockLibrary);
     dirtyRef.current = true;
     syncScriptRef(next);
     setHistory(h => [...h.slice(0, histIdx + 1), next].slice(-60));
     setHistIdx(i => i + 1);
     setScript(next);
-  }, [histIdx, syncScriptRef]);
+  }, [histIdx, syncScriptRef, blockLibrary]);
 
   const undo = useCallback(() => {
     dirtyRef.current = true;
@@ -679,7 +741,7 @@ export function CustomCodePanel({ robotType, scriptRef, clearRef, onBlockCountCh
   // ── Filtered palette ────────────────────────────────────────────────────
   // Every robot gets the universal events, except a game that lists its own
   // (Flappy Bird and Block Crafter only offer events that can happen in them)
-  const ownEvents = isFlappy || isCraftCourse(courseKey, arenaType);
+  const ownEvents = isFlappy || isRacing || isCraftCourse(courseKey, arenaType, challenge?.chassisId);
   const eventsCategory = ownEvents && blockLibrary.Events ? blockLibrary.Events : UNIVERSAL_EVENTS_CATEGORY;
   const filteredCats = useMemo(() => {
     const cats = Object.entries(blockLibrary).filter(([, cat]) => cat && Array.isArray(cat.blocks)).map(([key, cat]) => ({
@@ -776,10 +838,19 @@ export function CustomCodePanel({ robotType, scriptRef, clearRef, onBlockCountCh
 
   const isCupManual = isRacing && isCupManualTrack(arenaType, courseKey?.split(':')[0] || courseKey);
 
+  const pythonLibrary = useMemo(() => withScriptBlocks(blockLibrary, starterScript, script), [blockLibrary, starterScript, script]);
+
+  const codingObjective = useMemo(() => getCodingObjective(challenge || { id: courseKey?.split(':')[0] || courseKey, arenaType }, {
+    library: blockLibrary,
+    group: paletteRobotGroup,
+    robotType: paletteRobotType,
+    kind: isFlappy ? 'flappy' : isFighting ? 'fighting' : isFootball ? 'football' : blockLibrary === CRAFT_BLOCK_LIBRARY ? 'craft' : isRacing ? 'racing' : '',
+  }), [challenge, courseKey, arenaType, blockLibrary, paletteRobotGroup, paletteRobotType, isFlappy, isFighting, isFootball, isRacing]);
+
   return (
     <div className="scratch-panel">
       <div className="scratch-panel-banner">
-        <span className="scratch-panel-banner-icon">⚡</span>
+        <span className="scratch-panel-banner-icon"><EmojiIcon e="⚡" /></span>
         <div>
           <div className="scratch-panel-banner-title">
             {multiRobotFootball ? 'Code Your Team' : isRacing ? 'Racing Blocks' : 'Event Blocks'}
@@ -789,11 +860,17 @@ export function CustomCodePanel({ robotType, scriptRef, clearRef, onBlockCountCh
               ? 'Tap Defender, Striker or Midfielder — each tab is a different robot. Simulate runs all three.'
               : isRacing
                 ? (isCupManual
-                  ? 'Tap Code hints for Easy → Pro → Expert — then add blocks from Track & Racing tabs'
+                  ? 'Plan your lap, then add blocks from the Track & Racing tabs'
                   : 'Track tab has named turns for this circuit — Racing tab has all driving blocks')
                 : 'Click a block below to add code'}
           </div>
         </div>
+        {pythonOk && (
+          <div className="py-mode-toggle" role="tablist" aria-label="Code with blocks or Python">
+            <button type="button" role="tab" aria-selected={!usePython} className={!usePython ? 'is-on' : ''} disabled={isRunning} onClick={() => setCodeMode('blocks')}><EmojiIcon e="🧩" /> Blocks</button>
+            <button type="button" role="tab" aria-selected={usePython} className={usePython ? 'is-on' : ''} disabled={isRunning} onClick={() => setCodeMode('python')}><EmojiIcon e="🐍" /> Python</button>
+          </div>
+        )}
       </div>
       {multiRobotFootball && (
         <div className="football-role-tabs football-role-tabs--full">
@@ -806,7 +883,7 @@ export function CustomCodePanel({ robotType, scriptRef, clearRef, onBlockCountCh
               onClick={() => switchFootballRole(role.id)}
               title={`Program ${role.label} #${role.number}`}
             >
-              <span className="football-role-tab-icon">{role.icon}</span>
+              <span className="football-role-tab-icon"><EmojiIcon e={role.icon} /></span>
               <span className="football-role-tab-label">{role.label}</span>
               <span className="football-role-tab-num">#{role.number}</span>
             </button>
@@ -819,7 +896,36 @@ export function CustomCodePanel({ robotType, scriptRef, clearRef, onBlockCountCh
           {activeRole === 'striker' ? ' — your robot. Simulate runs all 3.' : ' — Simulate runs the whole team'}
         </div>
       )}
-      <CourseCodeHintsPanel hints={codeHints} />
+      <CodingObjectiveCard
+        objective={codingObjective}
+        blocks={usePython ? pyProgram.blocks : script}
+        python={pyProgram.code}
+        usePython={usePython}
+        isRunning={isRunning}
+      />
+      {usePython ? (
+        <PythonCodePane
+          library={pythonLibrary}
+          group={paletteRobotGroup}
+          robotType={paletteRobotType}
+          key={multiRobotFootball ? activeRole : 'one'}
+          style={pythonStyle}
+          blocksScript={script}
+          saveKey={`${saveScope}:python${multiRobotFootball ? `:${activeRole}` : ''}`}
+          activeBlockUid={activeBlockUid}
+          isRunning={isRunning}
+          onProgram={(blocks, code) => {
+            setPyProgram({ blocks: blocks || [], code: code || '' });
+            if (!blocks) return;
+            if (scriptRef) scriptRef.current = blocks;
+            if (multiRobotFootball && footballScriptsRef?.current) {
+              footballScriptsRef.current[activeRole] = blocks;
+              writeStoredFootballScripts(footballScriptsRef.current);
+            }
+            onBlockCountChange?.(blocks.length);
+          }}
+        />
+      ) : (
       <div className="scratch-panel-body">
       {/* ══ LEFT: CATEGORY RAIL ════════════════════════════════════════════ */}
       <nav className="scratch-cat-rail">
@@ -841,7 +947,7 @@ export function CustomCodePanel({ robotType, scriptRef, clearRef, onBlockCountCh
               onClick={() => { setActiveCat(key); setSearch(''); if (key === 'Events') focusEventsCategory(); }}
               title={cat.label}
             >
-              <span className="scratch-cat-icon">{cat.icon}</span>
+              <span className="scratch-cat-icon"><EmojiIcon e={cat.icon} /></span>
               <span className="scratch-cat-label">{cat.label}</span>
             </button>
           );
@@ -851,7 +957,7 @@ export function CustomCodePanel({ robotType, scriptRef, clearRef, onBlockCountCh
       {/* ══ CENTER: BLOCK PALETTE ══════════════════════════════════════════ */}
       <div className="scratch-palette" ref={paletteRef}>
         <div className="scratch-search-wrap">
-          <span className="scratch-search-icon">🔍</span>
+          <span className="scratch-search-icon"><Icon name="magnifying-glass" /></span>
           <input
             type="text"
             className="scratch-search"
@@ -863,7 +969,7 @@ export function CustomCodePanel({ robotType, scriptRef, clearRef, onBlockCountCh
         </div>
         {!search && (
           <div className="scratch-pal-header" style={{ '--cat-c': blockLibrary[activeCat]?.color || '#555' }}>
-            <span>{blockLibrary[activeCat]?.icon}</span>
+            <EmojiIcon e={blockLibrary[activeCat]?.icon} />
             <span>{blockLibrary[activeCat]?.label || activeCat}</span>
           </div>
         )}
@@ -883,7 +989,7 @@ export function CustomCodePanel({ robotType, scriptRef, clearRef, onBlockCountCh
               title={block.robotGroups ? `${block.robotGroups[0]} only` : ''}
             >
               <span className="scratch-pal-block-row">
-                <span className="scratch-blk-icon">{block.icon}</span>
+                <span className="scratch-blk-icon"><EmojiIcon e={block.icon} /></span>
                 <span className="scratch-blk-text">{block.label}</span>
                 {block.params?.length > 0 && (
                   <span className="scratch-blk-param">
@@ -905,10 +1011,10 @@ export function CustomCodePanel({ robotType, scriptRef, clearRef, onBlockCountCh
           <div className="football-solo-hint">Your code controls your footballer</div>
         )}
         <div className="scratch-ws-toolbar">
-          <button className="scratch-tool-btn" onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)">↩</button>
-          <button className="scratch-tool-btn" onClick={redo} disabled={!canRedo} title="Redo (Ctrl+Y)">↪</button>
+          <button className="scratch-tool-btn" onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)"><Icon name="arrow-u-up-left" /></button>
+          <button className="scratch-tool-btn" onClick={redo} disabled={!canRedo} title="Redo (Ctrl+Y)"><Icon name="arrow-u-up-right" /></button>
           {script.length > 0 && (
-            <button className="scratch-tool-btn scratch-clear-btn" onClick={() => commit([])} title="Clear all">🗑️</button>
+            <button className="scratch-tool-btn scratch-clear-btn" onClick={() => commit([])} title="Clear all"><Icon name="trash" /></button>
           )}
           {!multiRobotFootball && (
             <SavedCodeMenu
@@ -921,27 +1027,70 @@ export function CustomCodePanel({ robotType, scriptRef, clearRef, onBlockCountCh
           )}
           <div className="scratch-ws-spacer" />
           <span className="scratch-block-count">{script.length} block{script.length !== 1 ? 's' : ''}</span>
-          <button className="scratch-mission-btn" onClick={onOpenLevels} title="Choose mission">🎮 Mission</button>
+          <button className="scratch-mission-btn" onClick={onOpenLevels} title="Choose mission"><Icon name="game-controller" style={{ marginRight: 6 }} />Mission</button>
         </div>
 
         <div className="scratch-ws-canvas" ref={workspaceRef} onDragOver={e => e.preventDefault()}>
-          <div className="scratch-anchor-block">
-            <span className="scratch-blk-icon">{codeHints?.eventBlock === 'when_spacebar' ? '⌨️' : '▶️'}</span>
-            <span className="scratch-blk-text">
-              {codeHints?.eventLabel || (isFlappy ? 'When spacebar clicked' : 'When START clicked')}
-            </span>
-          </div>
+          {/* The script's first event. Any Events block can start a program: pick one here,
+              or put an event block at the top yourself (then this fixed START block steps aside). */}
+          {showDefaultEvent && !(script.length && isEventHatBlock(script[0].id)) && (
+            <div className="scratch-anchor-block">
+              <span className="scratch-blk-icon"><Icon name={codeHints?.eventBlock === 'when_spacebar' ? 'keyboard' : 'play'} /></span>
+              {!isFlappy && !isFootball && blockLibrary.Events?.blocks?.length ? (
+                // The label is ordinary text (so it can wrap in a narrow panel); the event list sits invisibly on top
+                <label className="scratch-anchor-picker">
+                <span className="scratch-blk-text">When START clicked</span>
+                <span className="scratch-anchor-caret" aria-hidden="true">▾</span>
+                <select
+                  className="scratch-anchor-select"
+                  value="when_start"
+                  title="Choose which event starts this script"
+                  aria-label="Choose which event starts this script"
+                  disabled={isRunning}
+                  onChange={(e) => {
+                    const ev = blockLibrary.Events.blocks.find((x) => x.id === e.target.value);
+                    if (!ev || ev.id === 'when_start') return;
+                    const params = {};
+                    (ev.params || []).forEach((pp) => { params[pp.key] = pp.type === 'dropdown' ? (pp.def ?? pp.options?.[0]?.[1] ?? '') : (pp.def ?? 0); });
+                    commit([{ ...ev, catKey: 'Events', _uid: uid(), paramValues: params }, ...script]);
+                  }}
+                >
+                  {blockLibrary.Events.blocks.map((ev) => (
+                    <option key={ev.id} value={ev.id}>{ev.label}</option>
+                  ))}
+                </select>
+                </label>
+              ) : (
+                <span className="scratch-blk-text">
+                  {codeHints?.eventLabel || (isFlappy ? 'When spacebar clicked' : 'When START clicked')}
+                </span>
+              )}
+              <button
+                type="button"
+                className="scratch-anchor-delete"
+                title="Delete start event"
+                aria-label="Delete start event"
+                disabled={isRunning}
+                onClick={() => {
+                  setShowDefaultEvent(false);
+                  try { localStorage.setItem(defaultEventKey, '1'); } catch { /* ignore */ }
+                }}
+              >
+                ✕
+              </button>
+            </div>
+          )}
 
           {script.length === 0 ? (
             <div className="scratch-ws-empty">
-              <div className="scratch-ws-empty-arrow">⬇</div>
+              <div className="scratch-ws-empty-arrow"><EmojiIcon e="⬇" /></div>
               <div className="scratch-ws-empty-txt">
                 {courseKey === 'flappy_bird'
                   ? 'Add When spacebar clicked, then put Flap! underneath — press Simulate, then hit spacebar!'
                   : isFootball
                     ? multiRobotFootball
-                      ? `Program your ${FOOTBALL_TEAM_ROLES.find((r) => r.id === activeRole)?.label || 'robot'} — starter blocks load automatically`
-                      : 'Starter blocks load automatically — add Football blocks below When START clicked'
+                      ? `Program your ${FOOTBALL_TEAM_ROLES.find((r) => r.id === activeRole)?.label || 'robot'} — click Football blocks on the left to build its plan`
+                      : 'Click Football blocks on the left to add them under When START clicked'
                     : 'Click a block on the left to add it here'}
               </div>
             </div>
@@ -971,7 +1120,7 @@ export function CustomCodePanel({ robotType, scriptRef, clearRef, onBlockCountCh
                   >
                     <div className="scratch-script-grip">⠿</div>
                     <div className="scratch-script-body">
-                      <span className="scratch-blk-icon">{blk.icon}</span>
+                      <span className="scratch-blk-icon"><EmojiIcon e={blk.icon} /></span>
                       <span className="scratch-blk-text">{blk.label}</span>
                       {(blk.params || []).map(p => (
                         p.type === 'dropdown' ? (
@@ -1019,12 +1168,20 @@ export function CustomCodePanel({ robotType, scriptRef, clearRef, onBlockCountCh
               onDragLeave={e => e.currentTarget.classList.remove('active')}
               onDrop={e => { e.preventDefault(); e.currentTarget.classList.remove('active'); if (dragIdx !== null) removeBlock(script[dragIdx]._uid); setDragIdx(null); }}
             >
-              🗑️ Drop here to delete
+              <EmojiIcon e="🗑️" style={{ marginRight: '0.35em' }} />Drop here to delete
             </div>
+          )}
+          {pythonOk && script.length > 0 && (
+            <details className="py-preview">
+              <summary><EmojiIcon e="🐍" /> See my blocks as Python</summary>
+              <pre>{blocksToPython(script, pythonLibrary, { group: paletteRobotGroup, robotType: paletteRobotType, style: pythonStyle })}</pre>
+              <button type="button" className="py-pane-btn" onClick={() => setCodeMode('python')}>Switch to Python →</button>
+            </details>
           )}
         </div>
       </div>
       </div>
+      )}
     </div>
   );
 }
@@ -1040,7 +1197,7 @@ export function CodePanel({ children, onOpenLevels, blockCount, onClear }) {
         </span>
         <div className="bb-sidebar-head-actions">
           {blockCount > 0 && <button type="button" className="bb-sidebar-clear-btn" onClick={onClear}>✕</button>}
-          <button type="button" className="bb-sidebar-level-btn" onClick={onOpenLevels}>🎮</button>
+          <button type="button" className="bb-sidebar-level-btn" onClick={onOpenLevels}><EmojiIcon e="🎮" /></button>
         </div>
       </div>
       <div className="bb-sidebar-workspace">{children}</div>
@@ -1154,6 +1311,8 @@ export function MissionControlPanel({ challenge, profile, robotConfig, stats, ro
     [challenge, stats, zoneInfo],
   );
   const missionAction = useMemo(() => getMissionAction(challenge), [challenge]);
+  const learningRobotId = challenge?.chassisId || challenge?.robotType || robotConfig?.chassisId || robotConfig?.type;
+  const learningFrame = challenge?.learningGoal || (learningRobotId ? getRobotLearningFrame(learningRobotId) : null);
 
   const toObjText = (o) => (typeof o === 'string' ? o : (o?.label || o?.text || ''));
   const primaryObj = toObjText(objectives[0]) || challenge?.winCondition || 'Reach the goal zone';
@@ -1194,9 +1353,17 @@ export function MissionControlPanel({ challenge, profile, robotConfig, stats, ro
 
       {missionAction && (
         <div className="mcp-v2-action-hint">
-          <span className="mcp-v2-action-ico">{missionAction.icon}</span>
+          <span className="mcp-v2-action-ico"><EmojiIcon e={missionAction.icon} /></span>
           <span>Use <b>{missionAction.label}</b> at each glowing marker</span>
         </div>
+      )}
+
+      {learningFrame && (
+        <button type="button" className="mcp-v2-learning-summary" onClick={() => setExpanded(e => !e)} aria-expanded={expanded}>
+          <span aria-hidden="true"><EmojiIcon e="🎓" /></span>
+          <span>Learn · {learningFrame.concept}</span>
+          <span className="mcp-v2-learning-chevron" aria-hidden="true">{expanded ? '⌃' : '⌄'}</span>
+        </button>
       )}
 
       {!compact && (
@@ -1207,7 +1374,7 @@ export function MissionControlPanel({ challenge, profile, robotConfig, stats, ro
           const done = isSubObjectiveMet(o, { stats, zoneInfo, challenge, totalZones, zonesDone });
           return (
           <li key={i} className={`mcp-v2-subobj${done ? ' done' : ''}`}>
-            <span className="mcp-v2-subobj-icon">{done ? '✅' : subObjIcons[i] || '○'}</span>
+            <span className="mcp-v2-subobj-icon"><IconText>{done ? '✅' : subObjIcons[i] || '○'}</IconText></span>
             <span className="mcp-v2-subobj-text">{o}</span>
           </li>
           );
@@ -1228,6 +1395,12 @@ export function MissionControlPanel({ challenge, profile, robotConfig, stats, ro
       {/* Expanded detail section */}
       {!compact && expanded && (
         <div className="mcp-expanded">
+          {learningFrame && (
+            <div className="mcp-v2-learning mcp-v2-learning--detail">
+              <span className="mcp-v2-learning-icon" aria-hidden="true"><EmojiIcon e="🎓" /></span>
+              <span><b>What you’re learning · {learningFrame.concept}</b><br />{learningFrame.goal}{learningFrame.question && <><br /><i>Think: {learningFrame.question}</i></>}</span>
+            </div>
+          )}
           {(story?.story || challenge?.desc) && (
             <div className="mcp-story-block">
               <div className="mcp-story-label">STORY</div>
@@ -1236,20 +1409,20 @@ export function MissionControlPanel({ challenge, profile, robotConfig, stats, ro
           )}
           <div className="mcp-stats-row">
             <div className="mcp-stat-chip">
-              <span>🔋</span>
+              <span><EmojiIcon e="🔋" /></span>
               <span style={{ color: stats.battery > 40 ? '#4ade80' : '#fbbf24' }}>{Math.round(stats.battery)}%</span>
             </div>
             <div className="mcp-stat-chip">
-              <span>💎</span>
+              <span><EmojiIcon e="💎" /></span>
               <span style={{ color: '#fbbf24' }}>{stats.collected || 0}</span>
             </div>
             <div className="mcp-stat-chip">
-              <span>📏</span>
+              <span><EmojiIcon e="📏" /></span>
               <span>{(stats.dist || 0).toFixed(1)}m</span>
             </div>
           </div>
           {(story?.tip || challenge?.codeHint) && (
-            <div className="mcp-tip">💡 {story?.tip || challenge?.codeHint}</div>
+            <div className="mcp-tip"><EmojiIcon e="💡" style={{ marginRight: '0.35em' }} />{story?.tip || challenge?.codeHint}</div>
           )}
           {onEndMission && (
             <button type="button" className="mcp-end-btn" onClick={onEndMission}>End Mission</button>
@@ -1283,7 +1456,7 @@ export function StatsBar({ stats, zoneInfo, challenge, arenaType, isRunning, fps
         </div>
         <div className="bb-fhud-sep" />
         <div className="bb-fhud-stat">
-          <span className="bb-fhud-icon">🏆</span>
+          <span className="bb-fhud-icon"><EmojiIcon e="🏆" /></span>
           <span className="bb-fhud-val" style={{ color: '#ffd700' }}>{best}</span>
           <span className="bb-fhud-lbl">Best</span>
         </div>
@@ -1338,25 +1511,25 @@ export function StatsBar({ stats, zoneInfo, challenge, arenaType, isRunning, fps
   return (
     <div className="bb-float-hud">
       <div className="bb-fhud-stat">
-        <span className="bb-fhud-icon">🔋</span>
+        <span className="bb-fhud-icon"><EmojiIcon e="🔋" /></span>
         <span className="bb-fhud-val" style={{ color: battColor }}>{Math.round(stats.battery)}%</span>
         <span className="bb-fhud-lbl">Battery</span>
       </div>
       <div className="bb-fhud-sep" />
       <div className="bb-fhud-stat">
-        <span className="bb-fhud-icon">💎</span>
+        <span className="bb-fhud-icon"><EmojiIcon e="💎" /></span>
         <span className="bb-fhud-val" style={{ color: '#fbbf24' }}>{coins}</span>
         <span className="bb-fhud-lbl">Coins</span>
       </div>
       <div className="bb-fhud-sep" />
       <div className="bb-fhud-stat">
-        <span className="bb-fhud-icon">🔄</span>
+        <span className="bb-fhud-icon"><EmojiIcon e="🔄" /></span>
         <span className="bb-fhud-val">{speed}</span>
         <span className="bb-fhud-lbl">m/s</span>
       </div>
       <div className="bb-fhud-sep" />
       <div className="bb-fhud-stat">
-        <span className="bb-fhud-icon">🗺️</span>
+        <span className="bb-fhud-icon"><EmojiIcon e="🗺️" /></span>
         <span className="bb-fhud-val">{currentZone > 0 ? currentZone : '—'}</span>
         <span className="bb-fhud-lbl">/ {totalZones}</span>
       </div>
@@ -1381,20 +1554,20 @@ export function ChallengeMedalBar({ challenge, stats }) {
   if (!open) {
     return (
       <button type="button" className="cmb-badge" onClick={() => setOpen(true)} title="Challenge Mode">
-        🏆 {earnedCount}/{entries.length}
+        <EmojiIcon e="🏆" style={{ marginRight: '0.35em' }} />{earnedCount}/{entries.length}
       </button>
     );
   }
 
   return (
     <div className="cmb-bar">
-      <span className="cmb-label">🏆 Challenge Mode</span>
+      <span className="cmb-label"><EmojiIcon e="🏆" style={{ marginRight: '0.35em' }} />Challenge Mode</span>
       {entries.map(([tier, meta]) => {
         const m = medals[tier];
         const earned = !!m.check?.(stats);
         return (
           <div key={tier} className={`cmb-card${earned ? ' cmb-earned' : ''}`} style={earned ? { borderColor: meta.color } : undefined}>
-            <span className="cmb-icon">{meta.icon}</span>
+            <span className="cmb-icon"><EmojiIcon e={meta.icon} /></span>
             <div className="cmb-text">
               <span className="cmb-tier" style={{ color: meta.color }}>{tier[0].toUpperCase() + tier.slice(1)}</span>
               <span className="cmb-goal">{m.label}</span>
@@ -1469,7 +1642,7 @@ const WORLD_SECTIONS = {
 };
 
 /** Rich hero card — same layout as Story World missions (racing-parity) */
-function MissionHeroCard({ course, robotName, gradient, metaColor, isSel, onSelect, onClose }) {
+function MissionHeroCard({ course, robotName, robotType, chassisId, gradient, metaColor, isSel, onSelect, onClose }) {
   const best = course.isRobotMission
     ? (RobotMissionProgress.getMission(robotName || 'Robot', course.robotMissionId || course.id).xpEarned || 0)
     : GameProgress.getBest(robotName || 'Robot', course.id);
@@ -1480,7 +1653,14 @@ function MissionHeroCard({ course, robotName, gradient, metaColor, isSel, onSele
   const isSecurityBot = !course.arenaBible && (course.chassisId === 'securitybot' || course.exclusive === 'securitybot');
   const securityArena = isSecurityBot ? getSecurityBotArena(course.modeIndex || course.modeSpec?.modeNumber) : null;
   const studioArena = course.chassisId ? getPrimaryStudioArena(course.chassisId, course.modeIndex || 1) : null;
+  const learningRobotId = course.chassisId || course.exclusive || course.robotType || robotType || chassisId;
+  const learningFrame = course.learningGoal || (learningRobotId ? getRobotLearningFrame(learningRobotId) : null);
+  const learningGoal = learningFrame && (studioArena && course.arenaBible
+    ? `${learningFrame.goal} ${studioArena.objective}`
+    : learningFrame.goal);
   const displayTitle = kidSafeText(securityArena?.title || course.environmentName || course.name);
+  const codingObjective = getCodingObjective(course);
+  const isCraftCard = isCraftCourse(course.id, course.arenaType) || course.chassisId === 'blockbot';
   const displayStory = kidSafeText([
     course.difficulty,
     course.skillLearned ? `Learn ${course.skillLearned}` : null,
@@ -1493,25 +1673,52 @@ function MissionHeroCard({ course, robotName, gradient, metaColor, isSel, onSele
       style={{ '--mc': course.color || metaColor }}
       onClick={() => { onSelect(course); onClose(); }}
     >
-      <div className="gls-mc-hero" style={{ background: heroBg }}>
-        {course.arenaBible && studioArena
-          ? <PrimaryArenaThumbnail arena={studioArena} />
-          : <span className="gls-mc-icon">{securityArena?.emoji || course.environmentEmoji || studioArena?.emoji || course.icon}</span>}
-        {isSel && <span className="gls-mc-playing">▶ PLAYING</span>}
-        {course.isGameMission && <span className="bb-level-featured gls-mc-badge">🎮 GAME BUILD</span>}
-        {course.isRobotMission && <span className="bb-level-featured gls-mc-badge">📋 CAMPAIGN</span>}
-        {course.isFlagship && <span className="bb-level-featured gls-mc-badge">🎓 FLAGSHIP</span>}
+      <div className="gls-mc-hero gls-mc-hero--preview" style={{ background: heroBg }}>
+        {course.thumbnailKind === 'jumpbot'
+          ? <JumpBotLevelPreview mode={course.modeIndex || 1} />
+          : isCraftCard
+          ? <CraftArenaThumbnail mode={course.modeIndex || 1} title={displayTitle} />
+          : (
+            <ArenaPreviewImage
+              course={course}
+              title={displayTitle}
+              fallback={course.arenaBible && studioArena
+                ? <PrimaryArenaThumbnail arena={studioArena} />
+                : <span className="gls-mc-icon">{securityArena?.emoji || course.environmentEmoji || studioArena?.emoji || course.icon}</span>}
+            />
+          )}
+        {isSel && <span className="gls-mc-playing"><EmojiIcon e="▶" style={{ marginRight: '0.35em' }} />PLAYING</span>}
+        {course.isGameMission && <span className="bb-level-featured gls-mc-badge"><EmojiIcon e="🎮" style={{ marginRight: '0.35em' }} />GAME BUILD</span>}
+        {course.isRobotMission && <span className="bb-level-featured gls-mc-badge"><EmojiIcon e="📋" style={{ marginRight: '0.35em' }} />CAMPAIGN</span>}
+        {course.isFlagship && <span className="bb-level-featured gls-mc-badge"><EmojiIcon e="🎓" style={{ marginRight: '0.35em' }} />FLAGSHIP</span>}
         <span className="gls-genre-badge" style={{ background: genre.color }}>
-          {genre.icon} {kidSafeText(genre.label)}
+          <EmojiIcon e={genre.icon} style={{ marginRight: '0.35em' }} />{kidSafeText(genre.label)}
         </span>
       </div>
       <div className="gls-mc-body">
         <div className="gls-mc-env" style={{ fontSize: 11, fontWeight: 800, color: metaColor || course.color, letterSpacing: '0.04em' }}>
-          {course.displayRobotName || robotName} · Mode {course.modeIndex || 1}
+          {course.cardLabel || `${course.displayRobotName || robotName} · Mode ${course.modeIndex || 1}`}
         </div>
         <div className="gls-mc-name">{displayTitle}</div>
         <div className="gls-mc-story">{kidSafeText(course.desc)}</div>
         <div className="gls-mc-story">{displayStory}</div>
+        {learningFrame && (
+          <div className="gls-mc-learning">
+            <span aria-hidden="true"><EmojiIcon e="🎓" /></span>
+            <span>
+              <b>Learn · {learningFrame.concept}</b>
+              {codingObjective ? (
+                <>
+                  <span className="gls-mc-objective" style={{ display: 'block' }}>
+                    <EmojiIcon e="🎯" /> <b>Coding objective · {codingObjective.concept} · {codingObjective.level}</b> ({codingObjective.checks.length} goals)
+                  </span>
+                  <span style={{ display: 'block' }}>{kidSafeText(codingObjective.headline || codingObjective.ican)}</span>
+                  <i>{codingObjective.ican}</i>
+                </>
+              ) : <><br />{kidSafeText(learningGoal)}</>}
+            </span>
+          </div>
+        )}
         {course.recommendedBlocks && (
           <div className="gls-mc-systems">
             <span className="gls-sys-label">Try:</span>
@@ -1519,11 +1726,11 @@ function MissionHeroCard({ course, robotName, gradient, metaColor, isSel, onSele
           </div>
         )}
         <div className="gls-mc-foot">
-          <span className="gls-mc-zones">🎯 {course.difficulty || 'Easy'}</span>
+          <span className="gls-mc-zones"><EmojiIcon e="🎯" style={{ marginRight: '0.35em' }} />{course.difficulty || 'Easy'}</span>
           {course.estMinutes && <span className="gls-mc-time">⏱ ~{course.estMinutes} min</span>}
           {designerXp > 0
-            ? <span className="gls-mc-xp">🎮 {designerXp} Designer XP</span>
-            : <span className="gls-mc-new">✨ NEW</span>}
+            ? <span className="gls-mc-xp"><EmojiIcon e="🎮" style={{ marginRight: '0.35em' }} />{designerXp} Designer XP</span>
+            : <span className="gls-mc-new"><EmojiIcon e="✨" style={{ marginRight: '0.35em' }} />NEW</span>}
         </div>
       </div>
     </button>
@@ -1532,6 +1739,8 @@ function MissionHeroCard({ course, robotName, gradient, metaColor, isSel, onSele
 
 export function GameLevelSelect({ courses, currentId, robotName, robotType, chassisId, currentArenaType, strictChassisModes, onSelect, onSelectBiomeTrack, onClose }) {
   const [search, setSearch] = useState('');
+  // Stop drawing card snapshots once the picker closes, so the chosen level loads at full speed
+  useEffect(() => () => cancelArenaPreviews(), []);
   const [filter, setFilter] = useState('all');
 
   const campaignZoneWorlds = useMemo(() => (strictChassisModes ? [] : getCampaignZoneWorlds(robotType || 'rover')), [robotType, strictChassisModes]);
@@ -1546,7 +1755,8 @@ export function GameLevelSelect({ courses, currentId, robotName, robotType, chas
   const matchesCourse = (c) => {
     if (filter !== 'all') {
       const catalogDiff = c.difficulty || '';
-      const bucket = catalogDiff.includes('Tutorial') || catalogDiff === 'Easy' ? 'Easy'
+      const bucket = catalogDiff === 'Advanced' ? 'Advanced'
+        : catalogDiff.includes('Tutorial') || catalogDiff === 'Easy' ? 'Easy'
         : catalogDiff === 'Medium' ? 'Medium'
         : catalogDiff === 'Hard' || catalogDiff === 'Expert' ? 'Hard'
         : (c.totalDist > 40 ? 'Hard' : c.totalDist > 25 ? 'Medium' : 'Easy');
@@ -1566,6 +1776,8 @@ export function GameLevelSelect({ courses, currentId, robotName, robotType, chas
 
   // Build all-courses flat list for search mode
   const allFlat = useMemo(() => courses.filter(matchesCourse), [courses, search, filter]);
+  // Labels of the car track tiles, so bonus races don't repeat a track that is already a mode
+  const carTrackLabels = useMemo(() => new Set(CAR_KID_TRACK_TILES.map((t) => t.label)), []);
 
   // Non-campaign, non-story-world courses grouped by WORLD_SECTIONS category
   const catalogSections = useMemo(() => {
@@ -1588,6 +1800,8 @@ export function GameLevelSelect({ courses, currentId, robotName, robotType, chas
       key={course.id}
       course={course}
       robotName={robotName}
+      robotType={robotType}
+      chassisId={chassisId}
       gradient={gradient || worldArt(course).bg}
       metaColor={metaColor || course.color}
       isSel={course.id === currentId}
@@ -1598,7 +1812,7 @@ export function GameLevelSelect({ courses, currentId, robotName, robotType, chas
 
   const SectionHead = ({ icon, title, subtitle, color }) => (
     <div className="gls-sec-head" style={{ '--sh': color || '#7c3aed' }}>
-      <span className="gls-sec-icon">{icon}</span>
+      <span className="gls-sec-icon"><EmojiIcon e={icon} /></span>
       <div>
         <h2 className="gls-sec-title">{title}</h2>
         {subtitle && <p className="gls-sec-sub">{subtitle}</p>}
@@ -1613,14 +1827,14 @@ export function GameLevelSelect({ courses, currentId, robotName, robotType, chas
         {/* ── Header ── */}
         <header className="gls-header">
           <div className="gls-header-left">
-            <span className="gls-title">🎮 Choose Mission</span>
+            <span className="gls-title"><EmojiIcon e="🎮" style={{ marginRight: '0.35em' }} />Choose Mission</span>
             <span className="gls-sub">
               {getPrimaryRobotDisplay(chassisId).emoji} {getPrimaryRobotDisplay(chassisId).name} · {courses.length} arenas for {getPrimaryRobotDisplay(chassisId).name}
             </span>
           </div>
           <div className="gls-header-right">
             <div className="gls-search-wrap">
-              <span className="gls-search-icon">🔍</span>
+              <span className="gls-search-icon"><EmojiIcon e="🔍" /></span>
               <input
                 className="gls-search"
                 type="text"
@@ -1630,7 +1844,7 @@ export function GameLevelSelect({ courses, currentId, robotName, robotType, chas
               />
               {search && <button type="button" className="gls-search-clear" onClick={() => setSearch('')}>×</button>}
             </div>
-            {['all','Easy','Medium','Hard'].map(d => (
+            {['all','Easy','Medium','Hard','Advanced'].map(d => (
               <button key={d} type="button" className={`gls-filter-btn${filter === d ? ' active' : ''}`} onClick={() => setFilter(d)}>{d}</button>
             ))}
             <button type="button" className="gls-close" onClick={onClose}>✕ Back to Code</button>
@@ -1647,7 +1861,7 @@ export function GameLevelSelect({ courses, currentId, robotName, robotType, chas
               ) : (
                 <>
                   <div className="gls-sec-head" style={{ '--sh': '#7c3aed' }}>
-                    <span className="gls-sec-icon">🔍</span>
+                    <span className="gls-sec-icon"><EmojiIcon e="🔍" /></span>
                     <div>
                       <h2 className="gls-sec-title">Search Results</h2>
                       <p className="gls-sec-sub">{allFlat.length} mission{allFlat.length !== 1 ? 's' : ''} found</p>
@@ -1667,28 +1881,59 @@ export function GameLevelSelect({ courses, currentId, robotName, robotType, chas
                     currentArenaType={currentArenaType}
                     onSelectCourse={(course) => { onSelect(course); onClose(); }}
                   />
-                  <SectionHead
-                    icon="🧩"
-                    title="Coding missions"
-                    subtitle="Each mode teaches one block idea on its track"
-                    color="#7c3aed"
-                  />
-                  <div className="gls-card-grid gls-card-grid--compact">
-                    {courses.map((c, i) => renderCard(
-                      {
-                        ...c,
-                        icon: c.icon || c.environmentEmoji || '🏁',
-                        name: c.raceTrackLabel || c.name,
-                        environmentName: c.raceTrackLabel || c.environmentName,
-                        tagline: [
-                          `Mode ${c.modeIndex || i + 1}`,
-                          c.difficulty ? `${c.difficulty}` : null,
-                          c.tryThis || c.desc || c.tagline,
-                        ].filter(Boolean).join(' · '),
-                        shortName: c.raceTrackLabel || c.shortName || `Mode ${i + 1}`,
-                      },
-                    ))}
-                  </div>
+                  {/* Modes 11–50: new races, grouped by difficulty */}
+                  {['Easy', 'Medium', 'Hard', 'Advanced'].map((tier) => {
+                    const races = courses.filter((c) => (c.modeIndex || 0) > 10 && c.difficulty === tier);
+                    if (!races.length) return null;
+                    return (
+                      <React.Fragment key={tier}>
+                        <SectionHead
+                          icon={{ Easy: '🟢', Medium: '🟡', Hard: '🟠', Advanced: '🔴' }[tier]}
+                          title={`${tier} races`}
+                          subtitle={tier === 'Advanced' ? 'Classic circuits at full speed, with less driving help' : `New tracks · ${{ Easy: 'gentle loops, 1 lap', Medium: 'S-bends, 2 laps', Hard: 'hairpins, 3 laps' }[tier]}`}
+                          color={{ Easy: '#22c55e', Medium: '#eab308', Hard: '#f97316', Advanced: '#ef4444' }[tier]}
+                        />
+                        <div className="gls-card-grid gls-card-grid--compact" style={{ marginBottom: 12 }}>
+                          {races.map((c) => renderCard({ ...c, name: c.name, tagline: `Mode ${c.modeIndex} · ${c.desc}` }))}
+                        </div>
+                      </React.Fragment>
+                    );
+                  })}
+                  {onSelectBiomeTrack && (
+                    <SectionHead
+                      icon="🛸"
+                      title="Bonus races"
+                      subtitle="Extra space circuits to race once you've tried the main tracks"
+                      color="#7c3aed"
+                    />
+                  )}
+                  {onSelectBiomeTrack && (
+                    <div className="gls-card-grid gls-card-grid--compact" style={{ marginBottom: 12 }}>
+                      {/* The track grid above already lists every mode — skip bonus tracks it shows */}
+                      {COSMIC_SKYWAY_UI_TRACKS.filter((t) => !carTrackLabels.has(t.label)).map((t) => (
+                        <button
+                          key={t.arenaType}
+                          type="button"
+                          className={`gls-mission-card${currentArenaType === t.arenaType ? ' playing' : ''}`}
+                          style={{ '--mc': t.color }}
+                          onClick={() => { onSelectBiomeTrack({ arenaType: t.arenaType }); onClose(); }}
+                        >
+                          <div className="gls-mc-hero gls-mc-hero--preview" style={{ background: t.cardGradient }}>
+                            <ArenaPreviewImage
+                              course={{ id: t.arenaType, arenaType: t.arenaType, name: t.label }}
+                              title={t.label}
+                              fallback={<span className="gls-mc-icon">{t.emoji}</span>}
+                            />
+                            {currentArenaType === t.arenaType && <span className="gls-mc-playing"><EmojiIcon e="▶" style={{ marginRight: '0.35em' }} />PLAYING</span>}
+                          </div>
+                          <div className="gls-mc-body">
+                            <div className="gls-mc-name">{t.label}</div>
+                            <div className="gls-mc-story">Bonus race · {t.story}</div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </section>
               ) : (
                 <section className="gls-section">
@@ -1699,7 +1944,7 @@ export function GameLevelSelect({ courses, currentId, robotName, robotType, chas
                     color="#7c3aed"
                   />
                   <div className="gls-card-grid">
-                    {courses.map((c, i) => renderCard(
+                    <IconText>{courses.map((c, i) => renderCard(
                       c.chassisId === 'securitybot' || c.exclusive === 'securitybot'
                         ? { ...c, icon: c.environmentEmoji || c.icon || '👮' }
                         : {
@@ -1714,8 +1959,45 @@ export function GameLevelSelect({ courses, currentId, robotName, robotType, chas
                           ].filter(Boolean).join(' · '),
                           shortName: c.raceTrackLabel || c.shortName || `Mode ${i + 1}`,
                         },
-                    ))}
+                    ))}</IconText>
                   </div>
+                  {isCarChassis(chassisId) && onSelectBiomeTrack && (
+                    <>
+                      <SectionHead
+                        icon="🛸"
+                        title="Cosmic race tracks"
+                        subtitle="11 space race tracks — scroll down to find them all"
+                        color="#aa44ff"
+                      />
+                      <div className="gls-card-grid gls-card-grid--compact">
+                        {COSMIC_SKYWAY_UI_TRACKS.map((t, i) => (
+                          <MissionHeroCard
+                            key={t.arenaType}
+                            robotName={robotName}
+                            robotType={robotType}
+                            chassisId={chassisId}
+                            gradient={t.cardGradient}
+                            metaColor={t.color}
+                            isSel={currentArenaType === t.arenaType}
+                            onSelect={() => onSelectBiomeTrack({ arenaType: t.arenaType })}
+                            onClose={onClose}
+                            course={{
+                              id: t.arenaType,
+                              arenaType: t.arenaType,
+                              icon: t.emoji,
+                              name: t.label,
+                              environmentName: t.label,
+                              shortName: t.label,
+                              color: t.color,
+                              tagline: t.story,
+                              cardLabel: `${robotName} · Space track ${i + 1} of ${COSMIC_SKYWAY_UI_TRACKS.length}`,
+                              difficulty: t.arenaType === 'cosmic_event_horizon_11' ? 'Expert' : 'Hard',
+                            }}
+                          />
+                        ))}
+                      </div>
+                    </>
+                  )}
                 </section>
               )}
             </>
@@ -1743,7 +2025,7 @@ export function GameLevelSelect({ courses, currentId, robotName, robotType, chas
                       return (
                         <div key={zoneId} className="gls-zone-block">
                           <div className="gls-zone-label" style={{ '--wc': meta.color }}>
-                            <span>{meta.icon}</span>
+                            <span><EmojiIcon e={meta.icon} /></span>
                             <span className="gls-zone-name">{meta.label}</span>
                             <span className="gls-zone-tag">{meta.tagline}</span>
                             <span className="gls-zone-count">{zoneCourses.length} missions</span>
@@ -1772,7 +2054,7 @@ export function GameLevelSelect({ courses, currentId, robotName, robotType, chas
                       return (
                         <div key={key} className="gls-zone-block">
                           <div className="gls-zone-label" style={{ '--wc': meta.color }}>
-                            <span>{meta.icon}</span>
+                            <span><EmojiIcon e={meta.icon} /></span>
                             <span className="gls-zone-name">{meta.label}</span>
                             <span className="gls-zone-tag">{meta.tagline}</span>
                             <span className="gls-zone-count">{wCourses.length} missions</span>
@@ -1822,7 +2104,7 @@ export function GameVictoryScreen({ xp, medal, coins, designerXp, systemsBuilt, 
     <div className={`victory-screen${slowMo ? ' slowmo' : ''}`}>
       <div className="victory-card">
         {/* Celebration header */}
-        <div className="victory-burst">🎮</div>
+        <div className="victory-burst"><EmojiIcon e="🎮" /></div>
         <h1 className="victory-title">You built it!</h1>
         <p className="victory-sub">Your robot completed the mission.</p>
 
@@ -1844,8 +2126,8 @@ export function GameVictoryScreen({ xp, medal, coins, designerXp, systemsBuilt, 
 
         {/* Secondary stats */}
         <div className="victory-stats">
-          {coins > 0 && <div className="victory-stat"><span>🪙</span><span>+{coins} collected</span></div>}
-          {xp > 0 && <div className="victory-stat"><span>⚡</span><span>+{xp} XP</span></div>}
+          {coins > 0 && <div className="victory-stat"><span><EmojiIcon e="🪙" /></span><span>+{coins} collected</span></div>}
+          {xp > 0 && <div className="victory-stat"><span><EmojiIcon e="⚡" /></span><span>+{xp} XP</span></div>}
           {medal && <div className="victory-stat"><span>{medal}</span><span>Medal</span></div>}
         </div>
 
@@ -1867,13 +2149,13 @@ export function GameFailureScreen({ message, hint, onRetry, onHint }) {
   return (
     <div className="bb-failure-screen">
       <div className="bb-failure-card">
-        <div className="failure-robot">🤖</div>
-        <div className="failure-emotion">💫</div>
+        <div className="failure-robot"><EmojiIcon e="🤖" /></div>
+        <div className="failure-emotion"><EmojiIcon e="💫" /></div>
         <h2>Almost there!</h2>
         <p>{message || "Your robot ran into something. That's how we learn — try a different approach!"}</p>
-        {hint && <div className="bb-failure-hint">💡 {hint}</div>}
+        {hint && <div className="bb-failure-hint"><EmojiIcon e="💡" style={{ marginRight: '0.35em' }} />{hint}</div>}
         <div className="bb-failure-actions">
-          <button type="button" className="bb-btn bb-btn-go" onClick={onRetry}>🔄 Try Again</button>
+          <button type="button" className="bb-btn bb-btn-go" onClick={onRetry}><EmojiIcon e="🔄" style={{ marginRight: '0.35em' }} />Try Again</button>
           {onHint && <button type="button" className="bb-btn bb-btn-ghost" onClick={onHint}>Show Hint</button>}
         </div>
       </div>

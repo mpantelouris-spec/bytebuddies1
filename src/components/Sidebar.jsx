@@ -7,6 +7,7 @@ import { BB_EXTENSIONS_CHANGED, emitAddSidebarBlock } from '../utils/blockLibrar
 import BlocklySidebarFlyout from './BlocklySidebarFlyout';
 import SidebarBlockPreview, { isPaletteBlockEntry } from './SidebarBlockPreview';
 import { markSidebarBlockDragging, setSidebarBlockDragImage } from '../utils/sidebarBlockDragImage';
+import { EmojiIcon, IconText } from './ui/Icon.jsx';
 
 function darken(hex, amt = 44) {
   const n = parseInt(String(hex).replace('#', ''), 16);
@@ -65,102 +66,22 @@ export default function Sidebar({ currentPage }) {
   const blocksSectionStyle = { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' };
   const [showProjects, setShowProjects] = useState(!isGameBuilder);
 
-  return (
-    <div className="sidebar">
-      <div className="sidebar-header" style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
-        <span>{currentPage === 'gamebuilder' ? 'Game Assets' : isStarter ? 'Starter Blocks' : 'Block Library'}</span>
-      </div>
-      {!isStarter && (
-        <div style={{ padding: '8px', flexShrink: 0 }}>
-          <input
-            className="input"
-            placeholder="Search blocks..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            style={{fontSize: 12}}
-          />
-        </div>
-      )}
+  // Collapse the block panel so the code area and stage get more room (remembered between visits)
+  const [collapsed, setCollapsed] = useState(() => {
+    try { return localStorage.getItem('bb_sidebar_collapsed') === '1'; } catch { return false; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem('bb_sidebar_collapsed', collapsed ? '1' : '0'); } catch { /* ignore */ }
+    document.body.classList.toggle('bb-sidebar-collapsed', collapsed);
+    // Blockly and the stage measure on resize; tell them once the width animation has finished
+    const t = setTimeout(() => window.dispatchEvent(new Event('resize')), 260);
+    return () => clearTimeout(t);
+  }, [collapsed]);
+  useEffect(() => () => document.body.classList.remove('bb-sidebar-collapsed'), []);
 
-      <div className="sidebar-content">
-        <div className="sidebar-section" style={{ flexShrink: 0 }}>
-          <button
-            type="button"
-            className="sidebar-section-title"
-            onClick={() => setShowProjects((v) => !v)}
-            style={{
-              width: '100%',
-              border: 'none',
-              background: 'transparent',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: 0,
-              marginBottom: showProjects ? 8 : 0,
-            }}
-          >
-            <span>Projects</span>
-            <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{showProjects ? '▼' : '▶'}</span>
-          </button>
-          {showProjects && projects.slice(0, 5).map(p => (
-            <button
-              key={p.id}
-              className={`sidebar-item ${activeProject?.id === p.id ? 'active' : ''}`}
-              onClick={() => setActiveProject(p)}
-            >
-              <span className="sidebar-item-icon">
-                {p.type === 'game' ? '🎮' : p.type === 'website' ? '🌐' : '📱'}
-              </span>
-              <span className="truncate">{p.name}</span>
-            </button>
-          ))}
-          {showProjects && (
-          <button
-            className="sidebar-item"
-            style={{color: 'var(--accent-primary)'}}
-            onClick={() => createProject({ name: 'New Project', type: 'app', language: 'python', code: '# New Project\nprint("Hello!")\n', blocks: true, starred: false })}
-          >
-            <span className="sidebar-item-icon">➕</span>
-            <span>New Project</span>
-          </button>
-          )}
-        </div>
+  const openCategory = (name) => { setCollapsed(false); setActiveCategory(name); };
 
-        <div
-          className={`sidebar-section sidebar-section--blocks${useBlocklyFlyout ? ' sidebar-blocks-workspace' : ''}`}
-          style={blocksSectionStyle}
-        >
-          <div className="sidebar-section-title">
-            {currentPage === 'gamebuilder' ? 'Assets & Blocks' : 'Blocks'}
-          </div>
-          {useBlocklyFlyout ? (
-            <div className="sidebar-blocks-flyout-wrap">
-              <BlocklySidebarFlyout categories={filtered} />
-            </div>
-          ) : (
-          <div className="sidebar-blocks-scroll">
-          <>
-          {filtered.map((cat) => (
-            <div key={cat.extensionId || cat.name}>
-              <button
-                type="button"
-                className={`sidebar-item sidebar-category-toggle ${activeCategory === cat.name ? 'active' : ''}`}
-                onClick={() => setActiveCategory(activeCategory === cat.name ? null : cat.name)}
-                style={{ borderLeft: `3px solid ${cat.color}` }}
-              >
-                <span className="sidebar-item-icon">{cat.icon}</span>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: cat.color, flexShrink: 0, display: 'inline-block' }} />
-                  {cat.name}
-                </span>
-                <span style={{marginLeft: 'auto', fontSize: 10, color: 'var(--text-muted)'}}>
-                  {activeCategory === cat.name ? '▼' : '▶'}
-                </span>
-              </button>
-              {activeCategory === cat.name && (
-                <div style={{ paddingLeft: 16, marginBottom: 8, maxWidth: '100%', overflow: 'auto' }}>
-                  {(cat.blocks || []).map((block, bi) => {
+  const renderBlockList = (cat) => (cat.blocks || []).map((block, bi) => {
                     const blockName = String(block);
                     const showBlocklyPreview = usePictoBlockStyle && isPaletteBlockEntry(blockName);
 
@@ -247,7 +168,172 @@ export default function Sidebar({ currentPage }) {
                         )}
                       </div>
                     );
-                  })}
+                  });
+
+  if (collapsed) {
+    return (
+      <div className="sidebar collapsed">
+        <button type="button" className="sidebar-toggle" onClick={() => setCollapsed(false)} title="Show blocks" aria-label="Show blocks panel">»</button>
+        <div className="sidebar-rail">
+          {categories.map((cat) => (
+            <button
+              key={cat.extensionId || cat.name}
+              type="button"
+              className="sidebar-rail-item"
+              onClick={() => openCategory(cat.name)}
+              title={cat.name}
+              aria-label={`Open ${cat.name} blocks`}
+              style={{ borderLeftColor: cat.color }}
+            >
+              <EmojiIcon e={cat.icon} />
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (isGameBuilder) {
+    const q = searchTerm.trim().toLowerCase();
+    const current = categories.find((c) => c.name === activeCategory) || categories[0];
+    const searchCats = q
+      ? categories.map((c) => ({ ...c, blocks: (c.blocks || []).filter((b) => String(b).toLowerCase().includes(q)) })).filter((c) => c.blocks.length)
+      : null;
+    return (
+      <div className="sidebar sidebar--gb">
+        <div className="sidebar-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span>Blocks</span>
+          <button type="button" className="sidebar-toggle" onClick={() => setCollapsed(true)} title="Hide blocks for a bigger code area and stage" aria-label="Hide blocks panel">«</button>
+        </div>
+        <div className="gb-palette">
+          <nav className="gb-palette-rail" aria-label="Block categories">
+            {categories.map((cat) => (
+              <button
+                key={cat.extensionId || cat.name}
+                type="button"
+                className={`gb-rail-item${!q && current?.name === cat.name ? ' on' : ''}`}
+                onClick={() => { setSearchTerm(''); setActiveCategory(cat.name); }}
+                title={cat.name}
+              >
+                <span className="gb-rail-dot" style={{ background: cat.color }}><EmojiIcon e={cat.icon} /></span>
+                <span className="gb-rail-name">{cat.name}</span>
+              </button>
+            ))}
+          </nav>
+          <div className="gb-palette-blocks">
+            {!isStarter && (
+              <input className="input gb-palette-search" placeholder="Search blocks..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+            )}
+            {(searchCats || (current ? [current] : [])).map((cat) => (
+              <div key={cat.extensionId || cat.name} className="gb-palette-group">
+                <div className="gb-palette-title" style={{ color: cat.color }}><EmojiIcon e={cat.icon} style={{ marginRight: '0.35em' }} />{cat.name}</div>
+                {renderBlockList(cat)}
+              </div>
+            ))}
+            {q && !searchCats?.length && <p className="gb-palette-empty">No blocks match “{searchTerm}”.</p>}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="sidebar">
+      <div className="sidebar-header" style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
+        <span>{currentPage === 'gamebuilder' ? 'Game Assets' : isStarter ? 'Starter Blocks' : 'Block Library'}</span>
+        <button type="button" className="sidebar-toggle" onClick={() => setCollapsed(true)} title="Hide blocks for a bigger code area and stage" aria-label="Hide blocks panel">«</button>
+      </div>
+      {!isStarter && (
+        <div style={{ padding: '8px', flexShrink: 0 }}>
+          <input
+            className="input"
+            placeholder="Search blocks..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            style={{fontSize: 12}}
+          />
+        </div>
+      )}
+
+      <div className="sidebar-content">
+        <div className="sidebar-section" style={{ flexShrink: 0 }}>
+          <button
+            type="button"
+            className="sidebar-section-title"
+            onClick={() => setShowProjects((v) => !v)}
+            style={{
+              width: '100%',
+              border: 'none',
+              background: 'transparent',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: 0,
+              marginBottom: showProjects ? 8 : 0,
+            }}
+          >
+            <span>Projects</span>
+            <span style={{ fontSize: 10, color: 'var(--text-muted)' }}><IconText>{showProjects ? '▼' : '▶'}</IconText></span>
+          </button>
+          {showProjects && projects.slice(0, 5).map(p => (
+            <button
+              key={p.id}
+              className={`sidebar-item ${activeProject?.id === p.id ? 'active' : ''}`}
+              onClick={() => setActiveProject(p)}
+            >
+              <span className="sidebar-item-icon">
+                <IconText>{p.type === 'game' ? '🎮' : p.type === 'website' ? '🌐' : '📱'}</IconText>
+              </span>
+              <span className="truncate">{p.name}</span>
+            </button>
+          ))}
+          {showProjects && (
+          <button
+            className="sidebar-item"
+            style={{color: 'var(--accent-primary)'}}
+            onClick={() => createProject({ name: 'New Project', type: 'app', language: 'python', code: '# New Project\nprint("Hello!")\n', blocks: true, starred: false })}
+          >
+            <span className="sidebar-item-icon"><EmojiIcon e="➕" /></span>
+            <span>New Project</span>
+          </button>
+          )}
+        </div>
+
+        <div
+          className={`sidebar-section sidebar-section--blocks${useBlocklyFlyout ? ' sidebar-blocks-workspace' : ''}`}
+          style={blocksSectionStyle}
+        >
+          <div className="sidebar-section-title">
+            {currentPage === 'gamebuilder' ? 'Assets & Blocks' : 'Blocks'}
+          </div>
+          {useBlocklyFlyout ? (
+            <div className="sidebar-blocks-flyout-wrap">
+              <BlocklySidebarFlyout categories={filtered} />
+            </div>
+          ) : (
+          <div className="sidebar-blocks-scroll">
+          <>
+          {filtered.map((cat) => (
+            <div key={cat.extensionId || cat.name}>
+              <button
+                type="button"
+                className={`sidebar-item sidebar-category-toggle ${activeCategory === cat.name ? 'active' : ''}`}
+                onClick={() => setActiveCategory(activeCategory === cat.name ? null : cat.name)}
+                style={{ borderLeft: `3px solid ${cat.color}` }}
+              >
+                <span className="sidebar-item-icon"><EmojiIcon e={cat.icon} /></span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: cat.color, flexShrink: 0, display: 'inline-block' }} />
+                  {cat.name}
+                </span>
+                <span style={{marginLeft: 'auto', fontSize: 10, color: 'var(--text-muted)'}}>
+                  <IconText>{activeCategory === cat.name ? '▼' : '▶'}</IconText>
+                </span>
+              </button>
+              {activeCategory === cat.name && (
+                <div style={{ paddingLeft: 16, marginBottom: 8, maxWidth: '100%', overflow: 'auto' }}>
+                  {renderBlockList(cat)}
                 </div>
               )}
             </div>

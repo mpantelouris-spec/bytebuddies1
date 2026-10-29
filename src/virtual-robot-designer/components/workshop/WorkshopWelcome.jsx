@@ -3,6 +3,7 @@
  */
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
+import { EmojiIcon } from '../../../components/ui/Icon.jsx';
 
 const MODES = [
   {
@@ -48,7 +49,7 @@ export default function WorkshopWelcome({ onStart }) {
               className={`iw-welcome-mode ${picked === m.id ? 'active' : ''}`}
               onClick={() => setPicked(m.id)}
             >
-              <span className="iw-welcome-mode-icon">{m.icon}</span>
+              <span className="iw-welcome-mode-icon"><EmojiIcon e={m.icon} /></span>
               <strong>{m.title}</strong>
               <span>{m.desc}</span>
             </button>

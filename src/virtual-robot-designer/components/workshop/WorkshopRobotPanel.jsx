@@ -8,6 +8,7 @@ import { getWorkshopPart } from '../../data/assembly-parts.js';
 import AnimatedNumber from '../AnimatedNumber.jsx';
 import { CATALOG_PART_COUNT, CATALOG_CHASSIS_COUNT } from '../../data/modular-parts-registry.js';
 import { analyzeRobot } from '../../services/robot-profile.js';
+import { EmojiIcon } from '../../../components/ui/Icon.jsx';
 
 function StatBar({ icon, label, value, color, hint }) {
   return (
@@ -60,7 +61,7 @@ export default function WorkshopRobotPanel({
   return (
     <aside className="iw-robot-panel" aria-label="Your robot">
       <header className="iw-panel-head">
-        <span className="iw-panel-mascot" aria-hidden>🤖</span>
+        <span className="iw-panel-mascot" aria-hidden><EmojiIcon e="🤖" /></span>
         <div>
           <h2>Your Robot</h2>
           <p>
@@ -106,7 +107,7 @@ export default function WorkshopRobotPanel({
           whileHover={{ scale: 1.03 }}
           whileTap={{ scale: 0.97 }}
         >
-          ▶ Test My Robot
+          <EmojiIcon e="▶" style={{ marginRight: '0.35em' }} />Test My Robot
         </motion.button>
         <motion.button
           type="button"
@@ -118,10 +119,10 @@ export default function WorkshopRobotPanel({
           ⌨ Code My Robot
         </motion.button>
         <button type="button" className="iw-btn iw-btn--ghost" onClick={onSave} aria-label="Save design">
-          💾 Save
+          <EmojiIcon e="💾" style={{ marginRight: '0.35em' }} />Save
         </button>
         <button type="button" className="iw-btn iw-btn--ghost" onClick={onLoad} aria-label="Load design">
-          📂 Load
+          <EmojiIcon e="📂" style={{ marginRight: '0.35em' }} />Load
         </button>
         <div className="iw-undo-row">
           <button type="button" className="iw-btn iw-btn--ghost" onClick={onUndo} disabled={!canUndo}>

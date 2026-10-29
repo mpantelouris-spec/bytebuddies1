@@ -380,6 +380,12 @@ canvas.ll-sim-canvas.ll-sim-biome-grade {
   filter: saturate(1.08) contrast(1.04) brightness(1.0);
 }
 
+@media (pointer: coarse) {
+  canvas.ll-sim-canvas.ll-sim-biome-grade {
+    filter: none !important;
+  }
+}
+
 /* Crystal Cavern Run — build stamp overlay so cache/deploy is verifiable */
 .ll-sim-wrap.ll-sim-crystal-cavern::after {
   content: 'Crystal Cavern · ' attr(data-build-stamp);

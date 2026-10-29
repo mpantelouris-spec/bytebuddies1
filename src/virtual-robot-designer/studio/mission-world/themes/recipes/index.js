@@ -31,17 +31,3 @@ export const MISSION_THEME_RECIPES = {
   ...BLOCKWORLD_RECIPES,
   ...SPIDER_RECIPES,
 };
-
-// Spider Bot arenas 2–10 use the closest finished world until each gets its own build
-const R = MISSION_THEME_RECIPES;
-Object.assign(R, {
-  treehouse_kingdom: R.bamboo_canopy,
-  toy_room: R.toy_workshop,
-  sweet_factory: R.cake_decorating,
-  giant_kitchen: R.juice_factory,
-  ancient_temple: R.temple_steps,
-  robot_factory_climb: R.robot_parts_lab,
-  sky_islands_web: R.sky_islands,
-  crystal_caverns: R.crystal_web_cave,
-  clockwork_castle: R.gear_works,
-});

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import vrdApi from '../apis/vrd-api.js';
 import { SIM_ROBOTS } from '../simulator/virtualRobotEngine.jsx';
+import { EmojiIcon } from '../../components/ui/Icon.jsx';
 
 const FILTERS = [
   { id: 'newest', label: 'Newest' },
@@ -23,7 +24,7 @@ export default function GalleryPage({ onRemix, onGoSimulator }) {
 
   return (
     <div>
-      <h2 style={{ margin: '0 0 8px', fontSize: 22, fontWeight: 800 }}>🌐 Design Gallery</h2>
+      <h2 style={{ margin: '0 0 8px', fontSize: 22, fontWeight: 800 }}><EmojiIcon e="🌐" style={{ marginRight: '0.35em' }} />Design Gallery</h2>
       <p style={{ margin: '0 0 16px', color: 'rgba(240,230,255,0.6)', fontSize: 14 }}>Browse, like, remix, and test designs from your class.</p>
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16, alignItems: 'center' }}>
@@ -43,10 +44,10 @@ export default function GalleryPage({ onRemix, onGoSimulator }) {
             const meta = SIM_ROBOTS.find((r) => r.id === d.template) || SIM_ROBOTS[0];
             return (
               <div key={d.id} className="vrd-card" style={{ cursor: 'pointer' }} onClick={() => setSelected(d)}>
-                <div style={{ fontSize: 36, marginBottom: 8 }}>{meta.icon}</div>
+                <div style={{ fontSize: 36, marginBottom: 8 }}><EmojiIcon e={meta.icon} /></div>
                 <div style={{ fontWeight: 700 }}>{d.name}</div>
                 <div style={{ fontSize: 11, color: 'rgba(240,230,255,0.5)' }}>by {d.user_id || 'student'}</div>
-                <div style={{ marginTop: 8, fontSize: 12 }}>❤️ {d.likes_count || 0} · 🔄 {d.remixes_count || 0}</div>
+                <div style={{ marginTop: 8, fontSize: 12 }}><EmojiIcon e="❤️" style={{ marginRight: '0.35em' }} />{d.likes_count || 0} · 🔄 {d.remixes_count || 0}</div>
                 <div style={{ display: 'flex', gap: 6, marginTop: 12 }} onClick={(e) => e.stopPropagation()}>
                   <button type="button" className="vrd-btn vrd-btn-primary" style={{ fontSize: 11, padding: '6px 10px' }} onClick={() => vrdApi.likeDesign(d.id).then(refresh)}>Like</button>
                   <button type="button" className="vrd-btn vrd-btn-secondary" style={{ fontSize: 11, padding: '6px 10px' }}

@@ -1,6 +1,7 @@
 /**
  * CodeRacerTrackStandards.js — 10 Mario Kart–quality track bible (2026 lineup).
  */
+import { COSMIC_TRACK_STANDARDS, isCosmicSkywayArena } from './CosmicSkywayRegistry.js';
 export const GLOBAL_TRACK_STANDARD = {
   trackWidthM: 8,
   curbWidthM: 1,
@@ -100,9 +101,9 @@ export const TRACK_STANDARDS = {
   },
   star_station_01: {
     codename: 'star_station_01',
-    displayName: 'Star Station Ring',
+    displayName: 'Cosmic Skyway',
     difficulty: 4, stars: '★★★★☆', laps: 2,
-    story: 'Space station deck, glass floor, airlock arch with Earth view.',
+    story: 'Twisting neon skyway that flies over itself, past a wormhole, asteroids and a blue planet.',
     checkpointTs: CP([0.2, 0.4, 0.6, 0.8]),
     checkpointColors: [0xaa44ff, 0x00ffff, 0xaa44ff, 0xffffff],
     boostTs: BOOST([0.15, 0.45, 0.7]),
@@ -150,16 +151,21 @@ export function buildTrackSegmentsFromSections(sections = []) {
 export const CUP_TRACK_IDS = new Set(Object.keys(TRACK_STANDARDS));
 
 export function isCupTrack(arenaType) {
-  return CUP_TRACK_IDS.has(arenaType);
+  return CUP_TRACK_IDS.has(arenaType) || isCosmicSkywayArena(arenaType);
 }
 
 export function getTrackStandard(arenaType) {
-  return TRACK_STANDARDS[arenaType] || null;
+  return TRACK_STANDARDS[arenaType] || COSMIC_TRACK_STANDARDS[arenaType] || null;
 }
 
 export function mergeTrackStandard(track) {
   const std = getTrackStandard(track.arenaType || track.id);
   if (!std) return { ...track };
+  // Rover races 11–50 set their own laps and gates; a race on a new road
+  // can't use the original road's sections either.
+  if (track.isExpandedCarTrack) {
+    return { ...track, trackStandard: track.customRoad ? null : std, story: track.story ?? std.story };
+  }
   return {
     ...track,
     trackStandard: std,

@@ -14,6 +14,9 @@ const ART_BY_CHASSIS_MODE = new Map(Object.entries(MISSION_ART_DIRECTION_V3)
 
 export function getMissionArtDirection(challenge) {
   if (!challenge) return null;
+  // Expanded Studio missions carry their own authored art brief rather than
+  // borrowing the original ten chapter illustrations for every new level.
+  if (challenge.isExpandedMode && challenge.studioArtDirection) return challenge.studioArtDirection;
   const direct = MISSION_ART_DIRECTION_V3[challenge.id];
   if (direct) return direct;
   // Campaign missions can share a chassis without representing a catalog mode.

@@ -9,6 +9,7 @@ import { getReadInteractives, getPracticeInteractives, getPracticeMode } from '.
 import { LessonInteractivePanel } from './LessonInteractives';
 import PythonRunner from '../PythonRunner';
 import HtmlEditor from '../HtmlEditor';
+import { EmojiIcon, IconText } from '../ui/Icon.jsx';
 
 function darkenColor(hex, factor = 0.25) {
   if (!hex || hex.length < 7) return hex;
@@ -144,7 +145,7 @@ export function CodeOrgYearCatalog({ completedSet, onSelectYear, onContinue }) {
         <p>Pick your year group and follow the lesson path. Each lesson has reading, hands-on practice, and a quiz checkpoint.</p>
         {continueTarget && onContinue && (
           <button type="button" className="corg-btn-continue" onClick={() => onContinue(continueTarget)}>
-            ▶ Continue: {continueTarget.course.modules[continueTarget.lessonIdx]?.title || 'Next lesson'}
+            <EmojiIcon e="▶" style={{ marginRight: '0.35em' }} />Continue: {continueTarget.course.modules[continueTarget.lessonIdx]?.title || 'Next lesson'}
           </button>
         )}
       </div>
@@ -162,7 +163,7 @@ export function CodeOrgYearCatalog({ completedSet, onSelectYear, onContinue }) {
               style={{ background: y.gradient }}
               onClick={() => onSelectYear(y.year)}
             >
-              <span className="corg-year-card-icon">{y.icon}</span>
+              <span className="corg-year-card-icon"><EmojiIcon e={y.icon} /></span>
               <div className="corg-year-card-body">
                 <div className="corg-year-card-tag">{y.subtitle} · {y.ages}</div>
                 <h2>{y.title}</h2>
@@ -209,7 +210,7 @@ export function CodeOrgUnitList({ year, completedSet, onSelectUnit, onBack }) {
       {meta && (
         <div className="corg-year-banner" style={{ background: meta.gradient }}>
           <div className="corg-year-banner-inner">
-            <span className="corg-year-banner-icon">{meta.icon}</span>
+            <span className="corg-year-banner-icon"><EmojiIcon e={meta.icon} /></span>
             <div>
               <h2 className="corg-year-banner-title">{meta.title} — {meta.ages}</h2>
               <p className="corg-year-banner-flavor">{meta.flavor}</p>
@@ -224,7 +225,7 @@ export function CodeOrgUnitList({ year, completedSet, onSelectUnit, onBack }) {
       )}
 
       <header className="corg-units-header" style={{ borderColor: meta?.color }}>
-        <span className="corg-units-icon">{meta?.icon}</span>
+        <span className="corg-units-icon"><EmojiIcon e={meta?.icon} /></span>
         <div>
           <h1>{meta?.title || `Year ${year}`}</h1>
           <p>{meta?.ages} · {units.length} units · {units.reduce((s, c) => s + c.modules.length, 0)} lessons</p>
@@ -244,7 +245,7 @@ export function CodeOrgUnitList({ year, completedSet, onSelectUnit, onBack }) {
               onClick={() => onSelectUnit(course)}
             >
               <div className="corg-unit-num" style={{ background: course.color }}>Unit {unitIdx + 1}</div>
-              <span className="corg-unit-icon">{course.icon}</span>
+              <span className="corg-unit-icon"><EmojiIcon e={course.icon} /></span>
               <div className="corg-unit-info">
                 <h3>{course.title}</h3>
                 <p>{simplifyText(course.description)}</p>
@@ -255,7 +256,7 @@ export function CodeOrgUnitList({ year, completedSet, onSelectUnit, onBack }) {
                 <div className="corg-unit-extras">
                   <span className="corg-unit-diff" style={{ background: `${course.color}20`, color: course.color }}>{course.difficulty}</span>
                   <span className="corg-unit-type-badge" style={{ background: `${typeBadge.color}18`, color: typeBadge.color, border: `1px solid ${typeBadge.color}30` }}>{typeBadge.label}</span>
-                  <span className="corg-unit-xp">⚡ {course.modules.reduce((s, m) => s + (m.xp || 0), 0)} XP</span>
+                  <span className="corg-unit-xp"><EmojiIcon e="⚡" style={{ marginRight: '0.35em' }} />{course.modules.reduce((s, m) => s + (m.xp || 0), 0)} XP</span>
                 </div>
               </div>
               <span className="corg-unit-arrow">→</span>
@@ -290,7 +291,7 @@ export function CodeOrgLessonPath({ course, completedSet, onSelectLesson, onBack
         <span>{course.title}</span>
       </nav>
       <div className="corg-path-header">
-        <span>{course.icon}</span>
+        <span><EmojiIcon e={course.icon} /></span>
         <div>
           <h1>{course.title}</h1>
           <p>{course.modules.length} lessons · {course.difficulty} · {getUnitTypeBadge(course.id).label}</p>
@@ -329,10 +330,10 @@ export function CodeOrgLessonPath({ course, completedSet, onSelectLesson, onBack
               onClick={() => unlocked && onSelectLesson(i)}
             >
               <span className="corg-path-node-inner">
-                {!unlocked ? '🔒' : done ? '✓' : i + 1}
+                <IconText>{!unlocked ? '🔒' : done ? '✓' : i + 1}</IconText>
               </span>
               <span className="corg-path-node-label">{m.title}</span>
-              {m.duration && <span className="corg-path-node-time">⏱ {m.duration}</span>}
+              {m.duration && <span className="corg-path-node-time"><EmojiIcon e="⏱" style={{ marginRight: '0.35em' }} />{m.duration}</span>}
             </button>
           ))}
         </div>
@@ -472,8 +473,8 @@ function BlockSnapPractice({ course, lessonIdx, onMissionComplete }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: `${course.color}14`, border: `1.5px solid ${course.color}35`, borderRadius: 10, padding: '10px 16px', flexShrink: 0 }}>
         <span style={{ fontSize: 26, lineHeight: 1 }}>{mission.char}</span>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 13, fontWeight: 800, color: course.color }}>🎯 {mission.goal}</div>
-          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>💡 {mission.hint}</div>
+          <div style={{ fontSize: 13, fontWeight: 800, color: course.color }}><EmojiIcon e="🎯" style={{ marginRight: '0.35em' }} />{mission.goal}</div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}><EmojiIcon e="💡" style={{ marginRight: '0.35em' }} />{mission.hint}</div>
         </div>
         {success && (
           <div style={{ background: '#22c55e', color: '#fff', borderRadius: 20, padding: '4px 14px', fontSize: 12, fontWeight: 800, flexShrink: 0, animation: 'snap-success 0.4s ease' }}>
@@ -500,7 +501,7 @@ function BlockSnapPractice({ course, lessonIdx, onMissionComplete }) {
                 opacity: running ? 0.5 : 1,
               }}
             >
-              <span style={{ fontSize: 14 }}>{b.icon}</span>
+              <span style={{ fontSize: 14 }}><EmojiIcon e={b.icon} /></span>
               <span>{b.label}</span>
             </button>
           ))}
@@ -529,7 +530,7 @@ function BlockSnapPractice({ course, lessonIdx, onMissionComplete }) {
                   }}
                 >
                   <span style={{ background: b.color, color: '#fff', borderRadius: '50%', width: 17, height: 17, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, flexShrink: 0, fontWeight: 900 }}>{i + 1}</span>
-                  <span style={{ fontSize: 12 }}>{b.icon}</span>
+                  <span style={{ fontSize: 12 }}><EmojiIcon e={b.icon} /></span>
                   <span style={{ flex: 1 }}>{b.label}</span>
                   {!running && <span style={{ opacity: 0.3, fontSize: 9 }}>✕</span>}
                 </div>
@@ -549,7 +550,7 @@ function BlockSnapPractice({ course, lessonIdx, onMissionComplete }) {
                 color: '#fff', boxShadow: running ? 'none' : '0 3px 0 #16a34a',
               }}
             >
-              {running ? '⏳ Running…' : '▶ Run'}
+              <IconText>{running ? '⏳ Running…' : '▶ Run'}</IconText>
             </button>
             <button
               onClick={reset}
@@ -593,7 +594,7 @@ function BlockSnapPractice({ course, lessonIdx, onMissionComplete }) {
                       fontSize: 20, transition: 'background 0.3s',
                     }}
                   >
-                    {isTarget && (success ? '✨' : mission.tEmoji)}
+                    <IconText>{isTarget && (success ? '✨' : mission.tEmoji)}</IconText>
                   </div>
                 );
               })}
@@ -772,18 +773,18 @@ export function CodeOrgLevelPlayer({
                 <p className="corg-inst-lead">{mod.description || mod.title}</p>
                 {content.explanation && (
                   <div className="corg-inst-block">
-                    <h3>📖 Learn</h3>
+                    <h3><EmojiIcon e="📖" style={{ marginRight: '0.35em' }} />Learn</h3>
                     <p dangerouslySetInnerHTML={{ __html: md(content.explanation) }} />
                   </div>
                 )}
                 {content.example && (
                   <div className="corg-inst-block">
-                    <h3>💻 Example</h3>
+                    <h3><EmojiIcon e="💻" style={{ marginRight: '0.35em' }} />Example</h3>
                     <pre className="corg-code-pre">{content.example}</pre>
                   </div>
                 )}
                 <div className="corg-inst-block corg-inst-activity">
-                  <h3>🎮 Your mission</h3>
+                  <h3><EmojiIcon e="🎮" style={{ marginRight: '0.35em' }} />Your mission</h3>
                   <p>Complete all <strong>{readTasks.length} interactive challenges</strong> on the right → then continue!</p>
                 </div>
               </div>
@@ -812,13 +813,13 @@ export function CodeOrgLevelPlayer({
                 <div className="corg-snap-guide">
                   <div className="corg-snap-guide-step"><span>1</span> Pick blocks from the palette</div>
                   <div className="corg-snap-guide-step"><span>2</span> Build your program in order</div>
-                  <div className="corg-snap-guide-step"><span>3</span> Press <strong>▶ Run</strong> — reach the target!</div>
+                  <div className="corg-snap-guide-step"><span>3</span> Press <strong><EmojiIcon e="▶" style={{ marginRight: '0.35em' }} />Run</strong> — reach the target!</div>
                   <div className="corg-snap-guide-step"><span>4</span> Mission complete unlocks Continue</div>
                 </div>
               )}
               {editorType === 'interactive' && content.activity && (
                 <div className="corg-inst-block corg-inst-activity">
-                  <h3>🌟 Bonus challenge</h3>
+                  <h3><EmojiIcon e="🌟" style={{ marginRight: '0.35em' }} />Bonus challenge</h3>
                   <p dangerouslySetInnerHTML={{ __html: md(content.activity) }} />
                 </div>
               )}
@@ -828,9 +829,9 @@ export function CodeOrgLevelPlayer({
                 disabled={!canFinishPractice}
                 onClick={() => finishLevel(activeLevel)}
               >
-                {!canFinishPractice
+                <IconText>{!canFinishPractice
                   ? (editorType === 'blocks' ? '🎯 Complete the mission first' : '🎮 Finish all challenges')
-                  : 'Continue →'}
+                  : 'Continue →'}</IconText>
               </button>
             </>
           )}
@@ -848,11 +849,11 @@ export function CodeOrgLevelPlayer({
                       {correctCount}/{quizList.length}
                     </div>
                     <p className="corg-quiz-results-msg">
-                      {perfect
+                      <IconText>{perfect
                         ? '🎉 Perfect score! Brilliant work!'
                         : correctCount >= Math.ceil(quizList.length / 2)
                         ? '👍 Good effort! Review the ones you missed.'
-                        : '📖 Keep studying — you\'ve got this!'}
+                        : '📖 Keep studying — you\'ve got this!'}</IconText>
                     </p>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 20 }}>
                       {!lessonDone && (
@@ -860,9 +861,9 @@ export function CodeOrgLevelPlayer({
                           {perfect ? 'Finish Lesson ✓' : 'Continue Anyway →'}
                         </button>
                       )}
-                      {lessonDone && <p style={{ color: 'var(--accent-success)', fontWeight: 700 }}>✅ Lesson already complete!</p>}
+                      {lessonDone && <p style={{ color: 'var(--accent-success)', fontWeight: 700 }}><EmojiIcon e="✅" style={{ marginRight: '0.35em' }} />Lesson already complete!</p>}
                       <button type="button" className="corg-btn-secondary" onClick={() => { setQuizAnswers({}); setCurrentQuizIdx(0); }}>
-                        🔄 Try Again
+                        <EmojiIcon e="🔄" style={{ marginRight: '0.35em' }} />Try Again
                       </button>
                     </div>
                   </div>
@@ -986,7 +987,7 @@ export function CodeOrgLevelPlayer({
           </button>
         )}
         {lessonDone && lessonIdx >= course.modules.length - 1 && (
-          <span className="corg-footer-msg">🎉 Unit complete!</span>
+          <span className="corg-footer-msg"><EmojiIcon e="🎉" style={{ marginRight: '0.35em' }} />Unit complete!</span>
         )}
       </footer>
     </div>

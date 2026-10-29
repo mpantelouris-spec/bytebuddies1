@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import RobotPreview from './RobotPreview.jsx';
 import { DESIGN_OPTIONS, DEFAULT_DESIGN, randomDesign } from './designedRobot.js';
+import { EmojiIcon, IconText } from '../../components/ui/Icon.jsx';
 
 const SECTIONS = [
   { id: 'body', label: 'Body', icon: '🧱' },
@@ -61,15 +62,15 @@ export default function RobotDesigner({ initial, onSave, onPlay, onBack }) {
     <div className="cs-designer">
       <div className="cs-topbar">
         <button className="cs-btn cs-btn--ghost" onClick={onBack}>← Create Studio</button>
-        <div className="cs-topbar-title">🤖 Robot Designer</div>
-        <button className="cs-btn" onClick={surprise}>🎲 Surprise me!</button>
+        <div className="cs-topbar-title"><EmojiIcon e="🤖" style={{ marginRight: '0.35em' }} />Robot Designer</div>
+        <button className="cs-btn" onClick={surprise}><EmojiIcon e="🎲" style={{ marginRight: '0.35em' }} />Surprise me!</button>
       </div>
       <div className="cs-designer-body">
         <aside className="cs-panel cs-options">
           <div className="cs-sections" role="tablist">
             {SECTIONS.map((s) => (
               <button key={s.id} role="tab" aria-selected={section === s.id} className={`cs-section${section === s.id ? ' is-on' : ''}`} onClick={() => setSection(s.id)}>
-                <span>{s.icon}</span>{s.label}
+                <span><EmojiIcon e={s.icon} /></span>{s.label}
               </button>
             ))}
           </div>
@@ -113,8 +114,8 @@ export default function RobotDesigner({ initial, onSave, onPlay, onBack }) {
         <aside className="cs-panel cs-actions">
           <div className="cs-card-title">Ready to roll?</div>
           <p className="cs-muted">Save your robot to <b>My Robots</b>, then take it on an adventure — including arenas you build yourself!</p>
-          <button className="cs-btn cs-btn--primary cs-btn--big" onClick={() => { onSave(config); setSaved(true); }}>{saved ? '✅ Saved!' : '💾 Save robot'}</button>
-          <button className="cs-btn cs-btn--go cs-btn--big" onClick={() => onPlay(config)}>▶ Play Arena Quest</button>
+          <button className="cs-btn cs-btn--primary cs-btn--big" onClick={() => { onSave(config); setSaved(true); }}><IconText>{saved ? '✅ Saved!' : '💾 Save robot'}</IconText></button>
+          <button className="cs-btn cs-btn--go cs-btn--big" onClick={() => onPlay(config)}><EmojiIcon e="▶" style={{ marginRight: '0.35em' }} />Play Arena Quest</button>
           <div className="cs-stats">
             {[['Speed', design.move === 'hover' || design.move === 'wheels' ? 85 : design.move === 'propeller' ? 90 : 60], ['Strength', design.body === 'tank' ? 95 : design.arms === 'grabbers' ? 80 : 65], ['Style', 70 + (design.pattern !== 'plain' ? 15 : 0) + (design.top !== 'none' ? 10 : 0)]].map(([l, v]) => (
               <div key={l} className="cs-stat"><span>{l}</span><div className="cs-bar"><i style={{ width: `${Math.min(100, v)}%` }} /></div></div>

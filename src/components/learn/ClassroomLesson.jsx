@@ -17,6 +17,7 @@ import { readWork, recordWork } from '../../utils/workLog.js';
 import { useUser } from '../../contexts/UserContext';
 import { getTeaching } from '../../data/teaching/index.js';
 import TeachingVisual from './TeachingVisual.jsx';
+import { EmojiIcon } from '../ui/Icon.jsx';
 
 const INK = '#0f172a';
 const MUTED = '#475569';
@@ -300,7 +301,7 @@ export default function ClassroomLesson({
             {T.explain.map((p, i) => <p key={i} style={{ fontSize: 20, lineHeight: 1.6, margin: '0 0 14px' }}>{p}</p>)}
             {T.realWorld && (
               <div style={{ marginTop: 6, padding: '12px 14px', borderRadius: 12, background: '#eff6ff', border: '2px solid #bfdbfe', fontSize: 17 }}>
-                <b>🌍 In the real world: </b>{T.realWorld}
+                <b><EmojiIcon e="🌍" style={{ marginRight: '0.35em' }} />In the real world: </b>{T.realWorld}
               </div>
             )}
           </>
@@ -319,10 +320,10 @@ export default function ClassroomLesson({
         body: (
           <div style={{ display: 'grid', gap: 12 }}>
             <div style={{ padding: '14px 16px', borderRadius: 14, background: '#fff5f5', border: '2px solid #ffc9c9', fontSize: 20 }}>
-              <b style={{ color: '#c92a2a' }}>❌ The mistake: </b>{T.mistake.wrong}
+              <b style={{ color: '#c92a2a' }}><EmojiIcon e="❌" style={{ marginRight: '0.35em' }} />The mistake: </b>{T.mistake.wrong}
             </div>
             <div style={{ padding: '14px 16px', borderRadius: 14, background: '#ebfbee', border: '2px solid #b2f2bb', fontSize: 20 }}>
-              <b style={{ color: '#2b8a3e' }}>✅ Instead: </b>{T.mistake.fix}
+              <b style={{ color: '#2b8a3e' }}><EmojiIcon e="✅" style={{ marginRight: '0.35em' }} />Instead: </b>{T.mistake.fix}
             </div>
           </div>
         ),

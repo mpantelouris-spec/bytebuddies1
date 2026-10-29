@@ -1,5 +1,6 @@
 import React from 'react';
 import { analyzeRobot } from '../../services/robot-profile.js';
+import { EmojiIcon, IconText } from '../../../components/ui/Icon.jsx';
 
 export default function TestArenaCourses({ design, activeId, onSelect, onRun, running, onStop }) {
   const profile = analyzeRobot(design);
@@ -15,7 +16,7 @@ export default function TestArenaCourses({ design, activeId, onSelect, onRun, ru
       onClick={() => onSelect(c.id)}
     >
       {c.recommended && <span className="ta-course-star" aria-label="Recommended">★</span>}
-      <span className="ta-course-icon">{c.icon}</span>
+      <span className="ta-course-icon"><EmojiIcon e={c.icon} /></span>
       <span className="ta-course-label">{c.label}</span>
       <span className="ta-course-desc">{c.mission || c.desc}</span>
     </button>
@@ -47,7 +48,7 @@ export default function TestArenaCourses({ design, activeId, onSelect, onRun, ru
         className={`ta-run-btn ${running ? 'ta-run-btn--stop' : ''}`}
         onClick={running ? onStop : onRun}
       >
-        {running ? '⏹ Stop mission' : '▶ Run my robot!'}
+        <IconText>{running ? '⏹ Stop mission' : '▶ Run my robot!'}</IconText>
       </button>
     </aside>
   );

@@ -1,10 +1,24 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, signInAnonymously, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, updateProfile } from 'firebase/auth';
-import { getFirestore, doc, setDoc, getDoc, updateDoc, deleteDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import {
+  initializeAuth, getAuth, GoogleAuthProvider,
+  signInWithPopup, signInWithRedirect, getRedirectResult,
+  signOut, signInAnonymously,
+  createUserWithEmailAndPassword, signInWithEmailAndPassword,
+  onAuthStateChanged, updateProfile,
+  browserLocalPersistence, indexedDBLocalPersistence, browserPopupRedirectResolver,
+} from 'firebase/auth';
+import { getFirestore, doc, setDoc, getDoc, updateDoc, deleteDoc, collection, query, where, getDocs, onSnapshot, writeBatch, runTransaction } from 'firebase/firestore';
+
+function resolveAuthDomain() {
+  // Google OAuth is configured with Firebase's hosted callback URI. Using the
+  // custom site host here sends a different redirect_uri and causes Error 400.
+  // Keep this aligned with the Google Classroom auth instance below.
+  return 'connectr-5b7a4.firebaseapp.com';
+}
 
 export const firebaseConfig = {
   apiKey: "AIzaSyAoqJVmEDjOArx47FayS7gEyCd-8IIjT5k",
-  authDomain: "connectr-5b7a4.firebaseapp.com",
+  authDomain: resolveAuthDomain(),
   projectId: "connectr-5b7a4",
   storageBucket: "connectr-5b7a4.firebasestorage.app",
   messagingSenderId: "175950389999",
@@ -13,19 +27,211 @@ export const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
+
+function createAuth() {
+  try {
+    return initializeAuth(app, {
+      persistence: [indexedDBLocalPersistence, browserLocalPersistence],
+      popupRedirectResolver: browserPopupRedirectResolver,
+    });
+  } catch {
+    return getAuth(app);
+  }
+}
+
+export const auth = createAuth();
 export const db = getFirestore(app);
 export const googleProvider = new GoogleAuthProvider();
+googleProvider.setCustomParameters({ prompt: 'select_account' });
 
-export async function signInWithGoogle() {
-  const result = await signInWithPopup(auth, googleProvider);
-  const user = result.user;
+const LICENSE_ADMIN_EMAILS = ['mpantelouris@britishschool.sch.ae', 'fudoh@britishschool.sch.ae'];
+const licenseEmailId = (email) => String(email || '').trim().toLowerCase();
+
+export function isLicenseAdmin(email) {
+  return LICENSE_ADMIN_EMAILS.includes(licenseEmailId(email));
+}
+
+async function waitForFirebaseAuth() {
+  // Auth persistence is restored asynchronously on page load. Wait for that
+  // initial restore before gating licence operations on auth.currentUser.
+  if (typeof auth.authStateReady === 'function') await auth.authStateReady();
+  return auth.currentUser;
+}
+
+export function watchAccountLicense(email, callback) {
+  const normalizedEmail = licenseEmailId(email);
+  if (!normalizedEmail) {
+    callback(null, new Error('A signed-in email is required to check access.'));
+    return () => {};
+  }
+  return onSnapshot(doc(db, 'licenses', normalizedEmail), (snapshot) => {
+    callback(snapshot.exists() ? snapshot.data() : null, null);
+  }, (error) => callback(null, error));
+}
+
+export async function listAccountLicenses() {
+  const currentUser = await waitForFirebaseAuth();
+  if (!isLicenseAdmin(currentUser?.email)) throw new Error('Only a ByteBuddies administrator can manage licences.');
+  const snapshot = await getDocs(collection(db, 'licenses'));
+  return snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))
+    .sort((a, b) => String(a.organization || a.email).localeCompare(String(b.organization || b.email)));
+}
+
+export async function saveAccountLicenses({ emails, organization, expiresAt = '', notes = '', status = 'active', studentLimit = 0 }) {
+  const currentUser = await waitForFirebaseAuth();
+  if (!isLicenseAdmin(currentUser?.email)) throw new Error('Only a ByteBuddies administrator can change licences.');
+  if (!['active', 'suspended'].includes(status)) throw new Error('Choose active or suspended access.');
+  const normalizedEmails = [...new Set((emails || []).map(licenseEmailId).filter(Boolean))];
+  if (!normalizedEmails.length || normalizedEmails.length > 200 || normalizedEmails.some(email => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) {
+    throw new Error('Enter between 1 and 200 valid account email addresses.');
+  }
+  const seatLimit = Math.floor(Number(studentLimit));
+  if (normalizedEmails.length !== 1 || !Number.isInteger(seatLimit) || seatLimit < 1 || seatLimit > 5000) {
+    throw new Error('Set up one teacher at a time and enter between 1 and 5,000 pupil places.');
+  }
+  const refs = normalizedEmails.map(email => doc(db, 'licenses', email));
+  const existing = await Promise.all(refs.map(getDoc));
+  const usedSeats = existing[0].exists() && Array.isArray(existing[0].data().pupilEmails) ? existing[0].data().pupilEmails.length : 0;
+  if (seatLimit < usedSeats) throw new Error(`This teacher already has ${usedSeats} assigned pupil places. The limit cannot be set below that.`);
+  const updatedAt = new Date().toISOString();
+  const batch = writeBatch(db);
+  refs.forEach((ref, index) => {
+    const email = normalizedEmails[index];
+    batch.set(ref, {
+      email,
+      organization: String(organization || '').trim().slice(0, 120),
+      status,
+      role: 'teacher',
+      studentLimit: seatLimit,
+      expiresAt: expiresAt || '',
+      notes: String(notes || '').trim().slice(0, 500),
+      updatedAt,
+      updatedBy: currentUser.email,
+      ...(existing[index].exists() ? {} : { createdAt: updatedAt }),
+    }, { merge: true });
+  });
+  await batch.commit();
+}
+
+export async function saveAccountLicense({ email, ...license }) {
+  return saveAccountLicenses({ ...license, emails: [email] });
+}
+
+/** Reserve a paid pupil place and provision that pupil's sign-in licence. */
+export async function provisionPupilLicenses(pupils) {
+  const currentUser = await waitForFirebaseAuth();
+  const teacherEmail = licenseEmailId(currentUser?.email);
+  if (!teacherEmail) throw new Error('Sign in with your teacher account before adding pupils.');
+  const rows = [...new Map((pupils || []).map((pupil) => {
+    const email = licenseEmailId(pupil.email);
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error(`Enter a valid school email for ${pupil.name || 'each pupil'}.`);
+    return [email, { ...pupil, email }];
+  })).values()];
+  if (!rows.length) return [];
+  if (rows.length > 200) throw new Error('Add no more than 200 pupils in one batch.');
+
+  const teacherRef = doc(db, 'licenses', teacherEmail);
+  const pupilRefs = rows.map((pupil) => doc(db, 'licenses', pupil.email));
+  return runTransaction(db, async (transaction) => {
+    const teacherSnapshot = await transaction.get(teacherRef);
+    if (!teacherSnapshot.exists()) throw new Error('Your teacher licence could not be found. Ask your administrator to activate it.');
+    const teacherLicense = teacherSnapshot.data();
+    if (teacherLicense.status !== 'active' || teacherLicense.role !== 'teacher') throw new Error('Your teacher licence is not active.');
+    const expiry = teacherLicense.expiresAt ? new Date(teacherLicense.expiresAt) : null;
+    if (expiry && expiry.getTime() < Date.now()) throw new Error('Your school licence has expired.');
+
+    const assigned = Array.isArray(teacherLicense.pupilEmails) ? teacherLicense.pupilEmails.map(licenseEmailId) : [];
+    const newRows = rows.filter((pupil) => !assigned.includes(pupil.email));
+    const limit = Math.max(0, Number(teacherLicense.studentLimit) || 0);
+    if (assigned.length + newRows.length > limit) {
+      throw new Error(`Your licence has ${limit} pupil places and ${assigned.length} are already assigned.`);
+    }
+    const updatedAt = new Date().toISOString();
+    transaction.update(teacherRef, { pupilEmails: [...assigned, ...newRows.map((pupil) => pupil.email)], updatedAt });
+    newRows.forEach((pupil) => {
+      transaction.set(pupilRefs[rows.indexOf(pupil)], {
+        email: pupil.email,
+        role: 'student',
+        status: 'active',
+        organization: teacherLicense.organization || '',
+        teacherEmail,
+        expiresAt: teacherLicense.expiresAt || '',
+        updatedAt,
+        createdAt: updatedAt,
+      });
+    });
+    return newRows.map((pupil) => pupil.email);
+  });
+}
+
+const AUTH_ROLE_KEY = 'bb_auth_role';
+const AUTH_REDIRECT_KEY = 'bb_auth_redirect';
+
+export function rememberAuthRole(role) {
+  try { sessionStorage.setItem(AUTH_ROLE_KEY, role || 'student'); } catch { /* ignore */ }
+}
+
+export function readRememberedAuthRole() {
+  try { return sessionStorage.getItem(AUTH_ROLE_KEY) || 'student'; } catch { return 'student'; }
+}
+
+function profileFromUser(user) {
+  const name = user.displayName || user.email?.split('@')[0] || 'Coder';
   return {
-    name: user.displayName || user.email.split('@')[0],
+    name,
     email: user.email,
-    avatar: user.displayName ? user.displayName.slice(0, 2).toUpperCase() : 'U',
+    avatar: name.slice(0, 2).toUpperCase(),
     photoURL: user.photoURL,
   };
+}
+
+function isChromebookLike() {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent || '';
+  return /CrOS/i.test(ua) || /Chromebook/i.test(ua);
+}
+
+function isPopupAuthFailure(err) {
+  const code = err?.code || '';
+  return code === 'auth/popup-blocked'
+    || code === 'auth/popup-closed-by-user'
+    || code === 'auth/cancelled-popup-request'
+    || code === 'auth/operation-not-supported-in-this-environment';
+}
+
+let redirectResultPromise = null;
+export function completeGoogleRedirect() {
+  if (!redirectResultPromise) {
+    redirectResultPromise = getRedirectResult(auth)
+      .then((result) => {
+        if (!result?.user) return null;
+        try { sessionStorage.removeItem(AUTH_REDIRECT_KEY); } catch { /* ignore */ }
+        return profileFromUser(result.user);
+      })
+      .catch((e) => {
+        console.error('[Auth] Google redirect result failed:', e);
+        throw e;
+      });
+  }
+  return redirectResultPromise;
+}
+
+export async function signInWithGoogle() {
+  const pending = await completeGoogleRedirect();
+  if (pending) return pending;
+
+  const useRedirectFirst = isChromebookLike();
+  if (!useRedirectFirst) {
+    try {
+      const result = await signInWithPopup(auth, googleProvider, browserPopupRedirectResolver);
+      return profileFromUser(result.user);
+    } catch (e) {
+      if (!isPopupAuthFailure(e)) throw e;
+    }
+  }
+  try { sessionStorage.setItem(AUTH_REDIRECT_KEY, '1'); } catch { /* ignore */ }
+  await signInWithRedirect(auth, googleProvider, browserPopupRedirectResolver);
+  return new Promise(() => {});
 }
 
 export async function firebaseSignOut() {
@@ -272,6 +478,118 @@ export async function deleteStudioFromFirestore(studioId) {
   } catch (e) {
     console.error('[Firestore] deleteStudio failed:', e);
   }
+}
+
+// Public Community gallery. Keep the project payload separate from the small
+// listing document so browsing the gallery never downloads every shared game.
+export async function getCommunityProjectsFromFirestore() {
+  await ensureAuth();
+  const snap = await getDocs(collection(db, 'communityProjects'));
+  return snap.docs.map(d => ({ ...d.data(), id: d.id }));
+}
+
+async function decodeCommunityProject(data) {
+  if (data.encoding !== 'gzip-base64') return JSON.parse(data.payload);
+  const binary = atob(data.payload);
+  const bytes = Uint8Array.from(binary, ch => ch.charCodeAt(0));
+  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
+  return JSON.parse(await new Response(stream).text());
+}
+
+async function encodeCommunityProject(project) {
+  const json = JSON.stringify(project);
+  if (typeof CompressionStream !== 'undefined') {
+    const stream = new Blob([json]).stream().pipeThrough(new CompressionStream('gzip'));
+    const bytes = new Uint8Array(await new Response(stream).arrayBuffer());
+    let binary = '';
+    for (let i = 0; i < bytes.length; i += 0x8000) {
+      binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    }
+    return { payload: btoa(binary), encoding: 'gzip-base64' };
+  }
+  return { payload: json, encoding: 'json' };
+}
+
+export async function getCommunityProjectData(projectId) {
+  await ensureAuth();
+  const snap = await getDoc(doc(db, 'communityProjects', projectId, 'data', 'project'));
+  if (!snap.exists()) throw new Error('This shared project is no longer available.');
+  return decodeCommunityProject(snap.data());
+}
+
+export async function publishCommunityProject(project, details) {
+  await ensureAuth();
+  if (!auth.currentUser) throw new Error('Sign in before sharing a project.');
+  const shareText = `${details.title || ''} ${details.author || ''} ${details.description || ''}`;
+  if (/@|https?:\/\/|\bwww\.|(?:\+?\d[\d\s().-]{7,}\d)/i.test(shareText)) {
+    throw new Error('Remove email addresses, phone numbers, and web links before publishing.');
+  }
+  const packed = await encodeCommunityProject(project);
+  const sizeBytes = new Blob([packed.payload]).size;
+  if (sizeBytes > 850 * 1024) throw new Error('This project is too large to share yet. Remove some large custom images or sounds and try again.');
+
+  const id = `cp_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const publishedAt = new Date().toISOString();
+  const listing = {
+    id,
+    title: String(details.title || 'My Game').trim().slice(0, 48),
+    description: String(details.description || '').trim().slice(0, 220),
+    author: String(details.author || 'Coder').trim().slice(0, 24),
+    type: 'game',
+    preview: details.preview || '🎮',
+    likes: 0,
+    views: 0,
+    remixes: 0,
+    ownerUid: auth.currentUser.uid,
+    createdAt: publishedAt,
+  };
+  try {
+    await setDoc(doc(db, 'communityProjects', id), listing);
+    await setDoc(doc(db, 'communityProjects', id, 'data', 'project'), packed);
+    return listing;
+  } catch (error) {
+    try { await deleteDoc(doc(db, 'communityProjects', id)); } catch { /* best effort rollback */ }
+    throw error;
+  }
+}
+
+export async function deleteCommunityProject(projectId) {
+  await ensureAuth();
+  const listingRef = doc(db, 'communityProjects', projectId);
+  const listing = await getDoc(listingRef);
+  if (!listing.exists()) return;
+  if (!auth.currentUser || listing.data().ownerUid !== auth.currentUser.uid) {
+    throw new Error('Only the creator can remove this project.');
+  }
+  await deleteDoc(doc(db, 'communityProjects', projectId, 'data', 'project'));
+  await deleteDoc(listingRef);
+}
+
+export async function updateCommunityProjectCount(projectId, field) {
+  if (!['views', 'remixes'].includes(field)) return;
+  try {
+    const ref = doc(db, 'communityProjects', projectId);
+    const snap = await getDoc(ref);
+    if (snap.exists()) await updateDoc(ref, { [field]: Number(snap.data()[field] || 0) + 1 });
+  } catch (e) {
+    console.warn(`[Community] Could not update ${field} count:`, e.message);
+  }
+}
+
+export async function toggleCommunityProjectLike(projectId) {
+  await ensureAuth();
+  if (!auth.currentUser) throw new Error('Sign in to like a project.');
+  const ref = doc(db, 'communityProjects', projectId);
+  return runTransaction(db, async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists()) throw new Error('This project is no longer available.');
+    const data = snap.data();
+    const likedBy = Array.isArray(data.likedBy) ? data.likedBy : [];
+    const uid = auth.currentUser.uid;
+    const next = likedBy.includes(uid) ? likedBy.filter(id => id !== uid) : [...likedBy, uid];
+    tx.update(ref, { likedBy: next, likes: next.length });
+    return { liked: next.includes(uid), likes: next.length };
+  });
 }
 
 export async function deleteAssignmentFromFirestore(assignmentId) {

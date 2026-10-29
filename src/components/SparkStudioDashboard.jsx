@@ -6,6 +6,7 @@ import {
 } from '../utils/classroomStore.js';
 import { KIND_META, classroomHash } from './classroom/assignables.js';
 import './SparkStudioDashboard.css';
+import { EmojiIcon, IconText } from './ui/Icon.jsx';
 
 const TOTAL_LESSONS = 152;
 
@@ -21,12 +22,10 @@ const extraModes = [
   { id: 'challenges', icon: '🧩', name: 'Challenges', blurb: 'Crack a brain-twisting puzzle', color: 'blue', tags: ['logic', 'secrets'] },
 ];
 
-const CAMPAIGNS = [
-  { id: 'space', title: 'Space Explorer', emoji: '🚀', color: '#6366f1', missions: 5 },
-  { id: 'ocean', title: 'Ocean Deep', emoji: '🌊', color: '#0ea5e9', missions: 5 },
-  { id: 'city', title: 'City Builder', emoji: '🏙️', color: '#f59e0b', missions: 5 },
-  { id: 'cyber', title: 'Cyber Quest', emoji: '⚡', color: '#10b981', missions: 5 },
-];
+import { CAMPAIGNS as MISSION_WORLDS } from './missions/missionData.js';
+
+// Every mission world, straight from the missions data (new worlds appear automatically)
+const CAMPAIGNS = MISSION_WORLDS.map(({ id, title, emoji, color, missions }) => ({ id, title, emoji, color, missions: missions.length }));
 
 const SPARKS = [
   { icon: '⚡', title: 'Make it move', desc: 'Give a robot a movement block and send it across the map.', page: 'missions' },
@@ -70,9 +69,10 @@ function useClassWork(user) {
 
 export default function SparkStudioDashboard({ onNavigate }) {
   const { user } = useUser();
-  const { projects = [] } = useProject();
+  const { projects = [], setActiveProject } = useProject();
   const [activeMode, setActiveMode] = useState(null);
   const [showAllModes, setShowAllModes] = useState(false);
+  const [showExplore, setShowExplore] = useState(false);
   const [toast, setToast] = useState('');
 
   const firstName = (user?.name || 'Builder').split(' ')[0];
@@ -90,6 +90,7 @@ export default function SparkStudioDashboard({ onNavigate }) {
   const today = new Date().getDay();
   const lessonsDone = progress.lessonsDone.length;
   const missionsDone = progress.missionsDone.length;
+  const isFirstVisit = lessonsDone === 0 && missionsDone === 0 && xp === 0;
   const missionsTotal = CAMPAIGNS.reduce((n, c) => n + c.missions, 0);
   const spark = SPARKS[Math.floor(Date.now() / 86400000) % SPARKS.length];
 
@@ -104,7 +105,7 @@ export default function SparkStudioDashboard({ onNavigate }) {
     ? { label: `Do: ${classWork[0].a.title}`, go: () => { window.location.hash = classroomHash(classWork[0].a, cls); } }
     : lessonsDone > 0
       ? { label: 'Continue learning', go: () => onNavigate('learn') }
-      : { label: 'Start your first lesson', go: () => onNavigate('learn') };
+      : { label: 'Start Year 3, Week 1', go: () => onNavigate('learn/y3/w01') };
 
   const notify = (message) => { setToast(message); window.setTimeout(() => setToast(''), 2400); };
 
@@ -133,44 +134,71 @@ export default function SparkStudioDashboard({ onNavigate }) {
 
   return (
     <main className="spark-home">
-      <div className="spark-orb spark-orb-one" />
-      <div className="spark-orb spark-orb-two" />
-
       <section className="spark-hero">
         <div className="spark-hero-copy">
-          <div className="spark-kicker"><span className="spark-live-dot" /> CREATOR HEADQUARTERS <span className="spark-kicker-line" /></div>
-          <h1>Hey {firstName}!<br /><span>What will you build?</span></h1>
-          <p>Pick a world, bring an idea, and make it playable in under a minute.</p>
+          <div className="spark-kicker"><EmojiIcon e="✨" style={{ marginRight: '0.35em' }} />YOUR CODING SPACE <span className="spark-kicker-line" /></div>
+          <h1>Hi, {firstName}!<br /><span>What shall we make today?</span></h1>
+          <p>Choose a mission, make something cool, or carry on where you left off.</p>
           <div className="spark-hero-actions">
-            <button className="spark-primary-btn" onClick={nextStep.go}><span>▶</span> {nextStep.label}</button>
-            <button className="spark-ghost-btn" onClick={() => chooseMode(modes[0])}><span>⚡</span> Start building</button>
+            <button className="spark-primary-btn" onClick={isFirstVisit ? () => document.querySelector('.spark-first-visit')?.scrollIntoView({ behavior: 'smooth', block: 'center' }) : nextStep.go}><span><EmojiIcon e="▶" /></span> {isFirstVisit ? 'Choose an adventure' : nextStep.label}</button>
+            <button className="spark-ghost-btn" onClick={() => onNavigate('portfolio')}><span>▤</span> My projects</button>
           </div>
           <div className="spark-hero-meta">
-            <span className="spark-chip">🔥 {user?.streak || 0} day streak</span>
-            <span className="spark-chip">✦ {xp.toLocaleString()} XP</span>
-            {cls && <span className="spark-chip">🏫 {cls.name}</span>}
+            <span className="spark-chip">Level {user?.level || 1}</span>
+            <span className="spark-chip">{xp.toLocaleString()} XP</span>
+            {cls && <span className="spark-chip">Class · {cls.name}</span>}
+          </div>
+          <div className="spark-welcome-robot" aria-hidden="true">
+            <img src="/images/bytebuddies-robot-mascot.webp" alt="" />
           </div>
         </div>
-        <div className="spark-hero-scene" aria-hidden="true">
-          <div className="spark-stars">✦　·　✧　　·　✦　　　·　✧</div>
-          <div className="spark-moon" /><div className="spark-planet planet-back" /><div className="spark-planet planet-front" />
-          <div className="spark-platform"><span className="platform-grid" /></div>
-          <div className="spark-robot"><div className="robot-antenna" /><div className="robot-head"><i /><i /></div><div className="robot-body"><b>✦</b></div><div className="robot-leg left" /><div className="robot-leg right" /></div>
-          <div className="spark-float-card card-build"><strong>Level {user?.level || 1}</strong><small>{levelPct}% to level {(user?.level || 1) + 1}</small></div>
-          <div className="spark-float-card card-weather"><span>{user?.avatarEmoji || '🧑‍💻'}</span><small>{firstName}</small></div>
+        <div className="spark-hero-scene">
+          <div className="spark-focus-copy">
+            <div className="spark-focus-label"><EmojiIcon e="🚀" style={{ marginRight: '0.35em' }} />YOUR NEXT MISSION</div>
+            <h2>{classWork[0]?.a.title || (lessonsDone ? 'Continue your learning' : 'Start with a guided lesson')}</h2>
+            <p>{classWork[0] ? `${(KIND_META[classWork[0].a.kind] || KIND_META.task).label} · ${dueLabel(classWork[0].a.dueDate)}` : lessonsDone ? `${lessonsDone} lesson${lessonsDone === 1 ? '' : 's'} completed so far` : 'Learn the basics, then apply them in your own projects.'}</p>
+          </div>
+          <div className="spark-focus-progress"><span style={{ width: `${levelPct}%` }} /></div>
+          <div className="spark-focus-foot"><span>Level {user?.level || 1}</span><span>{Math.max(0, xpToNext - xp).toLocaleString()} XP until your next level-up</span></div>
         </div>
       </section>
 
+      {isFirstVisit && !showExplore && (
+        <section className="spark-first-visit" aria-labelledby="first-session-title">
+          <div className="spark-first-visit-heading">
+            <span className="spark-first-visit-emoji" aria-hidden="true"><EmojiIcon e="🧭" /></span>
+            <div>
+              <span className="spark-eyebrow">YOUR FIRST ADVENTURE</span>
+              <h2 id="first-session-title">What sounds fun?</h2>
+              <p>Pick something to try. You can always explore the other activities later!</p>
+            </div>
+          </div>
+          <div className="spark-adventure-grid">
+            <button className="spark-adventure-card adventure-learn" onClick={() => onNavigate('learn/y3/w01')}>
+              <span aria-hidden="true"><EmojiIcon e="📚" /></span><strong>Learn to code</strong><small>Try your first guided lesson</small><b aria-hidden="true">→</b>
+            </button>
+            <button className="spark-adventure-card adventure-game" onClick={() => onNavigate('gamebuilder')}>
+              <span aria-hidden="true"><EmojiIcon e="🎮" /></span><strong>Make a game</strong><small>Build something you can play</small><b aria-hidden="true">→</b>
+            </button>
+            <button className="spark-adventure-card adventure-robot" onClick={() => onNavigate('studio')}>
+              <span aria-hidden="true"><EmojiIcon e="🤖" /></span><strong>Meet the robots</strong><small>Design and test your ideas</small><b aria-hidden="true">→</b>
+            </button>
+          </div>
+          <button className="spark-text-btn spark-all-activities" onClick={() => setShowExplore(true)}>See all activities →</button>
+        </section>
+      )}
+
+      {(!isFirstVisit || showExplore) && <>
       {/* ─── Progress at a glance ─── */}
       <section className="spark-stats" aria-label="Your progress">
         <div className="spark-stat">
-          <div className="spark-stat-top"><span className="spark-stat-label">Level</span><span className="spark-stat-icon">🏅</span></div>
+          <div className="spark-stat-top"><span className="spark-stat-label">Level</span><span className="spark-stat-icon"><EmojiIcon e="🏅" /></span></div>
           <b>{user?.level || 1}</b>
           <div className="spark-meter"><i style={{ width: `${levelPct}%` }} /></div>
           <small>{Math.max(0, xpToNext - xp).toLocaleString()} XP to next level</small>
         </div>
         <div className="spark-stat">
-          <div className="spark-stat-top"><span className="spark-stat-label">This week</span><span className="spark-stat-icon">📈</span></div>
+          <div className="spark-stat-top"><span className="spark-stat-label">This week</span><span className="spark-stat-icon"><EmojiIcon e="📈" /></span></div>
           <b>{weekTotal.toLocaleString()} <em>XP</em></b>
           <div className="spark-week" aria-label={`XP each day this week: ${weeklyXP.join(', ')}`}>
             {weeklyXP.map((v, i) => (
@@ -182,16 +210,16 @@ export default function SparkStudioDashboard({ onNavigate }) {
           </div>
         </div>
         <div className="spark-stat">
-          <div className="spark-stat-top"><span className="spark-stat-label">Lessons</span><span className="spark-stat-icon">📚</span></div>
+          <div className="spark-stat-top"><span className="spark-stat-label">Lessons</span><span className="spark-stat-icon"><EmojiIcon e="📚" /></span></div>
           <b>{lessonsDone} <em>/ {TOTAL_LESSONS}</em></b>
           <div className="spark-meter spark-meter--violet"><i style={{ width: `${(lessonsDone / TOTAL_LESSONS) * 100}%` }} /></div>
-          <small>{lessonsDone ? 'Keep the run going!' : 'Your first lesson takes 10 minutes'}</small>
+          <small>{lessonsDone ? 'Continue at your own pace' : 'A short introduction to coding'}</small>
         </div>
         <div className="spark-stat">
-          <div className="spark-stat-top"><span className="spark-stat-label">Missions</span><span className="spark-stat-icon">🚀</span></div>
+          <div className="spark-stat-top"><span className="spark-stat-label">Missions</span><span className="spark-stat-icon"><EmojiIcon e="🚀" /></span></div>
           <b>{missionsDone} <em>/ {missionsTotal}</em></b>
           <div className="spark-meter spark-meter--pink"><i style={{ width: `${(missionsDone / missionsTotal) * 100}%` }} /></div>
-          <small>{missionsDone ? `${missionsTotal - missionsDone} left to save the worlds` : 'Four worlds need your code'}</small>
+          <small>{missionsDone ? `${missionsTotal - missionsDone} remaining` : 'Explore the available missions'}</small>
         </div>
       </section>
 
@@ -201,7 +229,7 @@ export default function SparkStudioDashboard({ onNavigate }) {
           <div className="spark-panel-head">
             <div>
               <span className="spark-eyebrow">{classWork.length ? 'FROM YOUR TEACHER' : 'UP NEXT'}</span>
-              <h3>{classWork.length ? `${classWork.length} thing${classWork.length === 1 ? '' : 's'} to do` : 'Pick up where you left off'}</h3>
+              <h3>{classWork.length ? `${classWork.length} assignment${classWork.length === 1 ? '' : 's'} to try` : 'Pick your next adventure'}</h3>
             </div>
             {classWork.length > 0 && <button className="spark-text-btn" onClick={() => onNavigate('classroom')}>My class <span>→</span></button>}
           </div>
@@ -220,7 +248,7 @@ export default function SparkStudioDashboard({ onNavigate }) {
               })
               : suggestions.map((s) => (
                 <button key={s.title} className="spark-list-row" onClick={s.go}>
-                  <span className="spark-list-icon" style={{ '--row-color': s.color }}>{s.icon}</span>
+                  <span className="spark-list-icon" style={{ '--row-color': s.color }}><EmojiIcon e={s.icon} /></span>
                   <span className="spark-list-copy"><strong>{s.title}</strong><small>{s.sub}</small></span>
                   <span className="spark-row-arrow">→</span>
                 </button>
@@ -229,14 +257,13 @@ export default function SparkStudioDashboard({ onNavigate }) {
         </div>
         <div className="spark-panel spark-challenge-panel">
           <div className="spark-panel-head">
-            <div><span className="spark-eyebrow">TODAY’S SPARK</span><h3>One tiny challenge</h3></div>
-            <span className="spark-reward">+50 XP</span>
+            <div><span className="spark-eyebrow"><EmojiIcon e="💡" style={{ marginRight: '0.35em' }} />TRY A MINI CHALLENGE</span><h3>A coding idea</h3></div>
           </div>
-          <div className="spark-challenge-art">{spark.icon}</div>
+          <div className="spark-challenge-art"><EmojiIcon e={spark.icon} /></div>
           <h4>{spark.title}</h4>
           <p>{spark.desc}</p>
           <div className="spark-challenge-foot">
-            <span>New spark every day</span>
+            <span>Optional practice</span>
             <button onClick={() => onNavigate(spark.page)}>Try it →</button>
           </div>
         </div>
@@ -244,13 +271,13 @@ export default function SparkStudioDashboard({ onNavigate }) {
 
       {/* ─── Build modes ─── */}
       <div className="spark-section-heading">
-        <div><span className="spark-eyebrow">CHOOSE YOUR ADVENTURE</span><h2>Build something brilliant</h2></div>
+        <div><span className="spark-eyebrow">TOOLS</span><h2>Learn and create</h2></div>
         <button className="spark-text-btn" onClick={() => setShowAllModes(!showAllModes)}>{showAllModes ? 'Show less' : 'View all modes'} <span>→</span></button>
       </div>
       <section className="spark-mode-grid">
         {(showAllModes ? [...modes, ...extraModes] : modes).map((mode) => (
           <button key={mode.name} className={`spark-mode-card ${mode.color} ${activeMode === mode.name ? 'is-selected' : ''}`} onClick={() => chooseMode(mode)}>
-            <div className="spark-mode-top"><span className="spark-mode-icon">{mode.icon}</span><span className="spark-arrow">↗</span></div>
+            <div className="spark-mode-top"><span className="spark-mode-icon"><EmojiIcon e={mode.icon} /></span><span className="spark-arrow">↗</span></div>
             <strong>{mode.name}</strong><span className="spark-mode-blurb">{mode.blurb}</span>
             <div className="spark-tags">{mode.tags.map((tag) => <em key={tag}>{tag}</em>)}</div>
           </button>
@@ -261,17 +288,17 @@ export default function SparkStudioDashboard({ onNavigate }) {
       <section className="spark-content-grid spark-content-grid--even">
         <div className="spark-panel">
           <div className="spark-panel-head">
-            <div><span className="spark-eyebrow">YOUR HANGAR</span><h3>Continue building</h3></div>
+            <div><span className="spark-eyebrow">PROJECTS</span><h3>{recentProjects.some((project) => project.isExample) ? 'Examples to explore' : 'Continue building'}</h3></div>
             <button className="spark-text-btn" onClick={() => onNavigate('portfolio')}>All projects <span>→</span></button>
           </div>
           {recentProjects.length ? (
             <div className="spark-list">
               {recentProjects.map((project, i) => (
-                <button className="spark-list-row" key={project.id || i} onClick={() => onNavigate('gamebuilder')}>
-                  <span className={`project-thumb thumb-${i % 3}`}>{project.type === 'game' ? '🎮' : project.type === 'website' ? '🌐' : ['🌌', '🏝️', '🤖'][i % 3]}</span>
+                <button className="spark-list-row" key={project.id || i} onClick={() => { setActiveProject?.(project); onNavigate('workspace'); }}>
+                  <span className={`project-thumb thumb-${i % 3}`}><IconText>{project.type === 'game' ? '🎮' : project.type === 'website' ? '🌐' : ['🌌', '🏝️', '🤖'][i % 3]}</IconText></span>
                   <span className="spark-list-copy">
-                    <strong>{project.name || `Untitled World ${i + 1}`}</strong>
-                    <small>{project.modified ? `Edited ${project.modified}` : 'Edited recently'} · {project.language || project.type || 'Blocks'}</small>
+                    <strong>{project.isExample ? `Example · ${project.name || `Untitled World ${i + 1}`}` : project.name || `Untitled World ${i + 1}`}</strong>
+                    <small>{project.isExample ? `Open to explore and remix · ${project.language || project.type || 'Blocks'}` : `${project.modified ? `Edited ${project.modified}` : 'Edited recently'} · ${project.language || project.type || 'Blocks'}`}</small>
                   </span>
                   <span className="spark-row-arrow">→</span>
                 </button>
@@ -279,7 +306,7 @@ export default function SparkStudioDashboard({ onNavigate }) {
             </div>
           ) : (
             <button className="spark-empty-project" onClick={() => chooseMode(modes[0])}>
-              <span>✦</span><strong>Your first world is waiting</strong><small>Start with a blank canvas or a playful template →</small>
+              <span>＋</span><strong>Create your first project</strong><small>Start with a blank canvas or a template →</small>
             </button>
           )}
         </div>
@@ -308,7 +335,8 @@ export default function SparkStudioDashboard({ onNavigate }) {
         </div>
       </section>
 
-      {toast && <div className="spark-toast" role="status">✦ {toast}</div>}
+      {toast && <div className="spark-toast" role="status"><EmojiIcon e="✦" style={{ marginRight: '0.35em' }} />{toast}</div>}
+      </>}
     </main>
   );
 }

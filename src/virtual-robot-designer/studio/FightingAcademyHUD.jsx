@@ -4,6 +4,7 @@
  */
 import React from 'react';
 import { getHealthBarColor } from '../data/fighting-boxing-mechanics.js';
+import { EmojiIcon } from '../../components/ui/Icon.jsx';
 
 export function FightingAcademyHUD({
   combat = {},
@@ -44,7 +45,7 @@ export function FightingAcademyHUD({
         <div className="fight-slim-center">
           {isTraining ? (
             <span className="fight-slim-training">
-              🎯 {trainingHits}/{trainingGoal}
+              <EmojiIcon e="🎯" style={{ marginRight: '0.35em' }} />{trainingHits}/{trainingGoal}
             </span>
           ) : (
             <span className="fight-slim-round">R{combat.boxingRound || combat.round || 1}</span>

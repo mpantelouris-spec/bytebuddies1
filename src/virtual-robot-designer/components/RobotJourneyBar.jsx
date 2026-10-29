@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import { EmojiIcon, IconText } from '../../components/ui/Icon.jsx';
 
 const STEPS = [
   { id: 'create', num: 1, label: 'Create Your Robot', icon: '🎨' },
@@ -15,7 +16,7 @@ export default function RobotJourneyBar({ activeStep = 'create', buildMode, onCr
   return (
     <div className="vrd-journey">
       <div className="vrd-journey-style">
-        <span className="vrd-journey-style-badge">{buildMode === 'blocks' ? '🧱' : '🤖'} {styleLabel} Robot</span>
+        <span className="vrd-journey-style-badge"><IconText>{buildMode === 'blocks' ? '🧱' : '🤖'}</IconText> {styleLabel} Robot</span>
       </div>
       <div className="vrd-journey-steps">
         {STEPS.map((step, i) => {
@@ -32,7 +33,7 @@ export default function RobotJourneyBar({ activeStep = 'create', buildMode, onCr
                 whileTap={{ scale: 0.98 }}
               >
                 <span className="vrd-journey-num">{isDone ? '✓' : step.num}</span>
-                <span className="vrd-journey-icon">{step.icon}</span>
+                <span className="vrd-journey-icon"><EmojiIcon e={step.icon} /></span>
                 <span className="vrd-journey-label">{step.label}</span>
               </motion.button>
             </React.Fragment>

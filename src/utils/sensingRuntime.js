@@ -2,6 +2,8 @@
  * Scratch-like sensing helpers (collision, distance, color, keys).
  */
 
+import { pixelsOverlap } from './pixelCollision.js';
+
 export const STAGE_W_DEFAULT = 480;
 export const STAGE_H_DEFAULT = 360;
 
@@ -73,10 +75,19 @@ export function isTouchingSprite(sprite, allSprites, targetName) {
     if (!other || other.id === sprite?.id) continue;
     if (other.visible === false) continue;
     if (target !== 'any' && String(other.name || '').toLowerCase() !== target) continue;
-    if (bboxOverlap(sprite, other)) return true;
+    if (!bboxOverlap(sprite, other) && !rotated(sprite) && !rotated(other)) continue;
+    // Boxes overlap (or a sprite is turned) — check the visible pixels, like Scratch
+    const hit = pixelsOverlap(sprite, other);
+    if (hit === null ? bboxOverlap(sprite, other) : hit) return true;
   }
   return false;
 }
+
+/** A turned sprite can poke outside its unrotated box. */
+const rotated = (s) => {
+  const d = Number(s?.direction ?? 90);
+  return Number.isFinite(d) && Math.abs(((d % 180) + 180) % 180 - 90) > 1;
+};
 
 export function isTouchingMousePointer(sprite, mouseX, mouseY) {
   return (

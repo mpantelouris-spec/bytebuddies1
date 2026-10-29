@@ -3,6 +3,9 @@
  * Three.js robot model builder for ByteBuddies Robot Invention Studio.
  * Creates distinct, visually rich 3D models for each chassis type.
  */
+import { attachAddons } from './robotAddons.js';
+import { buildPartsRobot } from '../create/partsRobot.js';
+import { buildFreeRobot } from '../create/freeBuild.js';
 import * as THREE from 'three';
 import { buildDesignedRobot } from '../create/designedRobot.js';
 import { buildMKKart, CHASSIS_KART } from '../racing/MKKartModel.js';
@@ -272,6 +275,19 @@ export const CHASSIS_DATA = [
     weight: '1.4 kg', movement: 'Segments',
     movementHint: 'wheels',
     bgGrad: ['#DCFCE7', '#BBF7D0'],
+  },
+  {
+    id: 'jumpbot',
+    name: 'Jump Bot',
+    icon: '🤖',
+    badge: 'Arcade · Platformer',
+    desc: 'Code a cheerful little robot through ten retro platform adventures.',
+    primaryColor: '#8B5CF6',
+    accentColor: '#FACC15',
+    speed: 82, power: 70, durability: 72,
+    weight: '1.2 kg', movement: 'Bipedal legs',
+    movementHint: 'legs',
+    bgGrad: ['#EDE9FE', '#DDD6FE'],
   },
   {
     id: 'scout',
@@ -1945,19 +1961,27 @@ function buildDroid(primary, accent) {
   // ════════════════════════════════════════════════════════
   // ANIMATION — walking gait cycle
   // ════════════════════════════════════════════════════════
-  g.userData.animate = (t) => {
-    const freq = 1.5; // gait frequency
-    const walk = Math.sin(t * freq);
+  g.userData.walkBlend = 0;
+  g.userData.animate = (t, dt = 1 / 60, motion = {}) => {
+    // Drive the gait from the simulator's locomotion phase. A slow, always-on
+    // idle sine makes the legs look like they are shuffling in place and can
+    // fight the simulator's planted root position.
+    const targetBlend = motion.walking ? 1 : 0;
+    const blendRate = Math.min(1, Math.max(0, dt) * (targetBlend ? 9 : 7));
+    g.userData.walkBlend += (targetBlend - g.userData.walkBlend) * blendRate;
+    const blend = g.userData.walkBlend;
+    const phase = Number.isFinite(motion.gaitPhase) ? motion.gaitPhase : t * 8;
+    const walk = Math.sin(phase);
 
-    // Subtle full-body bob
-    g.position.y = Math.abs(Math.sin(t * freq)) * 0.015;
+    // Keep the robot root planted; only the torso gets a small stride bounce.
+    upperGroup.position.y = 0.22 + Math.abs(Math.sin(phase * 2)) * 0.035 * blend;
 
     // Hip counter-rotation (hips sway opposite to shoulders)
-    hipGroup.rotation.y   = walk * 0.07;
-    upperGroup.rotation.y = -walk * 0.05;
+    hipGroup.rotation.y   = walk * 0.09 * blend;
+    upperGroup.rotation.y = -walk * 0.065 * blend;
 
     // Torso lateral sway
-    upperGroup.rotation.z = Math.sin(t * freq * 0.5) * 0.022;
+    upperGroup.rotation.z = Math.sin(phase) * 0.035 * blend;
 
     // Eye pulse
     eyeRefs.forEach(e => {
@@ -1974,24 +1998,24 @@ function buildDroid(primary, accent) {
     armRefs.forEach(({ armRoot, upperArmGrp, forearmGrp, si }) => {
       const phase = si === 0 ? 0 : PI;
       // Shoulder swing
-      armRoot.rotation.x      = Math.sin(t * freq + phase) * 0.22;
+      armRoot.rotation.x      = Math.sin((motion.gaitPhase ?? t * 8) + phase) * 0.34 * blend;
       // Elbow natural bend during swing
-      upperArmGrp.rotation.x  = 0.08 + Math.abs(Math.sin(t * freq + phase)) * 0.18;
+      upperArmGrp.rotation.x  = blend * (0.06 + Math.abs(Math.sin((motion.gaitPhase ?? t * 8) + phase)) * 0.16);
       // Forearm subtle follow
-      forearmGrp.rotation.x   = Math.sin(t * freq + phase + 0.4) * 0.08;
+      forearmGrp.rotation.x   = Math.sin((motion.gaitPhase ?? t * 8) + phase + 0.4) * 0.1 * blend;
     });
 
     // ── Legs: thigh swing + knee bend ──
     legRefs.forEach(({ thighGrp, shinGrp, footGrp, si }) => {
       const phase = si === 0 ? PI : 0; // opposite to arm on same side
-      const swing = Math.sin(t * freq + phase);
+      const swing = Math.sin((motion.gaitPhase ?? t * 8) + phase);
       // Hip/thigh forward-back
-      thighGrp.rotation.x = swing * 0.28;
-      // Knee bends when leg lifts (forward phase)
-      const kneeBend = Math.max(0, swing) * 0.45;
+      thighGrp.rotation.x = swing * 0.46 * blend;
+      // Lift the advancing foot and bend the knee; the opposite leg extends.
+      const kneeBend = Math.max(0, swing) * 0.68 * blend;
       shinGrp.rotation.x = -kneeBend;
       // Ankle dorsiflexion to keep foot level
-      footGrp.rotation.x = kneeBend * 0.5;
+      footGrp.rotation.x = kneeBend * 0.42 - swing * 0.08 * blend;
     });
   };
 
@@ -3095,6 +3119,24 @@ function buildRobotArm(primary, accent) {
 
   // ── ANIMATION — coordinated 6-DOF industrial cycle ────────────────────
   g.userData.animate = (t) => {
+    // In the Robot Arm workshop the arena poses the arm to reach the bench
+    const pose = g.userData.armPose;
+    if (pose) {
+      j1Grp.rotation.y = 0;
+      j2Grp.rotation.x += (pose.shoulder - j2Grp.rotation.x) * 0.25;
+      j3Grp.rotation.x += (pose.elbow - j3Grp.rotation.x) * 0.25;
+      j4Grp.rotation.x += (pose.wrist - j4Grp.rotation.x) * 0.25;
+      j4Grp.rotation.y = 0;
+      const want = pose.closed ? 0.07 : 0.17;
+      fingerRefs.forEach((fg, i) => {
+        const a = (i / 3) * PI * 2; const cur = Math.hypot(fg.position.x, fg.position.z) || want;
+        const r = cur + (want - cur) * 0.3;
+        fg.position.set(Math.cos(a) * r, 0.02, Math.sin(a) * r);
+      });
+      armStrip.material.emissiveIntensity = 0.8 + Math.sin(t * 4) * 0.5;
+      faStrip.material.emissiveIntensity = 0.8 + Math.sin(t * 4 + 1) * 0.5;
+      return;
+    }
     // J1 — slow waist sweep
     j1Grp.rotation.y = Math.sin(t * 0.5) * 0.65;
     // J2 — shoulder pitch
@@ -3338,17 +3380,25 @@ function buildBlockBot(primary, accent) {
   hairM.map = getBlockPixelTex('hair');
   const shirtM = matBlockFlat(shirtHex);
   shirtM.map = getBlockPixelTex('shirt');
+  const sleeveM = shirtM.clone();
+  sleeveM.polygonOffset = true;
+  sleeveM.polygonOffsetFactor = 1;
+  sleeveM.polygonOffsetUnits = 1;
   const pantsM = matBlockTex('pants');
+  pantsM.polygonOffset = true;
+  pantsM.polygonOffsetFactor = 1;
+  pantsM.polygonOffsetUnits = 1;
   const sideM = matBlockTex('grass_side');
   const topM = matBlockTex('grass_top');
 
+  // Minecraft Steve layout: legs 0–6u, body 6–12u, head 12–16u (no overlapping boxes).
   const headMats = [skinM, skinM, hairM, skinM, faceM, skinM];
   const head = blockBox(u * 4, u * 4, u * 4, headMats);
-  head.position.set(0, u * 10, 0);
+  head.position.set(0, u * 14, 0);
   g.add(head);
 
   const body = blockBox(u * 4, u * 6, u * 2, shirtM);
-  body.position.set(0, u * 5, 0);
+  body.position.set(0, u * 9, 0);
   body.userData.isBody = true;
   g.add(body);
 
@@ -3356,20 +3406,22 @@ function buildBlockBot(primary, accent) {
   const limbs = { arms: [], legs: [] };
   [-1, 1].forEach((side) => {
     const shoulder = new THREE.Group();
-    shoulder.position.set(side * u * 3, u * 8, 0);
-    const arm = blockBox(u * 2, u * 6, u * 2, shirtM);
-    arm.position.set(0, -u * 3, 0);
-    shoulder.add(arm);
+    // Nudge out of the torso so the sleeve face does not z-fight the shirt.
+    shoulder.position.set(side * (u * 3 + 0.03), u * 12, 0);
+    // Sleeve (4u) then hand (2u) — abut, do not overlap, or skin/cyan flash.
+    const sleeve = blockBox(u * 2, u * 4, u * 2, sleeveM);
+    sleeve.position.set(0, -u * 2, 0);
+    shoulder.add(sleeve);
     const hand = blockBox(u * 2, u * 2, u * 2, skinM);
-    hand.position.set(0, -u * 6.5, 0);
+    hand.position.set(0, -u * 5.04, 0);
     shoulder.add(hand);
     g.add(shoulder);
     limbs.arms.push(shoulder);
   });
 
-  [-0.5, 0.5].forEach((side) => {
+  [-1, 1].forEach((side) => {
     const hip = new THREE.Group();
-    hip.position.set(side * u * 2, u * 6, 0);
+    hip.position.set(side * (u + 0.02), u * 6, 0);
     const leg = blockBox(u * 2, u * 6, u * 2, pantsM);
     leg.position.set(0, -u * 3, 0);
     hip.add(leg);
@@ -4521,6 +4573,143 @@ function buildSnakeBot(primary, accent) {
   return g;
 }
 
+/**
+ * Jump Bot is a little retro platforming mascot, not a scaled humanoid.
+ * Its oversized screen-face, spring antenna, compact body and chunky boots
+ * give it a distinct arcade-hero silhouette while keeping it unmistakably a
+ * robot built from original ByteBuddies shapes.
+ */
+function buildJumpBot(primary, accent) {
+  const g = new THREE.Group();
+  const dark = '#17233d';
+  const visor = '#10253a';
+  const glow = '#55f4e6';
+  const joints = '#f3a94b';
+
+  // Short, broad body with a bright core and a little explorer pack.
+  const torso = box(0.76, 0.66, 0.54, primary, 0.28, 0.52);
+  torso.position.y = 0.98;
+  g.add(torso);
+  const belly = box(0.48, 0.34, 0.06, accent, 0.22, 0.45);
+  belly.position.set(0, 0.98, 0.3);
+  g.add(belly);
+  const core = mesh(new THREE.OctahedronGeometry(0.13, 0), mat(glow, 0.1, 0.2, glow));
+  core.material.emissiveIntensity = 1.2;
+  core.position.set(0, 1, 0.36);
+  g.add(core);
+  const pack = box(0.42, 0.45, 0.28, '#38496b', 0.45, 0.62);
+  pack.position.set(0, 1.04, -0.34);
+  g.add(pack);
+  [-0.13, 0.13].forEach((x) => {
+    const packLight = sphere(0.07, accent, 0.18, 0.25, accent);
+    packLight.material.emissiveIntensity = 0.85;
+    packLight.position.set(x, 1.12, -0.5);
+    g.add(packLight);
+  });
+
+  // Big rounded helmet and expressive screen face.
+  const head = new THREE.Group();
+  head.position.set(0, 1.74, 0.02);
+  g.add(head);
+  const helmet = sphere(0.58, primary, 0.22, 0.62);
+  helmet.scale.set(1.02, 0.9, 0.82);
+  head.add(helmet);
+  const face = box(0.72, 0.42, 0.13, visor, 0.38, 0.24, '#143d57');
+  face.material.emissiveIntensity = 0.28;
+  face.position.set(0, -0.02, 0.43);
+  head.add(face);
+  [-0.17, 0.17].forEach((x) => {
+    const eye = sphere(0.085, glow, 0.05, 0.15, glow);
+    eye.material.emissiveIntensity = 1.9;
+    eye.scale.y = 1.18;
+    eye.position.set(x, 0.01, 0.515);
+    head.add(eye);
+    const pupil = sphere(0.025, '#ffffff', 0, 0.15, '#ffffff');
+    pupil.material.emissiveIntensity = 0.8;
+    pupil.position.set(x - 0.02, 0.04, 0.54);
+    head.add(pupil);
+  });
+  // A tiny pixel-like smile, not a human moustache or copied character detail.
+  const smile = box(0.13, 0.028, 0.025, '#f4b7ad', 0.05, 0.5);
+  smile.position.set(0, -0.17, 0.516);
+  head.add(smile);
+  [-1, 1].forEach((side) => {
+    const ear = sphere(0.16, accent, 0.26, 0.48, accent);
+    ear.scale.set(0.65, 0.95, 0.75);
+    ear.position.set(side * 0.54, -0.04, 0.01);
+    head.add(ear);
+    const earDot = sphere(0.045, glow, 0.05, 0.15, glow);
+    earDot.material.emissiveIntensity = 1.1;
+    earDot.position.set(side * 0.59, -0.04, 0.105);
+    head.add(earDot);
+  });
+
+  // Spring antenna with a little four-point signal star.
+  const antenna = cylinder(0.035, 0.28, joints, 0.5, 0.35);
+  antenna.position.set(0.08, 2.22, 0);
+  head.add(antenna);
+  const beacon = mesh(new THREE.OctahedronGeometry(0.15, 0), mat('#facc52', 0.12, 0.2, '#facc52'));
+  beacon.material.emissiveIntensity = 1.25;
+  beacon.position.set(0.08, 2.43, 0);
+  head.add(beacon);
+
+  // Stubby arms and mitten hands: built for a jumping game, not a human gait.
+  const arms = [];
+  [-1, 1].forEach((side) => {
+    const arm = new THREE.Group();
+    arm.position.set(side * 0.47, 1.16, 0.02);
+    g.add(arm);
+    const upper = box(0.2, 0.36, 0.23, primary, 0.25, 0.55);
+    upper.position.y = -0.12;
+    upper.rotation.z = side * -0.18;
+    arm.add(upper);
+    const cuff = sphere(0.145, accent, 0.2, 0.55);
+    cuff.position.set(side * 0.025, -0.31, 0.015);
+    arm.add(cuff);
+    const mitten = sphere(0.19, primary, 0.18, 0.58);
+    mitten.scale.set(0.92, 0.82, 0.86);
+    mitten.position.set(side * 0.03, -0.46, 0.07);
+    arm.add(mitten);
+    arms.push(arm);
+  });
+
+  // Compact legs and oversized cushioned boots make the silhouette read well
+  // against the platforms during jumps.
+  const legs = [];
+  [-1, 1].forEach((side) => {
+    const leg = new THREE.Group();
+    leg.position.set(side * 0.22, 0.69, 0);
+    g.add(leg);
+    const shin = box(0.22, 0.38, 0.24, primary, 0.25, 0.56);
+    shin.position.y = -0.14;
+    leg.add(shin);
+    const knee = sphere(0.13, joints, 0.3, 0.48);
+    knee.position.y = -0.3;
+    leg.add(knee);
+    const boot = box(0.38, 0.25, 0.48, '#263553', 0.25, 0.66);
+    boot.position.set(0, -0.49, 0.11);
+    leg.add(boot);
+    const sole = box(0.39, 0.07, 0.49, accent, 0.22, 0.58);
+    sole.position.set(0, -0.62, 0.11);
+    leg.add(sole);
+    const toeLight = sphere(0.055, glow, 0.05, 0.2, glow);
+    toeLight.material.emissiveIntensity = 1.25;
+    toeLight.position.set(0, -0.48, 0.36);
+    leg.add(toeLight);
+    legs.push(leg);
+  });
+
+  g.userData.animate = (t, dt = 1 / 60, motion = {}) => {
+    const stride = motion.walking ? Math.sin(motion.gaitPhase ?? t * 8) : Math.sin(t * 1.8) * 0.04;
+    legs.forEach((leg, i) => { leg.rotation.x = motion.walking ? stride * (i ? -0.42 : 0.42) : Math.sin(t * 1.7 + i) * 0.025; });
+    arms.forEach((arm, i) => { arm.rotation.x = motion.walking ? -stride * (i ? -0.25 : 0.25) : Math.sin(t * 1.5 + i) * 0.035; });
+    head.position.y = 1.74 + (motion.jumping ? Math.abs(Math.sin(t * 7)) * 0.04 : Math.sin(t * 1.8) * 0.018);
+    beacon.rotation.y = t * 1.4;
+    beacon.material.emissiveIntensity = 1 + Math.sin(t * 3.2) * 0.3;
+  };
+  return g;
+}
+
 function buildBirdBot(primary, accent) {
   return buildBirdBotModel(primary, accent);
 }
@@ -4864,7 +5053,7 @@ export function buildSimRobot(config = {}) {
 
 
   // Kart races: rover-family cars become a console-style go-kart with a robot driver
-  if (cfg.raceMode && ['rover', 'scout'].includes(cfg.chassisId)) {
+  if (cfg.raceMode && !cfg.build?.pieces && !cfg.parts && ['rover', 'scout'].includes(cfg.chassisId)) {
     try {
       const chassis = CHASSIS_DATA.find((c) => c.id === cfg.chassisId) || CHASSIS_DATA[0];
       const group = buildMKKart({
@@ -4947,6 +5136,21 @@ export function buildRobotModel(config = {}) {
   }
 
   // Robots made in the Robot Designer carry their own design
+  // Robots built piece by piece in the Robot Builder
+  if (cfg.build?.pieces) {
+    const group = buildFreeRobot(cfg.build, ledColor);
+    group.userData.chassisId = cfg.chassisId;
+    group.userData.skipStudioPaint = true;
+    return group;
+  }
+  // Robots built from parts in the Robot Workshop
+  if (cfg.parts) {
+    const group = buildPartsRobot(cfg.parts, { primary, accent, led: ledColor, wheel: wheelColor });
+    group.userData.chassisId = cfg.chassisId;
+    group.userData.skipStudioPaint = true;
+    if (cfg.addons) attachAddons(group, cfg.addons, { primary, accent, led: ledColor, plate: cfg.plateText });
+    return group;
+  }
   if (cfg.chassisBuildKey === 'designer' || config.design) {
     const group = buildDesignedRobot(config.design || cfg.design, primary, accent, ledColor);
     group.userData.chassisId = cfg.chassisId;
@@ -4974,6 +5178,7 @@ export function buildRobotModel(config = {}) {
     case 'hopbot':      group = buildHopBot(primary, accent);       break;
     case 'raiderbot':   group = buildRaiderBot(primary, accent);    break;
     case 'snakebot':    group = buildSnakeBot(primary, accent);     break;
+    case 'jumpbot':     group = buildJumpBot(primary, accent);      break;
     case 'medbot':      group = buildMedbot(primary, accent);       break;
     case 'firebot':     group = buildFirebot(primary, accent);      break;
     // Walking robots
@@ -5069,6 +5274,7 @@ export function buildRobotModel(config = {}) {
   group.userData.chassisId = buildId;
   group.userData.envTex = buildEnvTex();
   applyStudioPaint(group, primary, accent, wheelColor);
+  if (cfg.addons) attachAddons(group, cfg.addons, { primary, accent, led: ledColor, plate: cfg.plateText });
   return group;
 }
 

@@ -10,6 +10,7 @@ import {
 } from '../data/assembly-parts.js';
 import ColorPickerPanel from './ColorPickerPanel.jsx';
 import { listPlacedParts, migrateAssembly } from '../services/assembly-service.js';
+import { EmojiIcon } from '../../components/ui/Icon.jsx';
 
 const SLOT_ORDER = ['movement', 'head', 'front', 'left', 'right', 'back', 'top', 'addon_a', 'addon_b'];
 const ARM_SLOTS = ['front', 'right', 'left', 'top'];
@@ -62,7 +63,7 @@ export default function RobotWorkshop({
                 scale: c.scale,
               })}
             >
-              <span>{c.icon}</span><span>{c.label}</span>
+              <span><EmojiIcon e={c.icon} /></span><span>{c.label}</span>
             </button>
           ))}
         </div>
@@ -114,7 +115,7 @@ export default function RobotWorkshop({
         <div className="vrd-mod-categories">
           {WORKSHOP_CATEGORIES.map((c) => (
             <button key={c.id} type="button" className={`vrd-mod-cat ${category === c.id ? 'active' : ''}`} onClick={() => setCategory(c.id)}>
-              <span>{c.icon}</span><span>{c.label}</span>
+              <span><EmojiIcon e={c.icon} /></span><span>{c.label}</span>
             </button>
           ))}
         </div>
@@ -131,7 +132,7 @@ export default function RobotWorkshop({
                 whileTap={{ scale: 0.95 }}
                 disabled={!!slotPart}
               >
-                <span className="vrd-workshop-part-icon">{p.icon}</span>
+                <span className="vrd-workshop-part-icon"><EmojiIcon e={p.icon} /></span>
                 <span>{p.label}</span>
               </motion.button>
             ))}
@@ -150,7 +151,7 @@ export default function RobotWorkshop({
           <ul className="vrd-workshop-list">
             {placed.map(({ slotId, slotLabel, partMeta }) => (
               <li key={slotId}>
-                <span>{partMeta?.icon} {partMeta?.label}</span>
+                <span><EmojiIcon e={partMeta?.icon} style={{ marginRight: '0.35em' }} />{partMeta?.label}</span>
                 <span className="vrd-workshop-slot-tag">{slotLabel}</span>
                 <button type="button" onClick={() => { onSelectSlot(slotId); onRemovePart(slotId); }} aria-label="Remove">✕</button>
               </li>

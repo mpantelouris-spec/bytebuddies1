@@ -4,6 +4,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { RacingMinimap } from './RacingMinimap.jsx';
 import { CODERACER_HUD_CONFIG } from './CodeRacerHUDConfig.js';
+import { EmojiIcon, IconText } from '../../components/ui/Icon.jsx';
 
 const HUD = CODERACER_HUD_CONFIG;
 
@@ -91,7 +92,7 @@ function MinimalRaceHUD({
     <>
       {atGrid && (
         <div className="rc-hud-ready rc-hud-ready--minimal" style={{ borderColor: t.pillBorder, background: t.pillBg, color: t.accent }}>
-          {countdown > 0 ? `${countdown}…` : '🏁 READY — your code drives the car'}
+          <IconText>{countdown > 0 ? `${countdown}…` : '🏁 READY — your code drives the car'}</IconText>
         </div>
       )}
 
@@ -139,7 +140,7 @@ function MinimalRaceHUD({
               }}
               title={meta.label}
             >
-              <span className="rc-power-icon">{meta.icon}</span>
+              <span className="rc-power-icon"><EmojiIcon e={meta.icon} /></span>
             </div>
           );
         })}
@@ -197,7 +198,7 @@ function RaceObjectivesPanel({ objectives, stats, theme }) {
       borderColor: t.pillBorder,
     }}>
       <div className="rc-obj-header" style={{ color: t.accent }}>
-        <span className="rc-obj-title-icon">🎮</span>
+        <span className="rc-obj-title-icon"><EmojiIcon e="🎮" /></span>
         <span className="rc-obj-title">OBJECTIVES</span>
         <span className="rc-obj-count" style={{ background: t.accent, color: '#000' }}>
           {doneCount}/{objectives.length}
@@ -214,7 +215,7 @@ function RaceObjectivesPanel({ objectives, stats, theme }) {
               key={obj.id}
               className={`rc-obj-item${done ? ' rc-obj-done' : ''}${flash ? ' rc-obj-flash' : ''}`}
             >
-              <span className="rc-obj-icon">{obj.icon}</span>
+              <span className="rc-obj-icon"><EmojiIcon e={obj.icon} /></span>
               <div className="rc-obj-body">
                 <div className="rc-obj-label" style={{ color: done ? '#4ade80' : textCol }}>
                   {obj.label}
@@ -279,7 +280,7 @@ function RouteGuidePanel({ guide, trackT, laps = 1 }) {
   return (
     <div className={`rc-route${open ? '' : ' rc-route--closed'}`}>
       <button type="button" className="rc-route-head" onClick={toggle}>
-        <span>🗺️ Route guide</span>
+        <span><EmojiIcon e="🗺️" style={{ marginRight: '0.35em' }} />Route guide</span>
         <span className="rc-route-count">{steps.length} steps {open ? '▾' : '▸'}</span>
       </button>
       {open && (
@@ -410,8 +411,8 @@ export function RacingHUD({ stats, challenge, theme = 'default', onRestart, hide
         {stats.raceCodeHint && (
           <div className="rc-hud-hint rc-hud-hint--minimal">{stats.raceCodeHint}</div>
         )}
-        {stats.raceOffTrack && <div className="rc-hud-warn rc-hud-warn--minimal">⚠ Off track!</div>}
-        {stats.raceWrongWay && <div className="rc-hud-warn rc-hud-warn--minimal">⚠ Wrong way</div>}
+        {stats.raceOffTrack && <div className="rc-hud-warn rc-hud-warn--minimal"><EmojiIcon e="⚠" style={{ marginRight: '0.35em' }} />Off track!</div>}
+        {stats.raceWrongWay && <div className="rc-hud-warn rc-hud-warn--minimal"><EmojiIcon e="⚠" style={{ marginRight: '0.35em' }} />Wrong way</div>}
       </div>
     );
   }
@@ -420,14 +421,14 @@ export function RacingHUD({ stats, challenge, theme = 'default', onRestart, hide
     <>
       {atGrid && (
         <div className="rc-hud-ready" style={{ borderColor: t.pillBorder, background: t.pillBg, color: t.accent }}>
-          {countdown > 0 ? `${countdown}…` : '🏁 READY — START LINE'}
+          <IconText>{countdown > 0 ? `${countdown}…` : '🏁 READY — START LINE'}</IconText>
         </div>
       )}
       {/* ── Top HUD bar — LAP / TIME / POSITION ───────────────── */}
       <div className="rc-hud-topbar">
         <div className="rc-hud-pill rc-pill-lap" style={{ background: t.pillBg, borderColor: t.pillBorder }}>
           <span className="rc-pill-lbl" style={{ color: mutedCol }}>
-            {isFinalLap ? '🏁 FINAL LAP' : '🏁 LAP'}
+            <IconText>{isFinalLap ? '🏁 FINAL LAP' : '🏁 LAP'}</IconText>
           </span>
           <strong className="rc-pill-val" style={{ color: isFinalLap ? '#ff4444' : t.accent }}>
             {lap} / {totalLaps}
@@ -474,7 +475,7 @@ export function RacingHUD({ stats, challenge, theme = 'default', onRestart, hide
       </div>
 
       {stats.raceWrongWay && (
-        <div className="rc-hud-warn">⚠ WRONG WAY!</div>
+        <div className="rc-hud-warn"><EmojiIcon e="⚠" style={{ marginRight: '0.35em' }} />WRONG WAY!</div>
       )}
       {stats.raceFalling && (
         <div className="rc-hud-warn rc-hud-fall">☄️ FALLING INTO SPACE!</div>
@@ -507,7 +508,7 @@ export function RacingHUD({ stats, challenge, theme = 'default', onRestart, hide
       {/* ── Speedometer — bottom right ────────────────────────── */}
       <div className="rc-hud-speedo-br" style={{ borderColor: t.pillBorder, background: t.pillBg }}>
         {stats.raceBoostActive && (
-          <div className="rc-hud-boost-br" style={{ color: boostColor }}>⚡ BOOST</div>
+          <div className="rc-hud-boost-br" style={{ color: boostColor }}><EmojiIcon e="⚡" style={{ marginRight: '0.35em' }} />BOOST</div>
         )}
         <svg viewBox="0 0 120 120" className="rc-speedo-svg">
           {/* Outer glow ring */}
@@ -561,7 +562,7 @@ export function RacingHUD({ stats, challenge, theme = 'default', onRestart, hide
                 boxShadow: activeNow ? `0 0 12px ${t.accent}88` : undefined,
               }}
               title={meta.label}>
-              <span className="rc-power-icon">{meta.icon}</span>
+              <span className="rc-power-icon"><EmojiIcon e={meta.icon} /></span>
               <span className="rc-power-count">{count}</span>
             </div>
           );

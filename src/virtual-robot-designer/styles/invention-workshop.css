@@ -3,7 +3,9 @@
  * Layout: header | left palette | hero stage | right panel | bottom tray
  */
 
-.iw-app {
+/* The welcome screen renders outside .iw-app, so it needs the same colour tokens */
+.iw-app,
+.iw-welcome {
   --iw-bg: #080c18;
   --iw-surface: rgba(10, 14, 32, 0.96);
   --iw-glass: rgba(6, 10, 24, 0.92);
@@ -19,7 +21,9 @@
   --iw-left: 220px;
   --iw-right: 248px;
   --iw-tray: 96px;
+}
 
+.iw-app {
   display: grid;
   grid-template-columns: var(--iw-left) 1fr var(--iw-right);
   grid-template-rows: var(--iw-header) 1fr var(--iw-tray);

@@ -22,9 +22,9 @@
  *   pipes/ground/parallax scroll toward camera. scrollWorld must sync mesh
  *   positions (pipe.z → topGroup/botGroup.position.z) every frame.
  *
- * Design: Approach A (Zone 1 beginner) — primary program is
- *   "When spacebar clicked → Flap!" — mission text updated to match.
- * Loop blocks remain available for optional advanced play.
+ * Design: children code the bird to fly itself — a Forever loop that reads the
+ *   bird's sensors (height, gap centre, how far below the gap, pipe distance)
+ *   and decides when and how hard to flap. Key events remain for optional play.
  */
 
 export const FLAPPY_COURSE_IDS = new Set(['flappy_bird', 'robo_wrecker']);
@@ -34,10 +34,19 @@ export function isFlappyBirdCourse(courseKey, arenaType) {
   return FLAPPY_COURSE_IDS.has(baseId) || arenaType === 'flappy_bird';
 }
 
-/** Starter script — spacebar flap (Approach A) */
+/**
+ * Starter script — the bird flies itself from code, not the spacebar: small
+ * flaps whenever it is below the middle of the gap. Enough for the Easy levels;
+ * harder levels need pupils to improve it (e.g. "how far below gap" → big flap).
+ */
 export const FLAPPY_STARTER_SCRIPT = [
-  { id: 'when_spacebar', label: 'When spacebar clicked', icon: '⌨️', catKey: 'Events', paramValues: {} },
+  { id: 'when_start', label: 'When START clicked', icon: '▶️', catKey: 'Events', paramValues: {} },
+  { id: 'set_flap_strength', label: 'Set flap strength', icon: '💪', catKey: 'Movement', paramValues: { strength: 3 } },
+  { id: 'forever', label: 'Forever loop', icon: '∞', catKey: 'Loops', paramValues: {} },
+  { id: 'if_then', label: 'If', icon: '❓', catKey: 'Logic', paramValues: { a: 'bird_height', op: 'lt', b: 'gap_center', n: 10 } },
   { id: 'flap', label: 'Flap!', icon: '🐦', catKey: 'Movement', paramValues: {} },
+  { id: 'end', label: 'End if', icon: '⏹', catKey: 'Logic', paramValues: {} },
+  { id: 'end', label: 'End loop', icon: '⏹', catKey: 'Loops', paramValues: {} },
 ];
 
 /**
@@ -46,7 +55,7 @@ export const FLAPPY_STARTER_SCRIPT = [
  */
 // Condition dropdowns shared by the "if" and "wait until" blocks
 const READINGS = [
-  ['bird height', 'bird_height'], ['gap centre', 'gap_center'], ['distance to pipe', 'pipe_dist'],
+  ['bird height', 'bird_height'], ['gap centre', 'gap_center'], ['how far below gap', 'below_gap'], ['distance to pipe', 'pipe_dist'],
   ['gap size', 'gap_size'], ['score', 'score'], ['high score', 'high_score'], ['time alive', 'time_alive'],
   ['myVar', 'var'],
 ];
@@ -105,6 +114,7 @@ export const FLAPPY_BLOCK_LIBRARY = {
       { id: 'bird_height', label: 'Show bird height', icon: '📊' },
       { id: 'gap_center_height', label: 'Show gap centre', icon: '🎯' },
       { id: 'gap_size', label: 'Show gap size', icon: '↕️' },
+      { id: 'below_gap', label: 'Show how far below gap', icon: '📐' },
       { id: 'is_falling', label: 'Show if falling', icon: '⬇️' },
       { id: 'time_alive', label: 'Show time alive', icon: '⏱️' },
     ],

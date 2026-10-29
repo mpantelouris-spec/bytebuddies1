@@ -411,7 +411,7 @@ function applyMoveSteps(sprite, steps, clearVelocity) {
 /**
  * Start move-steps animation. Returns true if the block should yield (busy or just started).
  */
-export function beginMoveSteps(sprite, steps, clearVelocity = true) {
+export function beginMoveSteps(sprite, steps, clearVelocity = true, pps = null) {
   if (isMoving(sprite)) return true;
   const dist = Math.abs(num(steps, 0));
   if (dist < 0.001) return false;
@@ -420,6 +420,7 @@ export function beginMoveSteps(sprite, steps, clearVelocity = true) {
     sign: Math.sign(num(steps, 1)) || 1,
     direction: getDirection(sprite),
     clearVelocity,
+    pps,
   };
   return true;
 }
@@ -432,7 +433,7 @@ export function tickMoveSteps(sprite, dtSec) {
     return;
   }
   const dt = Math.max(0, Math.min(0.05, dtSec || 0));
-  const delta = Math.min(anim.remaining, MOVE_SPEED_PPS * dt);
+  const delta = Math.min(anim.remaining, (anim.pps || MOVE_SPEED_PPS) * dt);
   const { dx, dy } = directionToDelta(anim.direction, delta * anim.sign);
   const pos = canvasToLogical(sprite);
   applyLogicalPosition(sprite, pos.x + dx, pos.y + dy);
@@ -497,23 +498,31 @@ export function ifOnEdgeBounce(sprite) {
   const touchT = sprite.y <= eps;
   const touchB = sprite.y + height >= STAGE_H - eps;
 
+  // Only turn round when heading INTO the edge — otherwise a sprite resting on an edge
+  // flips back and forth every frame (bounce block + the per-frame edge check) and sticks.
+  const rad = (dir * Math.PI) / 180;
+  const goingRight = Math.sin(rad) > 1e-6;
+  const goingLeft = Math.sin(rad) < -1e-6;
+  const goingUp = Math.cos(rad) > 1e-6;
+  const goingDown = Math.cos(rad) < -1e-6;
+
   if (touchL || lx < minX - eps) {
-    dir = normalizeDirection(-dir);
+    if (goingLeft) dir = normalizeDirection(-dir);
     lx = minX;
     bounced = true;
   } else if (touchR || lx > maxX + eps) {
-    dir = normalizeDirection(-dir);
+    if (goingRight) dir = normalizeDirection(-dir);
     lx = maxX;
     bounced = true;
   }
   // touchT = sprite.y near 0 (canvas top) = logical maxY; clamp to maxY to stay at top edge
   // touchB = sprite.y near STAGE_H (canvas bottom) = logical minY; clamp to minY to stay at bottom edge
   if (touchT || ly > maxY + eps) {
-    dir = normalizeDirection(180 - dir);
+    if (goingUp) dir = normalizeDirection(180 - dir);
     ly = maxY;
     bounced = true;
   } else if (touchB || ly < minY - eps) {
-    dir = normalizeDirection(180 - dir);
+    if (goingDown) dir = normalizeDirection(180 - dir);
     ly = minY;
     bounced = true;
   }
@@ -646,7 +655,8 @@ export function executeSpriteMotion(block, sprite, ctx = {}) {
         applyMoveSteps(sprite, steps, clearVelocity);
         return false;
       }
-      return beginMoveSteps(sprite, steps, clearVelocity);
+      // Game loops: finish each move within a frame (Scratch speed) instead of easing at 80 px/s
+      return beginMoveSteps(sprite, steps, clearVelocity, ctx.fastMove ? Math.abs(steps) * 60 : null);
     }
     case 'sprite-turn-right':
     case 'motion-turn-right':

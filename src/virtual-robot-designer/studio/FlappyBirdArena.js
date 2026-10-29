@@ -3,6 +3,9 @@
  * Bird stays fixed on Z; world scrolls toward camera. Cylindrical pipes, parallax, audio.
  */
 import * as THREE from 'three';
+import { FLAPPY_TIER_LEVELS } from '../data/tier-levels/sports-tiers.js';
+import { getTierMood } from '../data/tier-levels/index.js';
+import { tint } from '../data/tier-levels/moods.js';
 import { playFlapSound, playScoreSound, playCollisionSound, playGameOverSound, playWinSound, playBeepSound } from './flappy-bird-audio.js';
 import { applyMissionKidClarity } from './mission-world/MissionKidClarity.js';
 import { buildClassicFlappyBackdrop, flappyGrassTexture, flappySoilTexture, pbr } from './flappy/FlappyClassicBackdrop.js';
@@ -93,18 +96,27 @@ function makePipeMaterial(pipeGreen = PIPE_GREEN, pipeDark = PIPE_DARK) {
 }
 
 function createPipeLayoutGenerator(mode = 1, seed = 1) {
-  const difficulty = getModeDifficulty(mode);
+  // Modes 11–50 pass their own difficulty settings (data/tier-levels/sports-tiers.js)
+  const difficulty = typeof mode === 'object' ? mode : getModeDifficulty(mode);
   let state = seed >>> 0;
   const random = () => {
     state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
     return state / 4294967296;
   };
   let gapCY = (GROUND_Y + CEIL_Y) / 2;
-  let gapSize = difficulty.gapStart;
+  let firstPipe = true;
   return () => {
-    gapSize += (random() * 2 - 1) * 0.55;
-    gapSize = Math.max(difficulty.gapMin, Math.min(difficulty.gapMax, gapSize));
-    gapCY += (random() * 2 - 1) * difficulty.verticalDrift;
+    // Give every pair a visibly different pipe height and opening, like the
+    // classic game. Sampling the opening width per pair avoids the old slow
+    // random walk where many consecutive pillars ended up nearly identical.
+    const gapSize = firstPipe
+      ? difficulty.gapStart
+      : difficulty.gapMin + random() * (difficulty.gapMax - difficulty.gapMin);
+    firstPipe = false;
+    // Keep height changes reachable while allowing the gap to move enough that
+    // the upper and lower pillars have clearly different lengths.
+    const maxVerticalStep = difficulty.verticalDrift * 1.35;
+    gapCY += (random() * 2 - 1) * maxVerticalStep;
     const half = gapSize / 2;
     gapCY = Math.max(GROUND_Y + half + 0.9, Math.min(CEIL_Y - half - 0.8, gapCY));
     return { gapCY, gapSize };
@@ -201,10 +213,21 @@ function saveFlappyBest(score) {
 
 export function buildFlappyBirdArena(scene, challenge = {}) {
   applyMissionKidClarity(scene, challenge);
-  const variantIdx = Math.max(0, Math.min(9, (Number(challenge.modeIndex || challenge.modeNumber) || 1) - 1));
-  const variant = FLAPPY_VARIANTS[variantIdx];
-  const mode = variantIdx + 1;
-  const difficulty = getModeDifficulty(mode);
+  const modeN = Number(challenge.modeIndex || challenge.modeNumber) || 1;
+  const tierLevel = modeN > 10 ? FLAPPY_TIER_LEVELS[modeN - 11] : null;
+  const variantIdx = tierLevel ? tierLevel.look : Math.max(0, Math.min(9, modeN - 1));
+  const flapMood = tierLevel ? getTierMood('birdbot', tierLevel) : null;
+  const baseVariant = FLAPPY_VARIANTS[variantIdx];
+  // Tier levels: the same world in its own light (dawn, dusk, storm…)
+  const variant = tierLevel ? {
+    ...baseVariant,
+    skyTop: tint(baseVariant.skyTop, flapMood), skyBot: tint(baseVariant.skyBot, flapMood),
+    pipe: tint(baseVariant.pipe, flapMood, 0.5), pipeDark: tint(baseVariant.pipeDark, flapMood, 0.5),
+    grass: tint(baseVariant.grass, flapMood, 0.6), label: tierLevel.name,
+  } : baseVariant;
+  const mode = tierLevel ? modeN : variantIdx + 1;
+  const difficulty = tierLevel ? tierLevel.difficulty : getModeDifficulty(mode);
+  const pipeTarget = tierLevel?.target || 0; // tier levels are won by passing this many pipes
   const compositionKey = `${challenge.id || challenge.missionId || challenge.title || challenge.name || 'flappy'}:birdbot:${mode}`;
   const layoutSeed = deterministicSeed(compositionKey);
   const SKY_TOP = variant.skyTop;
@@ -295,7 +318,7 @@ export function buildFlappyBirdArena(scene, challenge = {}) {
   }
 
   const pipeMats = makePipeMaterial(variant.pipe, variant.pipeDark);
-  const layoutGen = createPipeLayoutGenerator(mode, layoutSeed);
+  const layoutGen = createPipeLayoutGenerator(tierLevel ? difficulty : mode, layoutSeed);
   const pipes = [];
   for (let i = 0; i < PIPE_COUNT; i++) {
     pipes.push(makePipePair(scene, pipeMats, FIRST_PIPE_Z - i * difficulty.pipeSpacing, layoutGen()));
@@ -357,7 +380,7 @@ export function buildFlappyBirdArena(scene, challenge = {}) {
   hintCtx.fillStyle = '#fff';
   hintCtx.textAlign = 'center';
   hintCtx.textBaseline = 'middle';
-  hintCtx.fillText('Press Simulate, then spacebar runs your code', 220, 36);
+  hintCtx.fillText('Press Simulate — your code flies the bird', 220, 36);
   const hintTex = new THREE.CanvasTexture(hintCv);
   const hint = new THREE.Mesh(
     new THREE.PlaneGeometry(6.2, 1),
@@ -389,7 +412,7 @@ export function buildFlappyBirdArena(scene, challenge = {}) {
   let pauseTimer = 0;
   let freezeThisFrame = false;
   let runAliveTime = 0;
-  let layoutGenRun = createPipeLayoutGenerator(mode, layoutSeed);
+  let layoutGenRun = createPipeLayoutGenerator(tierLevel ? difficulty : mode, layoutSeed);
   let lastGapEventPipe = null;
   let gameOverFired = false;
   let wingFlapT = 0;
@@ -409,7 +432,9 @@ export function buildFlappyBirdArena(scene, challenge = {}) {
     let bestDist = Infinity;
     for (const pipe of pipes) {
       const dz = pipe.z - BIRD_Z;
-      if (dz <= 0.5 && dz > -30 && Math.abs(dz) < bestDist) {
+      // Keep reporting a pipe until the bird is fully past it (same reach as the
+      // crash check below) — switching early made coded birds clip the pipe they were leaving
+      if (dz <= 1.8 && dz > -30 && Math.abs(dz) < bestDist) {
         bestDist = Math.abs(dz);
         best = pipe;
       }
@@ -480,7 +505,7 @@ export function buildFlappyBirdArena(scene, challenge = {}) {
     runAliveTime = 0;
     gamePaused = false;
     pauseTimer = 0;
-    layoutGenRun = createPipeLayoutGenerator(mode, layoutSeed);
+    layoutGenRun = createPipeLayoutGenerator(tierLevel ? difficulty : mode, layoutSeed);
     pipes.forEach((p, i) => {
       p.scored = false;
       layoutPipePair(p, FIRST_PIPE_Z - i * difficulty.pipeSpacing, layoutGenRun());
@@ -494,7 +519,8 @@ export function buildFlappyBirdArena(scene, challenge = {}) {
   const codeFlap = (power = 1) => {
     if (!simActive || !alive || awaitingRestart) return false;
     if (!gameStarted) gameStarted = true;
-    vy = FLAP_VEL * Math.max(0.85, Math.min(1.15, power * flapScale()));
+    // Strength 5 = a normal flap; 2 is a small hop, 8 a big jump (it used to be squeezed into 85–115%)
+    vy = FLAP_VEL * Math.max(0.4, Math.min(1.6, power * flapScale()));
     wingFlapT = 0.3;
     scene.userData._wingFlapPulse = true;
     playFlapSound();
@@ -628,6 +654,8 @@ export function buildFlappyBirdArena(scene, challenge = {}) {
       distanceToPipe: Math.round(dist * 10) / 10,
       birdHeight: yToHeight(flappyY),
       gapCenterHeight: pipe ? yToHeight(pipe.gapCY) : 0,
+      // How far the bird is below the middle of the gap (negative = above it)
+      belowGap: pipe ? Math.round((yToHeight(pipe.gapCY) - yToHeight(flappyY)) * 10) / 10 : 0,
       gapSize: pipe ? Math.round((pipe.gapSize / WORLD_H) * 20 * 10) / 10 : 0,
       isFalling: vy < -0.05,
       timeAlive: Math.round(runAliveTime * 10) / 10,
@@ -785,6 +813,7 @@ export function buildFlappyBirdArena(scene, challenge = {}) {
             lastGapEventPipe = pipe;
             fireEvent('gap_passed', { score });
           }
+          if (pipeTarget && score >= pipeTarget && !rs.done) rs.done = true;
         }
       }
 

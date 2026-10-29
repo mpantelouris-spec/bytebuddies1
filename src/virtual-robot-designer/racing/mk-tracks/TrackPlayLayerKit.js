@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import { placeAtTrack } from '../GameWorldBuilder.js';
 import { getTrackStandard, filterLaunchCorridorTs } from './CodeRacerTrackStandards.js';
+import { isCosmicSkywayArena } from './CosmicSkywayRegistry.js';
 import { pbrMat } from './BiomeAAAKit.js';
 import { buildWideCheckeredStart } from './SunsetCoastHeroKit.js';
 import { buildGoldRails } from './SkyGardenHeroKit.js';
@@ -182,7 +183,6 @@ const PLAY_LAYERS = {
   },
   star_station_01(world, curve, hw, finishT) {
     world.add(buildWideCheckeredStart(curve, hw, finishT));
-    world.add(buildLaneStrips(curve, hw, 0xaa44ff, 0.65, 24));
     stdCpBoost(world, curve, hw, 'star_station_01', false, finishT);
   },
   fairy_glen_01(world, curve, hw, finishT) {
@@ -245,11 +245,13 @@ const FOREGROUND_LAYERS = {
 export function installTrackPlayLayer(world, curve, hw, arenaType, finishT) {
   const fn = PLAY_LAYERS[arenaType];
   if (fn) fn(world, curve, hw, finishT);
+  else if (isCosmicSkywayArena(arenaType)) PLAY_LAYERS.star_station_01(world, curve, hw, finishT);
 }
 
 export function installTrackForeground(world, scene, curve, hw, bounds, arenaType, finishT) {
   const fn = FOREGROUND_LAYERS[arenaType];
   if (fn) fn(world, scene, curve, hw, bounds, finishT);
+  else if (isCosmicSkywayArena(arenaType)) placeTrackStartSign(world, curve, finishT, arenaType);
 }
 
 /** Legacy — backdrop handled in BiomeAAAWorlds. */

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { loadHandInFile } from '../../utils/classroomStore.js';
+import { EmojiIcon, IconText } from '../ui/Icon.jsx';
 
 const mono = { fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 12.5 };
 const when = (iso) => (iso ? new Date(iso).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '');
@@ -19,7 +20,7 @@ function Checklist({ items }) {
     <div style={{ display: 'grid', gap: 4 }}>
       {items.map((g, i) => (
         <div key={i} style={{ fontSize: 13.5, display: 'flex', gap: 8 }}>
-          <span aria-hidden="true">{g.ok ? '✅' : '⬜'}</span>
+          <span aria-hidden="true"><IconText>{g.ok ? '✅' : '⬜'}</IconText></span>
           <span>{g.label}</span>
           <span className="cr-muted" style={{ fontSize: 11.5 }}>{g.ok ? 'met' : 'not yet'}</span>
         </div>
@@ -35,7 +36,7 @@ function QuizAnswers({ quiz }) {
       {quiz.filter(Boolean).map((q, i) => (
         <div key={i} className="cr-sub" style={{ fontSize: 13.5, lineHeight: 1.45, borderLeft: `4px solid ${q.ok ? '#22c55e' : '#ef4444'}` }}>
           <div style={{ fontWeight: 800 }}>{i + 1}. {q.q}</div>
-          <div>{q.ok ? '✅' : '❌'} Answered: <b>{q.chosen || '—'}</b></div>
+          <div><IconText>{q.ok ? '✅' : '❌'}</IconText> Answered: <b>{q.chosen || '—'}</b></div>
           {!q.ok && q.correct && <div className="cr-muted">Correct answer: {q.correct}</div>}
         </div>
       ))}
@@ -49,7 +50,7 @@ function WorkRecord({ w }) {
   return (
     <div className="cr-card" style={{ display: 'grid', gap: 10, padding: 14 }}>
       <div style={{ fontWeight: 900, fontSize: 15 }}>
-        {w.type === 'lesson' ? '📚' : w.type === 'mission' ? '🚀' : '🤖'} {w.title || 'Their work'}
+        <IconText>{w.type === 'lesson' ? '📚' : w.type === 'mission' ? '🚀' : '🤖'}</IconText> {w.title || 'Their work'}
         {w.updatedAt && <span className="cr-muted" style={{ fontWeight: 600, fontSize: 12, marginLeft: 8 }}>last worked on {when(w.updatedAt)}</span>}
       </div>
 
@@ -123,10 +124,18 @@ export default function HandInView({ sub, classId, onOpenProject }) {
   }
   const image = file?.image || legacy?.screenshot || sub.screenshot;
   const project = file?.sprites ? file : sub.sprites ? sub : null;
+  const projectScripts = (project?.sprites || []).map((sprite) => ({
+    ...sprite,
+    codeLines: (sprite.blocks || []).map((block) => {
+      const params = Object.entries(block.params || {}).filter(([, value]) => value !== '' && value != null);
+      const description = block.label || block.type || 'Block';
+      return `${'  '.repeat(Math.max(0, Number(block.indent) || 0))}${description}${params.length ? ` (${params.map(([key, value]) => `${key}: ${String(value)}`).join(', ')})` : ''}`;
+    }),
+  })).filter((sprite) => sprite.codeLines.length || sprite.blocklyXml);
 
   return (
     <div style={{ display: 'grid', gap: 10 }}>
-      {sub.auto && <div className="cr-note cr-note--ok">✅ Finished in ByteBuddies — ticked off automatically.</div>}
+      {sub.auto && <div className="cr-note cr-note--ok"><EmojiIcon e="✅" style={{ marginRight: '0.35em' }} />Finished in ByteBuddies — ticked off automatically.</div>}
       {sub.work && <WorkRecord w={sub.work} />}
       {sub.auto && !sub.work && (
         <div className="cr-muted" style={{ fontSize: 13 }}>Their answers will appear here the next time they open ByteBuddies.</div>
@@ -137,12 +146,33 @@ export default function HandInView({ sub, classId, onOpenProject }) {
         <pre className="cr-sub" style={{ margin: 0, ...mono, whiteSpace: 'pre-wrap', maxHeight: 260, overflow: 'auto' }}>{sub.code}</pre>
       )}
       {sub.link && (
-        <a className="cr-btn cr-btn--sm" href={sub.link} target="_blank" rel="noopener noreferrer" style={{ justifySelf: 'start' }}>🔗 Open their link</a>
+        <a className="cr-btn cr-btn--sm" href={sub.link} target="_blank" rel="noopener noreferrer" style={{ justifySelf: 'start' }}><EmojiIcon e="🔗" style={{ marginRight: '0.35em' }} />Open their link</a>
       )}
       {sub.hasFile && !file && <div className="cr-muted" style={{ fontSize: 13 }}>Loading attachment…</div>}
       {image && <img src={image} alt="Pupil's work" style={{ maxWidth: '100%', maxHeight: 360, borderRadius: 12, border: '1px solid var(--border-color)', justifySelf: 'start' }} />}
       {project && (
-        <button className="cr-btn cr-btn--sm cr-btn--primary" style={{ justifySelf: 'start' }} onClick={() => onOpenProject?.(project)}>🎮 Open their game</button>
+        <>
+          <div className="cr-note cr-note--ok"><EmojiIcon e="🎮" style={{ marginRight: '0.35em' }} />Game project attached · {project.sprites.length} sprite{project.sprites.length === 1 ? '' : 's'} · {project.levels?.length || 1} level{(project.levels?.length || 1) === 1 ? '' : 's'}</div>
+          {projectScripts.length > 0 && (
+            <details className="cr-sub" style={{ padding: 12 }}>
+              <summary style={{ cursor: 'pointer', fontWeight: 800 }}><EmojiIcon e="🧩" style={{ marginRight: '0.35em' }} />View the code ({projectScripts.reduce((total, sprite) => total + sprite.codeLines.length, 0)} blocks)</summary>
+              <div style={{ display: 'grid', gap: 12, marginTop: 12 }}>
+                {projectScripts.map((sprite, index) => (
+                  <section key={`${sprite.id || sprite.name}-${index}`}>
+                    <div className="cr-label">{sprite.name || `Sprite ${index + 1}`}</div>
+                    {sprite.codeLines.length > 0 ? (
+                      <pre style={{ ...mono, margin: '6px 0 0', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{sprite.codeLines.join('\n')}</pre>
+                    ) : (
+                      <pre style={{ ...mono, margin: '6px 0 0', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{sprite.blocklyXml}</pre>
+                    )}
+                  </section>
+                ))}
+              </div>
+            </details>
+          )}
+          <div className="cr-muted" style={{ fontSize: 12 }}>Open the project to play the game and inspect its scripts in the coding workspace.</div>
+          <button className="cr-btn cr-btn--sm cr-btn--primary" style={{ justifySelf: 'start' }} onClick={() => onOpenProject?.(project)}><EmojiIcon e="🎮" style={{ marginRight: '0.35em' }} />Open game &amp; code</button>
+        </>
       )}
       {!sub.auto && !sub.work && !sub.answer && !sub.code && !sub.link && !image && !project && !sub.hasFile && (
         <div className="cr-muted" style={{ fontSize: 13 }}>Handed in without an attachment.</div>

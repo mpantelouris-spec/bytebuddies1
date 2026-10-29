@@ -11,6 +11,9 @@ import {
   getCarModeArenaId,
 } from '../racing/mk-tracks/MKTrackRegistry.js';
 import { KART_THEME_BY_MODE } from './kart-theme-tracks.js';
+import { KART_TIER_RACES } from './tier-levels/kart-tiers.js';
+import { getMKTrack } from '../racing/mk-tracks/MKTrackRegistry.js';
+import { isCosmicSkywayArena } from '../racing/mk-tracks/CosmicSkywayRegistry.js';
 
 /** Wheeled racers on biome kart tracks */
 export const CAR_CHASSIS_IDS = new Set([
@@ -52,6 +55,7 @@ const EXTRA_CAR_RACING_ARENAS = new Set([
 export function isCarRacingArenaType(arenaType) {
   if (!arenaType) return false;
   return BIOME_TRACKS.some((t) => t.arenaType === arenaType || t.id === arenaType)
+    || isCosmicSkywayArena(arenaType)
     || EXTRA_CAR_RACING_ARENAS.has(arenaType);
 }
 
@@ -64,9 +68,64 @@ export function getCarRacingTrack(chassisId, modeIndex = 1) {
   return PRO_RACING_TRACKS[idx];
 }
 
+/**
+ * Rover races 11–50 (data/tier-levels/kart-tiers.js): one of the ten authored
+ * kart tracks, kept exactly as built — road, scenery and landmarks untouched —
+ * with the tier's laps, checkpoint gates, target time and driving help.
+ */
+export function buildExpandedCarRaceTrack(mode) {
+  if (!mode?.isExpandedMode || !isCarChassis(mode.chassisId)) return null;
+  const race = KART_TIER_RACES[mode.chassisId]?.[Number(mode.modeIndex) - 11];
+  if (!race) return null;
+  const scenery = getMKTrack(race.track) || BIOME_TRACKS.find((t) => t.arenaType === race.track) || BIOME_TRACKS[0];
+  return {
+    ...scenery,
+    id: mode.id,
+    courseId: mode.id,
+    label: race.name,
+    name: race.name,
+    story: race.goal,
+    laps: race.laps,
+    targetTime: race.targetTime,
+    strictTargetTime: race.targetTime,
+    checkpointTs: Array.from({ length: race.gates }, (_, i) => (i + 1) / (race.gates + 1)),
+    difficulty: race.difficulty,
+    tier: race.tier,
+    visualId: `${race.track}:${race.mode}`,
+    // Easy–Hard races drive a new road made for that race through the world
+    spline: race.spline || scenery.spline,
+    tierMood: race.mood,
+    customRoad: !!race.spline,
+    isExpandedCarTrack: true,
+  };
+}
+
 /** Attach racing arena metadata to a chassis mode object */
 export function applyCarRacingArena(mode) {
   if (!mode?.chassisId || !isCarChassis(mode.chassisId)) return mode;
+  if (mode.isExpandedMode) {
+    const track = buildExpandedCarRaceTrack(mode);
+    return {
+      ...mode,
+      arenaType: track.arenaType,
+      linkedRaceCourse: mode.id,
+      expandedCarTrack: track,
+      raceThemeId: track.raceThemeId,
+      raceVisualId: track.visualId,
+      genre: 'racing',
+      cat: 'racing',
+      name: mode.name,
+      shortName: mode.shortName,
+      raceTrackLabel: track.label,
+      environmentId: track.arenaType,
+      environmentName: track.label,
+      environmentEmoji: track.emoji,
+      physics: 'racing_spline',
+      camera: 'race_chase',
+      color: track.color,
+      icon: track.emoji,
+    };
+  }
   const track = getCarRacingTrack(mode.chassisId, mode.modeIndex ?? 1);
   if (track.isClassicRainbow) {
     return {

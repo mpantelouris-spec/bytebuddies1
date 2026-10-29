@@ -14,6 +14,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MODE_SKILLS } from '../data/primary-robot-studio.js';
 import { readWork, recordWork, describeBlocks } from '../../utils/workLog.js';
+import { EmojiIcon, IconText } from '../../components/ui/Icon.jsx';
 
 /* ─── Block classification ─── */
 
@@ -269,7 +270,7 @@ function GoalList({ goals, met, highlight }) {
             background: !ok && highlight === g.id ? 'rgba(250, 204, 21, 0.18)' : 'transparent',
             outline: !ok && highlight === g.id ? '2px solid #facc15' : 'none',
           }}>
-            <span aria-hidden="true" style={{ fontSize: 12 }}>{ok ? '✅' : '⬜'}</span>
+            <span aria-hidden="true" style={{ fontSize: 12 }}><IconText>{ok ? '✅' : '⬜'}</IconText></span>
             <span>
               <span style={{ fontWeight: 800, color: ok ? '#86efac' : '#f8fafc' }}>{g.label}</span>
               <span style={{ position: 'absolute', left: -9999 }}>{ok ? ' — done' : ' — not yet'}</span>
@@ -292,7 +293,7 @@ function LearnCard({ plan, robotName, courseName, onStart }) {
   return (
     <div ref={wrapRef} role="dialog" aria-label={`How it works: ${c.name}`} style={{ position: 'absolute', inset: 0, zIndex: 60, display: 'flex', overflowY: 'auto', background: 'rgba(2, 6, 23, 0.55)', padding: 16 }}>
       <div style={{ ...card, width: 'min(560px, 100%)', margin: 'auto', padding: '16px 20px' }}>
-        <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: 1.2, color: '#c4b5fd' }}>💡 CODER TIP · {courseName?.toUpperCase?.() || robotName?.toUpperCase?.() || 'ROBOT STUDIO'}</div>
+        <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: 1.2, color: '#c4b5fd' }}><EmojiIcon e="💡" style={{ marginRight: '0.35em' }} />CODER TIP · {courseName?.toUpperCase?.() || robotName?.toUpperCase?.() || 'ROBOT STUDIO'}</div>
         <h2 style={{ margin: '4px 0 6px', fontSize: 20, fontWeight: 900 }}>{c.emoji} {c.name}</h2>
         <p style={{ margin: 0, fontSize: 14, lineHeight: 1.5 }}>{c.learn}</p>
         <div style={{ marginTop: 10, padding: '8px 12px', borderRadius: 14, background: 'rgba(255,255,255,0.06)' }}>
@@ -301,7 +302,7 @@ function LearnCard({ plan, robotName, courseName, onStart }) {
           <div style={{ fontSize: 13, color: '#cbd5e1', lineHeight: 1.45 }}>{c.exampleNote}</div>
         </div>
         <div style={{ marginTop: 8, fontSize: 12.5, color: '#cbd5e1' }}>
-          Stuck? Press <b>⏭</b> to run one block at a time and find the bug.
+          Stuck? Press <b><EmojiIcon e="⏭" /></b> to run one block at a time and find the bug.
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}>
           <button type="button" style={btn()} onClick={onStart}>Got it →</button>
@@ -325,7 +326,7 @@ function CheckCard({ plan, onDone, onClose }) {
       <div style={{ ...card, width: 'min(540px, 100%)', margin: 'auto', padding: '22px 24px' }}>
         <div style={{ display: 'flex', alignItems: 'center' }}>
           <div style={{ flex: 1, fontSize: 12, fontWeight: 900, letterSpacing: 1.2, color: '#c4b5fd' }}>
-            🏅 CODER BADGE CHALLENGE{!done && ` · ${i + 1} OF ${qs.length}`}
+            <EmojiIcon e="🏅" style={{ marginRight: '0.35em' }} />CODER BADGE CHALLENGE{!done && ` · ${i + 1} OF ${qs.length}`}
           </div>
           <button type="button" onClick={onClose} aria-label="Close" style={{ ...btn('transparent'), padding: 4, color: '#94a3b8' }}>✕</button>
         </div>
@@ -344,7 +345,7 @@ function CheckCard({ plan, onDone, onClose }) {
                       color: '#f8fafc', border: `2px solid ${show && right ? '#22c55e' : show && oi === picked ? '#f59e0b' : 'rgba(255,255,255,0.15)'}`,
                       background: show && right ? 'rgba(34,197,94,0.18)' : 'rgba(255,255,255,0.05)',
                     }}>
-                    {show && right ? '✅ ' : show && oi === picked ? '🤔 ' : ''}{o}
+                    <IconText>{show && right ? '✅ ' : show && oi === picked ? '🤔 ' : ''}</IconText>{o}
                   </button>
                 );
               })}
@@ -373,7 +374,7 @@ function CheckCard({ plan, onDone, onClose }) {
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 14 }}>
               <button type="button" style={btn('#16a34a')} disabled={explain.trim().length < 10}
                 onClick={() => onDone({ answers, score, total: qs.length, explanation: explain.trim() })}>
-                🏅 Earn my Coder badge
+                <EmojiIcon e="🏅" style={{ marginRight: '0.35em' }} />Earn my Coder badge
               </button>
             </div>
           </>
@@ -450,18 +451,30 @@ export function useStudioCoach({ kind, challenge, chassisId, robotName, starter,
     });
   }, [evaluate, workKey, robotName, challenge?.name, challenge?.shortName, plan]);
 
-  /** Called by Simulate. Never blocks the run; unmet challenges just show as a nudge on the pill. */
+  const pendingGateRef = useRef(null);
+
+  /** Called by Simulate. Never blocks the run; UI updates are flushed after the robot starts. */
   const gate = useCallback(() => {
     const { next } = evaluate();
     const blocker = plan.goals.find((g) => g.gate && !next[g.id]);
-    setNudge(blocker ? 'Try a challenge to make the code your own!' : '');
-    setOpen(false);
-    setHighlight((blocker || plan.goals.find((g) => !next[g.id]))?.id || null);
-    const n = runs + 1;
-    setRuns(n);
-    writeWork({ runs: n });
+    pendingGateRef.current = {
+      nudge: blocker ? 'Try a challenge to make the code your own!' : '',
+      highlight: (blocker || plan.goals.find((g) => !next[g.id]))?.id || null,
+      runs: runs + 1,
+    };
     return true;
-  }, [evaluate, plan, runs, writeWork]);
+  }, [evaluate, plan, runs]);
+
+  const flushGate = useCallback(() => {
+    const p = pendingGateRef.current;
+    if (!p) return;
+    pendingGateRef.current = null;
+    setNudge(p.nudge);
+    setOpen(false);
+    setHighlight(p.highlight);
+    setRuns(p.runs);
+    writeWork({ runs: p.runs });
+  }, [writeWork]);
 
   useEffect(() => {
     if (!victory) return;
@@ -500,7 +513,7 @@ export function useStudioCoach({ kind, challenge, chassisId, robotName, starter,
             title={nextGoal ? `Next: ${nextGoal.label}` : 'Show code challenges'}
             style={{ ...card, ...btn('rgba(17,24,39,0.9)'), border: `1px solid ${nudge ? '#facc15' : 'rgba(167,139,250,0.5)'}`, padding: '5px 10px', fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, maxWidth: '100%' }}
           >
-            <span aria-hidden="true">{badge ? '🏅' : allMet ? '✅' : '🎯'}</span>
+            <span aria-hidden="true"><IconText>{badge ? '🏅' : allMet ? '✅' : '🎯'}</IconText></span>
             <span style={{ fontWeight: 900 }}>{metCount}/{plan.goals.length}</span>
             {(badge || allMet || nextGoal) && (
               <span style={{ fontWeight: 600, color: '#cbd5e1', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -515,18 +528,18 @@ export function useStudioCoach({ kind, challenge, chassisId, robotName, starter,
               <div style={{ flex: 1, fontSize: 12.5, fontWeight: 900 }}>
                 {plan.info.emoji} {plan.info.name} <span style={{ color: '#c4b5fd' }}>· {metCount}/{plan.goals.length}</span>
               </div>
-              <button type="button" onClick={() => setShowLearn(true)} title={`Coder word: ${plan.info.word}. How this kind of code works, with an example`} style={{ ...btn('rgba(255,255,255,0.1)'), padding: '3px 7px', fontSize: 11 }}>💡 Tip</button>
+              <button type="button" onClick={() => setShowLearn(true)} title={`Coder word: ${plan.info.word}. How this kind of code works, with an example`} style={{ ...btn('rgba(255,255,255,0.1)'), padding: '3px 7px', fontSize: 11 }}><EmojiIcon e="💡" style={{ marginRight: '0.35em' }} />Tip</button>
               <button type="button" onClick={() => { setOpen(false); setNudge(''); }} aria-label="Hide code challenges" style={{ ...btn('transparent'), padding: '2px 4px', color: '#94a3b8' }}>✕</button>
             </div>
-            {nudge && <div role="status" style={{ fontSize: 12, fontWeight: 800, color: '#fde68a', marginBottom: 4 }}>✋ {nudge}</div>}
+            {nudge && <div role="status" style={{ fontSize: 12, fontWeight: 800, color: '#fde68a', marginBottom: 4 }}><EmojiIcon e="✋" style={{ marginRight: '0.35em' }} />{nudge}</div>}
             <GoalList goals={plan.goals} met={met} highlight={highlight} />
             {badge && (
               <div style={{ marginTop: 6, fontSize: 11.5, color: '#cbd5e1' }}>
-                🏅 Coder badge earned{saved.checkTotal ? ` (${saved.checkScore}/${saved.checkTotal})` : ''}.{keyboardGame ? ' Keyboard driving unlocked!' : ''}
+                <EmojiIcon e="🏅" style={{ marginRight: '0.35em' }} />Coder badge earned{saved.checkTotal ? ` (${saved.checkScore}/${saved.checkTotal})` : ''}.{keyboardGame ? ' Keyboard driving unlocked!' : ''}
               </div>
             )}
             {allMet && runs > 0 && !badge && (
-              <button type="button" style={{ ...btn('#16a34a'), width: '100%', marginTop: 6, padding: '6px 10px', fontSize: 12.5 }} onClick={() => setShowCheck(true)}>🏅 Win my Coder badge</button>
+              <button type="button" style={{ ...btn('#16a34a'), width: '100%', marginTop: 6, padding: '6px 10px', fontSize: 12.5 }} onClick={() => setShowCheck(true)}><EmojiIcon e="🏅" style={{ marginRight: '0.35em' }} />Win my Coder badge</button>
             )}
           </div>
         )}
@@ -534,5 +547,5 @@ export function useStudioCoach({ kind, challenge, chassisId, robotName, starter,
     </>
   );
 
-  return { ui, gate, freePlay: badge, plan };
+  return { ui, gate, flushGate, freePlay: badge, plan };
 }

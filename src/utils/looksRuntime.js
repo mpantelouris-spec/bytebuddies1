@@ -16,41 +16,27 @@ export function createDefaultEffects() {
   return { ...DEFAULT_EFFECTS };
 }
 
-/** Alternate colors for default multi-costume slots (costume2+). */
-const DEFAULT_COSTUME_COLORS = [
-  '#f59e0b',
-  '#ef4444',
-  '#22c55e',
-  '#3b82f6',
-  '#a855f7',
-  '#ec4899',
-  '#06b6d4',
-  '#eab308',
-];
-
-const DEFAULT_COSTUME_COUNT = 8;
+export function costumeFromAppearance(sprite, name = 'costume1') {
+  return {
+    name,
+    svgKey: sprite.svgKey || null,
+    color: sprite.color ?? null,
+    customImage: sprite.customImage || undefined,
+    w: sprite.baseW || sprite.w,
+    h: sprite.baseH || sprite.h,
+  };
+}
 
 /**
- * Give every sprite multiple costumes (color variants) so switch/next costume works.
- * Skips if the sprite already has 2+ costumes defined.
+ * Ensure the sprite has at least one costume matching its current look.
+ * Extra looks come from the Costumes tab — do not auto-invent colour variants.
  */
 export function ensureDefaultCostumes(sprite) {
-  if (Array.isArray(sprite.costumes) && sprite.costumes.length > 1) {
+  if (Array.isArray(sprite.costumes) && sprite.costumes.length > 0) {
     return sprite.costumes;
   }
-  const baseColor = sprite.color ?? null;
-  const costumes = [];
-  for (let i = 0; i < DEFAULT_COSTUME_COUNT; i++) {
-    const useCustom = i === 0 && sprite.customImage;
-    costumes.push({
-      name: `costume${i + 1}`,
-      svgKey: sprite.svgKey,
-      color: i === 0 ? baseColor : DEFAULT_COSTUME_COLORS[i % DEFAULT_COSTUME_COLORS.length],
-      customImage: useCustom ? sprite.customImage : undefined,
-    });
-  }
-  sprite.costumes = costumes;
-  return costumes;
+  sprite.costumes = [costumeFromAppearance(sprite, 'costume1')];
+  return sprite.costumes;
 }
 
 /** Build costume list; always at least one entry from current appearance. */
@@ -116,6 +102,9 @@ export function applyCostumeToSprite(sprite, index, invalidateCache) {
   } else {
     sprite.customImage = undefined;
   }
+  sprite.costumeFlipX = !!c.flipX;
+  sprite.costumeHue = Number(c.hue) || 0;
+  sprite.costumeTilt = Number(c.tilt) || 0;
   if (c.w != null && c.h != null) {
     sprite.baseW = c.w;
     sprite.baseH = c.h;

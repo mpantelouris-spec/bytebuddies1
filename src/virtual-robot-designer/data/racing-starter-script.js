@@ -1,8 +1,10 @@
 /** Default scratch blocks for Mario Kart–style race courses (Rainbow Road, etc.) */
 
 import { TRACK_STANDARDS } from '../racing/mk-tracks/CodeRacerTrackStandards.js';
+import { COSMIC_SKYWAY_ARENA_IDS } from '../racing/mk-tracks/CosmicSkywayRegistry.js';
 
 export const RACE_ARENA_TYPES = new Set([
+  ...COSMIC_SKYWAY_ARENA_IDS,
   'sunset_cove_01', 'candy_carnival_01', 'neon_metro_01', 'cloud_citadel_01', 'jungle_ruins_01',
   'frost_peak_01', 'lava_foundry_01', 'star_station_01', 'fairy_glen_01', 'thunder_ridge_01',
   'rainbow_road', 'rainbow_road_master', 'street_grand_prix', 'circuit_sprint', 'sunny_circuit',
@@ -16,6 +18,7 @@ export const RACE_ARENA_TYPES = new Set([
 ]);
 
 export const RACE_COURSE_IDS = new Set([
+  ...COSMIC_SKYWAY_ARENA_IDS,
   'sunset_cove_01', 'candy_carnival_01', 'neon_metro_01', 'cloud_citadel_01', 'jungle_ruins_01',
   'frost_peak_01', 'lava_foundry_01', 'star_station_01', 'fairy_glen_01', 'thunder_ridge_01',
   'street_grand_prix', 'sunny_circuit', 'dragon_skyway', 'rainbow_road', 'volcano_drift',
@@ -292,6 +295,7 @@ export const TRACK_STARTER_SCRIPTS = {
 /** Named lap guide for the Track palette — optional helpers, not a solved program. */
 export function getRaceTrackGuideScript(arenaType, courseKey = '') {
   if (CUP_TRACK_SCRIPTS[arenaType]) return CUP_TRACK_SCRIPTS[arenaType];
+  if (COSMIC_SKYWAY_ARENA_IDS.has(arenaType)) return CUP_TRACK_SCRIPTS.star_station_01;
   if (CUP_TRACK_SCRIPTS[courseKey]) return CUP_TRACK_SCRIPTS[courseKey];
   if (TRACK_STARTER_SCRIPTS[arenaType]) return TRACK_STARTER_SCRIPTS[arenaType];
   const byCourse = {
@@ -307,5 +311,29 @@ export function getRaceTrackGuideScript(arenaType, courseKey = '') {
 /** Pick the workspace starter — cup tracks begin empty so students write the path. */
 export function getRaceStarterScript(arenaType, courseKey = '') {
   if (CUP_TRACK_SCRIPTS[arenaType] || CUP_TRACK_SCRIPTS[courseKey]) return CUP_OPEN_STARTER;
+  if (COSMIC_SKYWAY_ARENA_IDS.has(arenaType) || COSMIC_SKYWAY_ARENA_IDS.has(courseKey)) return CUP_OPEN_STARTER;
   return getRaceTrackGuideScript(arenaType, courseKey);
+}
+
+/**
+ * Race workspace starter built from the live Route guide: Set speed plus the
+ * first few route pieces (inside Repeat for multi-lap races), so the kart sets off
+ * correctly and the pupil codes the rest.
+ */
+export function buildRouteStarterScript(guide, firstSteps = 3, laps = 1) {
+  if (!guide?.steps?.length) return null;
+  const body = guide.steps.slice(0, firstSteps).map((s) => (s.block === 'move_forward'
+    ? { id: 'move_forward', label: 'Move forward', icon: '⬆️', paramValues: { steps: s.steps } }
+    : {
+      id: s.block,
+      label: s.block === 'curve_left' ? 'Curve left' : 'Curve right',
+      icon: '〰',
+      paramValues: { degrees: s.degrees, steps: s.steps },
+    }));
+  return [
+    { id: 'when_start', label: 'When race starts', icon: '🏁' },
+    { id: 'set_speed', label: 'Set speed', icon: '⚡', paramValues: { speed: guide.speed } },
+    ...(laps > 1 ? [{ id: 'repeat', label: 'Repeat', icon: '🔁', paramValues: { times: laps } }] : []),
+    ...body,
+  ];
 }

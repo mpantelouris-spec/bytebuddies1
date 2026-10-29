@@ -1,5 +1,6 @@
 import React from 'react';
 import { migrateDesign } from '../config.js';
+import { EmojiIcon } from '../../components/ui/Icon.jsx';
 
 /** Visual sensor cones / lidar sweep over simulator viewport */
 export default function SensorVizOverlay({ design, running, activeStep, sensorHits }) {
@@ -29,7 +30,7 @@ export default function SensorVizOverlay({ design, running, activeStep, sensorHi
         </div>
       )}
       {sensorHits > 0 && (
-        <div className="vrd-sensor-hit">⚠ OBSTACLE {sensorHits}</div>
+        <div className="vrd-sensor-hit"><EmojiIcon e="⚠" style={{ marginRight: '0.35em' }} />OBSTACLE {sensorHits}</div>
       )}
       {activeStep && (
         <div className="vrd-sensor-step">EXEC: {activeStep.toUpperCase()}</div>

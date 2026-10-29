@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import LabBuddy from './LabBuddy.jsx';
+import { EmojiIcon, IconText } from '../../ui/Icon.jsx';
 
 // Skulpt is served from our own site first (school filters often block skulpt.org).
 const SOURCES = [
@@ -18,7 +19,7 @@ function addScript(src) {
 }
 
 let skulptReady = null;
-function loadSkulpt() {
+export function loadSkulpt() {
   if (window.Sk?.builtinFiles) return Promise.resolve();
   if (!skulptReady) {
     skulptReady = (async () => {
@@ -47,18 +48,24 @@ export function friendlyError(raw) {
   return msg.replace(/^.*?(?:Error|Exception):\s*/, '') + where;
 }
 
-export async function runPython(code, onLine) {
+export async function runPython(code, onLine, opts = {}) {
   await loadSkulpt();
   const out = [];
+  if (opts.turtleTarget) {
+    window.Sk.TurtleGraphics = window.Sk.TurtleGraphics || {};
+    window.Sk.TurtleGraphics.target = opts.turtleTarget;
+    window.Sk.TurtleGraphics.width = opts.turtleWidth || 420;
+    window.Sk.TurtleGraphics.height = opts.turtleHeight || 320;
+  }
   window.Sk.configure({
-    output: (t) => { out.push(t); onLine(t); },
+    output: (t) => { out.push(t); onLine?.(t); },
     read: (x) => {
       if (window.Sk.builtinFiles?.files[x]) return window.Sk.builtinFiles.files[x];
       throw new Error(`File not found: '${x}'`);
     },
     inputfun: (p) => window.prompt(p || 'Type a value:') ?? '',
     inputfunTakesPrompt: true,
-    execLimit: 8000,
+    execLimit: opts.execLimit || 8000,
     __future__: window.Sk.python3,
   });
   try {
@@ -147,7 +154,7 @@ export default function TextCodingLab({ config, color = '#14b8a6', storageKey = 
         </div>
         <button type="button" onClick={run} disabled={running || engine === 'loading'}
           style={{ ...ctl, background: '#2f9e44', borderColor: '#2f9e44', color: '#fff', fontSize: 16, padding: '0 22px', opacity: running || engine === 'loading' ? 0.6 : 1 }}>
-          {engine === 'loading' ? 'Loading Python…' : running ? 'Running…' : '▶ Run'}
+          <IconText>{engine === 'loading' ? 'Loading Python…' : running ? 'Running…' : '▶ Run'}</IconText>
         </button>
       </div>
 
@@ -191,7 +198,7 @@ export default function TextCodingLab({ config, color = '#14b8a6', storageKey = 
 
       {error && (
         <div role="alert" style={{ marginTop: 12, background: '#fff5f5', border: '2px solid #ff8787', borderRadius: 12, padding: '10px 14px', color: '#a61e1e' }}>
-          <b>🐞 Bug found:</b> {error}
+          <b><EmojiIcon e="🐞" style={{ marginRight: '0.35em' }} />Bug found:</b> {error}
         </div>
       )}
       {tip && !error && (
@@ -201,7 +208,7 @@ export default function TextCodingLab({ config, color = '#14b8a6', storageKey = 
       )}
       {success && (
         <div role="status" style={{ marginTop: 12, background: '#ebfbee', border: '2px solid #40c057', borderRadius: 12, padding: '10px 14px', color: '#2b8a3e', fontWeight: 800 }}>
-          🎉 Challenge complete! {sawSolution ? 'Now try changing it to make it your own.' : 'Great coding.'}
+          <EmojiIcon e="🎉" style={{ marginRight: '0.35em' }} />Challenge complete! {sawSolution ? 'Now try changing it to make it your own.' : 'Great coding.'}
           {pythonPredict && prediction && <div style={{ fontWeight: 600, marginTop: 4 }}>You predicted: “{prediction}”. Was it right? Why or why not?</div>}
         </div>
       )}
@@ -209,10 +216,10 @@ export default function TextCodingLab({ config, color = '#14b8a6', storageKey = 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 14, paddingTop: 12, borderTop: '1px solid #e9ecef' }}>
         <button type="button" disabled={hintLevel >= hints.length} onClick={() => setHintLevel((h) => Math.min(hints.length, h + 1))}
           style={{ ...ctl, background: '#fff9db', borderColor: '#fcc419', color: '#7a5b00', opacity: hintLevel >= hints.length ? 0.5 : 1 }}>
-          💡 Hint {hintLevel > 0 ? `${hintLevel}/${hints.length}` : ''}
+          <EmojiIcon e="💡" style={{ marginRight: '0.35em' }} />Hint {hintLevel > 0 ? `${hintLevel}/${hints.length}` : ''}
         </button>
-        <button type="button" onClick={() => { setCode(starterCode); setOutput(''); setError(''); setTip(''); setSuccess(false); }} style={ctl}>🗑 Start again</button>
-        <button type="button" onClick={() => { setCode(solutionCode); setSawSolution(true); setSuccess(false); setTip(''); setError(''); }} style={{ ...ctl, color: '#5f3dc4' }}>👀 Show a solution</button>
+        <button type="button" onClick={() => { setCode(starterCode); setOutput(''); setError(''); setTip(''); setSuccess(false); }} style={ctl}><EmojiIcon e="🗑" style={{ marginRight: '0.35em' }} />Start again</button>
+        <button type="button" onClick={() => { setCode(solutionCode); setSawSolution(true); setSuccess(false); setTip(''); setError(''); }} style={{ ...ctl, color: '#5f3dc4' }}><EmojiIcon e="👀" style={{ marginRight: '0.35em' }} />Show a solution</button>
         <span style={{ marginLeft: 'auto', fontSize: 12, color: '#64748b' }}>Tip: Tab adds 4 spaces · Ctrl/⌘ + Enter runs</span>
       </div>
       {hintLevel > 0 && (

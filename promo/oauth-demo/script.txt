@@ -1,0 +1,10 @@
+This demo is about Google Classroom, and how ByteBuddies connects to it.
+Teachers already run their classes in Google Classroom at classroom.google.com.
+ByteBuddies asks the teacher to connect that Google Classroom account.
+Google shows the ByteBuddies consent screen. The teacher presses Allow.
+Courses read-only lets ByteBuddies list the teacher's Google Classroom classes, like Year Three Computing.
+Rosters read-only lets ByteBuddies read the People tab — the pupil names on that Google Classroom class.
+Profile emails lets ByteBuddies match those Classroom pupils by email to accounts in our platform.
+Coursework students lets ByteBuddies post an assignment into Google Classroom classwork, and send a grade back.
+We only use Google Classroom data for those teacher features. Pupils keep working in Classroom. Teachers can disconnect at any time.
+Privacy policy: bytebuddies.technology slash privacy dot html.

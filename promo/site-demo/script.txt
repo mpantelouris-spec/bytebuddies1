@@ -1,0 +1,15 @@
+This is ByteBuddies. The whole computing platform, in the browser.
+
+One hundred and fifty-two lessons for Years 3 to 6, mapped to the National Curriculum.
+
+Pupils build games with blocks, costumes and sounds, the way they would in Scratch, only made for class.
+
+They design robots in 3D, then drive them in a simulator. No kits to buy.
+
+When they are ready, they switch to Python in the same place.
+
+Missions, challenges and a teacher classroom sit on top, so you can set work and see who needs help.
+
+Google Classroom ready. Free school pilots for 2026 and 2027.
+
+ByteBuddies. See the whole site at bytebuddies.technology.

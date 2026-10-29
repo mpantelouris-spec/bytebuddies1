@@ -1,3 +1,4 @@
+import { loadCreations, saveCreations } from '../../create/creationStore.js';
 /**
  * Arena Quest — grid adventures built from tiles. Used by the 10 built-in
  * arenas AND by every arena a child designs in the Arena Maker.
@@ -145,7 +146,11 @@ export function normaliseMap(map) {
 }
 
 /** Quick "can it be finished?" check (ignores bugs; keys open doors, crates count as floor). */
-export function checkArena(arena) {
+/**
+ * Can it be finished? `lab: true` uses the Robot Studio rules the Arena Maker plays with:
+ * lava and crates block the way (drive round them), keys open doors.
+ */
+export function checkArena(arena, { lab = false } = {}) {
   const map = normaliseMap(arena.map);
   const H = map.length, W = map[0].length;
   const find = (ch) => { const out = []; map.forEach((r, y) => [...r].forEach((c, x) => { if (c === ch) out.push([x, y]); })); return out; };
@@ -155,7 +160,7 @@ export function checkArena(arena) {
   if ((arena.goal === 'flag' || arena.goal === 'both') && !flags.length) problems.push('Place a Flag 🏁 — that is the finish.');
   if ((arena.goal === 'gems' || arena.goal === 'both') && !gems.length) problems.push('Place at least one Gem 💎.');
   if (arena.goal === 'coins' && !coins.length) problems.push('Place at least one Coin 🪙.');
-  if (find('O').length % 2) problems.push('Portals come in pairs 🌀🌀.');
+  if (!lab && find('O').length % 2) problems.push('Portals come in pairs 🌀🌀.');
   if (problems.length) return { ok: false, problems };
   // Flood fill, jumping over single lava tiles allowed, keys open doors.
   const portals = find('O');
@@ -164,14 +169,15 @@ export function checkArena(arena) {
   const seen = new Set();
   const q = [starts[0]];
   seen.add(key(...starts[0]));
-  const walk = (c) => c !== '#' && c !== 'P' && c !== 'L' && (c !== 'D' || keys > 0);
+  const walk = (c) => c !== '#' && c !== 'P' && c !== 'L' && !(lab && c === 'B') && (c !== 'D' || keys > 0);
   while (q.length) {
     const [x, y] = q.shift();
     const push = (nx, ny) => { if (!seen.has(key(nx, ny))) { seen.add(key(nx, ny)); q.push([nx, ny]); } };
     for (let d = 0; d < 4; d++) {
       const nx = x + DX[d], ny = y + DY[d];
       const c = map[ny]?.[nx];
-      if (c && walk(c)) { push(nx, ny); if (c === 'O') { const p = pairOf(nx, ny); if (p) push(...p); } }
+      if (c && walk(c)) { push(nx, ny); if (c === 'O' && !lab) { const p = pairOf(nx, ny); if (p) push(...p); } }
+      if (lab) continue;
       if (c === 'L') { const jx = nx + DX[d], jy = ny + DY[d], j = map[jy]?.[jx]; if (j && walk(j)) push(jx, jy); }
       // Bounce pads throw the robot two squares on
       if (c === 'J') { const jx = nx + DX[d] * 2, jy = ny + DY[d] * 2, j = map[jy]?.[jx], m = map[ny + DY[d]]?.[nx + DX[d]]; if (j && walk(j) && m && m !== '#' && m !== 'P') push(jx, jy); }
@@ -198,12 +204,9 @@ export function decodeArena(code) {
 }
 
 const MY_KEY = 'bb-my-arenas';
-export function loadMyArenas() {
-  try { return JSON.parse(localStorage.getItem(MY_KEY) || '[]') || []; } catch { return []; }
-}
-export function saveMyArenas(list) {
-  try { localStorage.setItem(MY_KEY, JSON.stringify(list)); } catch { /* ignore */ }
-}
+/** Each pupil's own arenas (kept per account on this device). */
+export function loadMyArenas() { return loadCreations(MY_KEY); }
+export function saveMyArenas(list) { saveCreations(MY_KEY, list); }
 
 /* ─── The game ─── */
 const BLOCKS = {

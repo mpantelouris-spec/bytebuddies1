@@ -10,7 +10,8 @@ export const EVENT_HATS = new Set([
   'when_sensor', 'when_timer', 'when_battery', 'when_gap_passed', 'when_game_over',
   'when_checkpoint', 'when_lap', 'when_race_won', 'when_goal',
   'when_get_ball', 'when_goal_scored', 'when_concede', 'when_match_start',
-  'when_match_end', 'when_out_bounds',
+  'when_match_end', 'when_out_bounds', 'when_hit_car', 'when_hit_object',
+  'when_object_ahead', 'when_car_ahead',
 ]);
 
 /** Blocks that are structural / events — not sent to the sim executor directly */
@@ -26,7 +27,7 @@ export function parseEventScript(script) {
   const handlers = {
     start: [], spacebar: [], key: [], zone: [], collect: [], collision: [],
     sensor: [], gap_passed: [], game_over: [], checkpoint: [], lap: [],
-    race_won: [], goal: [],
+    race_won: [], goal: [], hit_car: [], hit_object: [], object_ahead: [], car_ahead: [],
     timers: [], batteries: [], laps: [], keys: [],
   };
   if (!script?.length) return handlers;
@@ -82,7 +83,8 @@ export function parseEventScript(script) {
 export function compileHandlerTree(parsed, opts = { foreverReps: 6 }) {
   const out = {};
   for (const key of ['start', 'spacebar', 'key', 'zone', 'collect', 'collision', 'sensor',
-    'gap_passed', 'game_over', 'checkpoint', 'lap', 'race_won', 'goal']) {
+    'gap_passed', 'game_over', 'checkpoint', 'lap', 'race_won', 'goal', 'hit_car', 'hit_object',
+    'object_ahead', 'car_ahead']) {
     out[key] = flattenHandlerActions(parsed[key] || [], opts);
   }
   out.timers = (parsed.timers || []).map((t) => ({

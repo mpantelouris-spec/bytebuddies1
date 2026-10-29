@@ -17,6 +17,7 @@ import WorkshopInventoryTray from '../components/workshop/WorkshopInventoryTray.
 import InteractiveBuildChamber from '../components/InteractiveBuildChamber.jsx';
 import SaveDesignModal from '../components/SaveDesignModal.jsx';
 import LoadDesignModal from '../components/LoadDesignModal.jsx';
+import { EmojiIcon } from '../../components/ui/Icon.jsx';
 
 export default function InventionWorkshop({
   onGoSimulator,
@@ -60,7 +61,7 @@ export default function InventionWorkshop({
           ← ByteBuddies
         </button>
         <div className="iw-header-brand">
-          <span className="iw-header-logo" aria-hidden>⚡</span>
+          <span className="iw-header-logo" aria-hidden><EmojiIcon e="⚡" /></span>
           <span>Robot Invention Lab</span>
         </div>
         <nav className="iw-header-nav">

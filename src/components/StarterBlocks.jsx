@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { EmojiIcon } from './ui/Icon.jsx';
 
 /**
  * StarterBlocks — icon-only block canvas for ages 5-7 (Year 1-2 Starter Mode).
@@ -176,7 +177,7 @@ export default function StarterBlocks() {
               onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.1)'; e.currentTarget.style.boxShadow = `0 4px 16px ${block.color}44`; }}
               onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = 'none'; }}
             >
-              {block.icon}
+              <EmojiIcon e={block.icon} />
             </button>
           ))}
         </div>
@@ -192,10 +193,10 @@ export default function StarterBlocks() {
             Your Program
           </div>
           <button className="btn btn-success btn-sm" onClick={handleRun} disabled={!program.length} style={{ marginLeft: 'auto' }}>
-            ▶ Run
+            <EmojiIcon e="▶" style={{ marginRight: '0.35em' }} />Run
           </button>
           <button className="btn btn-ghost btn-sm" onClick={handleClear}>
-            🗑 Clear
+            <EmojiIcon e="🗑" style={{ marginRight: '0.35em' }} />Clear
           </button>
         </div>
 
@@ -254,7 +255,7 @@ export default function StarterBlocks() {
         <StarterStage running={running} actions={program} />
         {running && (
           <div style={{ fontSize: 12, color: 'var(--accent-success)', fontWeight: 700, animation: 'pulse 1s infinite' }}>
-            ▶ Running...
+            <EmojiIcon e="▶" style={{ marginRight: '0.35em' }} />Running...
           </div>
         )}
       </div>

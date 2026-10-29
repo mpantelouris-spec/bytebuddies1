@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { exportRobotSpec } from '../services/robot-schema.js';
 import { playVrdSoundSync } from '../utils/vrdSound.js';
+import { EmojiIcon, IconText } from '../../components/ui/Icon.jsx';
 
 const MAX_NAME = 100;
 const MAX_DESC = 500;
@@ -70,7 +71,7 @@ export default function SaveDesignModal({ design, onSave, onClose }) {
       onClick={onClose}
     >
       <motion.div className="vrd-modal" initial={{ scale: 0.96, y: 10 }} animate={{ scale: 1, y: 0 }} onClick={(e) => e.stopPropagation()}>
-        <h2 id="vrd-save-title" style={{ margin: '0 0 16px' }}>💾 Save This Design</h2>
+        <h2 id="vrd-save-title" style={{ margin: '0 0 16px' }}><EmojiIcon e="💾" style={{ marginRight: '0.35em' }} />Save This Design</h2>
         <form onSubmit={handleSubmit}>
           <label className="vrd-field-label" htmlFor="vrd-save-name">Robot Name</label>
           <input
@@ -103,16 +104,16 @@ export default function SaveDesignModal({ design, onSave, onClose }) {
           <input id="vrd-save-tags" className="vrd-input" value={tags} onChange={(e) => setTags(e.target.value)} placeholder="speed, racer, wheeled" />
           <div style={{ display: 'flex', gap: 12, margin: '16px 0' }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 13 }}>
-              <input type="radio" checked={!isPublic} onChange={() => setIsPublic(false)} /> 🔒 Private
+              <input type="radio" checked={!isPublic} onChange={() => setIsPublic(false)} /> <EmojiIcon e="🔒" style={{ marginRight: '0.35em' }} />Private
             </label>
             <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 13 }}>
-              <input type="radio" checked={isPublic} onChange={() => setIsPublic(true)} /> 🌍 Public / Share
+              <input type="radio" checked={isPublic} onChange={() => setIsPublic(true)} /> <EmojiIcon e="🌍" style={{ marginRight: '0.35em' }} />Public / Share
             </label>
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <button type="submit" className="vrd-btn vrd-btn-primary" style={{ flex: 1, minWidth: 120, justifyContent: 'center' }}>Save</button>
             <button type="button" className="vrd-btn" style={{ flex: 1, minWidth: 120, justifyContent: 'center' }} onClick={handleExport}>
-              {exported ? '✓ Exported' : '⬇ Export JSON'}
+              <IconText>{exported ? '✓ Exported' : '⬇ Export JSON'}</IconText>
             </button>
             <button type="button" className="vrd-btn" style={{ flex: 1, minWidth: 120, justifyContent: 'center', background: 'rgba(255,255,255,0.1)', color: '#ccc' }} onClick={onClose}>Cancel</button>
           </div>

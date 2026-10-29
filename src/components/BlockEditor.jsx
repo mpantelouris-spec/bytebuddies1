@@ -10,6 +10,7 @@ import { PICTO_THEME } from './pictobloxTheme';
 import { BB_ADD_SIDEBAR_BLOCK } from '../utils/blockLibraryEvents';
 import { SIDEBAR_TO_TYPE } from '../utils/blocks';
 import { resolveBlockCategoryColor } from '../utils/blockTheme';
+import { EmojiIcon } from './ui/Icon.jsx';
 
 let _uid = 0;
 const uid = () => String(++_uid);
@@ -1076,7 +1077,7 @@ export default function BlockEditor({
             background: running ? '#1f2937' : 'linear-gradient(180deg, #22c55e 0%, #16a34a 100%)',
             color: '#fff', fontWeight: 800, fontSize: 13,
             boxShadow: running ? 'none' : (pictobloxLayout ? '0 3px 0 #14532d, inset 0 1px 0 rgba(255,255,255,0.25)' : '0 2px 8px rgba(22,163,74,0.4)'),
-          }}>▶ Run</button>
+          }}><EmojiIcon e="▶" style={{ marginRight: '0.35em' }} />Run</button>
           <button type="button" onClick={handleStop} disabled={!running} style={pictobloxLayout ? {
             padding: '8px 16px', borderRadius: 10, border: 'none', cursor: 'pointer',
             background: running ? 'linear-gradient(180deg, #ef4444 0%, #b91c1c 100%)' : 'linear-gradient(180deg, #4b5263 0%, #353b4a 100%)',
@@ -1128,7 +1129,7 @@ export default function BlockEditor({
           <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px 40px' }}>
             {workspace.length === 0 && (
               <div style={{ textAlign: 'center', color: '#1f2937', paddingTop: 48 }}>
-                <div style={{ fontSize: 40, marginBottom: 10 }}>🧩</div>
+                <div style={{ fontSize: 40, marginBottom: 10 }}><EmojiIcon e="🧩" /></div>
                 <div style={{ fontSize: 14, fontWeight: 600 }}>
                   {useGlobalSidebarToolbox ? 'Drag blocks from the left sidebar' : 'Click a block to add it here'}
                 </div>

@@ -349,9 +349,9 @@ export function placeAerialGates(scene, curve, recipe) {
   }
 
   scene.userData.aerialGates = ringMeshes;
-  scene.userData.obstacles = ringMeshes.map((r) => ({
-    mesh: r, radius: gateRadius, type: 'ring_edge', check3d: true,
-  }));
+  // Rings are gates to fly through — never solid walls. A sphere-shell
+  // collider at the ring radius stopped the jet before it reached the hole.
+  scene.userData.obstacles = (scene.userData.obstacles || []).filter((o) => o?.type !== 'ring_edge');
   return ringMeshes;
 }
 

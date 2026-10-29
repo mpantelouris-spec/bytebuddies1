@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Modal, GoogleClassroomLogo } from './ui.jsx';
 import { ACTIVITIES, KIND_META, loadLibrary } from './assignables.js';
 import { getGcSession } from '../../utils/googleClassroom.js';
+import { EmojiIcon } from '../ui/Icon.jsx';
 
 const TABS = [
   { id: 'lesson', label: '📚 Lessons' },
@@ -102,7 +103,7 @@ export default function SetWorkModal({ cls, onClose, onCreate }) {
         <>
           <div className="cr-pills" style={{ marginBottom: 12 }}>
             {lib.years.map((y) => (
-              <button key={y.yr} className="cr-pill" aria-pressed={yr === y.yr} onClick={() => setYr(y.yr)}>{y.icon} {y.label}</button>
+              <button key={y.yr} className="cr-pill" aria-pressed={yr === y.yr} onClick={() => setYr(y.yr)}><EmojiIcon e={y.icon} style={{ marginRight: '0.35em' }} />{y.label}</button>
             ))}
           </div>
           <div style={{ maxHeight: 340, overflowY: 'auto', paddingRight: 4 }}>

@@ -70,7 +70,9 @@ export function buildLibraryCategories({ currentPage, isStarter, enabledExtensio
   let baseCategories;
   if (currentPage === 'gamebuilder') {
     // Coding blocks only — sprites/backgrounds are added from the stage sprite library, not this sidebar.
-    baseCategories = [...blockCategories];
+    // Game: score, lives, winning and levels (each level has its own backdrop and layout)
+    const game = { name: 'Game', icon: '🏆', color: '#eab308', blocks: ['set score', 'add to score', 'score', 'set lives', 'lose a life', 'lives', 'you win', 'game over', 'when level starts', 'go to level', 'next level', 'level'] };
+    baseCategories = [...blockCategories.slice(0, 5), game, ...blockCategories.slice(5)];
   } else if (isStarter) {
     return starterCategories;
   } else if (currentPage === 'workspace') {

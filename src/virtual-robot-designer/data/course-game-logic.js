@@ -93,10 +93,10 @@ export const COURSE_GAME_LOGIC = {
   flappy_bird: {
     gameType: 'action',
     winCondition: 'Flap through pipe gaps and beat your high score!',
-    codeHint: 'Add "When spacebar clicked" then "Flap!" underneath — press Simulate, then hit SPACE to fly!',
-    requiredMechanics: ['flap', 'spacebar'],
-    minBlocks: 2,
-    objectives: ['Press SPACE to flap and fly', 'Pass 5 pipe gaps', 'Beat your high score'],
+    codeHint: 'When START clicked → Forever → If bird height < gap centre → Flap! — your code flies the bird.',
+    requiredMechanics: ['when_start', 'forever', 'if_then', 'flap'],
+    minBlocks: 4,
+    objectives: ['Code the bird to flap by itself', 'Pass 5 pipe gaps', 'Beat your high score'],
   },
   fight_training: {
     gameType: 'combat',
@@ -839,7 +839,9 @@ export function deriveMissionProgress(challenge, stats = {}, zoneInfo = {}) {
   // Block Crafter: progress toward each arena's Minecraft-style goal
   if (challenge?.chassisId === 'blockbot' || String(challenge?.id || '').startsWith('blockbot_')) {
     const goals = [[3, 'logs'], [1, 'pickaxe'], [10, 'blocks placed'], [5, 'ores'], [1, 'diamond'], [1, 'summit'], [1, 'portal'], [3, 'diamonds'], [1, 'gold block'], [1, 'stone pickaxe']];
-    const [target, label] = goals[Math.max(0, Math.min(9, (Number(challenge.modeIndex) || 1) - 1))];
+    // The arena reports the level's real goal; the list is only a fallback before it loads
+    const live = globalThis.__bbCraftGoal;
+    const [target, label] = live?.need ? [live.need, live.label] : goals[(Math.max(1, Number(challenge.modeIndex) || 1) - 1) % 10];
     const current = Math.min(target, stats.collected || 0);
     return { current, target, label, pct: Math.min(100, (current / target) * 100) };
   }

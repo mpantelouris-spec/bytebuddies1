@@ -7,6 +7,7 @@ import RoundGame, { bigBtn, choiceBtn } from './RoundGame.jsx';
 import { BlockStack } from '../TeachingVisual.jsx';
 import TeachingVisual from '../TeachingVisual.jsx';
 import LabBuddy from '../CodingLab/LabBuddy.jsx';
+import { EmojiIcon, IconText } from '../../ui/Icon.jsx';
 
 const shuffle = (a) => [...a].sort(() => Math.random() - 0.5);
 const big = { fontSize: 22, fontWeight: 900, lineHeight: 1.35, margin: '0 0 14px' };
@@ -27,7 +28,7 @@ function TrueFalse({ game, color, onComplete }) {
                 <button key={String(v)} type="button" className="bb-tap" disabled={locked}
                   onClick={() => { setPicked(v); answer(v === r.t, r.why); }}
                   style={{ ...choiceBtn(state, color), minHeight: 72, fontSize: 22 }}>
-                  {v ? '✅ True' : '❌ False'}
+                  <IconText>{v ? '✅ True' : '❌ False'}</IconText>
                 </button>
               );
             })}
@@ -63,7 +64,7 @@ function SortIt({ game, color, onComplete }) {
                     answer(ok, ok ? item.why : item.why || `That one goes in “${game.bins.find((b) => b.id === item.bin)?.label}”.`);
                   }}
                   style={{ ...choiceBtn(state, color), minHeight: 110, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                  <span style={{ fontSize: 34 }}>{bin.icon}</span>
+                  <span style={{ fontSize: 34 }}><EmojiIcon e={bin.icon} /></span>
                   <span>{bin.label}</span>
                   <span style={{ fontSize: 12, color: '#64748b', fontWeight: 700 }}>{(piles[bin.id] || []).length} sorted</span>
                 </button>
@@ -121,10 +122,10 @@ function GridBoard({ cols, rows, start, walls = [], star, onTap, marks = {}, cel
             style={{ width: cell, height: cell, border: 'none', padding: 0, cursor: onTap ? 'pointer' : 'default', position: 'relative',
               background: mark?.bg || (wallSet.has(k) ? '#868e96' : (c + r) % 2 ? '#b2f2bb' : '#d3f9d8'),
               display: 'grid', placeItems: 'center', fontSize: cell * 0.48 }}>
-            {wallSet.has(k) && '🧱'}
+            <IconText>{wallSet.has(k) && '🧱'}</IconText>
             {star && star[0] === c && star[1] === r && !mark?.icon && '⭐'}
             {isStart && <span style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center' }}><LabBuddy size={cell * 1.0} /></span>}
-            {mark?.icon && <span style={{ position: 'relative', zIndex: 2 }}>{mark.icon}</span>}
+            {mark?.icon && <span style={{ position: 'relative', zIndex: 2 }}><EmojiIcon e={mark.icon} /></span>}
           </button>
         );
       })}
@@ -171,7 +172,7 @@ function BugSquash({ game, color, onComplete }) {
         const st = stage.round === r.id ? stage : { round: r.id, found: false, picked: null };
         return (
           <div>
-            <p style={{ ...big, fontSize: 20 }}>🎯 {r.goal}</p>
+            <p style={{ ...big, fontSize: 20 }}><EmojiIcon e="🎯" style={{ marginRight: '0.35em' }} />{r.goal}</p>
             <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', alignItems: 'flex-start' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 {r.blocks.map((b, k) => (
@@ -190,7 +191,7 @@ function BugSquash({ game, color, onComplete }) {
             </div>
             {st.found && !locked && (
               <div style={{ marginTop: 14 }}>
-                <div style={{ fontWeight: 900, fontSize: 18, marginBottom: 8 }}>🐞 Squashed! What should block {r.bug + 1} be?</div>
+                <div style={{ fontWeight: 900, fontSize: 18, marginBottom: 8 }}><EmojiIcon e="🐞" style={{ marginRight: '0.35em' }} />Squashed! What should block {r.bug + 1} be?</div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10 }}>
                   {r.fixes.map((f, k) => (
                     <button key={k} type="button" className="bb-tap" style={choiceBtn(null, color)}
@@ -238,7 +239,7 @@ function CodePainter({ game, color, onComplete }) {
                 onClick={() => {
                   const ok = mine.size === want.size && [...want].every((k) => mine.has(k));
                   answer(ok, ok ? null : `Dot paints ${want.size} squares. Orange ❗ = missed, red ✖ = not painted. Trace each repeat carefully!`);
-                }}>✔ Check my picture</button>
+                }}><EmojiIcon e="✔" style={{ marginRight: '0.35em' }} />Check my picture</button>
             )}
           </div>
         );
@@ -424,11 +425,11 @@ function LogicLamp({ game, color, onComplete }) {
                 ))}
               </div>
               <div style={{ textAlign: 'center', flex: '0 0 140px' }}>
-                <div style={{ fontSize: 72, filter: on ? 'drop-shadow(0 0 18px #ffd43b)' : 'grayscale(1) opacity(.4)', transition: 'filter .2s' }}>💡</div>
+                <div style={{ fontSize: 72, filter: on ? 'drop-shadow(0 0 18px #ffd43b)' : 'grayscale(1) opacity(.4)', transition: 'filter .2s' }}><EmojiIcon e="💡" /></div>
                 <div style={{ fontWeight: 900, color: on ? '#2b8a3e' : '#868e96' }}>{on ? 'TRUE' : 'FALSE'}</div>
               </div>
             </div>
-            {!locked && <button type="button" className="bb-tap" style={{ ...bigBtn(color), marginTop: 14 }} onClick={() => answer(on, on ? r.why : `The lamp is off — the condition is false. ${r.why}`)}>✔ Lamp check</button>}
+            {!locked && <button type="button" className="bb-tap" style={{ ...bigBtn(color), marginTop: 14 }} onClick={() => answer(on, on ? r.why : `The lamp is off — the condition is false. ${r.why}`)}><EmojiIcon e="✔" style={{ marginRight: '0.35em' }} />Lamp check</button>}
           </div>
         );
       }} />

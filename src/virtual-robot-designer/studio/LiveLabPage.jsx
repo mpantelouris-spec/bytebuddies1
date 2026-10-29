@@ -3,6 +3,8 @@
  * Real Blockly workspace (left) | 3D arena (center) | Systems (right)
  */
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { applyTierMoodGrade } from './TierMoodGrade.js';
+import { getTierMood } from '../data/tier-levels/index.js';
 import * as Blockly from 'blockly';
 import 'blockly/blocks';
 import * as THREE from 'three';
@@ -21,8 +23,9 @@ import {
 import {
   setupSimLighting, setupSoftEnvironment, setupRaceEnvironment, setupStadiumNightEnvironment, setupMKDayEnvironment, setupCombatEnvironment, setupFootballEnvironment, configureLabRenderer,
   stylizeMeshMaterials, lightRaceRobot, createExecutionTrail, createPreviewPath, WORLD_COLORS,
-  detectQualityTier, detectCupTrackQualityTier, QUALITY_PRESETS, createSimWebGLRenderer, formatSimStartupError, isEmbeddedPreviewBrowser,
+  detectQualityTier, detectCupTrackQualityTier, QUALITY_PRESETS, createSimWebGLRenderer, formatSimStartupError, isEmbeddedPreviewBrowser, getStudioDeviceProfile,
 } from '../services/art-direction.js';
+import { setArenaPreviewRenderer } from './arena-preview.js';
 import { createPremiumRendererWebGL } from './aerial-world/AerialWebGPUKit.js';
 import { createRobotStateController, attachRobotAccentGlow } from '../services/robot-visual-states.js';
 import { ROBOT_COURSES, TIERS, ROBOT_TYPE_TO_CATALOG } from '../../data/courseCatalog.js';
@@ -45,19 +48,20 @@ import { FLAPPY_BLOCK_DEFS } from '../data/flappy-block-defs.js';
 import { compileFlappyScratchScript, FlappyBlockRuntime } from '../data/flappy-block-runtime.js';
 import { isFightingCourse, FIGHTING_STARTER_SCRIPT } from '../data/fighting-blocks.js';
 import { isFootballCourse, FOOTBALL_STARTER_SCRIPT, FOOTBALL_KEEPER_STARTER_SCRIPT, FOOTBALL_ROLE_STARTERS, FOOTBALL_TEAM_ROLES } from '../data/football-blocks.js';
-import { isRaceCourse, getRaceStarterScript } from '../data/racing-starter-script.js';
+import { isRaceCourse, getRaceStarterScript, buildRouteStarterScript } from '../data/racing-starter-script.js';
 import {
   getPrimaryStarterScript,
   getPrimaryRobotDisplay,
   isPrimaryStudioChassis,
   isPrimaryStudioAerialChassis,
 } from '../data/primary-robot-studio.js';
-import { getCarRacingTrack, isCarChassis, isCarRacingArenaType } from '../data/car-racing-tracks.js';
+import { getCarRacingTrack, buildExpandedCarRaceTrack, isCarChassis, isCarRacingArenaType } from '../data/car-racing-tracks.js';
 import { getMKTrack, getCarModeArenaId } from '../racing/mk-tracks/MKTrackRegistry.js';
 import { FOOTBALL_COURSES, resolveFootballLabCourse } from '../data/football-courses.js';
 import { MK_RACING_COURSES, MK_RACING_COURSE_BY_ID } from '../data/mk-racing-courses.js';
 import { CodeRacerTrackCup } from '../racing/CodeRacerTrackCup.jsx';
 import { FIGHTING_COURSES } from '../data/fighting-courses.js';
+import { FIGHT_WORLD_COURSES, getFightWorld } from '../data/fight-worlds.js';
 import { compileFightingScratchScript, FightingBlockRuntime } from '../data/fighting-block-runtime.js';
 import { compileFootballScratchScript, createFootballRuntimes, tickFootballRuntimes, resetFootballRuntimes } from '../data/football-block-runtime.js';
 import { getFightingArchetype } from '../data/fighting-robot-types.js';
@@ -69,6 +73,7 @@ import { prewarmFootballAssets } from './football/FootballAssetManifest.js';
 import { GOAL_Z } from './football-match-engine.js';
 import { applyFootballTeamKit, buildFootballPlayer } from './football-character-models.js';
 import { buildCuteBoxer } from './fighter-character-models.js';
+import { buildKayKitFighter } from './fighter/KayKitFighters.js';
 import { FootballHUD } from './FootballHUD.jsx';
 import { FootballHub } from './FootballHub.jsx';
 import { FightingHUD } from './FightingHUD.jsx';
@@ -102,7 +107,7 @@ import {
   buildMKTrackArena,
 } from './CircuitSprintArena.js';
 import { MK_ARENA_TYPES } from '../racing/mk-tracks/MKTrackRegistry.js';
-import { BIOME_ARENA_TYPES, getBiomeTrack } from '../racing/mk-tracks/BiomeTrackRegistry.js';
+import { BIOME_ARENA_TYPES, getBiomeTrack, isCosmicSkywayArena, COSMIC_SKYWAY_ARENA_IDS } from '../racing/mk-tracks/BiomeTrackRegistry.js';
 import { isCupTrack } from '../racing/mk-tracks/CodeRacerTrackStandards.js';
 import { getBiomeCssGrade } from '../racing/mk-tracks/BiomeAAAVisualSpec.js';
 import { getTrackSkyPreset } from '../racing/mk-tracks/TrackSkyKit.js';
@@ -114,7 +119,7 @@ import { getHazardSpeedMultiplier } from '../racing/mk-tracks/TrackFeaturesKit.j
 import { buildFlappyBirdArena } from './FlappyBirdArena.js';
 import { buildBlockCraftArena } from './craft/CraftArena.js';
 import { isCraftCourse, compileCraftScript, craftProgramHasContent, CraftBlockRuntime, CRAFT_STARTER_SCRIPT } from '../data/craft-blocks.js';
-import { advanceAlongRaceTrack, sampleRaceCamera, sampleRaceStartCamera, sampleGridLaunchCamera, sampleFixedChaseCamera, FLAT_ROAD_SURFACE_Y, KART_VISUAL_LIFT, KART_CHASSIS_ROAD_GAP, plantKartOnRoad, roadSurfaceYAt, raycastRoadSurfaceY, measureKartWheelDrop } from '../racing/RacingRaceLogic.js';
+import { advanceAlongRaceTrack, raceLaneStep, sampleRaceCamera, sampleRaceStartCamera, sampleGridLaunchCamera, sampleFixedChaseCamera, FLAT_ROAD_SURFACE_Y, KART_VISUAL_LIFT, KART_CHASSIS_ROAD_GAP, plantKartOnRoad, roadSurfaceYAt, raycastRoadSurfaceY, measureKartWheelDrop } from '../racing/RacingRaceLogic.js';
 import { closestTrackT } from '../racing/RacingTrackSystem.js';
 import { downgradeTrackPerfBudget } from '../racing/mk-tracks/TrackPerformanceKit.js';
 import { buildAdventureArena } from './AdventureArenaBuilder.js';
@@ -125,6 +130,9 @@ import { finalizeMissionArenaVisuals, buildMissionWorld } from './MissionArenaFi
 import { buildKidClarityBaseArena, getMissionKidClarity } from './mission-world/MissionKidClarity.js';
 import { buildFirebotBlazeArena } from './EmergencyArenaBuilder.js';
 import { buildFlightRingsArena, buildSpiderRescueArena } from './FamilyArenaBuilders.js';
+import { buildStudioSkyCourse, hasStudioSkyCourse } from './aerial-world/StudioSkyCourse.js';
+import { buildArmWorkshop, isArmWorkshopChallenge, stepArmWorkshop, armAimAngle } from './arm-world/ArmWorkshop.js';
+import { buildStudioSeaCourse, hasStudioSeaCourse } from './underwater-world/StudioSeaCourse.js';
 import { isAerialArenaType } from './aerial-world/AerialCourseRecipes.js';
 import { FLYING_ARENA_SPEC_VERSION, resolveFlyingChassisId } from './aerial-world/FlyingArenaSpec.js';
 import { buildAtmosphereSky } from '../racing/mk-tracks/BiomeAAAKit.js';
@@ -132,6 +140,7 @@ import { initAerialContrails, updateAerialContrails } from './aerial-world/Aeria
 import { animateUE5AerialEffects } from './aerial-world/AerialUERenderKit.js';
 import { finishChassisOrGoal } from './ArenaBuilderCore.js';
 import { buildMissionArena } from './MissionArenaBuilder.js';
+import { buildCustomArenaLab, customArenaWon, customArenaFlagReady } from './CustomArenaLab.js';
 import {
   expandRobotMissionsAsCourses, getRobotMission, getRobotMissionStory, getMissionFailTip,
   getCampaignSectionsForRobot, getMissionsForRobotType, calcMissionStars,
@@ -169,6 +178,7 @@ import {
 } from './MissionStudioPanel.jsx';
 import './LiveLabPage.css';
 import './LiveLabGame.css';
+import { EmojiIcon, IconText } from '../../components/ui/Icon.jsx';
 
 /** Biome vista plates removed — 3D sky domes only (no CSS/PNG overlays). */
 const BIOME_SKY_PLATES = {};
@@ -1546,6 +1556,8 @@ const ALL_COURSES = [
   ...FLAGSHIP_COURSES,
   // ── FIGHTING GAME COURSES ─────────────────────────────────────────────────
   ...FIGHTING_COURSES,
+  // ── FIGHTING WORLDS (castle, dojo, pirate ship, wizard tower, space) ───────
+  ...FIGHT_WORLD_COURSES,
   // ── ROBOT FOOTBALL COURSES ────────────────────────────────────────────────
   ...FOOTBALL_COURSES,
   // ── MARIO KART CIRCUITS (12 playable tracks) ──────────────────────────────
@@ -1607,12 +1619,12 @@ const ALL_COURSES = [
 
   // ── BIRDBOT EXCLUSIVE — Flappy Bird & wrecking ball ────────────────────────
   {id:'flappy_bird', cat:'bird', icon:'🐦', name:'Flappy BirdBot',
-    desc:'Code BirdBot through endless pipes! Press SPACE to flap — gravity pulls you down every second!',
+    desc:'Code BirdBot to fly itself through endless pipes — read its sensors and decide when to flap!',
     arenaType:'flappy_bird', color:'#38bdf8', obstacles:0, totalDist:99, estMinutes:10, checkpoints:0,
     genre:'action', storyWorld:'flappy_bird',
-    codeHint:'Add "When spacebar clicked" then "Flap!" — press Simulate, then hit SPACE to fly!',
+    codeHint:'When START clicked → Forever → If bird height < gap centre → Flap! Then try Set flap strength 3 for smaller hops.',
     rec:['birdbot'], exclusive:'birdbot',
-    systemsBuilt:['flap','spacebar','events'],
+    systemsBuilt:['flap','sensors','events'],
     zones:1,
   },
   {id:'robo_wrecker', cat:'bird', icon:'💥', name:'Robo Wrecker',
@@ -1624,32 +1636,32 @@ const ALL_COURSES = [
     desc:'Classic endless pipes — code your flap timing and beat your high score!',
     arenaType:'flappy_bird', color:'#22c55e', obstacles:0, totalDist:99, estMinutes:12, checkpoints:0,
     genre:'action', rec:['birdbot'], exclusive:'birdbot',
-    codeHint:'When spacebar clicked → Flap! — press Simulate, then SPACE to fly!',
-    systemsBuilt:['flap','spacebar','events'],
+    codeHint:'Forever → If bird height < gap centre → Flap! — your code flies the bird, no keys needed.',
+    systemsBuilt:['flap','sensors','events'],
   },
   {id:'birdbot_rings', cat:'bird', icon:'💫', name:'Ring Flier',
     desc:'Fly through glowing ring gates in sequence — precision flapping required!',
     arenaType:'flappy_bird', color:'#a855f7', obstacles:0, totalDist:60, estMinutes:10, checkpoints:8,
     genre:'action', rec:['birdbot'], exclusive:'birdbot',
-    systemsBuilt:['flap','spacebar','timing'],
+    systemsBuilt:['flap','sensors','timing'],
   },
   {id:'birdbot_storm', cat:'bird', icon:'⛈️', name:'Storm Bird',
     desc:'Battle gale-force winds and lightning — hold altitude through the squall!',
     arenaType:'flappy_bird', color:'#64748b', obstacles:0, totalDist:80, estMinutes:11, checkpoints:0,
     genre:'action', rec:['birdbot'], exclusive:'birdbot',
-    systemsBuilt:['flap','spacebar','events'],
+    systemsBuilt:['flap','sensors','events'],
   },
   {id:'birdbot_night', cat:'bird', icon:'🌙', name:'Night Owl Flight',
     desc:'Navigate a starlit canyon — only your LED trail shows the pipe gaps ahead!',
     arenaType:'flappy_bird', color:'#312e81', obstacles:0, totalDist:70, estMinutes:10, checkpoints:0,
     genre:'action', rec:['birdbot'], exclusive:'birdbot',
-    systemsBuilt:['flap','spacebar','lights'],
+    systemsBuilt:['flap','sensors','lights'],
   },
   {id:'birdbot_canyon', cat:'bird', icon:'🏜️', name:'Canyon Flapper',
     desc:'Thread through red-rock pipe gates in a desert canyon — tight gaps, big scores!',
     arenaType:'flappy_bird', color:'#e8a060', obstacles:0, totalDist:85, estMinutes:11, checkpoints:0,
     genre:'action', rec:['birdbot'], exclusive:'birdbot',
-    systemsBuilt:['flap','spacebar','timing'],
+    systemsBuilt:['flap','sensors','timing'],
   },
   {id:'birdbot_reef', cat:'bird', icon:'🐠', name:'Reef Glider',
     desc:'Glide between coral arches underwater — float up and dive through bubble gates!',
@@ -1661,15 +1673,15 @@ const ALL_COURSES = [
     desc:'Flap through glowing lava pipe gates above an erupting volcano — heat rises fast!',
     arenaType:'flappy_bird', color:'#ef4444', obstacles:0, totalDist:90, estMinutes:12, checkpoints:0,
     genre:'action', rec:['birdbot'], exclusive:'birdbot',
-    codeHint:'When spacebar clicked → Flap! — dodge the rising heat!',
-    systemsBuilt:['flap','spacebar','timing'],
+    codeHint:'Forever → If how far below gap > 1.5 → big flap, else small hop — dodge the rising heat!',
+    systemsBuilt:['flap','sensors','timing'],
   },
   {id:'birdbot_forest', cat:'bird', icon:'🌲', name:'Forest Canopy',
     desc:'Weave through tree-trunk pipe gates in a sunlit forest canopy — nature\'s obstacle course!',
     arenaType:'flappy_bird', color:'#22c55e', obstacles:0, totalDist:80, estMinutes:11, checkpoints:0,
     genre:'action', rec:['birdbot'], exclusive:'birdbot',
-    codeHint:'When spacebar clicked → Flap! — time your flaps between the branches!',
-    systemsBuilt:['flap','spacebar','events'],
+    codeHint:'Forever → If bird height < gap centre → Flap! — tune flap strength to thread the branches!',
+    systemsBuilt:['flap','sensors','events'],
   },
 
   // ── MININGBOT EXCLUSIVE — quarry & tunnel missions ───────────────────────────
@@ -1899,6 +1911,15 @@ const ALL_COURSES = [
   // ── CHASSIS-EXCLUSIVE GAME MODES (36 chassis × 10 modes — strict UI filter) ──
   ...ALL_CHASSIS_GAME_MODES,
 ];
+
+// Dev-only audit: every robot's game modes as the lab resolves them (used to find duplicates)
+if (import.meta.env.DEV && typeof window !== 'undefined') {
+  window.__bbAuditModes = (ids) => ids.map((cid) => ({
+    cid,
+    modes: getCoursesForChassis(cid, ALL_COURSES).map((m) => JSON.parse(JSON.stringify(m, (k, v) => (typeof v === 'function' ? undefined : v)))),
+  }));
+  window.__bbAuditCourses = () => ALL_COURSES.map((c) => ({ id: c.id, name: c.name, arenaType: c.arenaType, desc: (c.desc || '').slice(0, 60) }));
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // COURSE TYPES — challenge categories with Easy / Medium / Hard variants
@@ -3223,7 +3244,8 @@ function parseBlocklyEventHandlers(ws) {
 function runInstantEventActions(actions, rs, scene, movId, onBlockActive, tag = '') {
   if (!actions?.length) return;
   actions.forEach((act) => {
-    applyBlock(act, rs, getBlockDuration(act), movId, scene);
+    rs._laneBlockRef = null;
+    applyBlock(act, rs, getBlockDuration(act, movId), movId, scene);
     onBlockActive?.(-1, tag ? `[${tag}] ${act.label || act.id}` : (act.label || act.id), act.blockUid);
   });
 }
@@ -7262,7 +7284,7 @@ function _stormChaseArena(scene){
     update(t,dt,rs){
       // Bolts flash — suddenly appear in new position
       const vis=Math.sin(t*4+i*2.2)>0.3;
-      b4.mesh.visible=vis; b4.light.visible=vis;
+      b4.mesh.visible=vis; if(b4.light){ b4.light.userData.on??=b4.light.intensity; b4.light.intensity=vis?b4.light.userData.on:0; } // dim, don't hide: hiding a light recompiles every shader
       if(vis){ b4.mesh.position.x=boltDefs[i].x+Math.sin(t*1.2+i)*4; boltObs[i].mesh.position.x=b4.mesh.position.x; }
       else { boltObs[i].mesh.position.x=9999; } // hide collision when invisible
     }
@@ -8500,6 +8522,7 @@ const RACE_COURSE_IDS = new Set([
   'sunset_cove_01', 'candy_carnival_01', 'neon_metro_01', 'cloud_citadel_01',
   'jungle_ruins_01', 'frost_peak_01', 'lava_foundry_01', 'star_station_01',
   'fairy_glen_01', 'thunder_ridge_01',
+  ...COSMIC_SKYWAY_ARENA_IDS,
 ]);
 
 function _isRaceArena(arenaType, challenge, chassisId) {
@@ -8515,6 +8538,8 @@ function _isRaceArena(arenaType, challenge, chassisId) {
 }
 
 function isCarRaceCourse(challenge, chassisId) {
+  // Race tracks built in the Track Maker are races whatever robot drives them
+  if (challenge?.isCustomTrack) return true;
   if (!challenge) return false;
   const cid = chassisId || challenge?.chassisId;
   if (!isCarChassis(cid)) return false;
@@ -8539,7 +8564,81 @@ function _dragonSkywayArena(scene) { buildDragonSkywayArena(scene); }
 function _rainbowRoadArena(scene) { buildCircuitSprintArena(scene); }
 function _volcanoDriftArena(scene) { buildVolcanoDriftArena(scene); }
 
+/** Which arena a course plays in (the lab and the arena card previews share this). */
+/** In an Arena Maker arena every robot gets everyday driving or walking blocks, not its arcade/boxing/football set. */
+function customArenaPaletteRobot(rc) {
+  const id = rc?.chassisId || 'rover';
+  if (['striker', 'footballbot', 'berserker', 'ninja', 'blaster', 'battlebot', 'blockbot'].includes(id)) return 'droid';
+  if (['pacbot', 'snakebot', 'brickbot', 'hopbot', 'raiderbot', 'jumpbot', 'legobot'].includes(id)) return 'rover';
+  return id;
+}
+
+function resolveLabArenaType(challenge, rc, profile) {
+  // Arena Maker arenas are the same place whichever robot plays them
+  if (challenge?.customArena) return challenge.arenaType;
+  if (isFootballRobot(rc)) {
+    return 'robot_football';
+  }
+  if (isPrimaryStudioChassis(rc?.chassisId || challenge?.chassisId)) {
+    if (BIOME_ARENA_TYPES.has(challenge?.arenaType)) return challenge.arenaType;
+    if (challenge?.genre === 'racing' && isCarRacingArenaType(challenge?.arenaType)) return challenge.arenaType;
+    if (challenge?.arenaBible) return challenge.arenaType || 'sandbox';
+    if (isCarChassis(rc?.chassisId || challenge?.chassisId)) {
+      const track = getCarRacingTrack(
+        rc?.chassisId || challenge?.chassisId || 'rover',
+        challenge?.modeIndex ?? 1,
+      );
+      if (track?.isClassicRainbow) return 'rainbow_road';
+      return track?.arenaType || challenge?.arenaType || 'sunset_cove_01';
+    }
+    return challenge?.arenaType || 'sandbox';
+  }
+  // Cup tracks must keep their own biome id. Chassis-mode remapping
+  // (modeIndex default 1 → Sunset Cove) was forcing every cup tab to look like Cove.
+  if (BIOME_ARENA_TYPES.has(challenge?.arenaType)) return challenge.arenaType;
+  if (BIOME_ARENA_TYPES.has(challenge?.id)) return challenge.id;
+  if (challenge?.linkedRaceCourse && BIOME_ARENA_TYPES.has(challenge.linkedRaceCourse)) {
+    return challenge.linkedRaceCourse;
+  }
+  // Rover/scout racing modes always use the biome/MK track registry (not stale static arenaType).
+  if (challenge?.isChassisMode && isCarChassis(rc?.chassisId || challenge?.chassisId) && !isPrimaryStudioChassis(rc?.chassisId || challenge?.chassisId)) {
+    const track = getCarRacingTrack(
+      rc?.chassisId || challenge?.chassisId || 'rover',
+      challenge?.modeIndex ?? 1,
+    );
+    if (track?.isClassicRainbow) return 'rainbow_road';
+    if (track?.arenaType) return track.arenaType;
+  }
+  const direct = challenge?.arenaType;
+  if (direct && direct !== 'ground' && direct !== 'racing_circuit') return direct;
+  const linked = getMKTrack(challenge?.linkedRaceCourse)?.arenaType;
+  if (linked) return linked;
+  return direct || profile?.arenaType || 'ground';
+}
+
 function buildSmartArena(scene,arenaType,challenge,robotConfig=null){
+  // Arenas children built in the Arena Maker
+  if (challenge?.customArena) {
+    scene.userData.missionChallenge = null;
+    scene.userData.chassisModeChallenge = null;
+    buildCustomArenaLab(scene, challenge);
+    return;
+  }
+  // Race tracks children built in the Track Maker: a kart race on their own road, whatever robot drives
+  if (challenge?.isCustomTrack && challenge.expandedCarTrack) {
+    scene.userData.missionWorldBuilt = false;
+    scene.userData.missionWorldKit = false;
+    scene.userData._labRobotConfig = robotConfig;
+    scene.userData.missionChallenge = null;
+    scene.userData.chassisModeChallenge = challenge;
+    const mkArena = challenge.expandedCarTrack.arenaType || challenge.arenaType;
+    buildMKTrackArena(scene, mkArena, challenge.expandedCarTrack);
+    finalizeMissionArenaVisuals(scene, mkArena, challenge);
+    spawnMissionBanner(scene, challenge, mkArena);
+    scene.userData.arenaType = mkArena;
+    scene.userData.carKidRacing = true;
+    return;
+  }
   // Block Crafter plays its own Minecraft-style voxel game
   if (isCraftCourse(challenge?.id, arenaType) || challenge?.chassisId === 'blockbot') {
     scene.userData.chassisModeChallenge = challenge; // enables the third-person chase camera
@@ -8569,6 +8668,24 @@ function buildSmartArena(scene,arenaType,challenge,robotConfig=null){
   const primaryStudioFlying = primaryStudioWorld
     && isPrimaryStudioAerialChassis(challenge?.chassisId || robotConfig?.chassisId)
     && (isAerialArenaType(arenaType) || challenge?.physics === 'flight_3dof');
+  if (hasStudioSeaCourse(challenge, robotConfig)) {
+    // Sub Drone: one clear underwater course per mode
+    buildStudioSeaCourse(scene, { ...challenge, chassisId: challenge?.chassisId || robotConfig?.chassisId }, robotConfig);
+    scene.userData.arenaType = arenaType;
+    return;
+  }
+  if (isArmWorkshopChallenge(challenge, robotConfig)) {
+    // Robot Arm: a workbench with everything inside the claw's reach
+    buildArmWorkshop(scene, challenge);
+    scene.userData.arenaType = arenaType;
+    return;
+  }
+  if (primaryStudioFlying && hasStudioSkyCourse(challenge, robotConfig)) {
+    // Drone, Racing Drone and Jet Explorer: one clean sky course per mode
+    buildStudioSkyCourse(scene, { ...challenge, chassisId: challenge?.chassisId || robotConfig?.chassisId }, robotConfig);
+    scene.userData.arenaType = arenaType;
+    return;
+  }
   if (primaryStudioFlying) {
     _aerialArena(scene, {
       ...challenge,
@@ -8589,12 +8706,19 @@ function buildSmartArena(scene,arenaType,challenge,robotConfig=null){
   if (carChassisLab) {
     const cid = challenge?.chassisId || robotConfig?.chassisId || 'rover';
     const modeIdx = challenge?.modeIndex ?? 1;
-    const track = getCarRacingTrack(cid, modeIdx);
+    // Expanded races must resolve from their own tier row. The starter-track
+    // lookup intentionally clamps to its small legacy list, which made modes
+    // above that list fall back to the same final starter environment.
+    const track = challenge?.expandedCarTrack
+      || (challenge?.isExpandedMode ? buildExpandedCarRaceTrack(challenge) : null)
+      || getCarRacingTrack(cid, modeIdx);
     const mkArena = track?.isClassicRainbow
       ? 'rainbow_road'
       : (track?.arenaType || getCarModeArenaId(modeIdx) || arenaType);
-    buildMKTrackArena(scene, mkArena);
+    buildMKTrackArena(scene, mkArena, challenge?.expandedCarTrack || null);
     finalizeMissionArenaVisuals(scene, mkArena, challenge);
+    // Rover races 11–50: each race in its own light
+    if (challenge?.isTierMode) applyTierMoodGrade(scene, getTierMood(cid, challenge.modeIndex));
     spawnMissionBanner(scene, challenge, mkArena);
     scene.userData.arenaType = mkArena;
     scene.userData.carKidRacing = true;
@@ -8619,6 +8743,10 @@ function buildSmartArena(scene,arenaType,challenge,robotConfig=null){
     finalizeMissionArenaVisuals(scene, arenaType, challenge);
     spawnMissionBanner(scene, challenge, arenaType);
     scene.userData.arenaType = arenaType;
+    return;
+  }
+  if (isCosmicSkywayArena(arenaType)) {
+    buildMKTrackArena(scene, arenaType);
     return;
   }
   switch(arenaType){
@@ -8745,8 +8873,12 @@ function buildSmartArena(scene,arenaType,challenge,robotConfig=null){
       buildMKTrackArena(scene, arenaType);
       break;
     case 'flappy_bird':          buildFlappyBirdArena(scene, challenge); break;
-    case 'robot_fight':          buildFightingArena(scene, challenge, getFightingArchetype(detectRobotType(robotConfig||{}), robotConfig?.chassisId)); break;
-    case 'robot_football':       buildFootballArena(scene, challenge, robotConfig); break;
+    case 'robot_fight':          buildFightingArena(scene, challenge, getFightingArchetype(detectRobotType(robotConfig||{}), robotConfig?.chassisId));
+      if (challenge?.isTierMode) applyTierMoodGrade(scene, getTierMood(challenge.chassisId, challenge.modeIndex));
+      break;
+    case 'robot_football':       buildFootballArena(scene, challenge, robotConfig);
+      if (challenge?.isTierMode) applyTierMoodGrade(scene, getTierMood(challenge.chassisId, challenge.modeIndex));
+      break;
     case 'farm_harvest':         _farmHarvestArena(scene); break;
     case 'pirate_dock':          _pirateDockArena(scene); break;
     case 'toxic_wasteland':      _toxicWastelandArena(scene); break;
@@ -8985,16 +9117,19 @@ function computePreviewPath(blocks, startX, startZ, startAngle) {
   return { points, segmentEnds };
 }
 
-function getBlockDuration(block){
+function getBlockDuration(block, movId){
   const p=block.paramValues||{};
   if(ACTION_DURATION[block.id]) return ACTION_DURATION[block.id];
+  // A biped needs a deliberate, planted cadence. The generic vehicle timing
+  // made each Humanoid step cover several metres in a fraction of a second.
+  const walkingRobot = movId === 'legs' || movId === 'walker' || movId === 'humanoid';
   switch(block.id){
     // Durations reduced so each block executes faster — the robot covers more
     // ground per block, matching the larger distance values in applyBlock.
-    case 'fly_forward':
+    case 'fly_forward':   return Math.max(0.7,(p.steps||3)*0.55);
     case 'swim_forward':
-    case 'move_forward':  return Math.max(0.22,(p.steps||3)*0.28);
-    case 'move_backward': return Math.max(0.22,(p.steps||1)*0.28);
+    case 'move_forward':  return Math.max(0.22,(p.steps||3)*(walkingRobot ? 0.68 : 0.28));
+    case 'move_backward': return Math.max(0.22,(p.steps||1)*(walkingRobot ? 0.68 : 0.28));
     case 'turn_left':
     case 'turn_right':    return Math.max(0.18,(p.degrees||90)/90*0.32);
     case 'turn_corner_left':
@@ -9072,7 +9207,7 @@ function getBlockDuration(block){
     case 'climb_mode':    return 0.4;
     case 'power_mode':    return 0.4;
     // spider
-    case 'step_forward':  return Math.max(0.3,(p.steps||3)*0.35);
+    case 'step_forward':  return Math.max(0.3,(p.steps||3)*(walkingRobot ? 0.68 : 0.35));
     case 'climb_wall':    return 1.5;
     case 'stabilize_legs':return 0.8;
     case 'crouch':        return 0.5;
@@ -9116,7 +9251,18 @@ function getBlockDuration(block){
     case 'race_dist_left_rail':
     case 'race_dist_right_rail':
     case 'race_on_track':
-    case 'race_current_lap': return 0.05;
+    case 'race_current_lap':
+    case 'race_car_ahead':
+    case 'race_object_ahead':
+    case 'race_left_lane_clear':
+    case 'race_right_lane_clear':
+    case 'race_my_lane':
+    case 'race_distance_ahead':
+    case 'race_collisions': return 0.05;
+    case 'lane_left':
+    case 'lane_right':
+    case 'lane_middle':
+    case 'lane_clear': return 0.5;
     case 'set_var':
     case 'create_var':
     case 'change_var':    return 0.05;
@@ -9274,6 +9420,23 @@ function calcTargetHeading(direction, rs, scene) {
 
 function evaluateMoveUntilCondition(cond, rs, scene) {
   const c = cond || 'wall';
+  if (scene?.userData?.raceMode) {
+    const lapUp = (rs.raceLap ?? 1) > (rs._moveUntilLapStart ?? 1);
+    if (c === 'goal') return lapUp || !!rs.done;
+    if (c === 'checkpoint') return lapUp || (rs.raceCheckpoint ?? 0) > (rs._moveUntilCpStart ?? 0);
+    if (c === 'collision') return ((rs.raceCarHits ?? 0) + (rs.raceObjectHits ?? 0) + (rs.collisions ?? 0)) > (rs._moveUntilCollStart ?? 0);
+    if (c === 'item') {
+      for (const pk of scene.userData.racePickups || []) {
+        if (!pk.collected && Math.hypot(rs.x - pk.x, rs.z - pk.z) < 6) return true;
+      }
+      return false;
+    }
+    if (c === 'wall') {
+      const rail = Math.min(rs.distanceToLeftRail ?? 99, rs.distanceToRightRail ?? 99);
+      const blocked = (rs.raceCarAhead || rs.raceObjectAhead) && (rs.raceDistanceAhead ?? 99) < 5;
+      return rail < 1.0 || blocked;
+    }
+  }
   if (c === 'goal') {
     const fz = scene?.userData?.finishZone;
     if (!fz) return false;
@@ -9307,6 +9470,60 @@ function cornerArcDist(rs) {
   return radius * MOVE_STEP_SIZE * 0.85;
 }
 
+const RACE_ROBOT_SPD = { jets:2.0, flying:1.6, hover:1.4, wheels:1.2, wheels6:1.1, tracks:0.85, legs:1.0, fins:1.1, arm:0.6 };
+
+/** How fast "Move forward" drives right now (units per second) — other drive blocks match it. */
+function driveSpeed(rs, movId, scene) {
+  const walking = movId === 'legs' || movId === 'walker' || movId === 'humanoid';
+  const race = scene?.userData?.raceMode;
+  const speedMult = rs._speedMult ?? (race ? 1.0 : 0.6);
+  const perStep = walking ? 0.85 / 0.68 : MOVE_STEP_SIZE / 0.28;
+  return perStep * raceStepMult(scene, speedMult, RACE_ROBOT_SPD[movId] || 1.0, rs);
+}
+
+/**
+ * Race tracks: shape blocks (corners, U-turn, zigzag, measured moves) keep their
+ * shape but are driven at race pace instead of walking pace. Returns null when
+ * the block's normal duration applies.
+ */
+function raceBlockDuration(block, rs, movId, scene) {
+  if (!scene?.userData?.raceMode || !block) return null;
+  const p = block.paramValues || {};
+  const cruise = Math.max(1, driveSpeed(rs, movId, scene));
+  switch (block.id) {
+    case 'turn_corner_left':
+    case 'turn_corner_right': return Math.max(0.3, cornerArcDist(rs) / (cruise * 0.7));
+    case 'u_turn': return Math.max(0.4, (3 * MOVE_STEP_SIZE) / (cruise * 0.6));
+    case 'zigzag': return Math.max(0.6, (Math.max(2, p.times || 4) * Math.max(1, p.width || 2) * MOVE_STEP_SIZE) / (cruise * 0.8));
+    case 'move_forward_units': return Math.max(0.2, Math.max(0.1, p.units || 6) / cruise);
+    case 'move_forward_until': return 60; // stops itself when the condition comes true
+    default: return null;
+  }
+}
+
+/**
+ * Like three's compileAsync, but safe when the arena swaps materials while it
+ * waits (three r160 throws inside its own timer if a material lost its program).
+ */
+function warmShaders(renderer, scene, camera) {
+  let mats;
+  try { mats = renderer.compile(scene, camera); } catch { return Promise.resolve(); }
+  const t0 = performance.now();
+  return new Promise((resolve) => {
+    const check = () => {
+      try {
+        mats.forEach((m) => {
+          const prog = renderer.properties.get(m)?.currentProgram;
+          if (!prog || typeof prog.isReady !== 'function' || prog.isReady()) mats.delete(m);
+        });
+      } catch { mats.clear(); }
+      if (!mats.size || performance.now() - t0 > 6000) resolve();
+      else setTimeout(check, 16);
+    };
+    check();
+  });
+}
+
 /** Blocks that already apply their own displacement — skip cruise gas to avoid double-speed. */
 const SELF_DRIVING_BLOCKS = new Set([
   'move_forward', 'move_backward', 'turn_left', 'turn_right',
@@ -9318,6 +9535,13 @@ const SELF_DRIVING_BLOCKS = new Set([
 
 /** Config / instant blocks — never add cruise gas on top (especially on lap loop restarts). */
 const CRUISE_PAUSE_BLOCKS = new Set(['set_speed', 'boost', 'brake', 'stop']);
+
+const HUMANOID_WALK_BLOCKS = new Set([
+  'move_forward', 'move_backward', 'step_forward', 'walk',
+  'move_forward_continuous', 'turn_corner_left', 'turn_corner_right',
+  'curve_left', 'curve_right', 'zigzag', 'circle', 'orbit', 'u_turn',
+  'patrol_area', 'follow_line', 'random_move',
+]);
 
 /** On race lap loops, skip setup blocks — speed/boost/continuous are already active. */
 const RACE_LOOP_SKIP_BLOCKS = new Set([
@@ -9358,6 +9582,7 @@ function applyRaceTrackMotion(rs, dt, scene, totalDist, dur) {
 
 /** Seed kart drive state at the start of each Simulate press (race courses). */
 function seedRaceDriveState(rs) {
+  rs._raceSeededAt = performance.now();
   rs.step = 0;
   rs.stepTime = 0;
   rs.currentDur = 0;
@@ -9368,6 +9593,7 @@ function seedRaceDriveState(rs) {
   rs._speedMult = rs._speedMult ?? 0.95;
   rs._boostMul = rs._boostMul ?? 1;
   rs.raceFalling = false;
+  rs.raceFallCount = 0;
   rs.raceWon = false;
   rs.raceOffTrack = false;
   rs._offTrackMul = 1;
@@ -9375,6 +9601,24 @@ function seedRaceDriveState(rs) {
   rs._cupBlock = null;
   rs._kbSpeed = 0;
   rs._kbBoostLatch = false;
+  rs._moveUntilStep = null;
+  rs._moveUntilSteer = undefined;
+  // Every run starts with no crashes, lanes on auto and no event scripts left over
+  rs.collisions = 0;
+  rs.raceCarHits = 0;
+  rs.raceObjectHits = 0;
+  rs.raceLastHit = null;
+  rs._raceBlocked = false;
+  rs._raceStuckT = 0;
+  rs._raceHitCooldown = 0;
+  rs._evQueue = [];
+  rs._raceRunId = (rs._raceRunId || 0) + 1;
+  rs._raceLaneTarget = null;   // auto lanes until the code picks one
+  rs._raceLane = 0;
+  rs._laneBlockRef = null;
+  rs._laneShiftLeft = 0;
+  rs.raceFailReason = '';
+  rs._fallTimer = 0;
 }
 
 /** Belt-and-suspenders spline cruise when blocks are missing (legacy rail tracks only). */
@@ -9485,7 +9729,10 @@ function tickBoostTimer(rs, dt) {
  *  made Fly up pull the drone *down*. Derived once from the route. */
 function aerialAltRange(scene){
   const u=scene?.userData;
-  if(!u?.aerialWorldBuilt) return { lo:0, hi:6 };
+  if(!u?.aerialWorldBuilt) {
+    const y = u?.spawnAltitude ?? u?.spawnY ?? 4;
+    return { lo: 0, hi: Math.max(8, y + 14) };
+  }
   if(u._aerialAltRange) return u._aerialAltRange;
   const pts=u._chassisCurve?.points||[];
   let lo=Infinity, hi=-Infinity;
@@ -9540,6 +9787,42 @@ function applyBlock(block,rs,dt,movId,scene=null){
       rs.raceBoostActive = false;
       break;
     }
+    // Change lane: slide one lane left or right (or back to the middle) while still driving
+    case 'lane_left':
+    case 'lane_right':
+    case 'lane_middle':
+    case 'lane_clear': {
+      if (!scene?.userData?.raceMode) break;
+      const step = raceLaneStep(scene);
+      // Once per block run (a block restarts its clock each time, including in event scripts)
+      if (rs._laneBlockRef !== block || rs.stepTime < (rs._laneBlockT ?? 0)) {
+        const from = rs._raceLaneTarget ?? 0;
+        let to;
+        if (block.id === 'lane_middle') to = 0;
+        else if (block.id === 'lane_clear') {
+          // Look left, then right (the lane sensors), and take the first one that's free
+          to = rs.raceLeftLaneClear && from > -1 ? from - 1 : (rs.raceRightLaneClear && from < 1 ? from + 1 : from);
+        } else to = Math.max(-1, Math.min(1, from + (block.id === 'lane_left' ? -1 : 1)));
+        rs._raceLaneTarget = to;
+        rs._laneShiftLeft = (to - from) * step;   // free driving: how far to slide sideways
+      }
+      rs._laneBlockRef = block;
+      rs._laneBlockT = rs.stepTime;
+      if (shouldUseRaceSpline(rs, scene)) {
+        // On the road line the lane slide happens as the kart moves along it
+        rs._laneShiftLeft = 0;
+        if (!rs._moveContinuous) applyRaceSplineCruise(rs, dt, movId, scene);
+      } else {
+        // Driving freely: the race mover slides the kart sideways (rs._laneShiftLeft) each frame
+        if (!rs._moveContinuous) {
+          const fwd = MOVE_STEP_SIZE * 2.05 * (rs._speedMult ?? 1) * spd * RACE_SPEED_BOOST;
+          rs.x += Math.sin(rs.angle) * fwd * dt;
+          rs.z += Math.cos(rs.angle) * fwd * dt;
+          rs.totalDist += fwd * dt;
+        }
+      }
+      break;
+    }
     case 'brake': {
       rs._moveContinuous = false;
       const progress = Math.min(1, rs.stepTime / Math.max(0.01, dur));
@@ -9570,14 +9853,15 @@ function applyBlock(block,rs,dt,movId,scene=null){
     case 'fly_forward':
     case 'swim_forward':
     case 'move_forward': {
-      const d = (p.steps||3) * MOVE_STEP_SIZE * raceStepMult(scene, speedMult, spd, rs);
+      const flyMul = (block.id === 'fly_forward' || isFlightSim(scene, movId)) ? aerialStepMul(scene) : 1;
+      const d = (p.steps||3) * (movId === 'legs' || movId === 'walker' || movId === 'humanoid' ? 0.85 : MOVE_STEP_SIZE) * flyMul * raceStepMult(scene, speedMult, spd, rs);
       if (applyCupSplineBlockMotion(rs, dt, scene, block, d, dur)) break;
       if (applyRaceTrackMotion(rs, dt, scene, d, dur)) break;
       rs.x+=Math.sin(rs.angle)*(d/dur)*dt; rs.z+=Math.cos(rs.angle)*(d/dur)*dt;
       rs.totalDist+=(d/dur)*dt; rs.bobPhase+=dt*8; break;
     }
     case 'move_backward': {
-      const d = (p.steps||1) * MOVE_STEP_SIZE * raceStepMult(scene, speedMult, spd, rs);
+      const d = (p.steps||1) * (movId === 'legs' || movId === 'walker' || movId === 'humanoid' ? 0.85 : MOVE_STEP_SIZE) * raceStepMult(scene, speedMult, spd, rs);
       rs.x-=Math.sin(rs.angle)*(d/dur)*dt; rs.z-=Math.cos(rs.angle)*(d/dur)*dt;
       rs.totalDist+=(d/dur)*dt*0.5; rs.bobPhase+=dt*6; break;
     }
@@ -9643,15 +9927,27 @@ function applyBlock(block,rs,dt,movId,scene=null){
     }
     // MOVE FORWARD UNTIL condition
     case 'move_forward_until': {
-      if (rs.stepTime < 0.06) {
+      if (rs._moveUntilStep !== rs.step || rs.stepTime <= dt + 1e-6) {
+        rs._moveUntilStep = rs.step;
         rs._moveUntilCpStart = rs.raceCheckpoint ?? 0;
-        rs._moveUntilCollStart = rs.collisions ?? 0;
+        rs._moveUntilLapStart = rs.raceLap ?? 1;
+        rs._moveUntilCollStart = scene?.userData?.raceMode
+          ? (rs.raceCarHits ?? 0) + (rs.raceObjectHits ?? 0) + (rs.collisions ?? 0)
+          : (rs.collisions ?? 0);
       }
       const cond = p.condition || p.cond || 'wall';
+      // On a race track, "until checkpoint / goal / item / crash" drives along the
+      // road to get there; "until wall" drives straight at the barrier.
+      const followRoad = !!scene?.userData?.raceMode && cond !== 'wall';
       if (evaluateMoveUntilCondition(cond, rs, scene)) {
         rs.stepTime = rs.currentDur;
+        rs._moveUntilStep = null;
+        if (rs._moveUntilSteer !== undefined) { rs.raceAutoSteer = rs._moveUntilSteer; rs._moveUntilSteer = undefined; }
       } else {
-        const spd2 = MOVE_STEP_SIZE * 1.2 * (rs._speedMult ?? 0.6);
+        // Same pace as Move forward (it used to crawl at a fifth of that speed)
+        const spd2 = driveSpeed(rs, movId, scene);
+        if (followRoad && rs._moveUntilSteer === undefined) { rs._moveUntilSteer = !!rs.raceAutoSteer; rs.raceAutoSteer = true; }
+        if (applyRaceTrackMotion(rs, dt, scene, spd2, 1)) break;
         rs.x += Math.sin(rs.angle) * spd2 * dt;
         rs.z += Math.cos(rs.angle) * spd2 * dt;
         rs.totalDist += spd2 * dt;
@@ -9754,6 +10050,16 @@ function applyBlock(block,rs,dt,movId,scene=null){
     case 'loop_maneuver':  {rs.y=Math.sin((rs.stepTime/dur)*Math.PI)*2+0.5; rs.x+=Math.sin(rs.angle)*spd*0.5*dt; rs.z+=Math.cos(rs.angle)*spd*0.5*dt; rs.totalDist+=spd*0.5*dt; break;}
     // tank — slow + powerful
     case 'tank_steer':     {const dir=p.dir==='left'?1:-1; rs.angle+=dir*(Math.PI/2)/dur*dt; rs.x+=Math.sin(rs.angle)*spd*0.3*dt; rs.z+=Math.cos(rs.angle)*spd*0.3*dt; rs.totalDist+=spd*0.3*dt; break;}
+    case 'move_to_marker': {
+      // Robot Arm: turn the base to face the next job
+      const aim = scene ? armAimAngle(scene) : null;
+      if (aim != null) {
+        const want = Math.PI + aim * Math.PI / 180;
+        let d = want - rs.angle; d = Math.atan2(Math.sin(d), Math.cos(d));
+        rs.angle += d * Math.min(1, dt / Math.max(0.05, dur - rs.stepTime));
+      }
+      break;
+    }
     case 'rotate_joint':
     case 'rotate_arm':
     case 'rotate_place':   rs.angle+=((p.degrees||90)*Math.PI/180)/dur*dt; break;
@@ -9761,7 +10067,7 @@ function applyBlock(block,rs,dt,movId,scene=null){
     case 'climb_mode':     /* mode change, no movement */ break;
     case 'power_mode':     /* mode change */ break;
     // spider — stepping gait
-    case 'step_forward':   {const d=(p.steps||3)*2.0*spd*speedMult; rs.x+=Math.sin(rs.angle)*(d/dur)*dt; rs.z+=Math.cos(rs.angle)*(d/dur)*dt; rs.totalDist+=(d/dur)*dt; rs.bobPhase+=dt*12; break;}
+    case 'step_forward':   {const walkingRobot=movId==='legs'||movId==='walker'||movId==='humanoid';const d=(p.steps||3)*(walkingRobot?0.85:2.0)*spd*(walkingRobot?1:speedMult); rs.x+=Math.sin(rs.angle)*(d/dur)*dt; rs.z+=Math.cos(rs.angle)*(d/dur)*dt; rs.totalDist+=(d/dur)*dt; rs.bobPhase+=dt*12; break;}
     case 'climb':
     case 'climb_wall':     rs.y=Math.min(4,rs.y+3/dur*dt); rs.totalDist+=3/dur*dt; break;
     case 'balance':
@@ -9800,7 +10106,15 @@ function applyBlock(block,rs,dt,movId,scene=null){
     // NEW — wave gesture
     case 'wave':           {rs.bobPhase+=dt*15; break;}
     // NEW — dive / float
-    case 'dive':           rs.y=Math.max(-2,(rs.y||0)-2/dur*dt); break;
+    case 'dive': {
+      const ar=aerialAltRange(scene);
+      const diveD = MOVE_STEP_SIZE * aerialStepMul(scene) * 0.7;
+      rs.y=Math.max(ar.lo,(rs.y||0)-(p.height||4)/dur*dt);
+      rs.x+=Math.sin(rs.angle)*(diveD/dur)*dt;
+      rs.z+=Math.cos(rs.angle)*(diveD/dur)*dt;
+      rs.totalDist+=(diveD/dur)*dt;
+      break;
+    }
     case 'float_up':       {
       if (scene?.userData?.flappyMode) {
         if (rs.stepTime < 0.06) scene.userData.flap?.(0.9);
@@ -9851,7 +10165,14 @@ function applyBlock(block,rs,dt,movId,scene=null){
     case 'race_dist_left_rail':
     case 'race_dist_right_rail':
     case 'race_on_track':
-    case 'race_current_lap': {
+    case 'race_current_lap':
+    case 'race_car_ahead':
+    case 'race_object_ahead':
+    case 'race_left_lane_clear':
+    case 'race_right_lane_clear':
+    case 'race_my_lane':
+    case 'race_distance_ahead':
+    case 'race_collisions': {
       const sens = scene?.userData?.getRaceSensors?.() || {};
       rs.lastSensor = {
         race_speed: sens.speed,
@@ -9859,6 +10180,13 @@ function applyBlock(block,rs,dt,movId,scene=null){
         race_dist_right_rail: sens.distanceToRightRail,
         race_on_track: sens.isOnTrack ? 1 : 0,
         race_current_lap: sens.currentLap,
+        race_car_ahead: sens.carAhead ? 1 : 0,
+        race_object_ahead: sens.objectAhead ? 1 : 0,
+        race_left_lane_clear: sens.leftLaneClear ? 1 : 0,
+        race_right_lane_clear: sens.rightLaneClear ? 1 : 0,
+        race_my_lane: sens.myLane,
+        race_distance_ahead: sens.distanceAhead,
+        race_collisions: sens.collisions,
       }[block.id];
       break;
     }
@@ -9960,18 +10288,22 @@ function applyBlock(block,rs,dt,movId,scene=null){
     case 'alarm_sound':
       if (rs.stepTime < 0.05) rs.playSound = 'alarm';
       break;
-    case 'bank_left':
+    case 'bank_left': {
+      const bankD = MOVE_STEP_SIZE * aerialStepMul(scene) * 0.55;
       rs.angle += ((p.degrees || 30) * Math.PI / 180) / dur * dt;
-      rs.x += Math.sin(rs.angle) * spd * 0.9 * dt;
-      rs.z += Math.cos(rs.angle) * spd * 0.9 * dt;
-      rs.totalDist += spd * 0.9 * dt;
+      rs.x += Math.sin(rs.angle) * (bankD / dur) * dt;
+      rs.z += Math.cos(rs.angle) * (bankD / dur) * dt;
+      rs.totalDist += (bankD / dur) * dt;
       break;
-    case 'bank_right':
+    }
+    case 'bank_right': {
+      const bankD = MOVE_STEP_SIZE * aerialStepMul(scene) * 0.55;
       rs.angle -= ((p.degrees || 30) * Math.PI / 180) / dur * dt;
-      rs.x += Math.sin(rs.angle) * spd * 0.9 * dt;
-      rs.z += Math.cos(rs.angle) * spd * 0.9 * dt;
-      rs.totalDist += spd * 0.9 * dt;
+      rs.x += Math.sin(rs.angle) * (bankD / dur) * dt;
+      rs.z += Math.cos(rs.angle) * (bankD / dur) * dt;
+      rs.totalDist += (bankD / dur) * dt;
       break;
+    }
     case 'roll':
       rs.angle += ((p.degrees || 360) * Math.PI / 180) / dur * dt;
       break;
@@ -10106,7 +10438,7 @@ function runFlappyInstantActions(actions, rs, scene, movId, onBlockActive) {
   if (!actions?.length || !scene?.userData?.flappyMode) return;
   actions.forEach((act, idx) => {
     rs.stepTime = 0;
-    rs.currentDur = getBlockDuration(act);
+    rs.currentDur = getBlockDuration(act, movId);
     rs._blockFired = false;
     applyBlock(act, rs, 0.05, movId, scene);
     onBlockActive?.(idx, act.label || act.id, act.blockUid || act.blocklyId);
@@ -10127,14 +10459,101 @@ function isAerialSim(arenaType, movId, ab) {
   return ['flying', 'hover', 'jets'].includes(movId);
 }
 
+const JET_CHASSIS_IDS = new Set(['jetplane', 'steathjet', 'aerobat']);
+const DRONE_CHASSIS_IDS = new Set(['drone', 'racedrone', 'rescuedrone', 'helicopter']);
+const HOVER_CHASSIS_IDS = new Set(['hoverbot', 'hoverracer']);
+
+function resolveSimMovId(robotConfig) {
+  const chassis = robotConfig?.chassisId;
+  if (JET_CHASSIS_IDS.has(chassis)) return 'jets';
+  if (DRONE_CHASSIS_IDS.has(chassis)) return 'flying';
+  if (HOVER_CHASSIS_IDS.has(chassis)) return 'hover';
+  return robotConfig?.movementId || 'wheels';
+}
+
+function isFlightSim(scene, movId) {
+  return !!(scene?.userData?.aerialWorldBuilt
+    || scene?.userData?.physicsMode === 'flight_3dof'
+    || ['flying', 'hover', 'jets'].includes(movId));
+}
+
+/** Sky worlds are ~180 m long — a 2.4 m ground step is invisible from the chase cam. */
+function aerialStepMul(scene) {
+  if (scene?.userData?.aerialWorldBuilt || scene?.userData?.physicsMode === 'flight_3dof') return 5.5;
+  return 1;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // 3D SIMULATOR CANVAS
 // ─────────────────────────────────────────────────────────────────────────────
+// ── Arena card previews ─────────────────────────────────────────────────────
+// Builds a course's real arena offscreen and snapshots it from the robot's
+// start, so every game-mode card shows its own world.
+let _previewRenderer = null;
+async function renderArenaPreview(course) {
+  if (!course) return null;
+  const rc = { chassisId: course.chassisId || course.exclusive || '' };
+  const arenaType = resolveLabArenaType(course, rc, null);
+  if (!_previewRenderer) {
+    _previewRenderer = createSimWebGLRenderer({ antialias: true, lowPower: true, preserveDrawingBuffer: true });
+    if (!_previewRenderer) return null;
+    _previewRenderer.setPixelRatio(1);
+    _previewRenderer.setSize(480, 240, false);
+    configureLabRenderer(_previewRenderer, null, {});
+  }
+  const renderer = _previewRenderer;
+  const scene = new THREE.Scene();
+  scene.userData.arenaPreview = true;
+  const { amb, hemi, sun, fill } = setupSimLighting(scene, { isForest: false, shadowEnabled: false, shadowMapSize: 512 });
+  sun.castShadow = false;
+  buildSmartArena(scene, arenaType, course, rc);
+  if (scene.userData.suppressSimDaylight && !scene.userData.aerialWorldBuilt) {
+    amb.intensity = 0.12; hemi.intensity = 0.15; sun.intensity = 0; fill.intensity = 0.08;
+  }
+  if (!scene.background) scene.background = new THREE.Color(0x9fd4ff);
+  scene.traverse((o) => { if (o.name === 'MissionBanner') o.visible = false; }); // the intro sign would cover the picture
+  // Where the robot starts (same rules as the lab)
+  const ud = scene.userData;
+  const combat = (ud.combatMode || ud.footballMode)
+    ? { x: ud.spawnX ?? -1.5, z: ud.spawnZ ?? 0, y: ud.spawnY ?? ud.groundY ?? 0, angle: ud.footballMode ? 0 : Math.PI / 2 }
+    : null;
+  const sp = combat || ud.raceSpawn || ud.aerialSpawn || { x: 0, z: 5, y: ud.groundY ?? 0, angle: Math.PI };
+  const angle = sp.angle ?? Math.PI;
+  const camera = new THREE.PerspectiveCamera(ud.raceCameraFov || 55, 2, 0.1, 1200);
+  if (ud.footballMode && ud.footballCamPreset?.position) {
+    const p = ud.footballCamPreset.position;
+    camera.position.set(p.x, p.y, p.z);
+    camera.lookAt(0, 0, 0);
+  } else {
+    // A little higher and further back than the play camera, to show more of the arena
+    const preset = ud.missionCameraPreset || ud.raceCameraPreset || {};
+    const c = sampleFixedChaseCamera(sp.x, sp.y ?? 0, sp.z, angle, {
+      camBack: (preset.camBack ?? 6) * 1.3,
+      camUp: Math.max(5, (preset.camUp ?? 3) * 2.2),
+      lookAhead: (preset.lookAhead ?? 5) * 2,
+      lookHeight: preset.lookHeight ?? 0.6,
+    });
+    camera.position.set(c.camX, c.camY, c.camZ);
+    camera.lookAt(c.lookX, c.lookY, c.lookZ);
+  }
+  renderer.render(scene, camera);
+  await new Promise((r) => requestAnimationFrame(r));
+  renderer.render(scene, camera);
+  const url = renderer.domElement.toDataURL('image/jpeg', 0.82);
+  renderer.renderLists?.dispose?.();
+  return url;
+}
+setArenaPreviewRenderer(renderArenaPreview, () => {
+  if (!_previewRenderer) return;
+  _previewRenderer.dispose();
+  _previewRenderer.forceContextLoss?.();
+  _previewRenderer = null;
+});
+
 function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsUpdate,arenaType,challenge,onBlockActive,introKey,simRunKey=0,footballProgKey=0,sceneHandleRef:sceneHandleRefProp,onZoneChange,flappyHandlersRef,flappyProgramRef,craftProgramRef,flappySpacebarRef,flappyStartRunRef,fightingHandlersRef,fightingProgramRef,fightingCombatRef,footballHandlersRef,footballProgramsRef,eventHandlersRef,raceKeysRef,footballKeysRef,footballCamMode='broadcast'}){
   const wrapRef=useRef(null);
   const [simError,setSimError]=useState(null);
   const modeRef=useRef('idle');
-  modeRef.current = runMode;
   const rafRef=useRef(null);
   const fpsRef=useRef({frames:0,last:0});
   const rsRef=useRef({x:0,z:5,y:0,angle:Math.PI,step:0,stepTime:0,currentDur:0,totalDist:0,done:false,t:0,bobPhase:0,battery:100,avoided:0,collisions:0,stopTimer:0,collectedItems:0,collectedValue:0,hitFlash:false});
@@ -10169,7 +10588,10 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
     if ((blocksRef.current?.length ?? 0) === 0 && eventHandlersRef?.current?.start?.length) {
       blocksRef.current = eventHandlersRef.current.start;
     }
-    seedRaceDriveState(rsRef.current);
+    // The sim loop usually seeds on the same Run press a frame earlier — seeding
+    // again restarted the program mid-block (turns overshot by ~20°).
+    const rs = rsRef.current;
+    if (performance.now() - (rs._raceSeededAt || 0) > 1000) seedRaceDriveState(rs);
   }, [runMode, eventHandlersRef]);
 
   const simRunKeyRef = useRef(simRunKey);
@@ -10212,6 +10634,7 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
     const el=wrapRef.current; if(!el) return;
     setSimError(null);
     let renderer=null;
+    let _onContextLost = () => {};
     let composer=null;
     let ro=null;
     let onVis=null;
@@ -10222,15 +10645,27 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
     const W=Math.max(el.clientWidth,1),H=Math.max(el.clientHeight,1);
     let _lastGoodW=W>4?W:Math.max(el.parentElement?.clientWidth||0,320);
     let _lastGoodH=H>4?H:Math.max(el.parentElement?.clientHeight||0,240);
+    let _drawCap = { maxArea: 1920 * 1080, pixelRatio: 1 };
+    let _setFxaa = () => {};
     const _applyCanvasSize=(rawW,rawH)=>{
       const nW=rawW>4?rawW:_lastGoodW;
       const nH=rawH>4?rawH:_lastGoodH;
       if(nW>4&&nH>4){ _lastGoodW=nW; _lastGoodH=nH; }
-      renderer.setSize(Math.max(nW,1),Math.max(nH,1),false);
-      if(composer) composer.setSize(Math.max(nW,1),Math.max(nH,1));
-      _setFxaa(Math.max(nW,1),Math.max(nH,1));
-      camera.aspect=Math.max(nW,1)/Math.max(nH,1);
+      const cssW=Math.max(nW,1);
+      const cssH=Math.max(nH,1);
+      camera.aspect=cssW/cssH;
       camera.updateProjectionMatrix();
+      let w=cssW;
+      let h=cssH;
+      const area=w*h*(_drawCap.pixelRatio||1);
+      if(area>_drawCap.maxArea){
+        const s=Math.sqrt(_drawCap.maxArea/area);
+        w=Math.max(1,Math.round(w*s));
+        h=Math.max(1,Math.round(h*s));
+      }
+      renderer.setSize(w,h,false);
+      if(composer) composer.setSize(w,h);
+      _setFxaa(w,h);
     };
     const isRaceCourse=_isRaceArena(arenaType,challenge,robotConfig?.chassisId);
     const _isBiomeTrackEarly = BIOME_ARENA_TYPES.has(arenaType)
@@ -10239,7 +10674,7 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
       || isCarRacingArenaType(arenaType)
       || isCarRacingArenaType(challenge?.arenaType);
     const scene=new THREE.Scene();
-    const camera=new THREE.PerspectiveCamera(54,W/H,0.1,isRaceCourse?2500:120);
+    const camera=new THREE.PerspectiveCamera(54,W/H,0.1,isRaceCourse?2500:(challenge?.physics==='flight_3dof'?900:120));
     scene.userData._simCamera = camera;
     if (_isBiomeTrackEarly) {
       const skyPreset = getTrackSkyPreset(arenaType);
@@ -10247,12 +10682,32 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
     }
     // ── Quality tier — cup races use sharper defaults on school laptops ──
     const _biomeRaceEarly = _isBiomeTrackEarly && _isRaceArena(arenaType, challenge, robotConfig?.chassisId);
-    let _qTier = _biomeRaceEarly ? detectCupTrackQualityTier() : detectQualityTier();
-    try {
-      const savedTier = localStorage.getItem('bb_quality_tier');
-      if (savedTier === 'low' || savedTier === 'medium' || savedTier === 'high') _qTier = savedTier;
-    } catch { /* ignore */ }
+    const _isCosmicSkyway = isCosmicSkywayArena(arenaType)
+      || isCosmicSkywayArena(challenge?.arenaType)
+      || isCosmicSkywayArena(challenge?.id);
+    const _device = getStudioDeviceProfile();
+    // Start-up timing (read by the perf checks): scene start → arena built → first frame
+    const _bootT0 = performance.now();
+    let _firstFrameLogged = false;
+    const _shaderWarm = { n: 0, next: 0, busy: false };
+    try { window.__bbArenaTiming = { start: _bootT0 }; } catch { /* ignore */ }
+    let _qTier = _biomeRaceEarly && !_isCosmicSkyway
+      ? detectCupTrackQualityTier()
+      : detectQualityTier();
+    const _isPad = _device.kind === 'tablet' || _device.kind === 'phone';
+    if (!_isPad) {
+      try {
+        const savedTier = localStorage.getItem('bb_quality_tier');
+        if (savedTier === 'low' || savedTier === 'medium' || savedTier === 'high') _qTier = savedTier;
+      } catch { /* ignore */ }
+    }
+    if (_isCosmicSkyway && _qTier === 'high') _qTier = 'medium';
+    if (_device.kind === 'chromebook' && _qTier === 'high') _qTier = 'medium';
+    if (_isPad) _qTier = 'low';
     const _q     = QUALITY_PRESETS[_qTier];
+    scene.userData.qualityTier = _qTier;
+    scene.userData.lowPower = !!_device.lowPower;
+    scene.userData.deviceKind = _device.kind;
     // Rainbow Road needs bloom for the MK neon glass look; other races stay direct-render for FPS.
     const _rainbowArenaIds = new Set(['rainbow_road', 'street_grand_prix', 'circuit_sprint', 'racing_circuit']);
     const _nightMkArenas = new Set([
@@ -10277,32 +10732,46 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
       || challenge?.physics === 'flight_3dof'
       || challenge?.environmentId === 'sky_aerial';
     const _isMissionVisualEarly = !!(challenge?.isChassisMode || challenge?.isRobotMission);
-    const _usePostProcessing = _isBiomeTrack
-      ? _q.postProcessing
-      : _isAerialArenaEarly
-        ? (_qTier !== 'low')
-        : (isRaceCourse || isFootballCourseEarly ? false : _q.postProcessing);
-    const _aerialPixelRatio = Math.min(
-      window.devicePixelRatio || 1,
-      _qTier === 'high' ? 2.0 : (_qTier === 'medium' ? 1.5 : 1.0),
+    const _usePostProcessing = !_isPad && _device.allowBloom && (_isCosmicSkyway
+      ? _qTier !== 'low'
+      : _isBiomeTrack
+        ? _q.postProcessing
+        : _isAerialArenaEarly
+          ? (_qTier !== 'low')
+          : (isRaceCourse || isFootballCourseEarly ? false : _q.postProcessing));
+    const _capPR = (value) => Math.min(window.devicePixelRatio || 1, _device.maxPixelRatio, value);
+    const _aerialPixelRatio = _capPR(
+      _qTier === 'high' ? 1.75 : (_qTier === 'medium' ? 1.25 : 1.0),
     );
-    const _racePixelRatio = isRaceCourse
-      ? Math.min(
-        window.devicePixelRatio,
-        _biomeRace
-          ? (_qTier === 'high' ? 2.0 : 1.5)
-          : (_isBiomeTrack ? _q.pixelRatio : (_qTier === 'high' ? 1.5 : 1.0)),
+    let _racePixelRatio = isRaceCourse
+      ? _capPR(
+        _isCosmicSkyway
+          ? (_qTier === 'low' ? 1.0 : 1.25)
+          : _biomeRace
+            ? (_qTier === 'high' ? 1.5 : 1.15)
+            : (_isBiomeTrack ? _q.pixelRatio : (_qTier === 'high' ? 1.35 : 1.0)),
       )
       : isFootballCourseEarly
-        ? Math.min(window.devicePixelRatio || 1, isFifaFootballEarly ? 1.0 : (_qTier === 'high' ? 1.25 : _qTier === 'low' ? 1.0 : 1.1))
+        ? _capPR(isFifaFootballEarly ? 1.0 : (_qTier === 'high' ? 1.25 : _qTier === 'low' ? 1.0 : 1.1))
         : (_isAerialArenaEarly
           ? _aerialPixelRatio
-          : Math.min(window.devicePixelRatio, _q.pixelRatio));
+          : _capPR(_q.pixelRatio));
+    if (_isPad) {
+      _racePixelRatio = 1;
+    }
+    _drawCap = {
+      pixelRatio: _racePixelRatio,
+      maxArea: _device.kind === 'phone'
+        ? 640 * 360
+        : (_device.kind === 'tablet' || _device.lowPower)
+          ? 880 * 500
+          : 1600 * 900,
+    };
 
-    renderer = _isAerialArenaEarly
+    renderer = (_isAerialArenaEarly && !_isPad)
       ? createPremiumRendererWebGL({
-        antialias: true,
-        lowPower: _qTier === 'low',
+        antialias: !_device.lowPower,
+        lowPower: _device.lowPower,
         canvas: (() => {
           const c = document.createElement('canvas');
           c.className = 'll-sim-canvas';
@@ -10316,8 +10785,8 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
         exposure: 1.1,
       })
       : createSimWebGLRenderer({
-      antialias: isRaceCourse || isFootballCourseEarly || _isAerialArenaEarly || (!_isBiomeTrack && _q.shadowEnabled),
-      lowPower: _qTier === 'low' && !isFootballCourseEarly,
+      antialias: !_device.lowPower && (isRaceCourse || isFootballCourseEarly || _isAerialArenaEarly || (!_isBiomeTrack && _q.shadowEnabled)),
+      lowPower: _device.lowPower,
       canvas: (() => {
         const c = document.createElement('canvas');
         c.className = 'll-sim-canvas';
@@ -10339,13 +10808,20 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
       renderer.dispose();
       return ()=>{};
     }
-    renderer.setSize(W,H,false);
     renderer.setPixelRatio(_racePixelRatio);
+    _applyCanvasSize(W,H);
+    _onContextLost = (ev) => {
+      ev.preventDefault();
+      setSimError('Graphics paused to save power. Tap Try again, or use low graphics mode.');
+    };
+    renderer.domElement.addEventListener('webglcontextlost', _onContextLost, false);
     if (_isBiomeTrackEarly) {
       const skyPreset = getTrackSkyPreset(arenaType);
       renderer.setClearColor(new THREE.Color(skyPreset.horizon), 1);
     }
-    renderer.shadowMap.enabled = isFootballCourseEarly
+    renderer.shadowMap.enabled = _device.lowPower
+      ? false
+      : isFootballCourseEarly
       ? (_qTier === 'high' && !isFifaFootballEarly)
       : (_isAerialArenaEarly && _qTier !== 'low')
         ? true
@@ -10353,8 +10829,12 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
     renderer.shadowMap.type = (_isAerialArenaEarly && _qTier !== 'low')
       ? THREE.PCFSoftShadowMap
       : THREE.PCFShadowMap;
+    if (_device.lowPower) renderer.shadowMap.autoUpdate = false;
     if (THREE.SRGBColorSpace) renderer.outputColorSpace = THREE.SRGBColorSpace;
     scene.userData._renderer = renderer;
+    // Reading shader logs after every compile stalls the GPU; only worth it while developing
+    if (renderer.debug) renderer.debug.checkShaderErrors = !!import.meta.env.DEV;
+    try { if (import.meta.env.DEV || window.__bbPerfProbe) { window.__bbRenderer = renderer; window.__bbScene = scene; } } catch { /* ignore */ }
     const canvas=renderer.domElement;
     if (!canvas.className) canvas.className = 'll-sim-canvas';
     if (_isBiomeTrack) {
@@ -10363,7 +10843,7 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
       el.dataset.arena = biomeArena;
       el.dataset.buildStamp = window.__BYTEBUDDIES_BUILD || 'dev';
       // CSS filter on WebGL canvas softens pixels — grade in shader instead for races
-      if (!isRaceCourse && !isFootballCourseEarly) {
+      if (!isRaceCourse && !isFootballCourseEarly && !_device.lowPower) {
         canvas.classList.add('ll-sim-biome-grade');
         canvas.style.filter = getBiomeCssGrade(biomeArena);
       }
@@ -10382,7 +10862,7 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
     let bloomPass = null;
     let gtaoPass = null;
     let fxaaPass = null;
-    const _setFxaa = (w, h) => {
+    _setFxaa = (w, h) => {
       if (!fxaaPass) return;
       const pr = renderer.getPixelRatio();
       fxaaPass.material.uniforms.resolution.value.set(1 / (w * pr), 1 / (h * pr));
@@ -10402,7 +10882,7 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
       composer=new EffectComposer(renderer);
       composer.addPass(new RenderPass(scene,camera));
       // GTAO is skipped on premium aerial vistas — they already use heavy geometry + bloom.
-      if (_qTier !== 'low' && _isMissionVisualEarly && !_isAerialArenaEarly) {
+      if (_device.allowGtao && _isMissionVisualEarly && !_isAerialArenaEarly) {
         try {
         gtaoPass = new GTAOPass(scene, camera, bloomW, bloomH);
         gtaoPass.blendIntensity = 0.62;
@@ -10437,7 +10917,7 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
     } else {
       configureLabRenderer(renderer, null, { isForest: isForestCourse, isRace: isRaceCourse });
     }
-    if (_isBiomeTrack) {
+    if (_isBiomeTrack && !_isPad) {
       if (THREE.ACESFilmicToneMapping) renderer.toneMapping = THREE.ACESFilmicToneMapping;
       renderer.toneMappingExposure = _biomeRace ? 1.24 : 1.1;
     }
@@ -10484,7 +10964,11 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
       scene.userData.skipTrackLights = true;
     }
 
+    scene.userData.lowPower = !!_device.lowPower;
+    scene.userData.deviceKind = _device.kind;
+    const _arenaT0 = performance.now();
     buildSmartArena(scene, arenaType, challenge, robotConfig);
+    try { window.__bbArenaTiming.buildMs = Math.round(performance.now() - _arenaT0); window.__bbArenaTiming.arena = arenaType; } catch { /* ignore */ }
     try { installMissionActionMarkers(scene, challenge); } catch (e) { console.warn('[MissionAction] markers failed', e); }
 
     if (_isAerialArenaEarly || scene.userData.aerialWorldBuilt) {
@@ -10492,7 +10976,7 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
       const aerialSky = scene.userData.flyingContract?.bible?.sky
         || challenge?.sky
         || { horizon: '#ffe8b0', top: '#4fc3f7', mid: '#87ceeb', fog: '#e8f4ff', near: 95, far: 340 };
-      if (premiumFly) {
+      if (premiumFly && !_isPad) {
         buildAtmosphereSky(scene, aerialSky.top, aerialSky.horizon, 880, aerialSky.mid);
         scene.userData.customSky = true;
         console.log('[LiveLab] Premium flying vista', scene.userData.flyingVista, FLYING_ARENA_SPEC_VERSION);
@@ -10503,6 +10987,8 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
         scene.fog = new THREE.Fog(aerialSky.fog || bgColor, aerialSky.near ?? 95, aerialSky.far ?? 340);
       }
       renderer.setClearColor(new THREE.Color(bgColor), 1);
+      camera.far = Math.max(camera.far, aerialSky.far ? aerialSky.far + 400 : 900);
+      camera.updateProjectionMatrix();
     }
 
     // Apply biome / aerial cinematic bloom after arena sets raceVisual
@@ -10552,11 +11038,11 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
     const isFootballArena = arenaType === 'robot_football' || !!scene.userData.footballMode;
     const isCombatArena = !isFootballArena && (arenaType === 'robot_fight' || !!scene.userData.combatMode);
     if (isCombatArena) scene.userData.combatMode = true;
-    if (challenge?.isRobotMission && !isFootballArena && !scene.userData.craftMode) {
+    if (challenge?.isRobotMission && !challenge.customArena && !isFootballArena && !scene.userData.craftMode) {
       buildMissionArena(scene, challenge);
       buildMissionWorld(scene, arenaType, challenge);
     }
-    const _flappyMovId = robotConfig.movementId || 'flying';
+    const _flappyMovId = resolveSimMovId(robotConfig);
     if (scene.userData.flappyMode && flappyHandlersRef) {
       const prog = flappyProgramRef?.current || { handlers: {}, tickLoops: [] };
       flappyHandlersRef.current = new FlappyBlockRuntime(
@@ -10598,7 +11084,8 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
       if (scene.userData.footballFifa3v3 && !progs.p1) {
         const compiled = {};
         for (const role of FOOTBALL_TEAM_ROLES) {
-          compiled[role.botId] = compileFootballScratchScript(FOOTBALL_ROLE_STARTERS[role.id]);
+          // Each player only does what the pupil codes for it
+          compiled[role.botId] = compileFootballScratchScript([]);
         }
         progs = compiled;
         if (footballProgramsRef) footballProgramsRef.current = compiled;
@@ -10695,10 +11182,10 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
         const underground = scene.userData.biomeAAASpec?.underground
           || mkArena === 'neon_metro_01'
           || mkArena === 'lava_foundry_01'
-          || mkArena === 'star_station_01';
+          || isCosmicSkywayArena(mkArena);
         if (isBiomeArena) {
           if (underground) {
-            setupRaceEnvironment(scene, { space: mkArena === 'star_station_01' });
+            setupRaceEnvironment(scene, { space: isCosmicSkywayArena(mkArena) });
           }
           // Day cup tracks keep TrackSkyKit sky + canvas env — extra env maps look like a lamp.
         } else if (nightMk.has(mkArena)) setupStadiumNightEnvironment(scene);
@@ -10708,8 +11195,8 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
           const underground = scene.userData.biomeAAASpec?.underground
             || arenaType === 'neon_metro_01'
             || arenaType === 'lava_foundry_01'
-            || arenaType === 'star_station_01';
-          const cosmic = arenaType === 'star_station_01';
+            || isCosmicSkywayArena(arenaType);
+          const cosmic = isCosmicSkywayArena(arenaType);
           if (cosmic || underground) setupRaceEnvironment(scene, { space: cosmic });
           else if (arenaType === 'neon_metro_01') setupStadiumNightEnvironment(scene);
           else setupMKDayEnvironment(scene);
@@ -10730,9 +11217,9 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
       if (isBiomeRace) {
         const underground = scene.userData.biomeAAASpec?.underground
           || arenaType === 'neon_metro_01'
-          || arenaType === 'lava_foundry_01'
-          || arenaType === 'star_station_01';
-        renderer.toneMappingExposure = underground ? 1.1 : 1.08;
+          || arenaType === 'lava_foundry_01';
+        renderer.toneMappingExposure = isCosmicSkywayArena(arenaType) ? 1.2
+          : (underground ? 1.1 : 1.08);
       } else {
         const expCap = nightMkArenas.has(mkArena) ? 1.32 : (scene.userData.mkThemedTrack ? 1.48 : 1.25);
         renderer.toneMappingExposure = Math.min(renderer.toneMappingExposure, expCap);
@@ -10836,7 +11323,12 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
     let robot;
     if (isCombatArena) {
       // The player's boxer wears their robot's Body colour from the builder
-      robot = buildCuteBoxer({ team: 'blue', primary: liveRobot?.primaryColor || undefined });
+      // In a fighting world the player is that world's hero (knight, samurai, pirate…)
+      // (a real animated character: knight, sword master, pirate captain, wizard…)
+      const hero = getFightWorld(challenge)?.hero;
+      robot = hero?.model
+        ? buildKayKitFighter(hero.model)
+        : buildCuteBoxer({ team: 'blue', primary: liveRobot?.primaryColor || undefined, outfit: hero?.outfit });
       robot.castShadow = true;
     } else if (isFifa3v3Arena || scene.userData.footballMode) {
       // The player's striker: an animated X Bot in their robot's own colour
@@ -10899,6 +11391,7 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
     }
     }
     const robotState=createRobotStateController(robot);
+    if (import.meta.env.DEV) { try { window.__bbLabRobot = robot; window.__bbLabRS = rsRef; } catch { /* ignore */ } }
     execTrail = scene.userData.flappyMode ? null : createExecutionTrail(scene);
     if (scene.userData.arenaType === 'sunset_cove_01') {
       execTrail.mesh.material.color.set('#ffcc88');
@@ -10922,11 +11415,12 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
     const spawnZ=spawnPt?.z??5;
     const groundY=scene.userData.groundY??0;
     const spawnY=spawnPt?.y??groundY;
-    Object.assign(rs,{
+    Object.assign(rs,{ _evQueue:[],
       x:spawnPt?.x??0,z:spawnZ,y:spawnY,angle:spawnPt?.angle??Math.PI,
       step:0,stepTime:0,currentDur:0,totalDist:0,done:false,t:0,bobPhase:0,
       battery:100,avoided:0,collisions:0,stopTimer:0,collectedItems:0,collectedValue:0,
       raceLap:1,raceLapTime:0,raceBestLap:null,raceSpeedKmh:0,
+      raceCarHits:0,raceObjectHits:0,raceLastHit:null,raceCarAhead:false,raceObjectAhead:false,raceDistanceAhead:99,_raceLane:0,_raceBlocked:false,
       raceCountdown:0,
       _moveContinuous:false,_brakeFactor:1,_boostTimer:0,_boostMul:1,_speedMult:scene.userData.raceMode?0.95:0.6,
       raceAutoSteer: false,
@@ -11053,12 +11547,14 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
 
     // ── Action flash lights — pre-allocated pool (no runtime PointLight creation) ──
     // Creating a new PointLight on every block execution causes GC pauses and
-    // unbounded light count. Pre-allocate 8 lights and reuse them via LRU.
-    const _AL_POOL_SIZE = 8;
+    // unbounded light count. Pre-allocate a few lights and reuse them via LRU.
+    // They stay visible (intensity 0 when idle): switching a light's visibility
+    // changes the scene's light count, which makes three.js recompile every lit
+    // shader — that was the stutter when a race or program started.
+    const _AL_POOL_SIZE = _device.lowPower || _device.kind !== 'desktop' ? 2 : 4;
     const actionLightPool = Array.from({length:_AL_POOL_SIZE},()=>{
       const pl=new THREE.PointLight(0xffffff,0,7);
       pl.castShadow=false; // action lights NEVER cast shadows — too expensive
-      pl.visible=false;
       scene.add(pl);
       return {pl,timer:0,duration:0.5,intensity:1,active:false};
     });
@@ -11071,7 +11567,6 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
       slot.pl.color.setHex(hexColor);
       slot.pl.intensity=intensity;
       slot.pl.position.set(x,y+0.6,z);
-      slot.pl.visible=true;
       slot.timer=duration;
       slot.duration=duration;
       slot.intensity=intensity;
@@ -11166,12 +11661,13 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
     requestAnimationFrame(()=>{ _forceSize(); renderFrame(); });
     // Third pass after 200ms — catches any tab-switch or animation-based layout delays
     _sizeTimer=setTimeout(()=>{ _forceSize(); renderFrame(); }, 200);
-    const movId=robotConfig.movementId||'wheels';
+    const movId=resolveSimMovId(robotConfig);
     const blocks=codeBlocks||[];
     let lastTime=performance.now()/1000;
     let trailTimer=0;
     const eventState={
-      checkpoint:0, lap:1, raceWon:false, collected:0, zone:0,
+      checkpoint:0, lap:1, raceWon:false, collected:0, zone:0, collisions:0, carHits:0, objectHits:0,
+      objectAhead:false, carAhead:false,
       timersFired:new Set(), batteriesFired:new Set(), lapsFired:new Set(),
       gameOver:false,
     };
@@ -11180,6 +11676,28 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
       const actions=eventHandlersRef.current[key];
       if(actions?.length) runInstantEventActions(actions,rs,scene,movId,onBlockActive,tag||key);
     };
+    // "When key pressed" / "When spacebar clicked" scripts run when the key is pressed during a run
+    // Key scripts play like normal code (a move glides over its time) instead of jumping
+    const queueEventScript=(actions,tag)=>{
+      rs._evQueue=rs._evQueue||[];
+      if(rs._evQueue.length>=4) return; // ignore key-mashing beyond a short backlog
+      rs._evQueue.push({acts:actions,i:0,t:0,dur:0,tag});
+    };
+    const keyNameOf=(e)=>({ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',' ':'space',Spacebar:'space'}[e.key]||String(e.key||'').toLowerCase());
+    const onEventKey=(e)=>{
+      const h=eventHandlersRef?.current;
+      if(!h||scene.userData.flappyMode||e.repeat) return;
+      if(modeRef.current!=='running'&&modeRef.current!=='step') return;
+      const t=e.target; if(t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.tagName==='SELECT'||t.isContentEditable)) return;
+      const k=keyNameOf(e); let hit=false;
+      for(const entry of h.keys||[]){
+        if(String(entry.key||'space').toLowerCase()===k&&entry.actions?.length){ queueEventScript(entry.actions,'key'); hit=true; }
+      }
+      if(k==='space'&&h.spacebar?.length){ queueEventScript(h.spacebar,'spacebar'); hit=true; }
+      if(hit) e.preventDefault();
+    };
+    window.addEventListener('keydown',onEventKey);
+    scene.userData._eventKeyCleanup=()=>window.removeEventListener('keydown',onEventKey);
     const fireTriggerList=(list,keyField,matchVal,tag,firedSet)=>{
       if(scene.userData.flappyMode||!eventHandlersRef?.current||!list?.length) return;
       for(const entry of list){
@@ -11199,6 +11717,7 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
     ro.observe(el);
 
     let firstTick=true;
+    let _lastDrawMs=0;
     let pageVisible=true;
     onVis=()=>{ pageVisible=document.visibilityState!=='hidden'; };
     document.addEventListener('visibilitychange',onVis);
@@ -11211,6 +11730,17 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
       rafRef.current=requestAnimationFrame(tick);
       if(!pageVisible) return;
       try {
+      // Simulate must start on this frame — don't wait for React/Blockly to re-render.
+      const _handle = sceneHandleRef.current;
+      if (_handle?.goNow) {
+        _handle.goNow = 0;
+        modeRef.current = 'running';
+        introKeyRef.current += 1;
+        if (eventHandlersRef?.current?.start?.length) {
+          blocksRef.current = eventHandlersRef.current.start;
+        }
+        try { flappyStartRunRef.current?.(); } catch { /* ignore */ }
+      }
       // Second-chance size fix — catches any remaining layout-before-paint edge cases
       if(firstTick){
         firstTick=false;
@@ -11230,24 +11760,31 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
         spawnDot.position.set(rs.x,spawnMarkerY,rs.z);
       }
       if(beamTimer>0){beamTimer-=dt; if(beamTimer<=0) beamGroup.clear();}
+      if(!_firstFrameLogged){ _firstFrameLogged=true; try { window.__bbArenaTiming.firstFrameMs = Math.round(performance.now() - _bootT0); if (window.__bbPerfProbe) window.__bbCam = camera; } catch { /* ignore */ } }
+      // Warm up shaders for everything in the world (incl. things off-screen) while the
+      // arena sits idle, so pressing Run doesn't stall compiling them mid-race.
+      if(_shaderWarm.n<3 && now>=_shaderWarm.next && !_shaderWarm.busy && renderer.compile){
+        _shaderWarm.busy=true; _shaderWarm.n++;
+        warmShaders(renderer,scene,camera).finally(()=>{ _shaderWarm.busy=false; _shaderWarm.next=performance.now()/1000+2.5; });
+      }
       fpsRef.current.frames++;
       if(now-fpsRef.current.last>=1){
         const fps=fpsRef.current.frames;
         onFpsUpdate?.(fps);
+        try { (window.__bbFpsLog ||= []).push(fps); if (window.__bbFpsLog.length > 120) window.__bbFpsLog.shift(); } catch { /* ignore */ }
         fpsRef.current.frames=0; fpsRef.current.last=now;
         // ── Adaptive quality (dynamic resolution + optional bloom off) ─────
         _aqFpsHistory.push(fps);
-        if(_aqFpsHistory.length>3) _aqFpsHistory.shift(); // 3-second window
-        if(_aqFpsHistory.length===3){
-          const avg=_aqFpsHistory.reduce((a,b)=>a+b,0)/3;
+        const _aqWindow=_device.lowPower?2:3;
+        if(_aqFpsHistory.length>_aqWindow) _aqFpsHistory.shift();
+        if(_aqFpsHistory.length===_aqWindow){
+          const avg=_aqFpsHistory.reduce((a,b)=>a+b,0)/_aqWindow;
           const nowMs=performance.now();
-          if(nowMs-_aqLastAdjust>1500){
+          if(nowMs-_aqLastAdjust>(_device.lowPower?900:1500)){
             const curPR=renderer.getPixelRatio();
             const maxPR=_racePixelRatio;
-            // Let every arena drop resolution far enough to stay smooth on tablets
-            // and older laptops; it climbs back up when the frame rate recovers.
-            const minPR=_qTier==='low'?0.55:(_qTier==='medium'?0.7:0.8);
-            if(avg<38&&_aqPostEnabled&&composer&&!scene.userData.forceBloom&&!scene.userData.isRainbowRoad){
+            const minPR=_device.kind==='phone'?0.6:(_device.kind==='tablet'?0.7:(_device.lowPower?0.7:(_qTier==='low'?0.7:(_qTier==='medium'?0.85:0.9))));
+            if(avg<(_device.lowPower?42:38)&&_aqPostEnabled&&composer&&!scene.userData.forceBloom&&!scene.userData.isRainbowRoad){
               _aqPostEnabled=false;
               renderFrame=()=>renderer.render(scene,camera);
               _aqLastAdjust=nowMs;
@@ -11261,7 +11798,7 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
               scene.userData.raceOptimizeHint='Optimizing…';
               _aqLastAdjust=nowMs;
               if(import.meta.env.DEV) console.log(`[BB perf] FPS avg ${avg.toFixed(0)} → track perf downgraded`);
-            } else if(avg<50&&curPR>minPR){
+            } else if(avg<(_device.lowPower?54:50)&&curPR>minPR){
               const next=Math.max(curPR-0.12,minPR);
               renderer.setPixelRatio(next);
               _aqLastAdjust=nowMs;
@@ -11294,7 +11831,7 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
         if(!al.active) continue;
         al.timer-=dt;
         if(al.timer<=0){
-          al.pl.intensity=0; al.pl.visible=false; al.active=false;
+          al.pl.intensity=0; al.active=false;
         } else {
           al.pl.intensity=al.intensity*(al.timer/al.duration);
         }
@@ -11322,7 +11859,23 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
       const combatDt=dt*fxTimeScale;
 
       // Always call robot's own animation (propellers, legs, lights, combat poses, etc.)
-      if(robot.userData.animate && !scene.userData.flappyMode) robot.userData.animate(rs.t, scene.userData.combatMode?combatDt:dt);
+      // Walker builders use the active block and distance phase to animate a real
+      // alternating stride instead of an unrelated idle sine wave.
+      const activeMotionId = blocksRef.current?.[rs.step]?.id;
+      const walkerMoving = (modeRef.current === 'running' || modeRef.current === 'step')
+        && (rs._moveContinuous || HUMANOID_WALK_BLOCKS.has(activeMotionId));
+      const currentWalkerDistance = Number(rs.totalDist) || 0;
+      const distanceSinceLastFrame = Math.max(0, currentWalkerDistance - (rs._walkerDistanceSample ?? currentWalkerDistance));
+      rs._walkerDistanceSample = currentWalkerDistance;
+      if (walkerMoving) rs._humanoidGaitPhase = (rs._humanoidGaitPhase || 0) + distanceSinceLastFrame * (Math.PI * 2 / 1.7);
+      const walkerMotion = {
+        walking: (modeRef.current === 'running' || modeRef.current === 'step')
+          && (rs._moveContinuous || HUMANOID_WALK_BLOCKS.has(activeMotionId)),
+        gaitPhase: rs._humanoidGaitPhase || 0,
+      };
+      if(robot.userData.animate && !scene.userData.flappyMode) {
+        robot.userData.animate(rs.t, scene.userData.combatMode ? combatDt : dt, walkerMotion);
+      }
       if(introKeyRef.current!==lastIntroKey){
         lastIntroKey=introKeyRef.current;
         scene.userData.introTimer=(scene.userData.arenaBounds?.flappyNoIntro||isRaceCourse)?0:0;
@@ -11330,13 +11883,16 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
         rs.done=false;
         rs.combatWon=false; rs.combatLost=false;
         rs.footballWon=false; rs.footballLost=false;
-        eventState.checkpoint=0; eventState.lap=1; eventState.raceWon=false;
+        eventState.checkpoint=0; eventState.lap=1; eventState.raceWon=false; eventState.raceDoneSent=false;
         eventState.collected=0; eventState.zone=0;
         eventState.timersFired.clear(); eventState.batteriesFired.clear(); eventState.lapsFired.clear();
         eventState.gameOver=false;
         if (scene.userData.raceMode) {
           rs.raceAutoSteer = false;
           seedRaceDriveState(rs);
+          // Race clock starts now, not when the track loaded
+          scene.userData.movers?.forEach((mv) => mv?.restartRace?.());
+          rs.raceLapTime = 0; rs.raceTotalTime = 0; rs.raceLap = 1; rs.raceCheckpoint = 0;
           if ((blocksRef.current?.length ?? 0) === 0 && eventHandlersRef?.current?.start?.length) {
             blocksRef.current = eventHandlersRef.current.start;
           }
@@ -11385,6 +11941,30 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
           fightingHandlersRef?.current?.reset?.();
         }
         // Football match reset is handled by setFootballSimActive when run starts.
+        if (scene.userData.collectibles) {
+          for (const col of scene.userData.collectibles) {
+            col.collected = false;
+            if (col.mesh) col.mesh.visible = true;
+          }
+        }
+        if (!scene.userData.raceMode && !scene.userData.footballMode && !scene.userData.combatMode && !scene.userData.flappyMode && !scene.userData.craftMode) {
+          const sp = scene.userData.raceSpawn || scene.userData.aerialSpawn;
+          rs.x = sp?.x ?? scene.userData.spawnX ?? 0;
+          rs.z = sp?.z ?? scene.userData.spawnZ ?? 5;
+          rs.y = sp?.y ?? scene.userData.spawnY ?? scene.userData.groundY ?? 0;
+          rs.angle = sp?.angle ?? scene.userData.spawnAngle ?? Math.PI;
+          rs.step = 0; rs.stepTime = 0; rs.done = false; rs.t = 0;
+          rs.battery = 100; rs.collectedItems = 0; rs.collectedValue = 0; rs.collisions = 0;
+          robot.position.set(rs.x, rs.y, rs.z);
+          // The initial setup plants the model by its world-space bounding box.
+          // Reapply that foot-to-floor alignment on every Simulate/Restart reset;
+          // otherwise models whose local origin is below their feet are reset
+          // into the floor even though they were correctly placed in preview.
+          alignRobotToGround(robot);
+          rs.y = robot.position.y;
+          robot.rotation.y = rs.angle + (scene.userData.aerialMeshYawOffset ?? 0);
+          dispX = rs.x; dispY = rs.y; dispZ = rs.z; dispAngle = rs.angle;
+        }
       }
       if(scene.userData.introTimer>0) scene.userData.introTimer-=dt;
       if(scene.userData.atmo?.update) scene.userData.atmo.update(rs.t, dt, { x: rs.x, z: rs.z });
@@ -11499,6 +12079,20 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
         }
       }
 
+        // Event scripts started by a key press run alongside the main program
+        if((mode==='running'||mode==='step')&&rs._evQueue?.length){
+          const q=rs._evQueue[0]; const act=q.acts[q.i];
+          if(!act){ rs._evQueue.shift(); }
+          else{
+            if(q.t===0){ q.dur=getBlockDuration(act, movId); onBlockActive?.(-1,`[${q.tag}] ${act.label||act.id}`,act.blockUid); }
+            const step=Math.min(dt,Math.max(0,q.dur-q.t)); q.t+=dt;
+            const keepT=rs.stepTime, keepD=rs.currentDur;
+            rs.stepTime=q.t; rs.currentDur=q.dur;
+            if(step>0) applyBlock(act,rs,step,movId,scene);
+            rs.stepTime=keepT; rs.currentDur=keepD;
+            if(q.t>=q.dur){ q.i+=1; q.t=0; }
+          }
+        }
         if((mode==='running'||mode==='step')&&!rs.done){
         if(scene.userData.raceMode && rs.raceCountdown > 0){
           rs.raceCountdown = Math.max(0, rs.raceCountdown - dt);
@@ -11525,7 +12119,10 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
             } else if(!rs.flappyCrashed) rs.done=true;
           }
           else{
-            if(rs.stepTime===0) rs.currentDur=getBlockDuration(blocks[rs.step]);
+            if(rs.stepTime===0) rs.currentDur=raceBlockDuration(blocks[rs.step], rs, movId, scene) ?? getBlockDuration(blocks[rs.step], movId);
+            // Last frame of a block only runs for the time it has left, so a
+            // 90° turn turns 90° (a full frame overshot by up to ~15°).
+            const blockDt=Math.min(dt, Math.max(0, rs.currentDur-rs.stepTime));
             rs.stepTime+=dt;
             const bk=blocks[rs.step];
             // Collision stop — freeze movement for 0.8s after hitting obstacle
@@ -11534,14 +12131,17 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
             } else {
               const prevX=rs.x, prevZ=rs.z, prevY=rs.y;
               const configOnly = CRUISE_PAUSE_BLOCKS.has(bk?.id) || bk?.id === 'follow_track_on' || bk?.id === 'follow_track_off';
-              if (!kbMoved || configOnly) applyBlock(bk,rs,dt,movId,scene);
+              if ((!kbMoved || configOnly) && blockDt > 0) applyBlock(bk,rs,blockDt,movId,scene);
               if (!kbMoved) applyContinuousMotion(rs, dt, movId, scene, bk?.id);
               if (scene.userData.raceMode) applyCodedRaceOffTrack(rs, scene);
               tickBoostTimer(rs, dt);
               // Check collisions against dynamic arena obstacles (not on race tracks)
               if(scene.userData.obstacles && !scene.userData.raceMode){
+                const flyingNow=isFlightSim(scene, movId);
                 for(const obs of scene.userData.obstacles){
                   if(!obs||!obs.mesh) continue;
+                  if(obs.type==='ring_edge' || obs.primaryDecor) continue;
+                  if(flyingNow && !obs.check3d) continue;
                   const mx=obs.mesh.position.x||0, mz=obs.mesh.position.z||0, my=obs.mesh.position.y||0;
                   const dx=rs.x-mx, dz=rs.z-mz, dy=obs.check3d?(rs.y-my):0;
                   const dist=Math.sqrt(dx*dx+dz*dz+dy*dy);
@@ -11763,6 +12363,12 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
         }
       }
       if(scene.userData.raceMode){
+        // New run: the hit counters start again from zero
+        if(eventState.raceRunId!==rs._raceRunId){
+          eventState.raceRunId=rs._raceRunId;
+          eventState.carHits=0; eventState.objectHits=0; eventState.collisions=0;
+          eventState.objectAhead=false; eventState.carAhead=false;
+        }
         const cp=rs.raceCheckpoint??0;
         if(cp>eventState.checkpoint){
           eventState.checkpoint=cp;
@@ -11777,6 +12383,49 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
         if(rs.raceWon&&!eventState.raceWon){
           eventState.raceWon=true;
           fireEvent('race_won');
+        }
+        // The race mover finishes the race after the running block has already reported
+        // this frame, and that block is skipped once rs.done is set — report the finish here.
+        if(rs.done&&(mode==='running'||mode==='step')&&!eventState.raceDoneSent){
+          eventState.raceDoneSent=true;
+          onProgress?.({time:rs.t,dist:rs.totalDist,battery:rs.battery,avoided:rs.avoided,progress:100,done:true,collisions:rs.collisions||0,
+            raceMode:true,raceWon:!!rs.raceWon,raceTotalTime:rs.raceTotalTime,raceLap:rs.raceLap,raceTotalLaps:rs.raceTotalLaps,
+            raceTotalCheckpoints:rs.raceTotalCheckpoints||0,raceStarsCollected:rs.raceStarsCollected,raceBoostPadsHit:rs.raceBoostPadsHit||0,
+            raceFallCount:rs.raceFallCount||0,raceTargetTime:scene.userData.racingConfig?.targetTime??null});
+          modeRef.current='idle';
+          if(rs.raceWon) robotState.onSuccess();
+        }
+        const carHits=rs.raceCarHits??0;
+        if(carHits>eventState.carHits){
+          eventState.carHits=carHits;
+          fireEvent('hit_car');
+        }
+        // "When an object / a car is ahead" scripts start as it comes into view, and play out
+        // over time like the main program (so "Change lane, wait, back to middle" works)
+        const aheadH=eventHandlersRef?.current;
+        // (still there 1.5 s later — e.g. stuck behind a kart — the script runs again)
+        const nowT=rs.t||0;
+        const aheadFire=(on,was,key)=>{
+          if(!on||!aheadH?.[key]?.length) return;
+          if(!was||(nowT-(eventState[`${key}At`]??-9)>1.5&&!rs._evQueue?.some((q)=>q.tag===key))){
+            eventState[`${key}At`]=nowT;
+            queueEventScript(aheadH[key],key);
+          }
+        };
+        aheadFire(rs.raceObjectAhead,eventState.objectAhead,'object_ahead');
+        aheadFire(rs.raceCarAhead,eventState.carAhead,'car_ahead');
+        eventState.objectAhead=!!rs.raceObjectAhead;
+        eventState.carAhead=!!rs.raceCarAhead;
+        const objectHits=rs.raceObjectHits??0;
+        if(objectHits>eventState.objectHits){
+          eventState.objectHits=objectHits;
+          fireEvent('hit_object');
+        }
+        const hits=rs.collisions??0;
+        if(hits>eventState.collisions){
+          eventState.collisions=hits;
+          rs.hitFlash=true;
+          fireEvent('collision');
         }
       }
 
@@ -11855,8 +12504,12 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
       }
       const stateFx=robotState.apply(rs.t,dt,mode);
       if (scene.userData.raceMode || isRaceCourse) {
-        robot.position.y = dispY + yOff;
-        if (typeof window !== 'undefined' && Math.floor(rs.t * 2) % 15 === 0) {
+        // (+ a hop off a ramp)
+        robot.position.y = dispY + yOff + (rs.raceHopY || 0);
+        // Debug probe (dev only): once every 7.5 s, not every frame of a half-second window
+        const _probeBucket = Math.floor(rs.t / 7.5);
+        if (import.meta.env.DEV && typeof window !== 'undefined' && rs._kartProbeBucket !== _probeBucket) {
+          rs._kartProbeBucket = _probeBucket;
           const _bb = new THREE.Box3().setFromObject(robot);
           let _wheelBottom = null;
           robot.traverse((o) => {
@@ -11878,6 +12531,13 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
       }
       // Use smoothed dispAngle instead of raw rs.angle — eliminates rotation jitter
       robot.rotation.y=dispAngle+(scene.userData.aerialMeshYawOffset??0)+(stateFx.rotY||0);
+      if (scene.userData.armWorkshop && stepArmWorkshop(scene, rs, robot, mode==='running'||mode==='step') && !rs.done) {
+        rs.done=true;
+        scene.userData.victoryT=0;
+        robotState.onSuccess();
+        fireEvent('goal');
+        spawnWinCelebration(scene, rs.x, 1.2, rs.z);
+      }
       if (scene.userData.aerialWorldBuilt) {
         const lx = scene.userData._aerialLastX ?? dispX;
         const lz = scene.userData._aerialLastZ ?? dispZ;
@@ -11957,13 +12617,13 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
       const camMaxX=ab?.camMaxX??(isRaceCam?120:(largeArenas.includes(arenaType)?48:22));
       const camMinZ=ab?.camMinZ??(isRaceCam?-200:(largeArenas.includes(arenaType)?-80:wideArenas.includes(arenaType)?-48:-38));
       const camMaxZ=ab?.camMaxZ??(isRaceCam?200:15);
-      const isFlappyCam=!!ab?.flappySideCam;
+      const isFlappyCam=!!ab?.flappySideCam||!!scene.userData.fixedCamPreset;
       const skipFlappyIntro=!!ab?.flappyNoIntro;
       const isAerial=aerialSim;
       const isCombatCam=!!scene.userData.combatMode;
       const isFootballCam=!!scene.userData.footballMode || arenaType === 'robot_football';
       const isMissionCam=!isRaceCam&&!isCombatCam&&!isFlappyCam&&!isFootballCam
-        &&(scene.userData.chassisModeChallenge||scene.userData.missionChallenge||scene.userData.aerialWorldBuilt)
+        &&(scene.userData.chassisModeChallenge||scene.userData.missionChallenge||scene.userData.aerialWorldBuilt||scene.userData.customArenaGoal)
         &&scene.userData.missionCameraPreset;
       // Race: fixed behind-kart chase — offset rotates with robot, no spline swing
       let camDist=isFlappyCam?0:(isRaceCam?8:(isAerial?9:(arenaType==='jet'?8:7.5)));
@@ -11976,7 +12636,7 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
       const midX=isCombatCam?(rs.x+enemyX)*0.5:0;
       // Combat camera - side view framing both fighters
       const combatCam=scene.userData.combatCamPreset;
-      const flappyCam=scene.userData.flappyCamPreset;
+      const flappyCam=scene.userData.flappyCamPreset||scene.userData.fixedCamPreset;
       let bx=isFlappyCam?(flappyCam?.x??26):isCombatCam?(combatCam?.position?.x??0):isFootballCam?(scene.userData.footballCamPreset?.position?.x??8):(dispX+Math.sin(camAngleForPos+Math.PI)*camDist);
       let bz=isFlappyCam?(flappyCam?.z??-4):isCombatCam?(combatCam?.position?.z??-5.15):isFootballCam?(scene.userData.footballCamPreset?.position?.z??30):(dispZ+Math.cos(camAngleForPos+Math.PI)*camDist);
       let camH=isFlappyCam?(flappyCam?.y??4.5):isCombatCam?(combatCam?.position?.y??1.85):isFootballCam?(scene.userData.footballCamPreset?.position?.y??16):(isRaceCam?(dispY+3):(isAerial?Math.max(rs.y+4.5,8):4.0));
@@ -12134,10 +12794,18 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
         }
       }
       if (!scene.userData.raceMode && !scene.userData.footballMode) {
-        scene.traverse(c=>{
+        // Find the spinning checkpoints / movers / belts once (re-check every 2 s), instead of
+        // walking the whole scene every frame
+        const _anim = scene.userData._loopAnim;
+        if (!_anim || rs.t - _anim.at > 2 || rs.t < _anim.at) {
+          const list = [];
+          scene.traverse((c) => { if (c.name === 'cp' || c.name === 'beltstripe' || (c.name && c.name.startsWith('mover'))) list.push(c); });
+          scene.userData._loopAnim = { at: rs.t, list };
+        }
+        scene.userData._loopAnim.list.forEach((c) => {
           if(c.name==='cp'){c.rotation.z+=dt*0.9; if(c.material) c.material.emissiveIntensity=0.7+Math.sin(rs.t*3)*0.3;}
-          if(c.name&&c.name.startsWith('mover')&&!scene.userData.movers){const idx=parseInt(c.name.slice(5))||0; c.position.x=Math.sin(rs.t*(0.8+idx*0.2))*(4+idx);}
-          if(c.name==='beltstripe'){c.position.z=-2+(rs.t*0.8)%12-6;}
+          else if(c.name==='beltstripe'){c.position.z=-2+(rs.t*0.8)%12-6;}
+          else if(!scene.userData.movers){const idx=parseInt(c.name.slice(5))||0; c.position.x=Math.sin(rs.t*(0.8+idx*0.2))*(4+idx);}
         });
       }
       // ── Collectibles check ────────────────────────────────────────────────
@@ -12201,12 +12869,21 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
         }
         rs.missionCheckpointsTotal=cps.length;
       }
+      // ── Arena Maker arenas: "collect every gem / coin" wins without a flag ──
+      if(scene.userData.customArenaGoal && !rs.done && (mode==='running'||mode==='step') && customArenaWon(scene)===true){
+        rs.done=true;
+        scene.userData.victoryT=0;
+        robotState.onSuccess();
+        fireEvent('goal');
+        spawnWinCelebration(scene, rs.x, rs.y + 0.8, rs.z);
+      }
       // ── Finish zone check ──────────────────────────────────────────────────
       if(scene.userData.finishZone && !rs.done && (mode==='running'||mode==='step')){
         const fz=scene.userData.finishZone;
         const fdx=rs.x-fz.x, fdz=rs.z-fz.z;
         const fdy=fz.y3d!=null?(rs.y-fz.y3d):0;
-        const gatesComplete = (!scene.userData.flyingArenaActive && !scene.userData.missionAction) || (scene.userData.chassisCheckpoints || []).every(cp => cp.passed);
+        const gatesComplete = ((!scene.userData.flyingArenaActive && !scene.userData.missionAction) || (scene.userData.chassisCheckpoints || []).every(cp => cp.passed))
+          && customArenaFlagReady(scene);
         if(gatesComplete && Math.sqrt(fdx*fdx+fdz*fdz+fdy*fdy)<(fz.radius||3.5)){
           rs.done=true;
           scene.userData.victoryT=0;
@@ -12232,10 +12909,21 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
         const underground = arenaType === 'crystal_palace_01'
           || arenaType === 'cyber_boulevard_01'
           || scene.userData.biomeAAASpec?.underground;
-        renderer.toneMappingExposure = underground ? 1.1 : 1.08;
+        renderer.toneMappingExposure = isCosmicSkywayArena(arenaType) ? 1.2
+          : (underground ? 1.1 : 1.08);
       }
       } catch(err){ console.warn('[SimCanvas tick]',err); }
-      try { renderFrame(); } catch (renderErr) { console.warn('[SimCanvas render]', renderErr); }
+      try {
+        const running = modeRef.current === 'running' || modeRef.current === 'step';
+        const minMs = _isPad
+          ? (running ? 28 : 50)
+          : (_device.lowPower ? (running ? 22 : 40) : 0);
+        const nowMs = performance.now();
+        if (!minMs || nowMs - _lastDrawMs >= minMs) {
+          _lastDrawMs = nowMs;
+          renderFrame();
+        }
+      } catch (renderErr) { console.warn('[SimCanvas render]', renderErr); }
     };
     rafRef.current=requestAnimationFrame(tick);
     sceneHandleRef.current = { scene, robot };
@@ -12296,6 +12984,7 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
       setSimError(formatSimStartupError(err));
     }
     return ()=>{
+      sceneHandleRef.current?.scene?.userData?._eventKeyCleanup?.();
       if(onVis) document.removeEventListener('visibilitychange',onVis);
       if(_sizeTimer) clearTimeout(_sizeTimer);
       cancelAnimationFrame(rafRef.current);
@@ -12313,6 +13002,7 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
         delete el.dataset.arena;
         delete el.dataset.buildStamp;
       }
+      renderer?.domElement?.removeEventListener('webglcontextlost', _onContextLost);
       renderer?.dispose();
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -12324,7 +13014,7 @@ function SimCanvas({robotConfig,codeBlocks,runMode,stepTrigger,onProgress,onFpsU
         alignItems:'center', justifyContent:'center', gap:10, padding:24, textAlign:'center',
         background:'#050810', color:'#94a3b8', fontFamily:'system-ui,sans-serif',
       }}>
-        <div style={{ fontSize:36 }}>🎮</div>
+        <div style={{ fontSize:36 }}><EmojiIcon e="🎮" /></div>
         <div style={{ fontSize:15, fontWeight:700, color:'#e2e8f0' }}>Simulator couldn&apos;t start</div>
         <div style={{ fontSize:12, maxWidth:320, lineHeight:1.5 }}>{simError}</div>
         <div style={{ fontSize:11, maxWidth:340, lineHeight:1.45, color:'#64748b' }}>
@@ -12367,10 +13057,11 @@ function RunCountdown({ onDone }) {
   const [count, setCount] = useState(3);
   useEffect(() => {
     if (count > 0) {
-      const t = setTimeout(() => setCount(c => c - 1), 320);
+      // Quick 3-2-1 so pressing Simulate starts the robot almost straight away
+      const t = setTimeout(() => setCount(c => c - 1), 180);
       return () => clearTimeout(t);
     } else {
-      const t = setTimeout(onDone, 200);
+      const t = setTimeout(onDone, 120);
       return () => clearTimeout(t);
     }
   }, [count, onDone]);
@@ -12384,7 +13075,7 @@ function RunCountdown({ onDone }) {
         fontWeight: 900,
         color: count > 0 ? '#fff' : '#22c55e',
         textShadow: '0 0 40px rgba(0,0,0,0.8), 0 4px 20px rgba(0,0,0,0.5)',
-        animation: 'countPop 0.5s ease-out',
+        animation: 'countPop 0.18s ease-out',
         fontFamily: 'system-ui, sans-serif',
       }} key={count}>
         {count > 0 ? count : 'GO!'}
@@ -12439,7 +13130,7 @@ function SystemsPanel({robotConfig,stats,challenge,profile,isRunning,fps,zoneInf
     <div style={{flex:'0 0 250px',display:'flex',flexDirection:'column',background:'#161b22',borderLeft:'1px solid #21262d',overflow:'hidden'}}>
       <div style={{padding:'12px',borderBottom:'1px solid #21262d',background:'#0d1117',flexShrink:0}}>
         <div style={{display:'flex',alignItems:'center',gap:10}}>
-          <div style={{width:40,height:40,borderRadius:12,background:'linear-gradient(135deg,#7c3aed,#4338ca)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,flexShrink:0}}>🤖</div>
+          <div style={{width:40,height:40,borderRadius:12,background:'linear-gradient(135deg,#7c3aed,#4338ca)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,flexShrink:0}}><EmojiIcon e="🤖" /></div>
           <div style={{flex:1,minWidth:0}}>
             <div style={{fontSize:12,fontWeight:800,color:'#f0f6ff',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{robotConfig.name||'My Robot'}</div>
             <div style={{fontSize:9,color:challenge.color,fontWeight:700,marginTop:1}}>{profile.tipIcon} {profile.arenaLabel}</div>
@@ -12459,7 +13150,7 @@ function SystemsPanel({robotConfig,stats,challenge,profile,isRunning,fps,zoneInf
         <div style={{fontSize:8,fontWeight:700,color:'#4b5563',textTransform:'uppercase',letterSpacing:0.7,marginBottom:10}}>Systems</div>
         <div style={{marginBottom:10}}>
           <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
-            <span style={{fontSize:10,color:'#9ca3af'}}>🔋 Battery</span>
+            <span style={{fontSize:10,color:'#9ca3af'}}><EmojiIcon e="🔋" style={{ marginRight: '0.35em' }} />Battery</span>
             <span style={{fontSize:11,fontWeight:800,color:battColor}}>{Math.round(stats.battery)}%</span>
           </div>
           <div className="sys-bar-track"><div className="sys-bar-fill" style={{width:stats.battery+'%',background:battColor}}/></div>
@@ -12490,7 +13181,7 @@ function SystemsPanel({robotConfig,stats,challenge,profile,isRunning,fps,zoneInf
       )}
       <div style={{padding:'12px',display:'flex',flexDirection:'column',alignItems:'center',flexShrink:0}}>
         <div style={{fontSize:8,fontWeight:700,color:'#4b5563',textTransform:'uppercase',letterSpacing:0.7,marginBottom:8,alignSelf:'flex-start'}}>Challenge</div>
-        <div style={{fontSize:11,color:challenge.color,fontWeight:700,marginBottom:10,textAlign:'center'}}>{challenge.icon} {challenge.name}</div>
+        <div style={{fontSize:11,color:challenge.color,fontWeight:700,marginBottom:10,textAlign:'center'}}><EmojiIcon e={challenge.icon} style={{ marginRight: '0.35em' }} />{challenge.name}</div>
         <svg width="82" height="82" viewBox="0 0 52 52" style={{overflow:'visible'}}>
           <circle cx="26" cy="26" r="22" fill="none" stroke="#21262d" strokeWidth="4"/>
           <circle cx="26" cy="26" r="22" fill="none" stroke={challenge.color} strokeWidth="4"
@@ -12518,7 +13209,7 @@ function SystemsPanel({robotConfig,stats,challenge,profile,isRunning,fps,zoneInf
             ))}
             {(story.tip || challenge.codeHint) && (
               <div style={{marginTop:6,padding:'5px 7px',background:'rgba(251,191,36,.07)',borderRadius:6,border:'1px solid rgba(251,191,36,.18)'}}>
-                <span style={{fontSize:8,color:'#fbbf24'}}>💡 {story.tip || challenge.codeHint}</span>
+                <span style={{fontSize:8,color:'#fbbf24'}}><EmojiIcon e="💡" style={{ marginRight: '0.35em' }} />{story.tip || challenge.codeHint}</span>
               </div>
             )}
           </div>
@@ -12620,13 +13311,13 @@ function CourseResultsModal({data,course,robotName,onRunAgain,onNextCourse,onClo
         {/* background glow */}
         <div style={{position:'absolute',inset:0,background:`radial-gradient(ellipse at top,${diffCol}18,transparent 60%)`,pointerEvents:'none'}}/>
         {/* new best banner */}
-        {isNewBest&&<div style={{position:'absolute',top:0,left:0,right:0,background:'linear-gradient(90deg,#fbbf24,#f59e0b,#fbbf24)',padding:'6px 0',textAlign:'center',fontSize:11,fontWeight:900,color:'#000',letterSpacing:1}}>🏆 NEW PERSONAL BEST!</div>}
+        {isNewBest&&<div style={{position:'absolute',top:0,left:0,right:0,background:'linear-gradient(90deg,#fbbf24,#f59e0b,#fbbf24)',padding:'6px 0',textAlign:'center',fontSize:11,fontWeight:900,color:'#000',letterSpacing:1}}><EmojiIcon e="🏆" style={{ marginRight: '0.35em' }} />NEW PERSONAL BEST!</div>}
         <div style={{marginTop:isNewBest?28:0}}>
           {/* header */}
           <div style={{textAlign:'center',marginBottom:20}}>
-            <div style={{fontSize:32,marginBottom:6}}>{perfRun?'🌟':'🏅'}</div>
+            <div style={{fontSize:32,marginBottom:6}}><IconText>{perfRun?'🌟':'🏅'}</IconText></div>
             <div style={{fontSize:20,fontWeight:900,color:'#f0f6ff',marginBottom:4}}>{perfRun?'Perfect Run!':'Course Complete!'}</div>
-            <div style={{fontSize:12,color:'#9ca3af'}}>{course.icon} {course.name}</div>
+            <div style={{fontSize:12,color:'#9ca3af'}}><EmojiIcon e={course.icon} style={{ marginRight: '0.35em' }} />{course.name}</div>
             {/* stars */}
             <div style={{fontSize:22,marginTop:8,letterSpacing:2}}>
               {Array.from({length:5},(_, i)=><span key={i} style={{opacity:i<stars?1:0.2}}>{i<stars?'⭐':'☆'}</span>)}
@@ -12661,8 +13352,8 @@ function CourseResultsModal({data,course,robotName,onRunAgain,onNextCourse,onClo
           </div>
           {/* action buttons */}
           <div style={{display:'flex',gap:8}}>
-            <button onClick={onRunAgain} style={{flex:1,padding:'11px 0',borderRadius:10,border:'1px solid #22c55e44',background:'linear-gradient(135deg,#22c55e22,#16a34a11)',color:'#22c55e',fontWeight:800,fontSize:13,cursor:'pointer'}}>▶ Run Again</button>
-            <button onClick={onNextCourse} style={{flex:1,padding:'11px 0',borderRadius:10,border:`1px solid ${diffCol}44`,background:`linear-gradient(135deg,${diffCol}22,${diffCol}11)`,color:diffCol,fontWeight:800,fontSize:13,cursor:'pointer'}}>⏭ Next Course</button>
+            <button onClick={onRunAgain} style={{flex:1,padding:'11px 0',borderRadius:10,border:'1px solid #22c55e44',background:'linear-gradient(135deg,#22c55e22,#16a34a11)',color:'#22c55e',fontWeight:800,fontSize:13,cursor:'pointer'}}><EmojiIcon e="▶" style={{ marginRight: '0.35em' }} />Run Again</button>
+            <button onClick={onNextCourse} style={{flex:1,padding:'11px 0',borderRadius:10,border:`1px solid ${diffCol}44`,background:`linear-gradient(135deg,${diffCol}22,${diffCol}11)`,color:diffCol,fontWeight:800,fontSize:13,cursor:'pointer'}}><EmojiIcon e="⏭" style={{ marginRight: '0.35em' }} />Next Course</button>
             <button onClick={onClose} style={{padding:'11px 14px',borderRadius:10,border:'1px solid #30363d',background:'#21262d',color:'#8b949e',fontWeight:700,fontSize:12,cursor:'pointer'}}>✕</button>
           </div>
         </div>
@@ -12690,7 +13381,7 @@ function CourseTierCard({course,robotName,robotType,onSelect,currentId}){
       {sel&&<div style={{position:'absolute',top:0,left:0,right:0,height:2,borderRadius:'12px 12px 0 0',background:`linear-gradient(90deg,transparent,${diffCol},transparent)`}}/>}
       {/* top row */}
       <div style={{display:'flex',alignItems:'flex-start',gap:10}}>
-        <div style={{width:42,height:42,borderRadius:11,background:`linear-gradient(135deg,${diffCol}44,${diffCol}22)`,border:`1px solid ${diffCol}55`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,flexShrink:0}}>{course.icon}</div>
+        <div style={{width:42,height:42,borderRadius:11,background:`linear-gradient(135deg,${diffCol}44,${diffCol}22)`,border:`1px solid ${diffCol}55`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,flexShrink:0}}><EmojiIcon e={course.icon} /></div>
         <div style={{flex:1,minWidth:0}}>
           <div style={{fontSize:12,fontWeight:900,color:'#f0f6ff',lineHeight:1.3,marginBottom:3}}>{course.name}</div>
           <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
@@ -12707,10 +13398,10 @@ function CourseTierCard({course,robotName,robotType,onSelect,currentId}){
       {/* bottom: best score + play */}
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginTop:2}}>
         <div>
-          {best>0?<div style={{fontSize:10,color:'#fbbf24',fontWeight:800}}>🏆 Best: {best}</div>
+          {best>0?<div style={{fontSize:10,color:'#fbbf24',fontWeight:800}}><EmojiIcon e="🏆" style={{ marginRight: '0.35em' }} />Best: {best}</div>
            :<div style={{fontSize:9,color:'#4b5563'}}>Not played yet</div>}
         </div>
-        <div style={{padding:'6px 14px',borderRadius:8,background:`linear-gradient(135deg,${diffCol},${diffCol}cc)`,color:'#000',fontWeight:900,fontSize:11,letterSpacing:0.5}}>▶ PLAY</div>
+        <div style={{padding:'6px 14px',borderRadius:8,background:`linear-gradient(135deg,${diffCol},${diffCol}cc)`,color:'#000',fontWeight:900,fontSize:11,letterSpacing:0.5}}><EmojiIcon e="▶" style={{ marginRight: '0.35em' }} />PLAY</div>
       </div>
     </div>
   );
@@ -12725,13 +13416,13 @@ function DiffSection({title,diffKey,courses,robotName,robotType,onSelect,current
         <div style={{display:'flex',alignItems:'center',gap:6,padding:'4px 12px',borderRadius:10,background:col+'22',border:`1px solid ${col}44`}}>
           <span style={{fontSize:12}}>{Array.from({length:stars},(_,i)=>'⭐').join('')}</span>
           <span style={{fontSize:11,fontWeight:900,color:col}}>{lbl}</span>
-          {locked&&<span style={{fontSize:9,color:'#6b7280',marginLeft:4}}>🔒 {unlockXp} XP to unlock</span>}
+          {locked&&<span style={{fontSize:9,color:'#6b7280',marginLeft:4}}><EmojiIcon e="🔒" style={{ marginRight: '0.35em' }} />{unlockXp} XP to unlock</span>}
         </div>
         <div style={{height:1,flex:1,background:`linear-gradient(270deg,${col}66,transparent)`}}/>
       </div>
       {locked?(
         <div style={{borderRadius:12,border:'1px dashed #30363d',background:'rgba(255,255,255,0.02)',padding:'20px',textAlign:'center'}}>
-          <div style={{fontSize:20,marginBottom:6}}>🔒</div>
+          <div style={{fontSize:20,marginBottom:6}}><EmojiIcon e="🔒" /></div>
           <div style={{fontSize:12,fontWeight:800,color:'#6b7280',marginBottom:4}}>{lbl} courses locked</div>
           <div style={{fontSize:10,color:'#4b5563',marginBottom:8}}>Earn {unlockXp} total XP to unlock</div>
           <div style={{height:6,borderRadius:3,background:'#21262d',overflow:'hidden',width:160,margin:'0 auto'}}>
@@ -12788,9 +13479,9 @@ function CourseIntroModal({ course, courseType, onConfirm, onBack }) {
             <span style={{fontSize:9,color:dc,background:dc+'22',borderRadius:5,padding:'2px 8px',fontWeight:800,textTransform:'uppercase'}}>{diff}</span>
           </div>
           <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
-            {courseType && <span style={{fontSize:8,color:course.color,background:course.color+'18',borderRadius:4,padding:'2px 7px',fontWeight:700}}>{courseType.icon} {courseType.name}</span>}
+            {courseType && <span style={{fontSize:8,color:course.color,background:course.color+'18',borderRadius:4,padding:'2px 7px',fontWeight:700}}><EmojiIcon e={courseType.icon} style={{ marginRight: '0.35em' }} />{courseType.name}</span>}
             <span style={{fontSize:8,color:'#fbbf24',background:'#fbbf2418',borderRadius:4,padding:'2px 7px',fontWeight:700}}>+{xpReward} XP</span>
-            <span style={{fontSize:8,color:'#60a5fa',background:'#60a5fa18',borderRadius:4,padding:'2px 7px',fontWeight:700}}>⏱ {course.totalDist||'?'} m</span>
+            <span style={{fontSize:8,color:'#60a5fa',background:'#60a5fa18',borderRadius:4,padding:'2px 7px',fontWeight:700}}><EmojiIcon e="⏱" style={{ marginRight: '0.35em' }} />{course.totalDist||'?'} m</span>
           </div>
         </div>
 
@@ -12815,7 +13506,7 @@ function CourseIntroModal({ course, courseType, onConfirm, onBack }) {
 
           {objectives.length > 0 && (
             <div>
-              <div style={{fontSize:8,fontWeight:700,color:'#4b5563',textTransform:'uppercase',letterSpacing:.7,marginBottom:8}}>🎯 Objectives</div>
+              <div style={{fontSize:8,fontWeight:700,color:'#4b5563',textTransform:'uppercase',letterSpacing:.7,marginBottom:8}}><EmojiIcon e="🎯" style={{ marginRight: '0.35em' }} />Objectives</div>
               <div style={{display:'flex',flexDirection:'column',gap:7}}>
                 {objectives.map((obj,i)=>(
                   <div key={i} style={{display:'flex',alignItems:'center',gap:10}}>
@@ -12838,7 +13529,7 @@ function CourseIntroModal({ course, courseType, onConfirm, onBack }) {
               background:'rgba(251,191,36,.07)',borderRadius:10,
               border:'1px solid rgba(251,191,36,.2)',
             }}>
-              <span style={{fontSize:18,flexShrink:0}}>💡</span>
+              <span style={{fontSize:18,flexShrink:0}}><EmojiIcon e="💡" /></span>
               <div>
                 <div style={{fontSize:8,fontWeight:700,color:'#fbbf24',textTransform:'uppercase',letterSpacing:.7,marginBottom:3}}>Pro Tip</div>
                 <span style={{fontSize:11,color:'#fde68a',lineHeight:1.5}}>{tip}</span>
@@ -12854,7 +13545,7 @@ function CourseIntroModal({ course, courseType, onConfirm, onBack }) {
               border:'1px solid rgba(96,165,250,.2)',
               alignItems:'center',
             }}>
-              <span style={{fontSize:14}}>🪙</span>
+              <span style={{fontSize:14}}><EmojiIcon e="🪙" /></span>
               <span style={{fontSize:10,color:'#93c5fd'}}>{collectibles}</span>
             </div>
           )}
@@ -12876,7 +13567,7 @@ function CourseIntroModal({ course, courseType, onConfirm, onBack }) {
             }}
             onMouseEnter={e=>{e.currentTarget.style.transform='scale(1.02)';e.currentTarget.style.boxShadow=`0 6px 28px ${course.color}77`;}}
             onMouseLeave={e=>{e.currentTarget.style.transform='';e.currentTarget.style.boxShadow=`0 4px 20px ${course.color}55`;}}
-            >▶ START MISSION</button>
+            ><EmojiIcon e="▶" style={{ marginRight: '0.35em' }} />START MISSION</button>
           </div>
         </div>
       </div>
@@ -12948,7 +13639,7 @@ function CourseTypesTab({ onSelect, onClose, currentId, robotType }) {
                 gap:6,backdropFilter:'blur(2px)',
                 borderRadius:16,
               }}>
-                <span style={{fontSize:28}}>🔒</span>
+                <span style={{fontSize:28}}><EmojiIcon e="🔒" /></span>
                 <span style={{fontSize:11,fontWeight:800,color:'#f0f6ff'}}>{ct.name} Locked</span>
                 {unavailReason
                   ? <span style={{fontSize:9,color:'#f87171',textAlign:'center',padding:'0 20px',lineHeight:1.4}}>{unavailReason}</span>
@@ -12969,7 +13660,7 @@ function CourseTypesTab({ onSelect, onClose, currentId, robotType }) {
                 border:`1.5px solid ${available ? ct.color+'55' : '#30363d'}`,
                 display:'flex',alignItems:'center',justifyContent:'center',fontSize:24,
                 filter: available ? 'none' : 'grayscale(0.7)',
-              }}>{ct.icon}</div>
+              }}><EmojiIcon e={ct.icon} /></div>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:3}}>
                   <span style={{fontSize:15,fontWeight:900,color: available ? '#f0f6ff' : '#6b7280'}}>{ct.name}</span>
@@ -12977,9 +13668,9 @@ function CourseTypesTab({ onSelect, onClose, currentId, robotType }) {
                 </div>
                 <div style={{fontSize:9,color:'#8b949e',lineHeight:1.5,marginBottom:5}}>{ct.desc}</div>
                 <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
-                  <span style={{fontSize:8,color:'#60a5fa',background:'#60a5fa18',borderRadius:4,padding:'2px 6px',fontWeight:700}}>⏱ {ct.duration}</span>
-                  <span style={{fontSize:8,color:available ? ct.color : '#6b7280',background:(available ? ct.color : '#6b7280')+'18',borderRadius:4,padding:'2px 6px',fontWeight:700}}>🎯 {ct.focus}</span>
-                  {ct.note && <span style={{fontSize:8,color:'#fbbf24',background:'#fbbf2418',borderRadius:4,padding:'2px 6px',fontWeight:700}}>⚡ {ct.note}</span>}
+                  <span style={{fontSize:8,color:'#60a5fa',background:'#60a5fa18',borderRadius:4,padding:'2px 6px',fontWeight:700}}><EmojiIcon e="⏱" style={{ marginRight: '0.35em' }} />{ct.duration}</span>
+                  <span style={{fontSize:8,color:available ? ct.color : '#6b7280',background:(available ? ct.color : '#6b7280')+'18',borderRadius:4,padding:'2px 6px',fontWeight:700}}><EmojiIcon e="🎯" style={{ marginRight: '0.35em' }} />{ct.focus}</span>
+                  {ct.note && <span style={{fontSize:8,color:'#fbbf24',background:'#fbbf2418',borderRadius:4,padding:'2px 6px',fontWeight:700}}><EmojiIcon e="⚡" style={{ marginRight: '0.35em' }} />{ct.note}</span>}
                 </div>
               </div>
             </div>
@@ -13015,7 +13706,7 @@ function CourseTypesTab({ onSelect, onClose, currentId, robotType }) {
                       <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:2}}>
                         <span style={{fontSize:11,fontWeight:800,color:'#f0f6ff'}}>{v.name}</span>
                         <span style={{fontSize:8,color:dc,background:dc+'22',borderRadius:4,padding:'1px 5px',fontWeight:700}}>{DIFF_LABELS[v.diff]}</span>
-                        {sel && <span style={{fontSize:8,color:'#22c55e',background:'#22c55e22',borderRadius:4,padding:'1px 5px',fontWeight:800}}>▶ ACTIVE</span>}
+                        {sel && <span style={{fontSize:8,color:'#22c55e',background:'#22c55e22',borderRadius:4,padding:'1px 5px',fontWeight:800}}><EmojiIcon e="▶" style={{ marginRight: '0.35em' }} />ACTIVE</span>}
                       </div>
                       <div style={{fontSize:9,color:'#6b7280',lineHeight:1.3}}>{v.tip}</div>
                     </div>
@@ -13068,7 +13759,7 @@ function WorldPicker({ onSelect, onClose, currentId, robotType, robotName }) {
         <div style={{display:'flex',alignItems:'center',gap:14}}>
           {/* Robot avatar */}
           <div style={{width:52,height:52,borderRadius:14,background:'linear-gradient(135deg,#7c3aed,#4338ca)',border:'2px solid #7c3aed44',display:'flex',alignItems:'center',justifyContent:'center',fontSize:26,flexShrink:0}}>
-            {abilities.icon}
+            <EmojiIcon e={abilities.icon} />
           </div>
           {/* Name + level + tags */}
           <div style={{flex:1,minWidth:0}}>
@@ -13115,7 +13806,7 @@ function WorldPicker({ onSelect, onClose, currentId, robotType, robotName }) {
               return (
                 <div key={track.id} style={{marginBottom:28}}>
                   <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:12}}>
-                    <span style={{fontSize:24}}>{track.icon}</span>
+                    <span style={{fontSize:24}}><EmojiIcon e={track.icon} /></span>
                     <div style={{flex:1}}>
                       <div style={{fontSize:14,fontWeight:900,color:track.color}}>{track.name}</div>
                       <div style={{fontSize:9,color:'#6b7280',marginTop:2}}>{track.desc}</div>
@@ -13155,7 +13846,7 @@ function WorldPicker({ onSelect, onClose, currentId, robotType, robotName }) {
               return (
                 <div key={section.zone.id} style={{ marginBottom: 28 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                    <span style={{ fontSize: 24 }}>{section.zone.icon}</span>
+                    <span style={{ fontSize: 24 }}><EmojiIcon e={section.zone.icon} /></span>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 14, fontWeight: 900, color: section.zone.color }}>{section.zone.name}</div>
                       <div style={{ fontSize: 9, color: '#6b7280', marginTop: 2 }}>{section.zone.subtitle} · {section.missions.length} missions</div>
@@ -13179,19 +13870,19 @@ function WorldPicker({ onSelect, onClose, currentId, robotType, robotName }) {
                           {sel && <span style={{ position: 'absolute', top: 8, right: 8, fontSize: 8, background: '#22c55e20', color: '#22c55e', borderRadius: 4, padding: '2px 6px', fontWeight: 800 }}>✓ ON</span>}
                           {prog.completed && <span style={{ position: 'absolute', top: 8, left: 8, fontSize: 8, background: '#fbbf2420', color: '#fbbf24', borderRadius: 4, padding: '2px 6px', fontWeight: 800 }}>{'★'.repeat(prog.stars)}{'☆'.repeat(3 - prog.stars)}</span>}
                           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 9, marginBottom: 7 }}>
-                            <div style={{ width: 38, height: 38, borderRadius: 10, background: `linear-gradient(135deg,${section.zone.color}44,${section.zone.color}22)`, border: `1.5px solid ${section.zone.color}55`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>{mission.icon}</div>
+                            <div style={{ width: 38, height: 38, borderRadius: 10, background: `linear-gradient(135deg,${section.zone.color}44,${section.zone.color}22)`, border: `1.5px solid ${section.zone.color}55`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}><EmojiIcon e={mission.icon} /></div>
                             <div style={{ flex: 1, minWidth: 0 }}>
                               <div style={{ fontSize: 10, fontWeight: 800, color: section.zone.color, marginBottom: 2 }}>{mission.code} · {diffStars}</div>
                               <div style={{ fontSize: 11, fontWeight: 800, color: '#f0f6ff', lineHeight: 1.3 }}>{mission.name}</div>
                               <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap', marginTop: 4 }}>
-                                <span style={{ fontSize: 7, color: '#a78bfa', background: '#a78bfa20', borderRadius: 3, padding: '1px 5px', fontWeight: 700 }}>{mission.missionType === 'MG' ? '🎮 Mini-Game' : mission.missionType === 'SV' ? '🛡️ Survival' : '📦 Collect & Deliver'}</span>
+                                <span style={{ fontSize: 7, color: '#a78bfa', background: '#a78bfa20', borderRadius: 3, padding: '1px 5px', fontWeight: 700 }}><IconText>{mission.missionType === 'MG' ? '🎮 Mini-Game' : mission.missionType === 'SV' ? '🛡️ Survival' : '📦 Collect & Deliver'}</IconText></span>
                                 <span style={{ fontSize: 7, color: '#fbbf24', background: '#fbbf2420', borderRadius: 3, padding: '1px 5px', fontWeight: 700 }}>+{mission.xpBase} XP</span>
                               </div>
                             </div>
                           </div>
                           <div style={{ fontSize: 9, color: '#8b949e', lineHeight: 1.5, marginBottom: 8, WebkitLineClamp: 3, overflow: 'hidden', display: '-webkit-box', WebkitBoxOrient: 'vertical' }}>{mission.story}</div>
                           <div style={{ marginTop: 8, background: `linear-gradient(135deg,${section.zone.color},${section.zone.color}cc)`, borderRadius: 7, padding: '6px', textAlign: 'center', fontSize: 10, fontWeight: 900, color: '#fff', letterSpacing: 0.5 }}>
-                            ▶ START MISSION
+                            <EmojiIcon e="▶" style={{ marginRight: '0.35em' }} />START MISSION
                           </div>
                         </button>
                       );
@@ -13205,12 +13896,12 @@ function WorldPicker({ onSelect, onClose, currentId, robotType, robotName }) {
               <div key={tg.tier} style={{marginBottom:28}}>
                 {/* Tier header */}
                 <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:12}}>
-                  <span style={{fontSize:18}}>{tg.icon}</span>
+                  <span style={{fontSize:18}}><EmojiIcon e={tg.icon} /></span>
                   <div style={{flex:1}}>
                     <div style={{display:'flex',alignItems:'center',gap:8}}>
                       <span style={{fontSize:14,fontWeight:900,color:tg.color}}>Tier {tg.tier}: {tg.name}</span>
                       <span style={{fontSize:9,color:'#6b7280',background:'rgba(255,255,255,0.05)',borderRadius:4,padding:'2px 6px'}}>{tg.courses.length} courses</span>
-                      {tg.locked&&<span style={{fontSize:9,color:'#ef4444',background:'#ef444420',borderRadius:4,padding:'2px 8px',fontWeight:800}}>🔒 Unlock at {tg.unlockXp} XP</span>}
+                      {tg.locked&&<span style={{fontSize:9,color:'#ef4444',background:'#ef444420',borderRadius:4,padding:'2px 8px',fontWeight:800}}><EmojiIcon e="🔒" style={{ marginRight: '0.35em' }} />Unlock at {tg.unlockXp} XP</span>}
                       {!tg.locked&&tg.tier>1&&<span style={{fontSize:9,color:tg.color,background:tg.color+'20',borderRadius:4,padding:'2px 8px',fontWeight:700}}>✓ Unlocked</span>}
                     </div>
                     <div style={{fontSize:9,color:'#4b5563',marginTop:2}}>{tg.xpReward} XP per course · {tg.diff} difficulty</div>
@@ -13218,11 +13909,11 @@ function WorldPicker({ onSelect, onClose, currentId, robotType, robotName }) {
                 </div>
                 {tg.locked ? (
                   <div style={{background:'rgba(255,255,255,0.03)',borderRadius:10,border:`1px solid ${tg.color}33`,padding:'18px',textAlign:'center'}}>
-                    <div style={{fontSize:28,marginBottom:6}}>🔒</div>
+                    <div style={{fontSize:28,marginBottom:6}}><EmojiIcon e="🔒" /></div>
                     <div style={{fontSize:12,color:tg.color,fontWeight:700}}>Locked — Need {tg.unlockXp} XP</div>
                     <div style={{fontSize:10,color:'#4b5563',marginTop:4}}>You have {xp} XP · Need {tg.unlockXp-xp} more</div>
                     <div style={{marginTop:8,display:'flex',flexWrap:'wrap',gap:4,justifyContent:'center'}}>
-                      {tg.courses.map(c=><span key={c.id} style={{fontSize:8,color:'#4b5563',background:'rgba(255,255,255,0.04)',borderRadius:4,padding:'2px 7px'}}>{c.icon} {c.name}</span>)}
+                      {tg.courses.map(c=><span key={c.id} style={{fontSize:8,color:'#4b5563',background:'rgba(255,255,255,0.04)',borderRadius:4,padding:'2px 7px'}}><EmojiIcon e={c.icon} style={{ marginRight: '0.35em' }} />{c.name}</span>)}
                     </div>
                   </div>
                 ):(
@@ -13238,11 +13929,11 @@ function WorldPicker({ onSelect, onClose, currentId, robotType, robotName }) {
                           {course.hasBoss&&<span style={{position:'absolute',top:8,right:8,fontSize:8,background:'#ef444420',color:'#ef4444',borderRadius:4,padding:'2px 6px',fontWeight:800}}>👹 BOSS</span>}
                           {sel&&<span style={{position:'absolute',top:course.hasBoss?24:8,right:8,fontSize:8,background:'#22c55e20',color:'#22c55e',borderRadius:4,padding:'2px 6px',fontWeight:800}}>✓ ON</span>}
                           <div style={{display:'flex',alignItems:'flex-start',gap:9,marginBottom:7}}>
-                            <div style={{width:38,height:38,borderRadius:10,background:`linear-gradient(135deg,${course.color}44,${course.color}22)`,border:`1.5px solid ${course.color}55`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,flexShrink:0}}>{course.icon}</div>
+                            <div style={{width:38,height:38,borderRadius:10,background:`linear-gradient(135deg,${course.color}44,${course.color}22)`,border:`1.5px solid ${course.color}55`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,flexShrink:0}}><EmojiIcon e={course.icon} /></div>
                             <div style={{flex:1,minWidth:0}}>
                               <div style={{fontSize:11,fontWeight:800,color:'#f0f6ff',lineHeight:1.3,marginBottom:3}}>{course.name}</div>
                               <div style={{display:'flex',gap:3,flexWrap:'wrap'}}>
-                                <span style={{fontSize:7,color:tg.color,background:tg.color+'20',borderRadius:3,padding:'1px 5px',fontWeight:700}}>{tg.icon} {tg.name}</span>
+                                <span style={{fontSize:7,color:tg.color,background:tg.color+'20',borderRadius:3,padding:'1px 5px',fontWeight:700}}><EmojiIcon e={tg.icon} style={{ marginRight: '0.35em' }} />{tg.name}</span>
                                 <span style={{fontSize:7,color:'#fbbf24',background:'#fbbf2420',borderRadius:3,padding:'1px 5px',fontWeight:700}}>+{course.xpReward||tg.xpReward} XP</span>
                               </div>
                             </div>
@@ -13250,12 +13941,12 @@ function WorldPicker({ onSelect, onClose, currentId, robotType, robotName }) {
                           <div style={{fontSize:9,color:'#8b949e',lineHeight:1.5,marginBottom:7,WebkitLineClamp:2,overflow:'hidden',display:'-webkit-box',WebkitBoxOrient:'vertical'}}>{course.desc}</div>
                           <div style={{fontSize:9,color:'#6b7280',lineHeight:1.4,marginBottom:8,WebkitLineClamp:2,overflow:'hidden',display:'-webkit-box',WebkitBoxOrient:'vertical',fontStyle:'italic'}}>"{course.story.slice(0,75)}..."</div>
                           <div style={{display:'flex',alignItems:'center',gap:5,flexWrap:'wrap'}}>
-                            <span style={{fontSize:7,color:'#4b5563',background:'rgba(255,255,255,0.05)',borderRadius:3,padding:'1px 5px'}}>🪙 {course.coins} coins</span>
-                            <span style={{fontSize:7,color:'#4b5563',background:'rgba(255,255,255,0.05)',borderRadius:3,padding:'1px 5px'}}>💎 {course.gems} gems</span>
-                            {best>0&&<span style={{fontSize:9,color:'#fbbf24',fontWeight:800,marginLeft:'auto'}}>🏆 {best}</span>}
+                            <span style={{fontSize:7,color:'#4b5563',background:'rgba(255,255,255,0.05)',borderRadius:3,padding:'1px 5px'}}><EmojiIcon e="🪙" style={{ marginRight: '0.35em' }} />{course.coins} coins</span>
+                            <span style={{fontSize:7,color:'#4b5563',background:'rgba(255,255,255,0.05)',borderRadius:3,padding:'1px 5px'}}><EmojiIcon e="💎" style={{ marginRight: '0.35em' }} />{course.gems} gems</span>
+                            {best>0&&<span style={{fontSize:9,color:'#fbbf24',fontWeight:800,marginLeft:'auto'}}><EmojiIcon e="🏆" style={{ marginRight: '0.35em' }} />{best}</span>}
                           </div>
                           <div style={{marginTop:8,background:`linear-gradient(135deg,${course.color},${course.color}cc)`,borderRadius:7,padding:'6px',textAlign:'center',fontSize:10,fontWeight:900,color:'#fff',letterSpacing:0.5}}>
-                            ▶ PLAY COURSE {course.n}
+                            <EmojiIcon e="▶" style={{ marginRight: '0.35em' }} />PLAY COURSE {course.n}
                           </div>
                         </button>
                       );
@@ -13277,7 +13968,7 @@ function WorldPicker({ onSelect, onClose, currentId, robotType, robotName }) {
                 const count=c==='all'?ALL_COURSES.length:ALL_COURSES.filter(x=>x.cat===c).length;
                 return(
                   <button key={c} onClick={()=>setCat(c)} style={{padding:'5px 12px',borderRadius:14,border:`1px solid ${active?col:col+'33'}`,cursor:'pointer',background:active?`linear-gradient(135deg,${col},${col}cc)`:'rgba(255,255,255,0.04)',color:active?'#fff':col,fontSize:10,fontWeight:700,whiteSpace:'nowrap',transition:'all .15s',display:'flex',alignItems:'center',gap:3}}>
-                    <span>{c==='all'?'🌐':meta?.icon}</span><span>{c==='all'?'All':meta?.label}</span><span style={{fontSize:8,opacity:0.75}}>({count})</span>
+                    <span><IconText>{c==='all'?'🌐':meta?.icon}</IconText></span><span>{c==='all'?'All':meta?.label}</span><span style={{fontSize:8,opacity:0.75}}>({count})</span>
                   </button>
                 );
               })}
@@ -13296,19 +13987,19 @@ function WorldPicker({ onSelect, onClose, currentId, robotType, robotName }) {
                     {rec&&<span style={{position:'absolute',top:8,right:8,fontSize:8,background:course.color+'33',color:course.color,borderRadius:5,padding:'2px 6px',fontWeight:900}}>⭐ FIT</span>}
                     {sel&&<span style={{position:'absolute',top:8,right:rec?32:8,fontSize:8,background:'#22c55e33',color:'#22c55e',borderRadius:5,padding:'2px 6px',fontWeight:900}}>✓ ON</span>}
                     <div style={{display:'flex',alignItems:'flex-start',gap:9,marginBottom:7}}>
-                      <div style={{width:36,height:36,borderRadius:9,background:`linear-gradient(135deg,${course.color}33,${course.color}18)`,border:`1px solid ${course.color}44`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,fontSize:18}}>{course.icon}</div>
+                      <div style={{width:36,height:36,borderRadius:9,background:`linear-gradient(135deg,${course.color}33,${course.color}18)`,border:`1px solid ${course.color}44`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,fontSize:18}}><EmojiIcon e={course.icon} /></div>
                       <div style={{flex:1,minWidth:0}}>
                         <div style={{fontSize:11,fontWeight:800,color:'#f0f6ff',lineHeight:1.3,marginBottom:2}}>{course.name}</div>
-                        <div style={{fontSize:8,color:catMeta?.color||'#6b7280',background:(catMeta?.color||'#6b7280')+'22',borderRadius:3,padding:'1px 4px',display:'inline-block',fontWeight:700}}>{catMeta?.icon} {catMeta?.label}</div>
+                        <div style={{fontSize:8,color:catMeta?.color||'#6b7280',background:(catMeta?.color||'#6b7280')+'22',borderRadius:3,padding:'1px 4px',display:'inline-block',fontWeight:700}}><EmojiIcon e={catMeta?.icon} style={{ marginRight: '0.35em' }} />{catMeta?.label}</div>
                       </div>
                     </div>
                     <div style={{fontSize:9,color:'#8b949e',lineHeight:1.5,marginBottom:6}}>{course.desc}</div>
                     <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
                       <div style={{display:'flex',gap:4}}>
-                        <span style={{fontSize:7,color:'#6b7280',background:'rgba(255,255,255,0.05)',borderRadius:3,padding:'1px 4px'}}>🏁 {course.obstacles}</span>
-                        <span style={{fontSize:7,color:'#6b7280',background:'rgba(255,255,255,0.05)',borderRadius:3,padding:'1px 4px'}}>📏 {course.totalDist}m</span>
+                        <span style={{fontSize:7,color:'#6b7280',background:'rgba(255,255,255,0.05)',borderRadius:3,padding:'1px 4px'}}><EmojiIcon e="🏁" style={{ marginRight: '0.35em' }} />{course.obstacles}</span>
+                        <span style={{fontSize:7,color:'#6b7280',background:'rgba(255,255,255,0.05)',borderRadius:3,padding:'1px 4px'}}><EmojiIcon e="📏" style={{ marginRight: '0.35em' }} />{course.totalDist}m</span>
                       </div>
-                      {best>0&&<span style={{fontSize:9,color:'#fbbf24',fontWeight:800}}>🏆 {best}</span>}
+                      {best>0&&<span style={{fontSize:9,color:'#fbbf24',fontWeight:800}}><EmojiIcon e="🏆" style={{ marginRight: '0.35em' }} />{best}</span>}
                     </div>
                   </button>
                 );
@@ -13400,6 +14091,11 @@ function resolveLabCourse(initialCourseId, robotConfig) {
     isCourseForChassis(course.id, chassisId)
     || chassisModes.some((c) => c.id === course.id)
     || (resolveChassisKey(chassisId) === 'birdbot' && isFlappyBirdCourse(course.id, course.arenaType))
+    || (isCarChassis(chassisId) && (
+      BIOME_ARENA_TYPES.has(course.arenaType)
+      || BIOME_ARENA_TYPES.has(course.id)
+      || course.genre === 'racing'
+    ))
   );
 
   // Football robots must never inherit a stale forest/racing world from localStorage.
@@ -13422,7 +14118,7 @@ function resolveLabCourse(initialCourseId, robotConfig) {
   if (initialCourseId) {
     const fromUrl = pick(initialCourseId);
     if (fromUrl && !isFootballCourse(fromUrl.id, fromUrl.arenaType) && fitsChassis(fromUrl)) return fromUrl;
-    if (BIOME_ARENA_TYPES.has(initialCourseId)) {
+    if (BIOME_ARENA_TYPES.has(initialCourseId) && isCarChassis(chassisId)) {
       const biomeCourse = pick(initialCourseId);
       if (biomeCourse && !isFootballCourse(biomeCourse.id, biomeCourse.arenaType)) return biomeCourse;
     }
@@ -13455,7 +14151,7 @@ function isFifa3v3Course(course) {
     || (course.teamSize ?? 0) >= 3;
 }
 
-export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,initialChallenge,onChallengeConsumed,initialCourseId,eventsFocusKey=0,footballLaunchKey=0}){
+export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,initialChallenge,onChallengeConsumed,initialCourseId,eventsFocusKey=0,footballLaunchKey=0,onExit}){
   const rc=useMemo(()=>{
     try {
       const stored = localStorage.getItem('bb-studio-robot');
@@ -13519,6 +14215,13 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
   const [activeCourse, setActiveCourse] =useState(() => resolveLabCourse(initialCourseId, robotConfigProp || readStoredRobotConfig()));
   const [robotXp,      setRobotXp]      =useState(()=>GameProgress.get(rc?.name||'Robot').xp||0);
   const [hitFlash,     setHitFlash]     =useState(false);
+  const [trackLoadingUi, setTrackLoadingUi] = useState(false);
+  useEffect(() => {
+    const onLoading = (e) => setTrackLoadingUi(!!e.detail?.loading);
+    setTrackLoadingUi((window.__bbTrackLoadingCount || 0) > 0);
+    window.addEventListener('bb-track-loading', onLoading);
+    return () => window.removeEventListener('bb-track-loading', onLoading);
+  }, []);
   const [execLabel,    setExecLabel]    =useState(null);  // {text,color} while running
   const [activeStepIndex, setActiveStepIndex] = useState(-1);
   const [footballExecBotId, setFootballExecBotId] = useState(null);
@@ -13528,6 +14231,7 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
   const [footballProgKey, setFootballProgKey] = useState(0);
   const lastSoloFootballScriptRef = useRef(null);
   const [qualityOverride, setQualityOverride] = useState(() => localStorage.getItem('bb_quality_tier') || 'auto');
+  const studioDevice = useMemo(() => getStudioDeviceProfile(), []);
   const [victory,      setVictory]      =useState(null);  // {xp, medal, coins}
   const [failure,      setFailure]      =useState(null);  // {message, hint}
   const [showCodingTip,setShowCodingTip]=useState(false);
@@ -13627,6 +14331,7 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
   // FootballBot chassis: always land on football pitch (not jump world / forest from old saves)
   useEffect(() => {
     if (!isFootballRobot(rc)) return;
+    if (activeCourse?.customArena || activeCourse?.isCustomTrack) return;
     if (isFootballCourse(activeCourse?.id, activeCourse?.arenaType)) return;
     const enriched = enrichCourseWithGameLogic(resolveFootballLabCourse({ id: 'football_fifa' }, rc));
     setActiveCourse(enriched);
@@ -13647,6 +14352,7 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
     if (isFootballRobot(rc)) return;
     if (isFootballCourse(activeCourse?.id, activeCourse?.arenaType)) return;
     if (!isFighterRobot(rc)) return;
+    if (activeCourse?.customArena || activeCourse?.isCustomTrack) return;
     if (isFightingCourse(activeCourse?.id, activeCourse?.arenaType)) return;
     const modes = getCoursesForChassis(rc?.chassisId || 'striker', ALL_COURSES);
     const fight = modes.find((c) => c.arenaType === 'robot_fight') || modes[0];
@@ -13666,13 +14372,20 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
   // FootballBot keeps its own FIFA landing effect — do not pin cars onto a leftover pitch.
   const prevChassisIdRef = useRef(null);
   useEffect(() => {
-    if (isFootballRobot(rc)) return;
-    if (activeCourse?.isPrimaryMission) return;
     const chassisId = rc?.chassisId || 'rover';
-    if (!isPrimaryStudioChassis(chassisId)
-      && (BIOME_ARENA_TYPES.has(activeCourse?.arenaType) || BIOME_ARENA_TYPES.has(activeCourse?.id))) return;
     const chassisChanged = prevChassisIdRef.current !== null && prevChassisIdRef.current !== chassisId;
     prevChassisIdRef.current = chassisId;
+    if (isFootballRobot(rc) && !activeCourse?.customArena && !activeCourse?.isCustomTrack) return;
+    if (activeCourse?.isPrimaryMission) return;
+    // Arenas and race tracks built in Create Studio are played with whatever robot the child picked
+    if ((activeCourse?.customArena || activeCourse?.isCustomTrack) && !chassisChanged) return;
+    // Fighting worlds (castle, dojo, pirate ship…) can be played by any fighter
+    if (activeCourse?.fightWorld && !chassisChanged) return;
+    // Racing tracks belong to the car robots; every other robot opens on its own arenas.
+    if (isCarChassis(chassisId)) {
+      if (BIOME_ARENA_TYPES.has(activeCourse?.arenaType) || BIOME_ARENA_TYPES.has(activeCourse?.id)) return;
+      if (activeCourse?.genre === 'racing' && isCarRacingArenaType(activeCourse?.arenaType)) return;
+    }
     const courseId = activeCourse?.id;
     const stuckOnFootball = isFootballCourse(courseId, activeCourse?.arenaType);
     if (!chassisChanged && !stuckOnFootball && courseId && isCourseForChassis(courseId, chassisId)) return;
@@ -13742,44 +14455,7 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
     setFifaUiRole('striker');
   }, [isFifa3v3, challenge?.id]);
 
-  const arenaType = useMemo(() => {
-    if (isFootballRobot(rc)) {
-      return 'robot_football';
-    }
-    if (isPrimaryStudioChassis(rc?.chassisId || challenge?.chassisId)) {
-      if (challenge?.arenaBible) return challenge.arenaType || 'sandbox';
-      if (isCarChassis(rc?.chassisId || challenge?.chassisId)) {
-        const track = getCarRacingTrack(
-          rc?.chassisId || challenge?.chassisId || 'rover',
-          challenge?.modeIndex ?? 1,
-        );
-        if (track?.isClassicRainbow) return 'rainbow_road';
-        return track?.arenaType || challenge?.arenaType || 'sunset_cove_01';
-      }
-      return challenge?.arenaType || 'sandbox';
-    }
-    // Cup tracks must keep their own biome id. Chassis-mode remapping
-    // (modeIndex default 1 → Sunset Cove) was forcing every cup tab to look like Cove.
-    if (BIOME_ARENA_TYPES.has(challenge?.arenaType)) return challenge.arenaType;
-    if (BIOME_ARENA_TYPES.has(challenge?.id)) return challenge.id;
-    if (challenge?.linkedRaceCourse && BIOME_ARENA_TYPES.has(challenge.linkedRaceCourse)) {
-      return challenge.linkedRaceCourse;
-    }
-    // Rover/scout racing modes always use the biome/MK track registry (not stale static arenaType).
-    if (challenge?.isChassisMode && isCarChassis(rc?.chassisId || challenge?.chassisId) && !isPrimaryStudioChassis(rc?.chassisId || challenge?.chassisId)) {
-      const track = getCarRacingTrack(
-        rc?.chassisId || challenge?.chassisId || 'rover',
-        challenge?.modeIndex ?? 1,
-      );
-      if (track?.isClassicRainbow) return 'rainbow_road';
-      if (track?.arenaType) return track.arenaType;
-    }
-    const direct = challenge?.arenaType;
-    if (direct && direct !== 'ground' && direct !== 'racing_circuit') return direct;
-    const linked = getMKTrack(challenge?.linkedRaceCourse)?.arenaType;
-    if (linked) return linked;
-    return direct || profile?.arenaType || 'ground';
-  }, [challenge?.id, challenge?.arenaType, challenge?.linkedRaceCourse, challenge?.modeIndex, challenge?.isChassisMode, challenge?.chassisId, rc?.chassisId, profile?.arenaType]);
+  const arenaType = useMemo(() => resolveLabArenaType(challenge, rc, profile), [challenge?.id, challenge?.arenaType, challenge?.linkedRaceCourse, challenge?.modeIndex, challenge?.isChassisMode, challenge?.chassisId, rc?.chassisId, profile?.arenaType]);
 
   useEffect(()=>{
     if(!challenge?.isGameMission) return;
@@ -13812,8 +14488,8 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
       return [];
     }
     if (isFight) {
-      const src = (custom?.length > 0) ? custom : FIGHTING_STARTER_SCRIPT;
-      fightingProgramRef.current = compileFightingScratchScript(src);
+      // Pupils write their own code: an empty program does nothing
+      fightingProgramRef.current = compileFightingScratchScript(custom || []);
       eventHandlersRef.current = null;
       return [];
     }
@@ -13825,7 +14501,7 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
       const scripts = footballScriptsRef.current || {};
       if (teamMatch) {
         for (const role of FOOTBALL_TEAM_ROLES) {
-          if (!scripts[role.id]?.length) scripts[role.id] = FOOTBALL_ROLE_STARTERS[role.id];
+          if (!scripts[role.id]) scripts[role.id] = [];
         }
         const activeRole = footballActiveRoleRef.current || 'striker';
         scripts[activeRole] = custom;
@@ -13833,17 +14509,13 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
         footballProgramsRef.current = {};
         for (const role of FOOTBALL_TEAM_ROLES) {
           const roleScript = scripts[role.id] || [];
-          const src = hasFootballGameplayScript(roleScript) ? roleScript : FOOTBALL_ROLE_STARTERS[role.id];
-          footballProgramsRef.current[role.botId] = compileFootballScratchScript(src);
+          footballProgramsRef.current[role.botId] = compileFootballScratchScript(roleScript);
         }
         setFootballProgKey((k) => k + 1);
       } else {
         const courseId = challengeRef.current?.id || '';
-        const fallback = challengeRef.current?.matchMode === 'keeper'
-          ? FOOTBALL_KEEPER_STARTER_SCRIPT
-          : FOOTBALL_STARTER_SCRIPT;
         const last = lastSoloFootballScriptRef.current;
-        let src = fallback;
+        let src = custom || [];
         if (hasFootballGameplayScript(custom)) {
           src = custom;
           lastSoloFootballScriptRef.current = { courseId, script: custom };
@@ -13860,18 +14532,9 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
         || challengeRef.current?.linkedRaceCourse
         || challengeRef.current?.id;
       const courseKey = challengeRef.current?.linkedRaceCourse || challengeRef.current?.id;
-      const starter = getRaceStarterScript(arena, courseKey);
-      const src = custom.length > 0 ? custom : starter;
-      if (custom.length === 0 && starter.length > 0) {
-        customScriptRef.current = starter.filter((b) => b.id !== 'when_start');
-      }
-      eventHandlersRef.current = compileEventHandlers(src, opts);
-      let start = eventHandlersRef.current.start || [];
-      if (!start.length && starter.length > 0) {
-        eventHandlersRef.current = compileEventHandlers(starter, opts);
-        start = eventHandlersRef.current.start || [];
-      }
-      return start;
+      // Only the pupil's own blocks drive the car
+      eventHandlersRef.current = compileEventHandlers(custom, opts);
+      return eventHandlersRef.current.start || [];
     }
     if(custom.length>0){
       eventHandlersRef.current=compileEventHandlers(custom,opts);
@@ -13886,7 +14549,7 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
     const nonAction=new Set(['wait','wait_until','led_on','led_off','led_blink','play_sound','alarm_sound','set_var','change_var','define_func','call_func']);
     const countList=(list)=> (list||[]).filter((a)=>a?.id&&!nonAction.has(a.id)).length;
     let n=0;
-    for(const key of ['start','spacebar','key','zone','collect','collision','sensor','gap_passed','game_over','checkpoint','lap','race_won','goal']){
+    for(const key of ['start','spacebar','key','zone','collect','collision','sensor','gap_passed','game_over','checkpoint','lap','race_won','goal','hit_car','hit_object','object_ahead','car_ahead']){
       n+=countList(handlers[key]);
     }
     for(const group of ['timers','batteries','laps','keys']){
@@ -13900,7 +14563,6 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
     const isFight=isFightingCourse(challengeRef.current?.id, challengeRef.current?.arenaType);
     const isFootball=isFootballCourse(challengeRef.current?.id, challengeRef.current?.arenaType);
     const isRace = isCarRaceCourse(challengeRef.current, challengeRef.current?.chassisId);
-    extractBlocks();
     if (isFootball) {
       const progs = Object.values(footballProgramsRef.current || {});
       return progs.some((p) => p?.tickLoops?.length || Object.values(p?.handlers || {}).some((h) => h?.length));
@@ -13920,14 +14582,18 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
         || Object.values(p?.handlers || {}).some((h) => h?.length));
     }
     return countRunnableActions(eventHandlersRef.current)>0;
-  },[extractBlocks,countRunnableActions]);
+  },[countRunnableActions]);
 
   const doRun=useCallback(()=>{
     if (coachRef.current && !coachRef.current.gate()) return;
+    const simHandle = sceneHandleRef.current;
+    // Kick the 3D loop before Blockly compile — compile was freezing tablets for seconds.
+    if (simHandle) simHandle.goNow = 1;
     const isFlappy=isFlappyBirdCourse(challengeRef.current?.id)||challengeRef.current?.arenaType==='flappy_bird';
     const isFight=isFightingCourse(challengeRef.current?.id, challengeRef.current?.arenaType);
     const isFootball=isFootballCourse(challengeRef.current?.id, challengeRef.current?.arenaType);
     const isRace = isCarRaceCourse(challengeRef.current, challengeRef.current?.chassisId);
+    let acts=extractBlocks();
     if(!hasRunnableProgram()){
       const family = detectRobotType(rc);
       const hint = family === 'drone' || family === 'jet' || family === 'hover'
@@ -13935,81 +14601,46 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
         : family === 'humanoid' || family === 'spider'
           ? 'This robot walks, so try Step Forward.'
           : 'Add a movement block first';
-      const isCraft = isCraftCourse(challengeRef.current?.id, challengeRef.current?.arenaType) || challengeRef.current?.chassisId === 'blockbot';
-      const starter = isFlappy ? FLAPPY_STARTER_SCRIPT : isCraft ? CRAFT_STARTER_SCRIPT : getPrimaryStarterScript(rc?.chassisId || 'rover', challengeRef.current?.modeIndex || 1);
-      const body = starter.filter((b) => b.id && b.id !== 'when_start');
-      if (body.length) customScriptRef.current = body;
-      setActivity([hint, challengeRef.current?.tryThis || 'Try the starter blocks, then press Simulate again.'].filter(Boolean));
-      if (!body.length) return;
+      // No ready-made code: the robot only does what the pupil writes
+      setActivity([hint, 'Add your own blocks, then press Simulate again.']);
+      return;
     }
-    const acts=extractBlocks();
     let raceActs = acts;
-    if (isRace && (!raceActs || raceActs.length === 0)) {
-      const arena = challengeRef.current?.arenaType
-        || challengeRef.current?.linkedRaceCourse
-        || challengeRef.current?.id;
-      const starter = getRaceStarterScript(arena, challengeRef.current?.id);
-      raceActs = starter.filter((b) => b.id !== 'when_start');
-    }
-    const keepArena = isFlappy || isFight || isFootball || isRace;
     xpAwardedRef.current=false;
     failShownRef.current=false;
-    if (isFootball) {
-      const scene = sceneHandleRef.current?.scene;
-      if (scene) scene.userData.footballUserStopped = false;
-    }
+    codeBlocksRef.current = raceActs;
+    if (isFootball && simHandle?.scene) simHandle.scene.userData.footballUserStopped = false;
+    if (simHandle) simHandle.goNow = 1;
+    const customLen=(customScriptRef.current||[]).length;
+    const activity = isRace
+      ? [`🏁 ${rc.name} racing!`, `Drive with ${RACE_CONTROLS_HELP}`, `Track: ${challenge.name}`]
+      : isFootball
+        ? [`⚽ ${rc.name} on the pitch!`, `Challenge: ${challenge.name}`, `${customLen || 5} blocks loaded — chase, pass & shoot!`]
+        : (isFlappy || isFight)
+          ? [isFlappy ? `🐦 ${rc.name} — press SPACE to flap!` : `🥊 ${rc.name} in the ring!`, `Challenge: ${challenge.name}`, `${customLen || 3} blocks loaded`]
+          : [`${rc.name} GO! 🚀`, `Challenge: ${challenge.name}`, `${customLen || 0} blocks loaded`];
     if (fightResultsTimerRef.current) {
       clearTimeout(fightResultsTimerRef.current);
       fightResultsTimerRef.current = null;
     }
-    setFightResults(null);
-    setVictory(null);
-    setFailure(null);
-    setCombatStats(null); // clear stale VICTORY banner from the previous fight
-    setCodeBlocks(raceActs);
-    codeBlocksRef.current = raceActs;
-    if (!keepArena) {
-      simKeyRef.current++; setSimKey(simKeyRef.current);
-    }
-    setStats({time:0,dist:0,battery:100,avoided:0,progress:0,collisions:0});
-    setHighlightId(null);
-    setActiveStepIndex(-1);
-    if (keepArena) setSimRunKey((k) => k + 1);
-    else setIntroKey((k) => k + 1);
-    const customLen=(customScriptRef.current||[]).length;
-    if (isRace) {
-      // Race: skip 3-2-1 overlay — drive immediately on Simulate.
-      setShowCountdown(false);
-      setRunMode('running');
-      setActivity([`🏁 ${rc.name} racing!`, `Drive with ${RACE_CONTROLS_HELP}`, `Track: ${challenge.name}`]);
-    } else if (isFootball) {
-      setShowCountdown(false);
-      setRunMode('running');
-      setActivity([
-        `⚽ ${rc.name} on the pitch!`,
-        `Challenge: ${challenge.name}`,
-        `${customLen || 5} blocks loaded — chase, pass & shoot!`,
-      ]);
-      setTimeout(() => flappyStartRunRef.current?.(), 0);
-    } else if (isFlappy || isFight) {
-      setShowCountdown(false);
-      setRunMode('running');
-      setActivity([
-        isFlappy ? `🐦 ${rc.name} — press SPACE to flap!` : `🥊 ${rc.name} in the ring!`,
-        `Challenge: ${challenge.name}`,
-        `${customLen || 3} blocks loaded`,
-      ]);
-      setTimeout(() => flappyStartRunRef.current?.(), 0);
-    } else {
-      setShowCountdown(false);
-      setRunMode('running');
-      setActivity([
-        `${rc.name} GO! 🚀`,
-        `Challenge: ${challenge.name}`,
-        `${customLen || 0} blocks loaded`,
-      ]);
-      setTimeout(() => flappyStartRunRef.current?.(), 0);
-    }
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        coachRef.current?.flushGate?.();
+        setFightResults(null);
+        setVictory(null);
+        setFailure(null);
+        setCombatStats(null);
+        setCodeBlocks(raceActs);
+        setStats({time:0,dist:0,battery:100,avoided:0,progress:0,collisions:0});
+        setHighlightId(null);
+        setActiveStepIndex(-1);
+        setSimRunKey((k) => k + 1);
+        setIntroKey((k) => k + 1);
+        setShowCountdown(false);
+        setRunMode('running');
+        setActivity(activity);
+      });
+    });
   },[extractBlocks,hasRunnableProgram,rc,challenge]);
 
   // FIFA: pre-compile scripts when the arena loads — user must press ▶ Simulate to start.
@@ -14025,7 +14656,7 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
     setShowCountdown(false);
     setRunMode('running');
     setActivity((a)=>[...a, `${rc.name} GO! 🚀`]);
-    flappyStartRunRef.current?.();
+    if (sceneHandleRef.current) sceneHandleRef.current.goNow = 1;
   },[extractBlocks, rc]);
 
   const doPause=useCallback(()=>setRunMode(m=>m==='paused'?'running':'paused'),[]);
@@ -14259,9 +14890,17 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
         setTimeout(() => setMissionVictory(null), 5000);
       } else if (ch?.isChassisMode) {
         let earned = 1;
-        const cpTotal = data.missionCheckpointsTotal || ch.checkpoints || 0;
-        if (cpTotal === 0 || (data.missionCheckpoint || 0) >= cpTotal) earned = 2;
-        if ((data.collisions || 0) === 0) earned = cpTotal > 0 ? 3 : Math.max(earned, 2);
+        if (data.raceMode && data.raceWon) {
+          // Races: ★ finish · ★★ beat the target time · ★★★ beat it without falling or crashing
+          const fast = data.raceTargetTime == null || (data.raceTotalTime ?? Infinity) <= data.raceTargetTime;
+          const clean = !(data.raceFallCount > 0) && (data.collisions || 0) === 0;
+          if (fast) earned = clean ? 3 : 2;
+        } else {
+          const cpTotal = data.missionCheckpointsTotal || ch.checkpoints || 0;
+          if (cpTotal === 0 || (data.missionCheckpoint || 0) >= cpTotal) earned = 2;
+          if ((data.collisions || 0) === 0) earned = cpTotal > 0 ? 3 : Math.max(earned, 2);
+        }
+        xpEarned = calcXpEarned(ch, data.collisions || 0) + (earned - 1) * 25;
         setMissionVictory({ winText: ch.shortName || ch.name, xp: xpEarned, stars: earned });
         setTimeout(() => setMissionVictory(null), 5000);
         setActivity((a) => [...a, `✅ Mode ${ch.modeIndex || 1} · ${'⭐'.repeat(earned)} · +${xpEarned} XP`]);
@@ -14406,15 +15045,7 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
     try { localStorage.setItem(LAB_COURSE_LS_KEY, enriched.id); } catch { /* ignore */ }
     if (clearScriptRef.current) clearScriptRef.current();
     customScriptRef.current = [];
-    if (isCarRaceCourse(enriched, enriched.chassisId || rc?.chassisId)) {
-      const raceArena = enriched.arenaType || enriched.linkedRaceCourse || enriched.id;
-      const starter = getRaceStarterScript(raceArena, enriched.id);
-      const blocks = starter.filter((b) => b.id !== 'when_start');
-      customScriptRef.current = blocks;
-      setBlockCount(blocks.length);
-    } else {
-      setBlockCount(0);
-    }
+    setBlockCount(0);
     setCodeBlocks([]);
     setActiveCourse(enriched);
     setShowWorlds(false);
@@ -14505,6 +15136,7 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
         selectBiomeTrack(mk);
       } catch { /* ignore */ }
     };
+    applyTrackFromHash();
     window.addEventListener('hashchange', applyTrackFromHash);
     return () => window.removeEventListener('hashchange', applyTrackFromHash);
   }, [selectBiomeTrack]);
@@ -14513,9 +15145,14 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
   const robotCourses = useMemo(() => {
     const chassisId = rc?.chassisId || 'rover';
     if (isFootballRobot(rc)) {
-      return FOOTBALL_COURSES.map((c) => enrichCourseWithGameLogic(c));
+      // The ten football games, then the football robot's modes 11–50
+      const tierModes = getCoursesForChassis('footballbot', ALL_COURSES).filter((c) => (c.modeIndex || 0) > 10);
+      return [...FOOTBALL_COURSES, ...tierModes].map((c) => enrichCourseWithGameLogic(c));
     }
-    return getCoursesForChassis(chassisId, ALL_COURSES).map((c) => enrichCourseWithGameLogic(c));
+    const own = getCoursesForChassis(chassisId, ALL_COURSES);
+    // Fighting robots get the fighting worlds (castle, dojo, pirate ship, wizard tower, space) at the top
+    const worlds = isFighterRobot(rc) ? FIGHT_WORLD_COURSES : [];
+    return [...worlds, ...own].map((c) => enrichCourseWithGameLogic(c));
   }, [rc?.chassisId]);
 
   useEffect(()=>{
@@ -14546,8 +15183,10 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
     || FOOTBALL_TEAM_ROLES.find((r) => r.id === footballActiveRoleRef.current)
     || FOOTBALL_TEAM_ROLES[1];
   const isRaceCourseActive = isCarRaceCourse(challenge, rc?.chassisId);
-  const isCraftCourseActive = isCraftCourse(challenge?.id, challenge?.arenaType);
-  const labStarterScript = isFlappyCourse ? FLAPPY_STARTER_SCRIPT : isCraftCourseActive ? CRAFT_STARTER_SCRIPT : isFootballCourseActive ? (challenge?.matchMode === 'keeper' ? FOOTBALL_KEEPER_STARTER_SCRIPT : FOOTBALL_STARTER_SCRIPT) : isFightingCourseActive ? FIGHTING_STARTER_SCRIPT : getPrimaryStarterScript(rc?.chassisId || 'rover', challenge?.modeIndex || 1);
+  const isCraftCourseActive = isCraftCourse(challenge?.id, challenge?.arenaType, challenge?.chassisId || rc?.chassisId);
+  // Races start from the track's own Route guide instead of the generic robot example
+  const raceRouteStarter = isRaceCourseActive ? buildRouteStarterScript(stats.raceRouteGuide, 3, stats.raceTotalLaps || 1) : null;
+  const labStarterScript = challenge?.customArena ? getPrimaryStarterScript(customArenaPaletteRobot(rc), 1) : raceRouteStarter ? raceRouteStarter : isFlappyCourse ? FLAPPY_STARTER_SCRIPT : isCraftCourseActive ? CRAFT_STARTER_SCRIPT : isFootballCourseActive ? (challenge?.matchMode === 'keeper' ? FOOTBALL_KEEPER_STARTER_SCRIPT : FOOTBALL_STARTER_SCRIPT) : isFightingCourseActive ? FIGHTING_STARTER_SCRIPT : getPrimaryStarterScript(rc?.chassisId || 'rover', challenge?.modeIndex || 1);
   const coach = useStudioCoach({
     kind: isRaceCourseActive ? 'race' : isFootballCourseActive ? 'football' : isFightingCourseActive ? 'fight' : isFlappyCourse ? 'flappy' : isCraftCourseActive ? 'craft' : 'robot',
     challenge,
@@ -14616,6 +15255,9 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
       className={[
         'bb-game-root',
         'bb-new-layout',
+        studioDevice.kind ? `bb-device-${studioDevice.kind}` : '',
+        studioDevice.lowPower ? 'bb-device-lowpower' : '',
+        studioDevice.stackedLayout ? 'bb-device-stack' : '',
         isBiomeTrackActive ? 'bb-biome-split' : '',
         isCodeRacerImmersive ? 'bb-coderacer-immersive' : '',
         isFootballCourseActive ? 'bb-football-layout' : '',
@@ -14628,7 +15270,7 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
       {(!isFootballCourseActive || !footballCinema) && (
         <CustomCodePanel
           key={`${challenge?.id || 'lab'}-${arenaType}-${footballLaunchKey}-${isFootballCourseActive ? 'football' : 'std'}`}
-          robotType={isFootballCourseActive ? 'footballbot' : (rc?.chassisId || detectRobotType(rc))}
+          robotType={isFootballCourseActive ? 'footballbot' : (challenge?.customArena ? customArenaPaletteRobot(rc) : challenge?.isCustomTrack ? 'rover' : (rc?.chassisId || detectRobotType(rc)))}
           scriptRef={customScriptRef}
           clearRef={clearScriptRef}
           onBlockCountChange={setBlockCount}
@@ -14682,7 +15324,7 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
                 aria-pressed={footballCinema}
                 title={footballCinema ? 'Show coding blocks' : 'Make the match bigger'}
               >
-                {footballCinema ? '⌨ Show Code' : '🎬 Cinema'}
+                <IconText>{footballCinema ? '⌨ Show Code' : '🎬 Cinema'}</IconText>
               </button>
               <button
                 type="button"
@@ -14691,7 +15333,7 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
                 aria-pressed={footballCamMode === 'coop'}
                 title={footballCamMode === 'coop' ? 'Switch to broadcast camera' : 'Switch to wide co-op camera'}
               >
-                {footballCamMode === 'coop' ? '📺 Broadcast' : '📐 Co-op'}
+                <IconText>{footballCamMode === 'coop' ? '📺 Broadcast' : '📐 Co-op'}</IconText>
               </button>
             </>
           )}
@@ -14710,6 +15352,9 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
               <div className="bb-viewport-toolbar-row bb-viewport-toolbar-row--controls">
                 <span className="bb-vp-build-stamp" title="Deployed build stamp">{buildStamp || 'dev'}</span>
                 <div className="bb-vp-run-controls bb-vp-run-controls--toolbar">
+                {onExit && (
+                  <button type="button" className="bb-vp-back-btn" onClick={onExit} title="Back to homepage">← Back</button>
+                )}
                 <button
                   type="button"
                   className="bb-vp-modes-btn"
@@ -14717,22 +15362,22 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
                   disabled={isRunning}
                   title="Pick a game mode"
                 >
-                  🎮 Game modes
+                  <EmojiIcon e="🎮" style={{ marginRight: '0.35em' }} />Game modes
                 </button>
                 {isIdle && !showCountdown && (
-                  <button type="button" className="bb-vp-run-btn" onClick={doRun}>▶ Simulate</button>
+                  <button type="button" className="bb-vp-run-btn" onClick={doRun}><EmojiIcon e="▶" style={{ marginRight: '0.35em' }} />Simulate</button>
                 )}
                 {isRunning && (
-                  <button type="button" className="bb-vp-run-btn bb-vp-pause-btn" onClick={doPause}>⏸</button>
+                  <button type="button" className="bb-vp-run-btn bb-vp-pause-btn" onClick={doPause}><EmojiIcon e="⏸" /></button>
                 )}
                 {isPaused && (
-                  <button type="button" className="bb-vp-run-btn" onClick={doPause}>▶</button>
+                  <button type="button" className="bb-vp-run-btn" onClick={doPause}><EmojiIcon e="▶" /></button>
                 )}
                 {(isRunning || isPaused) && (
                   <button type="button" className="bb-vp-stop-btn" onClick={doReset}>■ Stop</button>
                 )}
                 {!isRunning && !isPaused && (
-                  <button type="button" className="bb-vp-step-btn" onClick={doStep} title="Step one block">⏭</button>
+                  <button type="button" className="bb-vp-step-btn" onClick={doStep} title="Step one block"><EmojiIcon e="⏭" /></button>
                 )}
                 <button type="button" className="bb-vp-icon-btn" onClick={toggleFullscreen} title="Fullscreen">{isFullscreen ? '⤓' : '⤢'}</button>
                 <button
@@ -14748,7 +15393,7 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
                     setIntroKey((k) => k + 1);
                   }}
                 >
-                  {qualityOverride === 'low' ? '🐢' : qualityOverride === 'medium' ? '⚙️' : qualityOverride === 'high' ? '✨' : '🔄'}
+                  <IconText>{qualityOverride === 'low' ? '🐢' : qualityOverride === 'medium' ? '⚙️' : qualityOverride === 'high' ? '✨' : '🔄'}</IconText>
                 </button>
                 </div>
               </div>
@@ -14776,7 +15421,7 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
               </div>
             </>
           )}
-          {false && isBiomeTrackActive && stats.trackLoading && !stats.sceneryPopulated && runMode !== 'running' && (
+          {trackLoadingUi && runMode !== 'running' && (
             <div className="bb-track-loading-overlay" role="status">
               Loading track… 🏎️
             </div>
@@ -14793,10 +15438,10 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
                 boxShadow: '0 8px 28px rgba(0,0,0,0.35)',
               }}
             >
-              <span style={{ fontSize: 28, lineHeight: 1 }}>{challenge.environmentEmoji || '🎮'}</span>
+              <span style={{ fontSize: 28, lineHeight: 1 }}><IconText>{challenge.environmentEmoji || '🎮'}</IconText></span>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 11, fontWeight: 800, color: challenge.color || '#93c5fd', letterSpacing: '0.06em', textShadow: '0 1px 3px rgba(0,0,0,0.9)', filter: 'brightness(1.35)' }}>
-                  {challenge.environmentName || 'Robot Mission'} · Mode {challenge.modeIndex || 1}/10
+                  {challenge.environmentName || 'Robot Mission'} · Mode {challenge.modeIndex || 1}{(challenge.modeIndex || 1) > 10 ? ` · ${challenge.difficulty || ""}` : "/10"}
                 </div>
                 <div style={{ fontSize: 14, fontWeight: 900, color: '#f8fafc', marginTop: 2 }}>
                   {challenge.shortName || challenge.name}
@@ -14841,7 +15486,7 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
           {showCountdown && <RunCountdown onDone={onCountdownDone} />}
           {showFightHub && isFightingCourseActive && (
             <FightingHub
-              courses={robotCourses.filter((c) => c.arenaType === 'robot_fight')}
+              courses={[...robotCourses.filter((c) => c.arenaType === 'robot_fight' && !c.fightWorld), ...FIGHT_WORLD_COURSES]}
               currentId={challenge?.id}
               career={fightCareer}
               onSelect={(c) => { selectCourse(c); setShowFightHub(false); }}
@@ -14867,12 +15512,16 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
           {isFightingCourseActive && !isRunning && !fightResults && !showCountdown && !combatStats?.over && (
             <div className="fight-arena-entry">
               <div className="fight-arena-entry-inner">
-                <span className="fight-arena-entry-icon">🥊</span>
-                <strong>COMBAT ARENA</strong>
+                <span className="fight-arena-entry-icon"><EmojiIcon e="🥊" /></span>
+                <strong>{getFightWorld(challenge) ? getFightWorld(challenge).name.toUpperCase() : 'BOXING ARENA'}</strong>
                 <span>{challenge?.name || 'Training Arena'}</span>
-                <span className="fight-arena-entry-hint">A/D kicks · ↓+A sweep · Striker blocks in Code · ▶ Run</span>
+                <span className="fight-arena-entry-hint">
+                  {getFightWorld(challenge)
+                    ? `${getFightWorld(challenge).hero.label} vs ${challenge?.enemyType === 'dummy' ? 'practice dummy' : getFightWorld(challenge).rival.label} · code your moves, then ▶ Simulate`
+                    : 'Code your punches and guards, then ▶ Simulate'}
+                </span>
                 <button type="button" className="fight-hub-open-btn" onClick={() => setShowFightHub(true)}>
-                  🏟️ Boxing Modes
+                  ⚔️ Fighting Arenas
                 </button>
               </div>
             </div>
@@ -14888,13 +15537,13 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
           )}
           {isFootballCourseActive && isIdle && !showCountdown && !fightResults && (
             <button type="button" className="football-sim-idle-banner" onClick={doRun}>
-              ▶ START MATCH
+              <EmojiIcon e="▶" style={{ marginRight: '0.35em' }} />START MATCH
             </button>
           )}
           {isFootballCourseActive && !isRunning && !fightResults && !showCountdown && (
             <div className="fight-arena-entry football-arena-entry">
               <div className="fight-arena-entry-inner">
-                <span className="fight-arena-entry-icon">⚽</span>
+                <span className="fight-arena-entry-icon"><EmojiIcon e="⚽" /></span>
                 <strong>ROBOT FOOTBALL</strong>
                 <span>{challenge?.name || 'FIFA 3v3 Match'}</span>
                 <span className="fight-arena-entry-hint">
@@ -14931,7 +15580,7 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
                     setFifaCodeOpen(true);
                   }}
                 >
-                  <span>{role.icon}</span>
+                  <span><EmojiIcon e={role.icon} /></span>
                   <span>#{role.number} {role.label}</span>
                 </button>
               ))}
@@ -15003,6 +15652,9 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
           )}
           {!showCodeRacerCup && !isCodeRacerImmersive && (
           <div className="bb-vp-run-controls">
+            {onExit && (
+              <button type="button" className="bb-vp-back-btn" onClick={onExit} title="Back to homepage">← Back</button>
+            )}
             <button
               type="button"
               className="bb-vp-modes-btn"
@@ -15010,22 +15662,22 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
               disabled={isRunning}
               title="Pick a game mode"
             >
-              🎮 Game modes
+              <EmojiIcon e="🎮" style={{ marginRight: '0.35em' }} />Game modes
             </button>
             {isIdle && !showCountdown && (
-              <button type="button" className="bb-vp-run-btn" onClick={doRun}>▶ Simulate</button>
+              <button type="button" className="bb-vp-run-btn" onClick={doRun}><EmojiIcon e="▶" style={{ marginRight: '0.35em' }} />Simulate</button>
             )}
             {isRunning && (
-              <button type="button" className="bb-vp-run-btn bb-vp-pause-btn" onClick={doPause}>⏸</button>
+              <button type="button" className="bb-vp-run-btn bb-vp-pause-btn" onClick={doPause}><EmojiIcon e="⏸" /></button>
             )}
             {isPaused && (
-              <button type="button" className="bb-vp-run-btn" onClick={doPause}>▶</button>
+              <button type="button" className="bb-vp-run-btn" onClick={doPause}><EmojiIcon e="▶" /></button>
             )}
             {(isRunning || isPaused) && (
               <button type="button" className="bb-vp-stop-btn" onClick={doReset}>■ Stop</button>
             )}
             {!isRunning && !isPaused && (
-              <button type="button" className="bb-vp-step-btn" onClick={doStep} title="Step one block">⏭</button>
+              <button type="button" className="bb-vp-step-btn" onClick={doStep} title="Step one block"><EmojiIcon e="⏭" /></button>
             )}
             <button type="button" className="bb-vp-icon-btn" onClick={toggleFullscreen} title="Fullscreen">{isFullscreen ? '⤓' : '⤢'}</button>
             <button
@@ -15041,14 +15693,14 @@ export default function LiveLabPage({robotConfig:robotConfigProp,onFpsUpdate,ini
                 setIntroKey((k) => k + 1);
               }}
             >
-              {qualityOverride === 'low' ? '🐢' : qualityOverride === 'medium' ? '⚙️' : qualityOverride === 'high' ? '✨' : '🔄'}
+              <IconText>{qualityOverride === 'low' ? '🐢' : qualityOverride === 'medium' ? '⚙️' : qualityOverride === 'high' ? '✨' : '🔄'}</IconText>
             </button>
           </div>
           )}
 
           {execLabel && isRunning && !isFightingCourseActive && !isFootballCourseActive && !isCodeRacerImmersive && (
             <div className="bb-exec-pill" style={{ borderColor: execLabel.color, color: execLabel.color }}>
-              ⚡ {execLabel.text}
+              <EmojiIcon e="⚡" style={{ marginRight: '0.35em' }} />{execLabel.text}
             </div>
           )}
 

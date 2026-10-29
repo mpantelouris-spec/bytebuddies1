@@ -10,6 +10,7 @@ import { migrateAssembly } from '../../services/assembly-service.js';
 import { findFirstOpenSlot } from '../../utils/build-slots.js';
 import { useUiStore } from '../../store/uiStore.js';
 import WorkshopCustomizePanel from './WorkshopCustomizePanel.jsx';
+import { EmojiIcon, IconText } from '../../../components/ui/Icon.jsx';
 
 function dragPayload(e, payload) {
   e.dataTransfer.setData('application/vrd-part', JSON.stringify({ type: 'part', ...payload }));
@@ -115,7 +116,7 @@ export default function WorkshopPartsPalette({
             onClick={() => setZone(z.id)}
             title={z.hint}
           >
-            <span className="iw-zone-icon">{z.icon}</span>
+            <span className="iw-zone-icon"><EmojiIcon e={z.icon} /></span>
             <span>{z.label}</span>
           </button>
         ))}
@@ -169,7 +170,7 @@ export default function WorkshopPartsPalette({
           className={`iw-mode-toggle ${buildMode === 'blocks' ? 'active' : ''}`}
           onClick={() => onSetBuildMode?.(buildMode === 'blocks' ? 'advanced' : 'blocks')}
         >
-          {buildMode === 'blocks' ? '🔩 Part Mode' : '🧱 Block Builder'}
+          <IconText>{buildMode === 'blocks' ? '🔩 Part Mode' : '🧱 Block Builder'}</IconText>
         </button>
       </footer>
     </aside>

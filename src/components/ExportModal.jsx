@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useProject } from '../contexts/ProjectContext';
+import { EmojiIcon, IconText } from './ui/Icon.jsx';
 
 export default function ExportModal({ onClose }) {
   const [format, setFormat] = useState('html');
@@ -28,13 +29,13 @@ export default function ExportModal({ onClose }) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" style={{ maxWidth: 560 }} onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h2>📦 Export Project</h2>
+          <h2><EmojiIcon e="📦" style={{ marginRight: '0.35em' }} />Export Project</h2>
           <button className="btn btn-ghost btn-icon" onClick={onClose}>✕</button>
         </div>
         <div className="modal-body">
           {done ? (
             <div style={{ textAlign: 'center', padding: 32 }}>
-              <div style={{ fontSize: 64, marginBottom: 16 }} className="animate-bounce-in">✅</div>
+              <div style={{ fontSize: 64, marginBottom: 16 }} className="animate-bounce-in"><EmojiIcon e="✅" /></div>
               <h3 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>Export Complete!</h3>
               <p style={{ color: 'var(--text-secondary)', marginBottom: 20 }}>
                 Your project "{activeProject?.name}" has been exported as {formats.find(f => f.id === format)?.name}.
@@ -66,7 +67,7 @@ export default function ExportModal({ onClose }) {
                     }}
                     onClick={() => setFormat(f.id)}
                   >
-                    <span style={{ fontSize: 28 }}>{f.icon}</span>
+                    <span style={{ fontSize: 28 }}><EmojiIcon e={f.icon} /></span>
                     <div>
                       <div style={{ fontWeight: 600, fontSize: 14 }}>{f.name}</div>
                       <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{f.desc}</div>
@@ -84,7 +85,7 @@ export default function ExportModal({ onClose }) {
           <div className="modal-footer">
             <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
             <button className="btn btn-primary" onClick={handleExport} disabled={exporting}>
-              {exporting ? '⏳ Exporting...' : `Export as ${formats.find(f => f.id === format)?.name}`}
+              <IconText>{exporting ? '⏳ Exporting...' : `Export as ${formats.find(f => f.id === format)?.name}`}</IconText>
             </button>
           </div>
         )}

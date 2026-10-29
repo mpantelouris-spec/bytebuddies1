@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useUser } from '../contexts/UserContext';
-import { signInWithGoogle, lookupClassByCode, addStudentToClass, signUpWithEmail, signInWithEmail } from '../firebase';
+import { signInWithGoogle, rememberAuthRole, lookupClassByCode, addStudentToClass, signUpWithEmail, signInWithEmail } from '../firebase';
+import { EmojiIcon, IconText } from './ui/Icon.jsx';
+import ProfileAvatar from './ui/ProfileAvatar.jsx';
 
 const GoogleLogo = () => (
   <svg width="24" height="24" viewBox="0 0 24 24">
@@ -71,8 +73,8 @@ function GooglePickerModal({ onSelect, onClose }) {
           </div>
         </div>
         <div style={{ borderTop: '1px solid #e8eaed', padding: '16px 24px', display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#5f6368' }}>
-          <a href="#" style={s.link} onClick={e => e.preventDefault()}>Privacy Policy</a>
-          <a href="#" style={s.link} onClick={e => e.preventDefault()}>Terms of Service</a>
+          <a href="/privacy.html" target="_blank" rel="noopener noreferrer" style={s.link}>Privacy Policy</a>
+          <a href="/terms.html" target="_blank" rel="noopener noreferrer" style={s.link}>Terms of Service</a>
         </div>
       </div>
     </div>
@@ -201,13 +203,14 @@ export default function AuthModal({ onClose, initialRole, initialMode = 'login' 
       setAuthStep('account');
       return;
     }
-    setAuthStep('role');
-    setSelectedRole(null);
+    setSelectedRole(initialRole || null);
+    setAuthStep(initialRole ? 'signin' : 'role');
     if (initialMode === 'signup') setMode('signup');
   }, [initialRole, initialMode]); // eslint-disable-line
 
   const handleRoleSelect = (role) => {
     setSelectedRole(role);
+    rememberAuthRole(role);
     setAuthStep('signin');
   };
 
@@ -307,8 +310,10 @@ export default function AuthModal({ onClose, initialRole, initialMode = 'login' 
   const handleRealGoogle = async () => {
     setGoogleLoading(true);
     setError('');
+    rememberAuthRole(selectedRole || 'student');
     try {
       const userData = await signInWithGoogle();
+      if (!userData) return;
       if (!validateTeacherEmail(userData.email || '')) {
         setGoogleLoading(false);
         return;
@@ -317,12 +322,32 @@ export default function AuthModal({ onClose, initialRole, initialMode = 'login' 
       proceedAfterSignIn({ name: displayName, avatar: displayName.slice(0, 2).toUpperCase(), email: userData.email });
     } catch (e) {
       console.error('[Auth] Google sign-in error:', e);
-      if (e.code !== 'auth/popup-closed-by-user') {
-        setError(`Google sign-in failed: ${e.message || e.code || 'Unknown error'}`);
+      const code = e?.code || '';
+      if (code === 'auth/unauthorized-domain') {
+        setError('This school Chromebook blocked the sign-in domain. Try “Continue as a pupil” below, or ask IT to allow bytebuddies.technology.');
+      } else if (code === 'auth/network-request-failed') {
+        setError('Could not reach Google. On school Wi-Fi, try “Continue as a pupil” below.');
+      } else {
+        setError('Google sign-in did not finish (school Chromebooks often block popups). Use “Continue as a pupil” or email instead.');
       }
     } finally {
       setGoogleLoading(false);
     }
+  };
+
+  const handleGuestStudent = () => {
+    setError('');
+    const guestName = (name.trim() || 'Pupil').slice(0, 24);
+    rememberAuthRole('student');
+    finishLogin({
+      name: guestName,
+      avatar: guestName.slice(0, 2).toUpperCase(),
+      avatarEmoji: '🎓',
+      email: '',
+      guest: true,
+    }, 'student');
+    setSuccess('You’re in — have fun!');
+    setTimeout(() => onClose(), 500);
   };
 
   const roleCardBase = {
@@ -351,10 +376,10 @@ export default function AuthModal({ onClose, initialRole, initialMode = 'login' 
         <div className="modal" style={{ maxWidth: 460 }} onClick={(e) => e.stopPropagation()}>
           <div className="modal-header">
             <h2>
-              {authStep === 'role' ? '👋 Welcome to ByteBuddies'
+              <IconText>{authStep === 'role' ? '👋 Welcome to ByteBuddies'
                 : authStep === 'account' ? '👤 My Account'
                 : authStep === 'classCode' ? '🎓 Verify Student'
-                : (mode === 'login' ? '👋 Welcome Back' : '🚀 Join ByteBuddies')}
+                : (mode === 'login' ? '👋 Welcome Back' : '🚀 Join ByteBuddies')}</IconText>
             </h2>
             <button className="btn btn-ghost btn-icon" onClick={onClose}>✕</button>
           </div>
@@ -369,13 +394,11 @@ export default function AuthModal({ onClose, initialRole, initialMode = 'login' 
                   </div>
                 )}
                 <div style={{ textAlign: 'center', padding: '12px 0' }}>
-                  <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, fontWeight: 700, color: '#fff', margin: '0 auto 12px' }}>
-                    {user?.avatarEmoji || user?.avatar || '?'}
-                  </div>
+                  <ProfileAvatar value={user?.avatarEmoji} name={user?.name} size={64} style={{ margin: '0 auto 12px' }} />
                   <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--text-primary)' }}>{user?.name}</div>
                   {user?.email && <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>{user.email}</div>}
                   <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 8, padding: '4px 12px', borderRadius: 20, background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.2)' }}>
-                    <span style={{ fontSize: 14 }}>{user?.role === 'teacher' ? '👩‍🏫' : '🎓'}</span>
+                    <span style={{ fontSize: 14 }}><IconText>{user?.role === 'teacher' ? '👩‍🏫' : '🎓'}</IconText></span>
                     <span style={{ fontSize: 12, fontWeight: 600, color: '#6366f1', textTransform: 'capitalize' }}>{user?.role || 'Student'}</span>
                   </div>
                 </div>
@@ -386,7 +409,7 @@ export default function AuthModal({ onClose, initialRole, initialMode = 'login' 
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--border-color)' }}>
                     <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Streak</span>
-                    <span style={{ fontSize: 13, fontWeight: 600 }}>🔥 {user?.streak || 0} days</span>
+                    <span style={{ fontSize: 13, fontWeight: 600 }}><EmojiIcon e="🔥" style={{ marginRight: '0.35em' }} />{user?.streak || 0} days</span>
                   </div>
                 </div>
                 <button className="btn btn-danger w-full" style={{ padding: 12, marginTop: 4 }} onClick={handleLogout}>
@@ -399,7 +422,10 @@ export default function AuthModal({ onClose, initialRole, initialMode = 'login' 
             {authStep === 'role' && (
               <>
                 <p style={{ fontSize: 14, color: 'var(--text-muted)', textAlign: 'center', margin: 0 }}>
-                  First, tell us who you are
+                  Sign in with the account your school has activated.
+                </p>
+                <p style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', lineHeight: 1.5, margin: '0 0 4px' }}>
+                  New school? <a href="mailto:bytebuddies.technology@gmail.com?subject=ByteBuddies%20school%20access%20and%20quote" style={{ color: 'var(--accent-primary)', fontWeight: 600 }}>Contact us for a quote</a>. We’ll activate your teacher account and set its pupil places; you can add pupils up to that limit.
                 </p>
                 <div style={{ display: 'flex', gap: 16, marginTop: 8 }}>
                   <div
@@ -408,9 +434,9 @@ export default function AuthModal({ onClose, initialRole, initialMode = 'login' 
                     onMouseEnter={e => { if (selectedRole !== 'student') e.currentTarget.style.borderColor = '#6366f1'; }}
                     onMouseLeave={e => { if (selectedRole !== 'student') e.currentTarget.style.borderColor = 'var(--border-color)'; }}
                   >
-                    <div style={{ fontSize: 40, marginBottom: 12 }}>🎓</div>
+                    <div style={{ fontSize: 40, marginBottom: 12 }}><EmojiIcon e="🎓" /></div>
                     <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 6, color: 'var(--text-primary)' }}>I'm a Student</div>
-                    <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>Access your coding workspace, games and challenges</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>Sign in to your school-enabled coding workspace</div>
                   </div>
                   <div
                     style={selectedRole === 'teacher' ? roleCardSelected : roleCardBase}
@@ -418,9 +444,9 @@ export default function AuthModal({ onClose, initialRole, initialMode = 'login' 
                     onMouseEnter={e => { if (selectedRole !== 'teacher') e.currentTarget.style.borderColor = '#6366f1'; }}
                     onMouseLeave={e => { if (selectedRole !== 'teacher') e.currentTarget.style.borderColor = 'var(--border-color)'; }}
                   >
-                    <div style={{ fontSize: 40, marginBottom: 12 }}>👩‍🏫</div>
+                    <div style={{ fontSize: 40, marginBottom: 12 }}><EmojiIcon e="👩‍🏫" /></div>
                     <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 6, color: 'var(--text-primary)' }}>I'm a Teacher</div>
-                    <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>Manage your classroom and track student progress</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>Sign in to manage your school’s classes and pupils</div>
                   </div>
                 </div>
               </>
@@ -430,7 +456,7 @@ export default function AuthModal({ onClose, initialRole, initialMode = 'login' 
             {authStep === 'classCode' && (
               <>
                 <div style={{ textAlign: 'center', padding: '8px 0 4px' }}>
-                  <div style={{ fontSize: 48, marginBottom: 12 }}>🏫</div>
+                  <div style={{ fontSize: 48, marginBottom: 12 }}><EmojiIcon e="🏫" /></div>
                   <h3 style={{ margin: '0 0 8px', fontSize: 17, fontWeight: 700, color: 'var(--text-primary)' }}>Enter Your Class Code</h3>
                   <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.6 }}>
                     Ask your teacher for the class code to verify you're an enrolled student.
@@ -476,7 +502,7 @@ export default function AuthModal({ onClose, initialRole, initialMode = 'login' 
               <>
                 {selectedRole && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'rgba(99,102,241,0.1)', borderRadius: 8, border: '1px solid rgba(99,102,241,0.2)' }}>
-                    <span style={{ fontSize: 16 }}>{selectedRole === 'teacher' ? '👩‍🏫' : '🎓'}</span>
+                    <span style={{ fontSize: 16 }}><IconText>{selectedRole === 'teacher' ? '👩‍🏫' : '🎓'}</IconText></span>
                     <span style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 600 }}>
                       Signing in as {selectedRole === 'teacher' ? 'Teacher' : 'Student'}
                     </span>
@@ -488,6 +514,10 @@ export default function AuthModal({ onClose, initialRole, initialMode = 'login' 
                     </button>
                   </div>
                 )}
+
+                <p style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5, margin: 0, textAlign: 'center' }}>
+                  Use the Google or email account your school registered with ByteBuddies.
+                </p>
 
                 {isLoggedIn && (
                   <div style={{ textAlign: 'center', padding: '8px 0' }}>
@@ -513,8 +543,18 @@ export default function AuthModal({ onClose, initialRole, initialMode = 'login' 
                   disabled={googleLoading}
                 >
                   <GoogleLogo />
-                  {googleLoading ? 'Opening Google...' : 'Continue with Google'}
+                  {googleLoading ? 'Signing in with Google…' : 'Continue with Google'}
                 </button>
+                {selectedRole === 'student' && (
+                  <button
+                    type="button"
+                    className="btn btn-ghost w-full"
+                    style={{ padding: 12, fontSize: 14 }}
+                    onClick={handleGuestStudent}
+                  >
+                    Continue as a pupil (no Google)
+                  </button>
+                )}
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <div style={{ flex: 1, height: 1, background: 'var(--border-color)' }} />

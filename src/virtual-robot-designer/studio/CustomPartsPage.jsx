@@ -5,6 +5,7 @@
  */
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import * as THREE from 'three';
+import { EmojiIcon } from '../../components/ui/Icon.jsx';
 
 // ─── localStorage key ──────────────────────────────────────────────────────
 const LS_KEY = 'bb-studio-custom-parts';
@@ -596,7 +597,7 @@ function Choices({ options, value, onChange }) {
           className={`bb-cp-btn-choice${(opt.id ?? opt) === value ? ' active' : ''}`}
           onClick={() => onChange(opt.id ?? opt)}
         >
-          {opt.icon && <span>{opt.icon}</span>}
+          {opt.icon && <span><EmojiIcon e={opt.icon} /></span>}
           {opt.label ?? opt}
         </button>
       ))}
@@ -655,10 +656,10 @@ function StatsPanel({ partType, config }) {
   const stats = computeStats(partType, config);
   return (
     <div className="bb-cp-stats-panel">
-      <div className="bb-cp-stats-title">📊 Stats Impact</div>
+      <div className="bb-cp-stats-title"><EmojiIcon e="📊" style={{ marginRight: '0.35em' }} />Stats Impact</div>
       {stats.map(s => (
         <div key={s.label} className="bb-cp-stat-row">
-          <span className="bb-cp-stat-label">{s.icon} {s.label}</span>
+          <span className="bb-cp-stat-label"><EmojiIcon e={s.icon} style={{ marginRight: '0.35em' }} />{s.label}</span>
           <div className="bb-cp-stat-bar-wrap">
             <div className="bb-cp-stat-bar" style={{ width: `${s.value}%`, background: s.color }} />
           </div>
@@ -874,7 +875,7 @@ function PartTypeSelector({ onSelect, onBack }) {
       <div className="bb-cp-page-head">
         <button className="bb-cp-back-btn" onClick={onBack}>← Back</button>
         <div>
-          <div className="bb-cp-page-title">✨ What would you like to create?</div>
+          <div className="bb-cp-page-title"><EmojiIcon e="✨" style={{ marginRight: '0.35em' }} />What would you like to create?</div>
           <div className="bb-cp-page-sub">Choose a part type to start designing</div>
         </div>
       </div>
@@ -886,7 +887,7 @@ function PartTypeSelector({ onSelect, onBack }) {
             style={{ '--type-color': pt.color }}
             onClick={() => onSelect(pt.id)}
           >
-            <div className="bb-cp-type-icon">{pt.icon}</div>
+            <div className="bb-cp-type-icon"><EmojiIcon e={pt.icon} /></div>
             <div className="bb-cp-type-label">{pt.label}</div>
             <div className="bb-cp-type-desc">{pt.desc}</div>
             <div className="bb-cp-type-arrow">→</div>
@@ -961,11 +962,11 @@ function BuilderView({ partType, editingId, savedConfig, onSave, onBack }) {
       <div className="bb-cp-builder-bar">
         <button className="bb-cp-back-btn" onClick={onBack}>← Back</button>
         <div className="bb-cp-builder-title">
-          <span>{typeInfo?.icon}</span>
+          <span><EmojiIcon e={typeInfo?.icon} /></span>
           {editingId ? `Edit ${typeInfo?.label}` : `New ${typeInfo?.label}`}
         </div>
         <button className="bb-cp-save-btn" onClick={handleSave}>
-          💾 Save Part
+          <EmojiIcon e="💾" style={{ marginRight: '0.35em' }} />Save Part
         </button>
       </div>
 
@@ -980,7 +981,7 @@ function BuilderView({ partType, editingId, savedConfig, onSave, onBack }) {
 
         {/* Center: 3D preview */}
         <div className="bb-cp-center">
-          <div className="bb-cp-preview-label">🔭 Live 3D Preview</div>
+          <div className="bb-cp-preview-label"><EmojiIcon e="🔭" style={{ marginRight: '0.35em' }} />Live 3D Preview</div>
           <div className="bb-cp-canvas-wrap">
             <PartPreviewCanvas partType={partType} config={config} key={partType} />
           </div>
@@ -993,13 +994,13 @@ function BuilderView({ partType, editingId, savedConfig, onSave, onBack }) {
         <div className="bb-cp-right">
           <StatsPanel partType={partType} config={config} />
           <div className="bb-cp-part-badge" style={{ background: typeInfo?.color }}>
-            {typeInfo?.icon} {typeInfo?.label}
+            <EmojiIcon e={typeInfo?.icon} style={{ marginRight: '0.35em' }} />{typeInfo?.label}
           </div>
           <div className="bb-cp-save-hint">
             Your part will be saved to My Parts library and will appear in the Build page.
           </div>
           <button className="bb-cp-save-btn-big" onClick={handleSave}>
-            💾 Save to My Parts
+            <EmojiIcon e="💾" style={{ marginRight: '0.35em' }} />Save to My Parts
           </button>
         </div>
       </div>
@@ -1033,7 +1034,7 @@ function MyCustomPartsLibrary({ parts, onNew, onEdit, onDelete }) {
       {/* Header */}
       <div className="bb-cp-lib-head">
         <div>
-          <div className="bb-cp-page-title">✨ My Custom Parts</div>
+          <div className="bb-cp-page-title"><EmojiIcon e="✨" style={{ marginRight: '0.35em' }} />My Custom Parts</div>
           <div className="bb-cp-page-sub">{parts.length} part{parts.length !== 1 ? 's' : ''} created</div>
         </div>
         <button className="bb-cp-new-btn" onClick={onNew}>
@@ -1074,7 +1075,7 @@ function MyCustomPartsLibrary({ parts, onNew, onEdit, onDelete }) {
               className={`bb-cp-filter-pill${isActive ? ' active' : ''}`}
               onClick={handleClick}
             >
-              {f.icon} {f.label}
+              <EmojiIcon e={f.icon} style={{ marginRight: '0.35em' }} />{f.label}
             </button>
           );
         })}
@@ -1083,7 +1084,7 @@ function MyCustomPartsLibrary({ parts, onNew, onEdit, onDelete }) {
       {/* Empty state */}
       {filtered.length === 0 && (
         <div className="bb-cp-empty">
-          <div className="bb-cp-empty-icon">🔧</div>
+          <div className="bb-cp-empty-icon"><EmojiIcon e="🔧" /></div>
           <div className="bb-cp-empty-title">
             {parts.length === 0 ? 'No parts yet!' : 'No parts match this filter'}
           </div>
@@ -1094,7 +1095,7 @@ function MyCustomPartsLibrary({ parts, onNew, onEdit, onDelete }) {
           </div>
           {parts.length === 0 && (
             <button className="bb-cp-new-btn" onClick={onNew} style={{ marginTop: 16 }}>
-              ✨ Create Your First Part
+              <EmojiIcon e="✨" style={{ marginRight: '0.35em' }} />Create Your First Part
             </button>
           )}
         </div>
@@ -1108,7 +1109,7 @@ function MyCustomPartsLibrary({ parts, onNew, onEdit, onDelete }) {
             return (
               <div key={part.id} className="bb-cp-card">
                 <div className="bb-cp-card-thumb" style={{ background: `linear-gradient(135deg, ${typeInfo?.color}33, ${typeInfo?.color}11)` }}>
-                  <span style={{ fontSize: 40 }}>{typeInfo?.icon}</span>
+                  <span style={{ fontSize: 40 }}><EmojiIcon e={typeInfo?.icon} /></span>
                 </div>
                 <div className="bb-cp-card-body">
                   <div className="bb-cp-card-name">{part.name}</div>
@@ -1126,8 +1127,8 @@ function MyCustomPartsLibrary({ parts, onNew, onEdit, onDelete }) {
                     </div>
                   )}
                   <div className="bb-cp-card-actions">
-                    <button className="bb-cp-card-btn edit" onClick={() => onEdit(part)}>✏️ Edit</button>
-                    <button className="bb-cp-card-btn delete" onClick={() => onDelete(part.id)}>🗑️</button>
+                    <button className="bb-cp-card-btn edit" onClick={() => onEdit(part)}><EmojiIcon e="✏️" style={{ marginRight: '0.35em' }} />Edit</button>
+                    <button className="bb-cp-card-btn delete" onClick={() => onDelete(part.id)}><EmojiIcon e="🗑️" /></button>
                   </div>
                 </div>
               </div>

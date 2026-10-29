@@ -1,5 +1,12 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { saveUserProfile, firebaseSignOut, onFirebaseAuthChange, firebaseUserToProfile } from '../firebase';
+import { saveUserProfile, firebaseSignOut, onFirebaseAuthChange, firebaseUserToProfile, completeGoogleRedirect, readRememberedAuthRole, isLicenseAdmin, watchAccountLicense } from '../firebase';
+
+function lsGet(key, fallback = null) {
+  try { return localStorage.getItem(key); } catch { return fallback; }
+}
+function lsSet(key, value) {
+  try { localStorage.setItem(key, value); } catch { /* managed Chrome / guest profile */ }
+}
 
 const UserContext = createContext();
 
@@ -33,7 +40,7 @@ const defaultUser = {
 
 function loadUser() {
   try {
-    const saved = localStorage.getItem('cv-user');
+    const saved = lsGet('cv-user');
     if (saved) return { ...defaultUser, ...JSON.parse(saved) };
   } catch {}
   return defaultUser;
@@ -41,20 +48,77 @@ function loadUser() {
 
 export function UserProvider({ children }) {
   const [user, setUser] = useState(loadUser);
-  const [isLoggedIn, setIsLoggedIn] = useState(() => {
-    try { return localStorage.getItem('cv-loggedin') === 'true'; } catch { return false; }
-  });
+  const [isLoggedIn, setIsLoggedIn] = useState(() => lsGet('cv-loggedin') === 'true');
+  const [licenseStatus, setLicenseStatus] = useState('checking');
+  const [accountLicense, setAccountLicense] = useState(null);
+
+  // Licence access is read from Firestore for the authenticated Firebase user.
+  // The local profile and localStorage login flag never grant a licence.
+  useEffect(() => {
+    let stopLicenseWatch = () => {};
+    const stopAuthWatch = onFirebaseAuthChange((fbUser) => {
+      stopLicenseWatch();
+      setAccountLicense(null);
+      if (!fbUser?.email) {
+        setLicenseStatus('unlicensed');
+        setAccountLicense(null);
+        return;
+      }
+      if (isLicenseAdmin(fbUser.email)) {
+        setLicenseStatus('active');
+        setAccountLicense({ role: 'admin', studentLimit: Infinity });
+        return;
+      }
+      setLicenseStatus('checking');
+      stopLicenseWatch = watchAccountLicense(fbUser.email, (license, error) => {
+        if (error) {
+          console.error('[Access] Could not verify account licence:', error);
+          setLicenseStatus('unverified');
+          setAccountLicense(null);
+          return;
+        }
+        setAccountLicense(license);
+        const expiry = license?.expiresAt ? new Date(license.expiresAt) : null;
+        const current = license?.status === 'active' && (!expiry || expiry.getTime() >= Date.now());
+        setLicenseStatus(current ? 'active' : license?.status === 'suspended' ? 'suspended' : 'unlicensed');
+      });
+    });
+    return () => {
+      stopAuthWatch();
+      stopLicenseWatch();
+    };
+  }, []);
 
   // Persist user state
   useEffect(() => {
-    localStorage.setItem('cv-user', JSON.stringify(user));
+    lsSet('cv-user', JSON.stringify(user));
   }, [user]);
+
+  // Finish Google redirect (Chromebooks) before the auth listener runs.
+  useEffect(() => {
+    let cancelled = false;
+    completeGoogleRedirect()
+      .then((profile) => {
+        if (cancelled || !profile) return;
+        const role = readRememberedAuthRole();
+        setUser((prev) => {
+          const merged = { ...prev, ...profile, role };
+          try { lsSet('bb_learn_role', role === 'teacher' ? 'teacher' : 'pupil'); } catch {}
+          saveUserProfile(merged);
+          return merged;
+        });
+        setIsLoggedIn(true);
+        lsSet('cv-loggedin', 'true');
+      })
+      .catch((e) => console.error('[Auth] redirect complete failed', e));
+    return () => { cancelled = true; };
+  }, []);
 
   // Sync login state with Firebase session
   useEffect(() => {
     const unsub = onFirebaseAuthChange((fbUser) => {
       if (fbUser) {
-        const alreadySession = localStorage.getItem('cv-loggedin') === 'true';
+        const alreadySession = lsGet('cv-loggedin') === 'true';
         const profile = firebaseUserToProfile(fbUser);
         setUser(prev => {
           const merged = { ...prev, ...profile };
@@ -64,15 +128,15 @@ export function UserProvider({ children }) {
           } else if (!alreadySession) {
             // New sign-in: do not inherit a leftover teacher role from this browser.
             // AuthModal.login() sets the role the user actually picked.
-            merged.role = 'student';
+            merged.role = readRememberedAuthRole() || 'student';
           }
           return merged;
         });
         if (alreadySession) {
           setIsLoggedIn(true);
-          localStorage.setItem('cv-loggedin', 'true');
+          lsSet('cv-loggedin', 'true');
         }
-      } else if (localStorage.getItem('cv-loggedin') !== 'true') {
+      } else if (lsGet('cv-loggedin') !== 'true') {
         setIsLoggedIn(false);
       }
     });
@@ -135,9 +199,7 @@ export function UserProvider({ children }) {
 
   const updateRole = (role) => {
     setUser(prev => ({ ...prev, role }));
-    try {
-      localStorage.setItem('bb_learn_role', role === 'teacher' ? 'teacher' : 'pupil');
-    } catch {}
+    lsSet('bb_learn_role', role === 'teacher' ? 'teacher' : 'pupil');
   };
 
   const completeQuest = (questId, xpReward = 50) => {
@@ -180,24 +242,20 @@ export function UserProvider({ children }) {
     if (userData) {
       setUser(prev => {
         const merged = { ...prev, ...userData };
-        if (merged.role === 'teacher') {
-          try { localStorage.setItem('bb_learn_role', 'teacher'); } catch {}
-        } else {
-          try { localStorage.setItem('bb_learn_role', 'pupil'); } catch {}
-        }
+        lsSet('bb_learn_role', merged.role === 'teacher' ? 'teacher' : 'pupil');
         saveUserProfile(merged);
         return merged;
       });
     }
     setIsLoggedIn(true);
-    localStorage.setItem('cv-loggedin', 'true');
+    lsSet('cv-loggedin', 'true');
   };
   const logout = async () => {
     try { await firebaseSignOut(); } catch (e) { console.error('[Auth] sign out failed:', e); }
     setIsLoggedIn(false);
     setUser({ ...defaultUser });
-    localStorage.setItem('cv-loggedin', 'false');
-    localStorage.setItem('cv-user', JSON.stringify(defaultUser));
+    lsSet('cv-loggedin', 'false');
+    lsSet('cv-user', JSON.stringify(defaultUser));
     try { localStorage.removeItem('bb_learn_role'); } catch {}
   };
 
@@ -205,6 +263,8 @@ export function UserProvider({ children }) {
     <UserContext.Provider value={{
       user,
       isLoggedIn,
+      licenseStatus,
+      accountLicense,
       addXP,
       spendXP,
       clearLevelUp,

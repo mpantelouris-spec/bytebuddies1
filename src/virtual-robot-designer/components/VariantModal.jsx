@@ -1,5 +1,6 @@
 import React from 'react';
 import { SIM_ROBOTS } from '../simulator/virtualRobotEngine.jsx';
+import { EmojiIcon } from '../../components/ui/Icon.jsx';
 
 function StatDelta({ label, from, to }) {
   const up = to > from;
@@ -21,7 +22,7 @@ export default function VariantModal({ variants, onClose, onLoad, onTest, onSave
     <div className="vrd-modal-overlay" onClick={onClose} role="presentation">
       <div className="vrd-modal vrd-modal-wide" onClick={(e) => e.stopPropagation()}>
         <div className="vrd-modal-header">
-          <h2>🤖 INSANE VARIANTS READY!</h2>
+          <h2><EmojiIcon e="🤖" style={{ marginRight: '0.35em' }} />INSANE VARIANTS READY!</h2>
           <button type="button" className="vrd-modal-close" onClick={onClose}>✕</button>
         </div>
         <p style={{ margin: '0 0 16px', color: 'rgba(240,230,255,0.65)', fontSize: 13 }}>
@@ -35,7 +36,7 @@ export default function VariantModal({ variants, onClose, onLoad, onTest, onSave
             return (
               <div key={v.id} className="vrd-variant-card">
                 <div className="vrd-variant-card-title">{v.variant_name}</div>
-                <div style={{ fontSize: 40, textAlign: 'center', margin: '8px 0' }}>{meta.icon}</div>
+                <div style={{ fontSize: 40, textAlign: 'center', margin: '8px 0' }}><EmojiIcon e={meta.icon} /></div>
                 <div style={{ fontSize: 11, fontWeight: 700, color: '#FF006E', marginBottom: 8 }}>COOLNESS: {stars}</div>
                 <div style={{ fontSize: 11, marginBottom: 8 }}>
                   <strong>KEY CHANGES:</strong>

@@ -1,0 +1,34 @@
+1
+00:00:00,000 --> 00:00:05,556
+Every child has ideas. ByteBuddies helps turn those ideas
+into things they can make.
+
+2
+00:00:05,856 --> 00:00:12,840
+Pupils explore interactive lessons, learn to code,
+and build games in one primary computing platform.
+
+3
+00:00:13,140 --> 00:00:19,552
+They solve story-led coding challenges,
+experimenting, testing, and learning to debug.
+
+4
+00:00:19,852 --> 00:00:24,374
+They can design their own robots
+and bring ideas to life in 3D worlds.
+
+5
+00:00:24,674 --> 00:00:30,480
+Teachers can set work, track progress,
+and give thoughtful feedback in one place.
+
+6
+00:00:30,780 --> 00:00:37,310
+From a first line of code to a project of their own,
+learning becomes active, creative, and visible.
+
+7
+00:00:37,610 --> 00:00:40,952
+ByteBuddies. Make learning.
+Make things happen.

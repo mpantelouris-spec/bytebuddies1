@@ -6,21 +6,24 @@ const RAINBOW = [0xff5d5d, 0xffd23f, 0x3fa7ff, 0x3fcf7a, 0xb46bff];
 export const WALKER_RECIPES = {
   balance_gym: {
     light: 'indoor',
-    sky: { top: 0xeaf4ff, mid: 0xeaf4ff, horizon: 0xeaf4ff, fog: 0xe8f2ff },
-    accent: 0x3fa7ff,
-    room: room({ floor: 'wood', floorColor: 0xe8b878, wall: 0xdcecff, trim: 0x3fa7ff, outside: 0x9fd8ff, h: 22 }),
-    path: { kind: 'mat', color: 0x3fa7ff, edge: 0xffffff, kerb: 0xffd23f },
+    sky: { top: 0xc6e5ff, mid: 0xe7f4ff, horizon: 0xf5f9ff, fog: 0xe7f2ff },
+    accent: 0x19b6b0,
+    room: room({
+      floor: 'wood', floorColor: 0xb98755, floorAlt: 0xc99a68, floorRough: 0.42, tile: 7,
+      wall: 0xf0f6ff, wallPad: 0x17365d, trim: 0x18b6b0, frame: 0x17365d,
+      outside: 0x4ab6e8, bannerBg: 0x17365d, ceiling: 0xe5eef8, sportsHall: true, h: 24, pad: 22,
+    }),
+    balanceBeamCourse: true,
+    path: { kind: 'mat', color: 0x1778cf, edge: 0xf8fbff, kerb: 0x18b6b0, rough: 0.62 },
     layers: [
-      { p: 'gymMat', at: 'near', n: 4, r: [0.4, 1.6], s: 1, v: [{ color: 0x3fa7ff }, { color: 0xff5d8f }, { color: 0x3fcf7a }] },
-      { p: 'balanceBeam', at: 'area', n: 8, r: [-12, 8], s: [1, 1.2], clear: 2 },
-      { p: 'hurdle', at: 'area', n: 10, r: [-10, 8], s: 1, v: RAINBOW.map((c) => ({ color: c })) },
-      { p: 'gymMat', at: 'area', n: 14, r: [-14, 10], s: [1.2, 1.6], v: [{ color: 0xff8a3d }, { color: 0xb46bff }, { color: 0x22d3ee }] },
-      { p: 'trophy', at: 'hero', where: 'end', d: 8, s: 1.8 },
-      { p: 'podium', at: 'hero', where: 'end', d: 12, s: 1.2 },
-      { p: 'bunting', at: 'area', n: 8, r: [4, 14], s: 1.2, o: { colors: RAINBOW } },
-      { p: 'shelves', at: 'area', n: 6, r: [10, 16], s: 1.2, face: 'center', o: { boxes: true } },
+      // Keep the robot's training lane clear: the route itself is the balance beam.
+      // Matching crash mats sit in tidy pairs beside it as safety equipment.
+      { p: 'gymMat', at: 'near', n: 12, from: 7, to: 7, r: [1.2, 1.8], sides: [-1, 1], s: 0.88, face: 'along', clear: 1.2, v: [{ color: 0x16a6a1 }] },
+      { p: 'bench', at: 'near', n: 25, from: 12, to: 8, r: [2.2, 3], sides: [1], s: 0.9, face: 'along', clear: 1.4, o: { color: 0x17365d } },
+      { p: 'trophy', at: 'hero', where: 'end', d: 9, s: 1.7 },
+      { p: 'podium', at: 'hero', where: 'end', d: 14, s: 1.05 },
     ],
-    fx: [{ k: 'dust', n: 160 }],
+    fx: [{ k: 'dust', n: 35 }],
   },
 
   dance_stage: {

@@ -1,5 +1,7 @@
 import {
   collectLoopBody,
+  loopStateFor,
+  clearLoopState,
   createScriptThread,
   getFlowContext,
   setWaitSeconds,
@@ -124,5 +126,48 @@ describe('clone hat threads', () => {
     thread.waitEndTime = Date.now() - 1;
     stepThread(thread, sprite, execBody);
     expect(moved).toBe(true);
+  });
+});
+
+describe('collectLoopBody — nesting', () => {
+  const B = (type) => ({ type });
+  it('keeps an inner loop and the blocks after it inside the outer loop', () => {
+    // repeat { repeat { move } end; turn } end; say
+    const body = [B('loop-repeat'), B('loop-repeat'), B('sprite-move'), B('loop-end-loop'), B('sprite-turn-right'), B('loop-end-loop'), B('sprite-say')];
+    const { loopBody, endIndex } = collectLoopBody(body, 0);
+    expect(loopBody.map((b) => b.type)).toEqual(['loop-repeat', 'sprite-move', 'loop-end-loop', 'sprite-turn-right']);
+    expect(endIndex).toBe(5);
+  });
+  it('treats broadcast as a normal step, not a new script', () => {
+    const body = [B('loop-forever'), B('event-broadcast'), B('sprite-move'), B('loop-end-loop')];
+    expect(collectLoopBody(body, 0).loopBody.map((b) => b.type)).toEqual(['event-broadcast', 'sprite-move']);
+  });
+  it('still stops at a hat block that starts another script', () => {
+    const body = [B('loop-repeat'), B('sprite-move'), B('event-keypress'), B('sprite-turn-right')];
+    expect(collectLoopBody(body, 0).loopBody.map((b) => b.type)).toEqual(['sprite-move']);
+  });
+});
+
+describe('loopStateFor — one state per loop block', () => {
+  it('keeps outer and inner loop progress apart', () => {
+    const host = {};
+    const outer = { type: 'loop-repeat' };
+    const inner = { type: 'loop-repeat' };
+    loopStateFor(host, outer).iteration = 2;
+    loopStateFor(host, inner).iteration = 5;
+    expect(loopStateFor(host, outer).iteration).toBe(2);
+    clearLoopState(host, inner);
+    expect(loopStateFor(host, inner).iteration).toBe(0);
+    expect(loopStateFor(host, outer).iteration).toBe(2);
+  });
+});
+
+describe('loopStateFor — clones', () => {
+  it('a copied sprite (clone) never shares its parent\'s loop state', () => {
+    const parent = {};
+    const loop = { type: 'loop-repeat' };
+    loopStateFor(parent, loop).iteration = 60;
+    const clone = { ...parent };
+    expect(loopStateFor(clone, loop).iteration).toBe(0);
   });
 });

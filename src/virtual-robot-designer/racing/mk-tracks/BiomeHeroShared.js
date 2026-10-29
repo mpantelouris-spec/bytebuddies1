@@ -1,3 +1,4 @@
+import { cachedNodes, cachedChild } from './AnimNodeCache.js';
 /**
  * BiomeHeroShared.js — Shared checkpoint arches, signs, boost pads for all 10 biome tracks.
  */
@@ -149,8 +150,7 @@ export function animateCheckpointPulse(world, time) {
     });
     return;
   }
-  world.traverse((obj) => {
-    if (!obj.userData?.pulse || !obj.userData?.glowMat) return;
+  cachedNodes(world, 'pulse', (o) => !!(o.userData?.pulse && o.userData?.glowMat)).forEach((obj) => {
     obj.userData.glowMat.emissiveIntensity = 2.2 + Math.sin(time * 3.5 + (obj.id || 0)) * 0.8;
   });
 }

@@ -7,6 +7,7 @@ import { migrateDesign } from '../config.js';
 import { buildRobotFromDesign } from '../three/buildRobotFromDesign.js';
 import { collectAnimatables } from '../three/collectAnimatables.js';
 import { animatePreviewFrame } from '../three/animatePreviewFrame.js';
+import { EmojiIcon, IconText } from '../../components/ui/Icon.jsx';
 
 function createStarfield(count = 420) {
   const geom = new THREE.BufferGeometry();
@@ -326,14 +327,14 @@ export default function RobotPreview3D({ design, autoSpin = true }) {
       <div className="vrd-preview-controls">
         <button type="button" className="vrd-preview-ctrl" onClick={() => { setSpinning(false); setUserYaw((a) => a - 0.25); }} title="Rotate left">←</button>
         <button type="button" className="vrd-preview-ctrl" onClick={() => setSpinning((s) => !s)} title="Toggle spin">
-          {spinning ? '⏸' : '⟳'}
+          <IconText>{spinning ? '⏸' : '⟳'}</IconText>
         </button>
         <button type="button" className="vrd-preview-ctrl" onClick={() => { setSpinning(false); setUserYaw((a) => a + 0.25); }} title="Rotate right">→</button>
         <button type="button" className="vrd-preview-ctrl" onClick={() => setZoom((z) => Math.min(1.9, z + 0.1))}>+</button>
         <button type="button" className="vrd-preview-ctrl" onClick={() => setZoom((z) => Math.max(0.55, z - 0.1))}>−</button>
         <button type="button" className="vrd-preview-ctrl" onClick={resetView} title="Reset">↺</button>
       </div>
-      <div className="vrd-preview-badge vrd-preview-badge--pulse">🤖 YOUR ROBOT</div>
+      <div className="vrd-preview-badge vrd-preview-badge--pulse"><EmojiIcon e="🤖" style={{ marginRight: '0.35em' }} />YOUR ROBOT</div>
       <p className="vrd-preview-hint">Drag · Scroll zoom · Double-click reset</p>
     </div>
   );

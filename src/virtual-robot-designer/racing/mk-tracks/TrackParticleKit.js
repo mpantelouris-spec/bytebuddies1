@@ -1,7 +1,9 @@
+import { cachedNodes, cachedChild } from './AnimNodeCache.js';
 /**
  * TrackParticleKit.js — Per-biome particle systems.
  */
 import * as THREE from 'three';
+import { isCosmicSkywayArena } from './CosmicSkywayRegistry.js';
 
 function scatterPoints(count, bounds, yMin, yMax, name, color, size, extra = null) {
   const positions = new Float32Array(count * 3);
@@ -29,7 +31,7 @@ export function installTrackParticles(world, bounds, arenaType, perf = null) {
   g.name = 'track-particles';
   const mult = perf?.propMult ?? 1;
 
-  switch (arenaType) {
+  switch (isCosmicSkywayArena(arenaType) ? 'star_station_01' : arenaType) {
     case 'sunset_cove_01':
       g.add(scatterPoints(Math.round(160 * mult), bounds, 0.3, 2.5, 'sand-particles', 0xffcc88, 0.12, 'sand'));
       break;
@@ -95,8 +97,9 @@ function buildRainLines(count) {
   return lines;
 }
 
+const isParticles = (o) => !!(o.userData?.animated && o.geometry?.attributes?.position);
 export function animateTrackParticles(world, time) {
-  world.traverse((obj) => {
+  cachedNodes(world, 'particles', isParticles).forEach((obj) => {
     if (!obj.userData?.animated || !obj.geometry?.attributes?.position) return;
     const arr = obj.geometry.attributes.position.array;
     const type = obj.userData.particleType;

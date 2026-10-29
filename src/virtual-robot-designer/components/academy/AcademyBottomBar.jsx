@@ -2,6 +2,7 @@ import React from 'react';
 import { listPlacedParts } from '../../services/assembly-service.js';
 import { getWorkshopPart } from '../../data/assembly-parts.js';
 import { migrateAssembly } from '../../services/assembly-service.js';
+import { EmojiIcon } from '../../../components/ui/Icon.jsx';
 
 export default function AcademyBottomBar({
   design,
@@ -48,14 +49,14 @@ export default function AcademyBottomBar({
           className={`bb-mode-toggle ${!isLego ? 'active' : ''}`}
           onClick={() => onSetBuildMode?.('advanced')}
         >
-          🤖 Advanced Mode
+          <EmojiIcon e="🤖" style={{ marginRight: '0.35em' }} />Advanced Mode
         </button>
         <button
           type="button"
           className={`bb-mode-toggle ${isLego ? 'active' : ''}`}
           onClick={() => onSetBuildMode?.('blocks')}
         >
-          🧱 LEGO Mode
+          <EmojiIcon e="🧱" style={{ marginRight: '0.35em' }} />LEGO Mode
         </button>
       </div>
     </footer>

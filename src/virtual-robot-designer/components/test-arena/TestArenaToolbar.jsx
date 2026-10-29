@@ -1,5 +1,6 @@
 import React from 'react';
 import { getCourseMeta } from '../../data/test-arena-courses.js';
+import { EmojiIcon, IconText } from '../../../components/ui/Icon.jsx';
 
 const SPEEDS = [
   { id: 0.5, label: '0.5×' },
@@ -32,14 +33,14 @@ export default function TestArenaToolbar({
   return (
     <header className="ta-toolbar">
       <div className="ta-toolbar-brand">
-        <span className="ta-toolbar-badge">🚀 Test Arena — NEW</span>
+        <span className="ta-toolbar-badge"><EmojiIcon e="🚀" style={{ marginRight: '0.35em' }} />Test Arena — NEW</span>
         <h1>{course.label}</h1>
         <p>Running <strong>{robotName || 'your robot'}</strong> — same invention from the lab</p>
       </div>
 
       <div className="ta-toolbar-controls">
         <button type="button" className="ta-tool-btn" disabled={!running} onClick={onPause}>
-          {paused ? '▶ Resume' : '⏸ Pause'}
+          <IconText>{paused ? '▶ Resume' : '⏸ Pause'}</IconText>
         </button>
         <button type="button" className="ta-tool-btn" onClick={onReset}>
           ↺ Reset robot

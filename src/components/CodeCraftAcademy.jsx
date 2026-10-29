@@ -3,6 +3,7 @@ import { useUser } from '../contexts/UserContext';
 import Blockly from 'blockly';
 import 'blockly/blocks';
 import * as BlocklyJS from 'blockly/javascript';
+import { EmojiIcon, IconText } from './ui/Icon.jsx';
 
 /**
  * CodeCraft Academy - Minecraft Education-style Learning Environment
@@ -875,34 +876,34 @@ export default function CodeCraftAcademy({ onNavigate }) {
         <div style={styles.header}>
           <div style={styles.headerContent}>
             <h1 style={styles.title}>
-              <span style={styles.logo}>⛏️</span>
+              <span style={styles.logo}><EmojiIcon e="⛏️" /></span>
               CodeCraft Academy
               <span style={styles.subtitle}>Block coding in 3D worlds</span>
             </h1>
             <div style={styles.stats}>
               <div style={styles.statBadge}>
-                <span style={styles.statIcon}>🎯</span>
+                <span style={styles.statIcon}><EmojiIcon e="🎯" /></span>
                 <div>
                   <div style={styles.statValue}>{stats.totalXP}</div>
                   <div style={styles.statLabel}>Total XP</div>
                 </div>
               </div>
               <div style={styles.statBadge}>
-                <span style={styles.statIcon}>📚</span>
+                <span style={styles.statIcon}><EmojiIcon e="📚" /></span>
                 <div>
                   <div style={styles.statValue}>{stats.lessonsCompleted}</div>
                   <div style={styles.statLabel}>Lessons</div>
                 </div>
               </div>
               <div style={styles.statBadge}>
-                <span style={styles.statIcon}>🏆</span>
+                <span style={styles.statIcon}><EmojiIcon e="🏆" /></span>
                 <div>
                   <div style={styles.statValue}>{achievements.length}/{ACHIEVEMENTS.length}</div>
                   <div style={styles.statLabel}>Achievements</div>
                 </div>
               </div>
               <div style={styles.statBadge}>
-                <span style={styles.statIcon}>🧱</span>
+                <span style={styles.statIcon}><EmojiIcon e="🧱" /></span>
                 <div>
                   <div style={styles.statValue}>{stats.blocksPlaced}</div>
                   <div style={styles.statLabel}>Blocks</div>
@@ -914,7 +915,7 @@ export default function CodeCraftAcademy({ onNavigate }) {
 
         {/* Worlds Grid */}
         <div style={styles.content}>
-          <h2 style={styles.sectionTitle}>🌍 Choose Your World</h2>
+          <h2 style={styles.sectionTitle}><EmojiIcon e="🌍" style={{ marginRight: '0.35em' }} />Choose Your World</h2>
           <div style={styles.worldsGrid}>
             {WORLDS.map(world => (
               <div
@@ -934,14 +935,14 @@ export default function CodeCraftAcademy({ onNavigate }) {
                   <div style={styles.worldDesc}>{world.description}</div>
                   {!world.unlocked && (
                     <div style={styles.locked}>
-                      🔒 {world.unlockRequirement}
+                      <EmojiIcon e="🔒" style={{ marginRight: '0.35em' }} />{world.unlockRequirement}
                     </div>
                   )}
                 </div>
                 
                 {selectedWorld?.id === world.id && world.unlocked && (
                   <div style={styles.lessonsList}>
-                    <div style={styles.lessonsHeader}>📖 Lessons</div>
+                    <div style={styles.lessonsHeader}><EmojiIcon e="📖" style={{ marginRight: '0.35em' }} />Lessons</div>
                     {world.lessons.map(lesson => (
                       <div
                         key={lesson.id}
@@ -953,15 +954,15 @@ export default function CodeCraftAcademy({ onNavigate }) {
                       >
                         <div style={styles.lessonTitle}>{lesson.title}</div>
                         <div style={styles.lessonMeta}>
-                          <span>🧱 {lesson.blocks} blocks</span>
-                          <span>⏱️ {lesson.time}</span>
+                          <span><EmojiIcon e="🧱" style={{ marginRight: '0.35em' }} />{lesson.blocks} blocks</span>
+                          <span><EmojiIcon e="⏱️" style={{ marginRight: '0.35em' }} />{lesson.time}</span>
                           <span style={styles.xpBadge}>+{lesson.xp} XP</span>
                         </div>
                       </div>
                     ))}
                     
                     <div style={styles.buildsList}>
-                      <div style={styles.buildsHeader}>🏗️ Builds to Complete</div>
+                      <div style={styles.buildsHeader}><EmojiIcon e="🏗️" style={{ marginRight: '0.35em' }} />Builds to Complete</div>
                       <div style={styles.buildTags}>
                         {world.builds.map(build => (
                           <span key={build} style={styles.buildTag}>{build}</span>
@@ -975,7 +976,7 @@ export default function CodeCraftAcademy({ onNavigate }) {
           </div>
 
           {/* Achievements Section */}
-          <h2 style={styles.sectionTitle}>🏆 Achievements</h2>
+          <h2 style={styles.sectionTitle}><EmojiIcon e="🏆" style={{ marginRight: '0.35em' }} />Achievements</h2>
           <div style={styles.achievementsGrid}>
             {ACHIEVEMENTS.map(ach => {
               const unlocked = achievements.includes(ach.id);
@@ -987,11 +988,11 @@ export default function CodeCraftAcademy({ onNavigate }) {
                     opacity: unlocked ? 1 : 0.4,
                   }}
                 >
-                  <div style={styles.achievementIcon}>{ach.icon}</div>
+                  <div style={styles.achievementIcon}><EmojiIcon e={ach.icon} /></div>
                   <div style={styles.achievementName}>{ach.title}</div>
                   <div style={styles.achievementDesc}>{ach.desc}</div>
                   {unlocked && <div style={styles.achievementXP}>+{ach.xp} XP</div>}
-                  {!unlocked && <div style={styles.achievementLocked}>🔒</div>}
+                  {!unlocked && <div style={styles.achievementLocked}><EmojiIcon e="🔒" /></div>}
                 </div>
               );
             })}
@@ -999,7 +1000,7 @@ export default function CodeCraftAcademy({ onNavigate }) {
 
           {/* Quick Start Guide */}
           <div style={styles.guideCard}>
-            <h3 style={styles.guideTitle}>🎮 How to Play</h3>
+            <h3 style={styles.guideTitle}><EmojiIcon e="🎮" style={{ marginRight: '0.35em' }} />How to Play</h3>
             <div style={styles.guideSteps}>
               <div style={styles.guideStep}>
                 <span style={styles.guideNumber}>1</span>
@@ -1033,7 +1034,7 @@ export default function CodeCraftAcademy({ onNavigate }) {
             
             <div style={{ marginTop: 20, padding: 14, background: 'rgba(0,0,0,0.3)', borderRadius: 0, border: '2px solid rgba(255,255,255,0.1)' }}>
               <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 8, color: '#FCEE4B', fontFamily: minecraftBoldFont }}>
-                🧩 VISUAL BLOCK CODING
+                <EmojiIcon e="🧩" style={{ marginRight: '0.35em' }} />VISUAL BLOCK CODING
               </div>
               <div style={{ fontSize: 10, color: '#CCC', lineHeight: 1.6, fontFamily: minecraftFont }}>
                 No typing needed! Drag blocks to spawn people and animals, then make them move around the world.
@@ -1109,7 +1110,7 @@ export default function CodeCraftAcademy({ onNavigate }) {
           </div>
           
           <div style={styles.paletteTitle}>
-            {mode === 'blocks' ? '🎨 BLOCKS' : '👥 ENTITIES'}
+            <IconText>{mode === 'blocks' ? '🎨 BLOCKS' : '👥 ENTITIES'}</IconText>
           </div>
           <div style={{ fontSize: 9, color: '#888', textAlign: 'center', marginBottom: 10, fontFamily: minecraftFont }}>
             {mode === 'blocks' ? 'Click to select block' : 'Click to spawn entity'}
@@ -1266,7 +1267,7 @@ export default function CodeCraftAcademy({ onNavigate }) {
             {entities.length > 0 && (
               <>
                 <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 6, fontFamily: minecraftBoldFont }}>
-                  👥 ENTITIES ({entities.length})
+                  <EmojiIcon e="👥" style={{ marginRight: '0.35em' }} />ENTITIES ({entities.length})
                 </div>
                 {entities.slice(0, 5).map(entity => (
                   <div key={entity.id} style={{ fontSize: 9, fontFamily: minecraftFont, marginBottom: 4, color: '#AAA' }}>
@@ -1287,16 +1288,16 @@ export default function CodeCraftAcademy({ onNavigate }) {
               setGrid(Array(12).fill().map(() => Array(16).fill(null)));
               setEntities([]);
             }}>
-              🗑️ Clear All
+              <EmojiIcon e="🗑️" style={{ marginRight: '0.35em' }} />Clear All
             </button>
             <button style={styles.controlBtn}>
-              💾 Save Build
+              <EmojiIcon e="💾" style={{ marginRight: '0.35em' }} />Save Build
             </button>
             <button style={styles.controlBtn}>
-              📤 Export Code
+              <EmojiIcon e="📤" style={{ marginRight: '0.35em' }} />Export Code
             </button>
             <button style={styles.controlBtn} onClick={() => setEntities([])}>
-              👥 Clear Entities
+              <EmojiIcon e="👥" style={{ marginRight: '0.35em' }} />Clear Entities
             </button>
           </div>
         </div>
@@ -1312,8 +1313,8 @@ export default function CodeCraftAcademy({ onNavigate }) {
         {/* Right: Block Code Panel */}
         <div style={styles.codePanel}>
           <div style={styles.codePanelHeader}>
-            🧩 BLOCK CODE
-            <button style={styles.runButton} onClick={runCode}>▶ RUN CODE</button>
+            <EmojiIcon e="🧩" style={{ marginRight: '0.35em' }} />BLOCK CODE
+            <button style={styles.runButton} onClick={runCode}><EmojiIcon e="▶" style={{ marginRight: '0.35em' }} />RUN CODE</button>
           </div>
           
           {/* Blockly Workspace */}
@@ -1333,7 +1334,7 @@ export default function CodeCraftAcademy({ onNavigate }) {
               color: '#8B8B8B',
               fontFamily: minecraftFont,
             }}>
-              ⬅️ DRAG BLOCKS HERE TO BUILD YOUR PROGRAM
+              <EmojiIcon e="⬅️" style={{ marginRight: '0.35em' }} />DRAG BLOCKS HERE TO BUILD YOUR PROGRAM
             </div>
             <div 
               ref={blocklyDiv}

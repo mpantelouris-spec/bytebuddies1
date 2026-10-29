@@ -29,8 +29,9 @@ import { setPBRTextureTier } from './mk-tracks/PBRMaterialKit.js';
 import { buildProfessionalRainbowTrack, buildProfessionalCircuitWaypoints } from './ProfessionalRainbowTrack.js';
 import { buildRoverModeProps } from './RoverModeProps.js';
 import { getMKTrack, buildMKZoneConfig, MK_ARENA_TYPES } from './mk-tracks/MKTrackRegistry.js';
-import { initScenePerfBudget } from './mk-tracks/TrackPerformanceKit.js';
+import { initScenePerfBudget, isSlimTrackWorld } from './mk-tracks/TrackPerformanceKit.js';
 import { BIOME_ARENA_TYPES } from './mk-tracks/BiomeTrackRegistry.js';
+import { setActiveCosmicArena } from './mk-tracks/CosmicSkywayRegistry.js';
 import { resnapMarkedProps } from './mk-tracks/TrackGroundSnap.js';
 import { populateTrackScenery } from './mk-tracks/TrackWorldBuilder.js';
 import { enrichTrackWorldGltf } from './mk-tracks/TrackGltfScatter.js';
@@ -52,7 +53,7 @@ import { buildSpaceSkybox, buildStarParticles, buildRingedPlanet, buildAsteroidF
 import { buildColorfulGemStars } from './RainbowRoadVisuals.js';
 import { applyReferenceQualityPass } from './mk-tracks/BiomeQualityKit.js';
 import { isCarChassis } from '../data/car-racing-tracks.js';
-import { installKartRivals, animateKartRivals } from './KartRivalsKit.js';
+import { installKartRivals, animateKartRivals, resetKartRivals } from './KartRivalsKit.js';
 import { installRacePresentation } from './RacePresentationKit.js';
 import { installCandyRainbowScene } from './CandyRainbowSceneKit.js';
 import { hasRaceTheme, installRaceTheme } from './themes/index.js';
@@ -142,6 +143,8 @@ function resolveCurve(worldId, mkTrack = null) {
       const curveType = mkTrack.trackShape === 's-curve' ? 'catmullrom' : 'centripetal';
       return createCircuitCurve(mkTrack.spline, true, tension, curveType);
     }
+    // Rainbow Road's grand prix layout needs a smooth spline; near-zero tension kinks every waypoint
+    if (mkTrack.isRainbow) return createCircuitCurve(mkTrack.spline, true, 0.4, 'centripetal');
     return createRainbowCircuitCurve(mkTrack.spline);
   }
   if (mkTrack && !mkTrack.spline) {
@@ -149,7 +152,7 @@ function resolveCurve(worldId, mkTrack = null) {
     return createRainbowCircuitCurve(mkTrack.spline || []);
   }
   if (PRO_CIRCUIT_IDS.has(worldId)) {
-    return createRainbowCircuitCurve(MARIO_CIRCUIT_RAINBOW);
+    return createCircuitCurve(MARIO_CIRCUIT_RAINBOW, true, 0.4, 'centripetal');
   }
   return createRainbowCircuitCurve(MARIO_CIRCUIT_RAINBOW);
 }
@@ -192,15 +195,29 @@ function buildTrackMesh(mkTrack, curve, root, { halfWidth, is3D, trackLod = 1, s
 }
 
 /** Build any MK circuit arena by arenaType id */
-export function buildMKTrackArena(scene, arenaType) {
+export function buildMKTrackArena(scene, arenaType, trackOverride = null) {
   // Car mode 10 asks for the classic 'rainbow_road'; the registered circuit is the master cup one
-  const track = getMKTrack(arenaType) || (arenaType === 'rainbow_road' ? getMKTrack('rainbow_road_master') : null);
+  const track = trackOverride || getMKTrack(arenaType) || (arenaType === 'rainbow_road' ? getMKTrack('rainbow_road_master') : null);
   if (!track) return null;
-  let zone = buildMKZoneConfig(track);
+  // Keep the selected course object attached to the zone. Expanded race modes
+  // carry their own spline/settings; looking up only by arenaType silently
+  // replaced those with the original base track.
+  let zone = { ...buildMKZoneConfig(track), mkTrack: { ...track } };
   if (track.isRainbow) {
     zone = mergeProRacingConfig({ ...ZONE_RAINBOW_ROAD, ...zone, arenaType: track.arenaType });
   }
+  // Classic Rainbow Road reuses the master circuit but is the 3-lap race its mission promises
+  const classicRainbow = arenaType === 'rainbow_road';
+  if (classicRainbow) {
+    zone = {
+      ...zone,
+      name: ZONE_RAINBOW_ROAD.name,
+      story: ZONE_RAINBOW_ROAD.story,
+      racing: { ...zone.racing, laps: ZONE_RAINBOW_ROAD.racing.laps, targetTime: ZONE_RAINBOW_ROAD.racing.targetTime },
+    };
+  }
   const built = buildRacingCourse(scene, zone);
+  if (classicRainbow) scene.userData.raceWorldName = ZONE_RAINBOW_ROAD.name;
   // Scenery streams in after the road; keep sliding anything that lands on it.
   scene.userData._raceClearanceCancel?.();
   scene.userData._raceClearanceCancel = scheduleRaceRoadClearance(scene);
@@ -216,6 +233,8 @@ export function buildRacingCourse(scene, zoneConfig) {
   const racing = zoneConfig.racing;
   const worldId = zoneConfig.arenaType || zoneConfig.id;
   const mkTrack = zoneConfig.mkTrack || getMKTrack(worldId);
+  scene.userData.raceVisualId = scene.userData.chassisModeChallenge?.raceVisualId || mkTrack?.arenaType || worldId;
+  setActiveCosmicArena(mkTrack?.arenaType || worldId);
   const isRainbow = RAINBOW_CIRCUIT_IDS.has(worldId) || mkTrack?.isRainbow;
   const isProCircuit = PRO_CIRCUIT_IDS.has(worldId);
   const qp = scene.userData?.qualityPreset || {};
@@ -272,15 +291,20 @@ export function buildRacingCourse(scene, zoneConfig) {
     scene.userData.customDecor = true;
     scene.userData.gameWorld = true;
   } else if (isRainbow) {
-    buildSpaceSkybox(scene, 95, { segments: { width: 16, height: 12 }, worldLod: 1.0 });
-    buildStarParticles(scene, 200);
-    buildColorfulGemStars(scene, 18);
-    buildNebulaSprites(scene);
-    buildRingedPlanet(scene, { x: -85, y: -18, z: 35, radius: 62, ringRadius: 0 });
-    buildMoon(scene, { x: 48, y: 18, z: -55, radius: 8 });
-    buildAsteroidField(scene, 22);
-    scene.userData.customSky = true;
-    scene.userData.customDecor = true;
+    if (isSlimTrackWorld(scene)) {
+      scene.background = new THREE.Color(0x050214);
+      scene.userData.customSky = true;
+    } else {
+      buildSpaceSkybox(scene, 95, { segments: { width: 16, height: 12 }, worldLod: 1.0 });
+      buildStarParticles(scene, 200);
+      buildColorfulGemStars(scene, 18);
+      buildNebulaSprites(scene);
+      buildRingedPlanet(scene, { x: -85, y: -18, z: 35, radius: 62, ringRadius: 0 });
+      buildMoon(scene, { x: 48, y: 18, z: -55, radius: 8 });
+      buildAsteroidField(scene, 22);
+      scene.userData.customSky = true;
+      scene.userData.customDecor = true;
+    }
   }
 
   // ── Mario Kart track: solid road + kerbs + walls ──
@@ -294,7 +318,7 @@ export function buildRacingCourse(scene, zoneConfig) {
   let track;
   if (mkTrack) {
     const biomeLod = mkTrack.arenaType && BIOME_ARENA_TYPES.has(mkTrack.arenaType)
-      ? Math.max(trackLod, 0.92)
+      ? (isSlimTrackWorld(scene) ? Math.min(trackLod, 0.55) : Math.max(trackLod, 0.92))
       : trackLod;
     track = buildTrackMesh(mkTrack, curve, root, { halfWidth, is3D, trackLod: biomeLod, scene });
   } else if (isProCircuit) {
@@ -320,12 +344,18 @@ export function buildRacingCourse(scene, zoneConfig) {
     const finishT = racing.finishT ?? 0;
     if (worldGroup) {
       const needsPrimitives = !worldGroup.userData.sceneryPopulated;
-      if (needsPrimitives) {
+      const slim = isSlimTrackWorld(scene);
+      if (needsPrimitives && !slim) {
         populateTrackScenery(worldGroup, curve, halfWidth, bounds, trackId, perfBudget, scene, finishT);
+      } else if (slim) {
+        worldGroup.userData.sceneryPopulated = true;
+        scene.userData.sceneryPopulated = true;
+        worldGroup.userData.awaitGltfScenery = false;
+        worldGroup.userData.deferGltfEnrich = true;
       }
       // Themed worlds get their Kenney scenery from the roadside kit instead
       if (hasThemeScenery(trackThemeFor(trackId).id)) worldGroup.userData.deferGltfEnrich = true;
-      if (worldGroup.userData.awaitGltfScenery && !worldGroup.userData.gltfEnriched && !worldGroup.userData.deferGltfEnrich) {
+      if (!slim && worldGroup.userData.awaitGltfScenery && !worldGroup.userData.gltfEnriched && !worldGroup.userData.deferGltfEnrich) {
         enrichTrackWorldGltf(worldGroup, curve, halfWidth, trackId, perfBudget, scene, finishT)
           .then((n) => {
             console.log('[RacingCourse] glTF enriched', trackId, { placed: n });
@@ -462,6 +492,7 @@ export function buildRacingCourse(scene, zoneConfig) {
   });
   const presentationOpts = {
     halfWidth,
+    theme: mkTrack?.arenaType || worldId,
     spawn: gridSpawn,
     startT: gridSpawn.trackT ?? racing.spawnT ?? racing.finishT ?? 0,
     world: worldId || '',
@@ -469,12 +500,12 @@ export function buildRacingCourse(scene, zoneConfig) {
   const raceThemeId = scene.userData.chassisModeChallenge?.raceThemeId;
   if (hasRaceTheme(raceThemeId)) {
     installRaceTheme(scene, curve, raceThemeId, presentationOpts);
-  } else if (mkTrack?.arenaType === 'candy_carnival_01') {
+  } else if (mkTrack?.arenaType === 'candy_carnival_01' && !isSlimTrackWorld(scene)) {
     installCandyRainbowScene(scene, curve, presentationOpts);
   } else {
     installRacePresentation(scene, curve, presentationOpts);
   }
-  if (!hasRaceTheme(raceThemeId) && mkTrack && hasMK8Showcase(mkTrack.arenaType)) {
+  if (!isSlimTrackWorld(scene) && !hasRaceTheme(raceThemeId) && mkTrack && hasMK8Showcase(mkTrack.arenaType)) {
     applyMK8Showcase(scene, curve, scene.userData._raceClearHalfWidth || halfWidth, mkTrack.arenaType, {
       startT: racing.finishT ?? 0,
     });
@@ -505,7 +536,7 @@ export function buildRacingCourse(scene, zoneConfig) {
     scene.userData.lightMood = isBiome
       ? (mkTrack.arenaType === 'neon_metro_01'
         || mkTrack.arenaType === 'lava_foundry_01'
-        || mkTrack.arenaType === 'star_station_01'
+        || (typeof mkTrack.isCosmicBiome === 'boolean' && mkTrack.isCosmicBiome)
         ? [0.55, 0.6, 0.2]
         : [1.0, 1.0, 0.92])
       : (visual?.lightMood || [1.25, 1.2, 1.1]);
@@ -598,6 +629,7 @@ export function buildRacingCourse(scene, zoneConfig) {
     onBurst: (x, y, z, col) => _burst(scene, x, y, z, col),
     onPickup: (x, y, z, type) => _burst(scene, x, y, z, POWERUP_BURST_COLOR[type] || 0xffd700),
     difficulty: racing.difficulty ?? 3,
+    strictTargetTime: racing.strictTargetTime ?? null,
   });
 
   scene.userData.raceSpawn = moverLogic.spawn;
@@ -633,11 +665,21 @@ export function buildRacingCourse(scene, zoneConfig) {
   scene.userData.raceTotalLaps = racing.laps ?? 3;
   scene.userData.racingConfig = racing;
   scene.userData.raceCountdownSeconds = 0;
-  if (mkTrack || isProCircuit) {
-    installKartRivals(scene, curve, { halfWidth, laps: scene.userData.raceTotalLaps });
+  if ((mkTrack || isProCircuit) && !isSlimTrackWorld(scene)) {
+    // A Track Maker track brings its own bumpers, boost pads, ramps and rivals
+    installKartRivals(scene, curve, {
+      halfWidth, laps: scene.userData.raceTotalLaps,
+      ...(mkTrack?.isCustomTrack ? { items: mkTrack.raceItems || [], rivals: mkTrack.rivalCount ?? 3, pace: mkTrack.rivalPace || 'normal' } : {}),
+    });
   }
 
+  scene.userData.kartRivalsLive = false;
+  scene.userData.racePickups = moverLogic.pickups; // for "Move forward until item nearby"
   scene.userData.movers = [{
+    restartRace() {
+      moverLogic.restartRace();
+      resetKartRivals(scene);
+    },
     update(time, dt, rs) {
       scene.userData._raceState = rs;
       if (gameWorld?.update) gameWorld.update(time, dt);

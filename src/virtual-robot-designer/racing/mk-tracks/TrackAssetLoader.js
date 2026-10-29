@@ -10,7 +10,8 @@ import { getTrackAssetUrl } from './TrackAssetManifest.js';
 const _cache = new Map();
 const _pending = new Map();
 let _loader = null;
-const LOAD_TIMEOUT_MS = 5000;
+const LOAD_TIMEOUT_MS = 1500;
+if (typeof THREE !== 'undefined') THREE.Cache.enabled = true;
 
 function withTimeout(promise, ms, url) {
   return new Promise((resolve, reject) => {
@@ -45,7 +46,17 @@ export async function loadTrackAsset(url) {
   if (_cache.has(url)) return _cache.get(url);
   if (_pending.has(url)) return _pending.get(url);
 
-  const promise = withTimeout(getLoader().loadAsync(url), LOAD_TIMEOUT_MS, url)
+  const loadFromCache = async () => {
+    const res = await fetch(url, { cache: 'force-cache' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const buf = await res.arrayBuffer();
+    const path = url.slice(0, url.lastIndexOf('/') + 1);
+    return new Promise((resolve, reject) => {
+      getLoader().parse(buf, path, resolve, reject);
+    });
+  };
+
+  const promise = withTimeout(loadFromCache(), LOAD_TIMEOUT_MS, url)
     .then((gltf) => {
       gltf.scene.name = gltf.scene.name || url.split('/').pop();
       _cache.set(url, gltf);

@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { MBLOCK_DEFS, MISSION_PALETTE, genPyFromBlocks } from './missionData.js';
+import { EmojiIcon } from '../ui/Icon.jsx';
 const MB_BTN = {
-  background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)',
-  borderRadius: 4, color: 'rgba(255,255,255,0.7)', cursor: 'pointer',
+  background: 'rgba(var(--mm-ink),0.08)', border: '1px solid rgba(var(--mm-ink),0.15)',
+  borderRadius: 4, color: 'rgba(var(--mm-ink),0.7)', cursor: 'pointer',
   fontSize: 11, padding: '2px 5px', lineHeight: 1.4,
 };
 
@@ -48,13 +49,13 @@ export function MissionBlockEditor({ missionId, campColor, blocks, setBlocks }) 
           style={{
             width: 148,
             flexShrink: 0,
-            background: 'rgba(255,255,255,0.06)',
+            background: 'rgba(var(--mm-ink),0.06)',
             borderRadius: 12,
             padding: '10px 8px',
-            border: '1px solid rgba(255,255,255,0.14)',
+            border: '1px solid rgba(var(--mm-ink),0.14)',
           }}
         >
-          <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8, paddingLeft: 2 }}>Blocks</div>
+          <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(var(--mm-ink),0.35)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8, paddingLeft: 2 }}>Blocks</div>
           {available.map(type => {
             const def = MBLOCK_DEFS[type];
             if (!def) return null;
@@ -62,11 +63,11 @@ export function MissionBlockEditor({ missionId, campColor, blocks, setBlocks }) 
               <button key={type} onClick={() => addBlock(type)} style={{
                 width: '100%', textAlign: 'left', padding: '6px 8px',
                 background: def.color + '22', border: `1px solid ${def.color}44`,
-                borderRadius: 7, color: '#fff', cursor: 'pointer',
+                borderRadius: 7, color: 'var(--mm-text)', cursor: 'pointer',
                 fontSize: 11, fontWeight: 600, marginBottom: 4,
                 display: 'flex', alignItems: 'center', gap: 5,
               }}>
-                <span>{def.icon}</span>{def.label}
+                <span><EmojiIcon e={def.icon} /></span>{def.label}
               </button>
             );
           })}
@@ -76,15 +77,15 @@ export function MissionBlockEditor({ missionId, campColor, blocks, setBlocks }) 
         <div
           style={{
             flex: 1,
-            background: 'rgba(255,255,255,0.05)',
+            background: 'rgba(var(--mm-ink),0.05)',
             borderRadius: 12,
             padding: 10,
             minHeight: 180,
-            border: '1px solid rgba(255,255,255,0.14)',
+            border: '1px solid rgba(var(--mm-ink),0.14)',
           }}
         >
           {blocks.length === 0 && (
-            <div style={{ color: 'rgba(255,255,255,0.2)', fontSize: 13, textAlign: 'center', marginTop: 60 }}>
+            <div style={{ color: 'rgba(var(--mm-ink),0.2)', fontSize: 13, textAlign: 'center', marginTop: 60 }}>
               ← Click blocks on the left to add them!
             </div>
           )}
@@ -102,18 +103,18 @@ export function MissionBlockEditor({ missionId, campColor, blocks, setBlocks }) 
                 padding: '5px 8px',
                 display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap',
               }}>
-                <span style={{ fontSize: 12 }}>{def.icon}</span>
+                <span style={{ fontSize: 12 }}><EmojiIcon e={def.icon} /></span>
                 <span style={{ fontSize: 11, fontWeight: 700, color: def.color, minWidth: 72, flexShrink: 0 }}>{def.label}</span>
                 {(def.params || []).map(param => (
                   <div key={param.key} style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                    <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', flexShrink: 0 }}>{param.label}:</span>
+                    <span style={{ fontSize: 10, color: 'rgba(var(--mm-ink),0.35)', flexShrink: 0 }}>{param.label}:</span>
                     <input
                       value={block.params?.[param.key] ?? param.default}
                       onChange={e => updateParam(block.id, param.key, e.target.value)}
                       style={{
-                        width: ['message', 'cond', 'value'].includes(param.key) ? 130 : 52,
-                        background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.15)',
-                        borderRadius: 4, color: '#e2e8f0', fontSize: 10, padding: '2px 5px',
+                        width: ['message', 'cond', 'value', 'text', 'code', 'list', 'amount'].includes(param.key) ? 150 : 56,
+                        background: 'rgba(var(--mm-ink),0.08)', border: '1px solid rgba(var(--mm-ink),0.2)',
+                        borderRadius: 4, color: 'var(--mm-text)', fontSize: 10, padding: '2px 5px',
                         fontFamily: 'monospace', outline: 'none',
                       }}
                     />
@@ -134,11 +135,11 @@ export function MissionBlockEditor({ missionId, campColor, blocks, setBlocks }) 
 
       {/* Code preview */}
       <details style={{ marginTop: 8 }} onToggle={e => setShowCode(e.target.open)}>
-        <summary style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, cursor: 'pointer', userSelect: 'none', padding: '4px 0' }}>
-          🐍 See the Python code your blocks generate
+        <summary style={{ color: 'rgba(var(--mm-ink),0.4)', fontSize: 11, cursor: 'pointer', userSelect: 'none', padding: '4px 0' }}>
+          <EmojiIcon e="🐍" style={{ marginRight: '0.35em' }} />See the Python code your blocks generate
         </summary>
         <pre style={{
-          marginTop: 6, background: 'rgba(10,18,58,0.65)', border: '1px solid rgba(255,255,255,0.16)',
+          marginTop: 6, background: 'rgba(10,18,58,0.65)', border: '1px solid rgba(var(--mm-ink),0.16)',
           borderRadius: 8, padding: '10px 14px', color: '#86efac',
           fontFamily: 'monospace', fontSize: 11, lineHeight: 1.7, overflowX: 'auto', margin: '6px 0 0',
         }}>{genPyFromBlocks(blocks)}</pre>
@@ -228,14 +229,14 @@ export function CertificateModal({ campaign, studentName, onClose }) {
       <div style={{ background: 'var(--bg-secondary)', borderRadius: 20, padding: 28, maxWidth: 860, width: '100%', border: `1px solid ${campaign.color}40` }}
         onClick={e => e.stopPropagation()}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <h2 style={{ margin: 0, color: '#fff', fontSize: 18, fontWeight: 700 }}>🏆 Campaign Complete!</h2>
+          <h2 style={{ margin: 0, color: '#fff', fontSize: 18, fontWeight: 700 }}><EmojiIcon e="🏆" style={{ marginRight: '0.35em' }} />Campaign Complete!</h2>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 20, cursor: 'pointer' }}>✕</button>
         </div>
         <canvas ref={canvasRef} style={{ width: '100%', borderRadius: 12, display: 'block' }} />
         <div style={{ display: 'flex', gap: 12, marginTop: 16, justifyContent: 'flex-end' }}>
           <button onClick={onClose} style={{ padding: '10px 20px', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: 8, color: 'var(--text-primary)', cursor: 'pointer', fontWeight: 600 }}>Close</button>
           <button onClick={download} style={{ padding: '10px 24px', background: campaign.color, border: 'none', borderRadius: 8, color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: 14 }}>
-            ⬇️ Download Certificate
+            <EmojiIcon e="⬇️" style={{ marginRight: '0.35em' }} />Download Certificate
           </button>
         </div>
       </div>

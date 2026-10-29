@@ -167,9 +167,23 @@ export const FROST_PEAK_SPLINE = peanutLoop(56, 38, 0.3, 96, (t) => 5.5 + 2.5 * 
 /** Volcano Run — M-shape: long straight, then a sharp V dip across the top (difficulty 7). */
 export const LAVA_FOUNDRY_SPLINE = roundedPolygon([[-50, -34], [50, -34], [50, 36], [22, 36], [0, 8], [-22, 36], [-50, 36]], 9, 0);
 
-/** Mode 8 — Star Station: orbital ring */
-/** Space Station — five-point star ring of flowing bends (difficulty 6). */
-export const STAR_STATION_SPLINE = polarLoop(46, 6, 5, 120, 8);
+/**
+ * Mode 8 — Star Station: cosmic skyway figure-8. The two lobes meet at the
+ * centre 12 units apart vertically, so one half flies over the other.
+ */
+export const STAR_STATION_SPLINE = (() => {
+  const pts = [];
+  const n = 56;
+  for (let i = 0; i < n; i++) {
+    const a = Math.PI / 2 + (i / n) * 2 * Math.PI;
+    pts.push({
+      x: 54 * Math.sin(a),
+      y: 8 + 6 * Math.cos(a) + Math.sin(2 * a) * 1.2,
+      z: 40 * Math.sin(2 * a),
+    });
+  }
+  return pts;
+})();
 
 /** Mode 10 — Thunder Ridge: flowing oval with a mild pinch (still C2-smooth) */
 export const THUNDER_RIDGE_SPLINE = (() => {
@@ -200,3 +214,105 @@ export const JUNGLE_RUINS_SPLINE = roundedPolygon([[-56, -42], [56, -42], [56, -
 /** Mode 9 — Fairy Glen: garden oval */
 /** Forest Trail — three flowing lobes with S-bends between them (difficulty 4). */
 export const FAIRY_GLEN_SPLINE = polarLoop(42, 8, 3, 108, 0);
+
+/** Cosmic bonus tracks — elevated space highways (distinct layouts, shared visuals). */
+function cosmicFigure8(n, rx, rz, y0, yAmp, yRipple = 0.2) {
+  const pts = [];
+  for (let i = 0; i < n; i++) {
+    const a = Math.PI / 2 + (i / n) * 2 * Math.PI;
+    pts.push({
+      x: rx * Math.sin(a),
+      y: y0 + yAmp * Math.cos(a) + Math.sin(2 * a) * (yAmp * yRipple),
+      z: rz * Math.sin(2 * a),
+    });
+  }
+  return pts;
+}
+
+function cosmicStadium(rx, rz, n, power, y0, yWave) {
+  return stadium(rx, rz, n, power, (t) => y0 + Math.sin(t * Math.PI * 2) * yWave);
+}
+
+export const COSMIC_NEBULA_RING_SPLINE = cosmicStadium(50, 42, 36, 3.2, 11, 4);
+/** Lopsided figure-8: a big loop round one wormhole, a tight one round the other. */
+export const COSMIC_WORMHOLE_RUN_SPLINE = (() => {
+  const pts = [];
+  const n = 60;
+  for (let i = 0; i < n; i++) {
+    const a = Math.PI / 2 + (i / n) * Math.PI * 2;
+    pts.push({
+      x: 56 * Math.sin(a),
+      y: 9 + 7 * Math.cos(a) + Math.sin(2 * a) * 2,
+      z: 40 * Math.sin(2 * a) * (1 + 0.45 * Math.sin(a)),
+    });
+  }
+  return pts;
+})();
+/** Wavy oval: the road weaves in and out past five clusters of rocks. */
+export const COSMIC_ASTEROID_BELT_SPLINE = (() => {
+  const pts = [];
+  const n = 60;
+  for (let i = 0; i < n; i++) {
+    const a = Math.PI / 2 + (i / n) * Math.PI * 2;
+    const rad = 1 + 0.13 * Math.sin(5 * a);
+    pts.push({ x: 58 * Math.cos(a) * rad, y: 10 + Math.sin(a * 2) * 2.5, z: 44 * Math.sin(a) * rad });
+  }
+  return pts;
+})();
+export const COSMIC_TWIN_LOOP_SPLINE = cosmicFigure8(58, 58, 44, 10, 7, 0.22);
+export const COSMIC_SUPERNOVA_SPLINE = buildF1Circuit(44, 62, 40, 5.2).map((p, i, arr) => ({
+  ...p,
+  y: 12 + Math.sin((i / arr.length) * Math.PI * 2) * 3.5,
+}));
+/** Egg-shaped loop: wide sweeping arc on one side, tighter hairpin on the other, big climb. */
+export const COSMIC_COMET_ARC_SPLINE = (() => {
+  const pts = [];
+  const n = 40;
+  for (let i = 0; i < n; i++) {
+    const a = Math.PI / 2 + (i / n) * Math.PI * 2;
+    pts.push({
+      x: 58 * Math.cos(a),
+      y: 10 + 6 * Math.sin(a),
+      z: 40 * Math.sin(a) - 10 * Math.cos(2 * a),
+    });
+  }
+  return pts;
+})();
+export const COSMIC_ORBIT_CROSS_SPLINE = cosmicFigure8(56, 66, 30, 10, 8, 0.18);
+/** Three-lobed flower loop with a climb and dip on every lobe. */
+export const COSMIC_PULSAR_SPIRAL_SPLINE = (() => {
+  const pts = [];
+  const n = 60;
+  for (let i = 0; i < n; i++) {
+    const a = Math.PI / 2 + (i / n) * Math.PI * 2;
+    const rad = 48 + 9 * Math.cos(3 * a);
+    pts.push({
+      x: Math.cos(a) * rad,
+      y: 10 + 5 * Math.sin(3 * a),
+      z: Math.sin(a) * rad * 0.9,
+    });
+  }
+  return pts;
+})();
+/** D-shaped oval: one long straight past the black hole, one big sweeping curve. */
+export const COSMIC_VOID_OVAL_SPLINE = (() => {
+  const pts = [];
+  const n = 48;
+  for (let i = 0; i < n; i++) {
+    const a = Math.PI / 2 + (i / n) * Math.PI * 2;
+    const s = Math.sin(a);
+    pts.push({ x: 60 * Math.cos(a), y: 9 + Math.cos(a) * 4, z: s > 0 ? 46 * s : 12 * s });
+  }
+  return pts;
+})();
+/** Tight, pointed figure-8 (a lemniscate): the hardest track, cutting close to the black hole. */
+export const COSMIC_EVENT_HORIZON_SPLINE = (() => {
+  const pts = [];
+  const n = 64;
+  for (let i = 0; i < n; i++) {
+    const t = Math.PI / 2 + (i / n) * Math.PI * 2;
+    const d = 1 + Math.sin(t) ** 2;
+    pts.push({ x: 64 * Math.cos(t) / d, y: 9 + 6.5 * Math.sin(t), z: 70 * Math.sin(t) * Math.cos(t) / d });
+  }
+  return pts;
+})();

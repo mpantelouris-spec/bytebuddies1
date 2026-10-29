@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import { getBiomeAAASpec } from './BiomeAAAVisualSpec.js';
 import { getTrackSkyPreset } from './TrackSkyKit.js';
+import { isCosmicSkywayArena } from './CosmicSkywayRegistry.js';
 
 function installTrackLights(scene, spec) {
   // Live Lab already installed amb/hemi/sun/fill. Extra keys read as a floating lamp.
@@ -13,8 +14,8 @@ function installTrackLights(scene, spec) {
   scene.add(hemi);
   const key = new THREE.DirectionalLight(spec.keyLight ?? 0xffffff, spec.suppressSimDaylight ? 0.55 : 0.85);
   key.position.set(40, 60, 30);
-  key.castShadow = true;
-  key.shadow.mapSize.set(2048, 2048);
+  key.castShadow = !scene.userData.lowPower && scene.userData.qualityTier !== 'low';
+  if (key.castShadow) key.shadow.mapSize.set(1024, 1024);
   key.shadow.camera.left = -80;
   key.shadow.camera.right = 80;
   key.shadow.camera.top = 80;
@@ -32,21 +33,26 @@ function installTrackLights(scene, spec) {
 function installCanvasEnv(scene, arenaType) {
   const preset = getTrackSkyPreset(arenaType);
   const canvas = document.createElement('canvas');
-  canvas.width = 256;
-  canvas.height = 128;
+  // Same size as the HDR sky that replaces it (MK8PhotoKit): three.js builds a
+  // different shader for each environment size, so a mismatch made every
+  // material recompile — a multi-second freeze — when the HDR arrived mid-race.
+  canvas.width = 1024;
+  canvas.height = 512;
   const ctx = canvas.getContext('2d');
-  const grad = ctx.createLinearGradient(0, 0, 0, 128);
+  const grad = ctx.createLinearGradient(0, 0, 0, 512);
   grad.addColorStop(0, preset.top);
   grad.addColorStop(0.55, preset.mid);
   grad.addColorStop(1, preset.horizon);
   ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, 256, 128);
+  ctx.fillRect(0, 0, 1024, 512);
   const tex = new THREE.CanvasTexture(canvas);
   tex.mapping = THREE.EquirectangularReflectionMapping;
   if (THREE.SRGBColorSpace) tex.colorSpace = THREE.SRGBColorSpace;
   scene.environment = tex;
-  const underground = getBiomeAAASpec(arenaType)?.underground;
-  scene.environmentIntensity = underground ? 0.28 : 0.52;
+  const spec = getBiomeAAASpec(arenaType);
+  const underground = spec?.underground;
+  const cosmic = spec?.isCosmicBiome || isCosmicSkywayArena(arenaType);
+  scene.environmentIntensity = cosmic ? 0.55 : (underground ? 0.28 : 0.52);
 }
 
 export function installTrackEnvironment(scene, arenaType, renderer) {
@@ -61,6 +67,15 @@ export function installTrackEnvironment(scene, arenaType, renderer) {
   }
 
   installTrackLights(scene, spec);
+
+  if (spec.isCosmicBiome || isCosmicSkywayArena(arenaType)) {
+    if (!scene.getObjectByName('cosmic-skyway-fill')) {
+      const fill = new THREE.AmbientLight(0xa0a4b8, 0.45);
+      fill.name = 'cosmic-skyway-fill';
+      scene.add(fill);
+      scene.userData._cosmicFillLights = true;
+    }
+  }
 
   const preset = getTrackSkyPreset(arenaType);
   if (!scene.fog) {

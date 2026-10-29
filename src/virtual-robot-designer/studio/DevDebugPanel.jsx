@@ -8,6 +8,7 @@
  * Children NEVER see this. It's for developers only.
  */
 import React, { useState, useEffect, useCallback } from 'react';
+import { EmojiIcon, IconText } from '../../components/ui/Icon.jsx';
 
 function JsonTree({ data, depth = 0 }) {
   const [collapsed, setCollapsed] = useState(depth > 1);
@@ -20,7 +21,7 @@ function JsonTree({ data, depth = 0 }) {
     return (
       <span>
         <button onClick={() => setCollapsed(c => !c)} style={collapseBtn}>
-          {collapsed ? '▶' : '▼'} [{data.length}]
+          <IconText>{collapsed ? '▶' : '▼'}</IconText> [{data.length}]
         </button>
         {!collapsed && (
           <div style={{ marginLeft: 16, borderLeft: '1px solid #334155', paddingLeft: 8 }}>
@@ -41,7 +42,7 @@ function JsonTree({ data, depth = 0 }) {
     return (
       <span>
         <button onClick={() => setCollapsed(c => !c)} style={collapseBtn}>
-          {collapsed ? '▶' : '▼'} {'{'}…{'}'}
+          <IconText>{collapsed ? '▶' : '▼'}</IconText> {'{'}…{'}'}
         </button>
         {!collapsed && (
           <div style={{ marginLeft: 16, borderLeft: '1px solid #334155', paddingLeft: 8 }}>
@@ -112,7 +113,7 @@ export default function DevDebugPanel({ robotConfig, robotCode, robotValidation,
           borderTopLeftRadius: 12,
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 16 }}>🔧</span>
+            <span style={{ fontSize: 16 }}><EmojiIcon e="🔧" /></span>
             <span style={{ color: '#00d9ff', fontWeight: 700, fontSize: 13 }}>ByteBuddies DevTools</span>
             <span style={{
               background: '#7c3aed', color: '#fff',
@@ -221,7 +222,7 @@ export default function DevDebugPanel({ robotConfig, robotCode, robotValidation,
                     )}
                   </div>
                   {codeValidation?.invalidBlockIds?.has(block.instanceId) && (
-                    <div style={{ color: '#ef4444', marginTop: 2 }}>⚠ This block has an error</div>
+                    <div style={{ color: '#ef4444', marginTop: 2 }}><EmojiIcon e="⚠" style={{ marginRight: '0.35em' }} />This block has an error</div>
                   )}
                 </div>
               ))}
@@ -259,7 +260,7 @@ export default function DevDebugPanel({ robotConfig, robotCode, robotValidation,
                   background: '#1e293b', borderRadius: 6, marginBottom: 3,
                 }}>
                   <span style={{ color: c.pass ? '#22c55e' : c.warn ? '#f97316' : '#ef4444', minWidth: 14 }}>
-                    {c.pass ? '✓' : c.warn ? '⚠' : '✕'}
+                    <IconText>{c.pass ? '✓' : c.warn ? '⚠' : '✕'}</IconText>
                   </span>
                   <span style={{ color: '#e2e8f0', flex: 1 }}>{c.label}</span>
                   <span style={{ color: '#64748b', fontSize: 10 }}>{c.detail}</span>

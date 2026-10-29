@@ -13,7 +13,7 @@ import {
   CRYSTAL_CAVERN_TRACK as T,
 } from './CrystalCavernPalette.js';
 
-const REF_IMG = '/assets/backgrounds/tracks/crystal_cavern_reference.png';
+const REF_IMG = '/assets/backgrounds/tracks/crystal_cavern_reference.png?o=1';
 
 let _refTexCache = null;
 export function getCrystalCavernReferenceTexture() {

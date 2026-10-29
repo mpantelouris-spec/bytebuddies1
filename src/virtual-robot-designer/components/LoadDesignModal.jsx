@@ -4,6 +4,7 @@ import VirtualRobotDB from '../database/virtual-robot-db.js';
 import { migrateDesign } from '../config.js';
 import { importRobotSpec } from '../services/robot-schema.js';
 import { playVrdSoundSync } from '../utils/vrdSound.js';
+import { EmojiIcon } from '../../components/ui/Icon.jsx';
 
 export default function LoadDesignModal({ onLoad, onClose }) {
   const [designs, setDesigns] = useState([]);
@@ -76,11 +77,11 @@ export default function LoadDesignModal({ onLoad, onClose }) {
       onClick={onClose}
     >
       <motion.div className="vrd-modal vrd-modal--wide" initial={{ scale: 0.95, y: 12 }} animate={{ scale: 1, y: 0 }} onClick={(e) => e.stopPropagation()}>
-        <h2 id="vrd-load-title" style={{ margin: '0 0 16px' }}>📂 Load Saved Design</h2>
+        <h2 id="vrd-load-title" style={{ margin: '0 0 16px' }}><EmojiIcon e="📂" style={{ marginRight: '0.35em' }} />Load Saved Design</h2>
 
         <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
           <button type="button" className="vrd-btn" onClick={() => fileRef.current?.click()}>
-            ⬇ Import robot.json
+            <EmojiIcon e="⬇" style={{ marginRight: '0.35em' }} />Import robot.json
           </button>
           <input ref={fileRef} type="file" accept=".json,application/json" hidden onChange={handleImportFile} />
         </div>

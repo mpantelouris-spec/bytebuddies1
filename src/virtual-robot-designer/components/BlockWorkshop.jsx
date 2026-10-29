@@ -8,6 +8,7 @@ import {
   worldKey,
 } from '../data/block-parts.js';
 import { migrateAssembly } from '../services/assembly-service.js';
+import { EmojiIcon } from '../../components/ui/Icon.jsx';
 
 const GRID_SIZE = 5;
 const GRID_OFFSET = Math.floor(GRID_SIZE / 2);
@@ -44,7 +45,7 @@ export default function BlockWorkshop({ design, onPlaceBlock, onRemoveBlock, onR
   return (
     <div className="vrd-block-workshop">
       <motion.div className="vrd-block-head">
-        <strong>🧱 LEGO BLOCK BUILDER</strong>
+        <strong><EmojiIcon e="🧱" style={{ marginRight: '0.35em' }} />LEGO BLOCK BUILDER</strong>
         <p>① Pick a block · ② Click the grid or 3D floor to snap · ③ Stack layers up</p>
         <input
           type="search"
@@ -97,7 +98,7 @@ export default function BlockWorkshop({ design, onPlaceBlock, onRemoveBlock, onR
       <div className="vrd-block-cats">
         {BLOCK_CATEGORIES.map((c) => (
           <button key={c.id} type="button" className={`vrd-mod-cat ${category === c.id ? 'active' : ''}`} onClick={() => setCategory(c.id)}>
-            <span>{c.icon}</span><span>{c.label}</span>
+            <span><EmojiIcon e={c.icon} /></span><span>{c.label}</span>
           </button>
         ))}
       </div>
@@ -112,7 +113,7 @@ export default function BlockWorkshop({ design, onPlaceBlock, onRemoveBlock, onR
             whileTap={{ scale: 0.95 }}
             style={{ '--part-color': p.color }}
           >
-            <span>{p.icon}</span>
+            <span><EmojiIcon e={p.icon} /></span>
             <span>{p.label}</span>
           </motion.button>
         ))}
@@ -133,7 +134,7 @@ export default function BlockWorkshop({ design, onPlaceBlock, onRemoveBlock, onR
               const t = getBlockType(b.type);
               return (
                 <li key={b.id}>
-                  <span>{t?.icon} {t?.label}</span>
+                  <span><EmojiIcon e={t?.icon} style={{ marginRight: '0.35em' }} />{t?.label}</span>
                   <span className="vrd-workshop-slot-tag">({b.x},{b.y},{b.z})</span>
                   <button type="button" onClick={() => onRotateBlock(b.id)} title="Rotate">↻</button>
                   <button type="button" onClick={() => onRemoveBlock(b.id)} aria-label="Remove">✕</button>

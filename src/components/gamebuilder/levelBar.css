@@ -1,0 +1,26 @@
+.lvl-bar { position: relative; z-index: 25; display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-top: 1px solid var(--border-color); background: var(--bg-secondary); }
+.lvl-bar.off { opacity: 0.55; }
+.lvl-label { font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); flex-shrink: 0; }
+.lvl-list { display: flex; align-items: center; gap: 6px; overflow-x: auto; scrollbar-width: thin; padding: 2px 0; }
+.lvl-chip { position: relative; display: flex; align-items: center; flex-shrink: 0; border-radius: 9px; border: 1px solid var(--border-color); background: var(--bg-primary); }
+.lvl-chip.on { border-color: var(--accent-primary); box-shadow: 0 0 0 1px var(--accent-primary) inset; background: color-mix(in srgb, var(--accent-primary) 12%, var(--bg-primary)); }
+.lvl-main { display: flex; align-items: center; gap: 6px; padding: 3px 8px 3px 3px; border: none; background: none; color: var(--text-primary); cursor: pointer; }
+.lvl-main b { font-size: 12px; white-space: nowrap; }
+.lvl-main input { width: 90px; font-size: 12px; padding: 2px 4px; border-radius: 5px; border: 1px solid var(--accent-primary); background: var(--bg-secondary); color: var(--text-primary); }
+.lvl-thumb { width: 34px; height: 24px; border-radius: 5px; background-size: cover; background-position: center; background-color: #fff; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.15); }
+.lvl-more { border: none; background: none; color: var(--text-muted); padding: 0 6px 0 0; cursor: pointer; font-size: 14px; }
+.lvl-menu { position: fixed; transform: translateY(32px); z-index: 40; display: flex; flex-direction: column; min-width: 150px; padding: 4px; border-radius: 10px; background: var(--bg-secondary); border: 1px solid var(--border-color); box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35); }
+.lvl-menu button { text-align: left; padding: 6px 8px; border: none; border-radius: 6px; background: none; color: var(--text-primary); font-size: 12px; cursor: pointer; }
+.lvl-menu button:hover:not(:disabled) { background: var(--bg-primary); }
+.lvl-menu button:disabled { opacity: 0.4; cursor: default; }
+.lvl-menu .danger { color: #f87171; }
+.lvl-add { flex-shrink: 0; padding: 5px 10px; border-radius: 9px; border: 1px dashed var(--accent-primary); background: none; color: var(--accent-primary); font-size: 12px; font-weight: 700; cursor: pointer; }
+
+/* Banners over the stage while playing */
+.gb-banner { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; z-index: 15; }
+.gb-banner div { padding: 14px 28px; border-radius: 16px; font-size: 30px; font-weight: 900; letter-spacing: 0.02em; color: #fff; text-shadow: 0 3px 0 rgba(0, 0, 0, 0.35); animation: gb-pop 0.35s ease-out; box-shadow: 0 14px 40px rgba(0, 0, 0, 0.45); }
+.gb-banner small { display: block; font-size: 13px; font-weight: 700; opacity: 0.9; text-shadow: none; margin-top: 4px; text-align: center; }
+.gb-banner.level div { background: linear-gradient(90deg, #6366f1, #22d3ee); }
+.gb-banner.win div { background: linear-gradient(90deg, #f59e0b, #22c55e); }
+.gb-banner.over div { background: linear-gradient(90deg, #ef4444, #7c3aed); }
+@keyframes gb-pop { from { transform: scale(0.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }

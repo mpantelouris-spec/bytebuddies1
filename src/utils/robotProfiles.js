@@ -125,6 +125,43 @@ export const ROBOT_COMMANDS = [
   { cat: 'Sensors', id: 'read_sonar',  icon: '📡',  label: 'Read Sonar (cm) → var',  color: '#f59e0b', params: [{ key: 'var', label: 'var', default: 'dist', type: 'text' }] },
 ];
 
+/** Board extensions are selected automatically with the board picker. Each profile
+ * supplies the matching command/code generator; this metadata drives the palette UI. */
+export const ROBOT_BOARD_EXTENSIONS = {
+  microbit: { name: 'micro:bit', summary: 'Micro:bit sensors, display, radio, and robot-kit controls.' },
+  quarky: { name: 'Quarky', summary: 'Quarky motors, line sensors, touch inputs, LEDs, and servos.' },
+  mbot: { name: 'mBot', summary: 'mBot motor, light, sound, servo, and sketch commands.' },
+  arduino: { name: 'Arduino', summary: 'Arduino motor-shield, pin, PWM, light, sound, and servo commands.' },
+};
+
+const QUARKY_UNSUPPORTED_BLOCKS = new Set([
+  'if_dist', 'wait_dist', 'read_dist', 'read_sonar', 'avoid_wall',
+  'if_shake', 'if_tilt', 'if_light', 'read_light', 'read_temp', 'read_compass',
+  'read_accel', 'if_temp', 'if_compass', 'buzz', 'play_note', 'play_melody',
+  'radio_send', 'radio_group', 'radio_recv',
+]);
+
+const APP_EXECUTED_BLOCKS = new Set([
+  'if_dist', 'if_line', 'if_btn_a', 'if_btn_b', 'if_touch', 'if_light',
+  'wait_dist', 'wait_line', 'read_dist', 'read_sonar', 'read_light',
+  'read_line_l', 'read_line_r', 'read_btn_a', 'read_btn_b', 'follow_line', 'avoid_wall',
+  'math_random', 'math_abs', 'math_map', 'math_constrain', 'math_expr',
+  'var_set', 'var_inc', 'var_dec', 'var_show', 'on_start', 'forever', 'repeat',
+  'repeat_end', 'while_do', 'while_end', 'for_range', 'for_end', 'if_then',
+  'else_branch', 'else_if', 'if_end', 'break',
+]);
+
+/** Only show blocks that this board extension can generate or execute. */
+export function getRobotCommandsForBoard(board) {
+  const profile = ROBOT_PROFILES[board];
+  if (!profile) return [];
+  return ROBOT_COMMANDS.filter((command) => {
+    if (board === 'quarky' && QUARKY_UNSUPPORTED_BLOCKS.has(command.id)) return false;
+    const params = Object.fromEntries((command.params || []).map((param) => [param.key, param.default]));
+    return Boolean(profile.buildCmd(command.id, params)) || APP_EXECUTED_BLOCKS.has(command.id);
+  });
+}
+
 export const ROBOT_CATEGORY_COLORS = {
   Movement: '#3b82f6',
   Sensors: '#06b6d4',
@@ -939,4 +976,100 @@ export function generateQuarkyProgram(blocks) {
     '# Your program',
     ...bodyLines,
   ].join('\n') + '\n';
+}
+
+/**
+ * Export the supported Robot Lab blocks to STEMpedia's Quarky API for
+ * PictoBlox Upload Mode. This keeps Quarky motor control on its documented
+ * left/right motor API instead of assuming generic ESP32 GPIO wiring.
+ */
+export function generateQuarkyPictoBloxProgram(blocks) {
+  const ordered = [...blocks].sort((a, b) => a.y - b.y);
+  const lines = [
+    '# ByteBuddies program for Quarky in PictoBlox Python Upload Mode',
+    '# In PictoBlox: select Board > Quarky, connect by USB, then Upload Code.',
+    'import time',
+    "sprite = Sprite('Tobi')",
+    'quarky = Quarky()',
+    '',
+  ];
+  const warnings = new Set();
+  let indent = 0;
+  let speed = 60;
+  const emit = (code) => lines.push(`${' '.repeat(indent)}${code}`);
+  const duration = (amount) => Math.max(0.05, Number(amount || 20) * 0.01);
+  const stop = () => {
+    emit('quarky.stopmotor("L")');
+    emit('quarky.stopmotor("R")');
+  };
+  const drive = (left, right, seconds) => {
+    emit(`quarky.runmotor("L", "${left[0]}", ${left[1]})`);
+    emit(`quarky.runmotor("R", "${right[0]}", ${right[1]})`);
+    emit(`time.sleep(${seconds})`);
+    stop();
+  };
+
+  for (const block of ordered) {
+    const p = block.params || {};
+    const amount = duration(p.amount);
+    const leftSpeed = Math.min(100, Math.max(0, Math.round(Number(p.left ?? speed))));
+    const rightSpeed = Math.min(100, Math.max(0, Math.round(Number(p.right ?? speed))));
+    switch (block.id) {
+      case 'on_start': emit('# Start'); break;
+      case 'forward': drive(['FORWARD', speed], ['FORWARD', speed], amount); break;
+      case 'back': drive(['BACKWARD', speed], ['BACKWARD', speed], amount); break;
+      case 'left': case 'spin_left': drive(['BACKWARD', speed], ['FORWARD', speed], duration(p.degrees || 90)); break;
+      case 'right': case 'spin_right': drive(['FORWARD', speed], ['BACKWARD', speed], duration(p.degrees || 90)); break;
+      case 'move_left': drive(['BACKWARD', speed], ['FORWARD', speed], amount); break;
+      case 'move_right': drive(['FORWARD', speed], ['BACKWARD', speed], amount); break;
+      case 'stop': case 'coast': case 'stop_all': stop(); break;
+      case 'speed': speed = Math.min(100, Math.max(0, Math.round(Number(p.pct ?? 75)))); emit(`# Speed set to ${speed}%`); break;
+      case 'motor_l': emit(`quarky.runmotor("L", "${Number(p.power || 50) < 0 ? 'BACKWARD' : 'FORWARD'}", ${Math.min(100, Math.abs(Math.round(Number(p.power || 50))))})`); break;
+      case 'motor_r': emit(`quarky.runmotor("R", "${Number(p.power || 50) < 0 ? 'BACKWARD' : 'FORWARD'}", ${Math.min(100, Math.abs(Math.round(Number(p.power || 50))))})`); break;
+      case 'motors':
+        emit(`quarky.runmotor("L", "${Number(p.left ?? 50) < 0 ? 'BACKWARD' : 'FORWARD'}", ${leftSpeed})`);
+        emit(`quarky.runmotor("R", "${Number(p.right ?? 50) < 0 ? 'BACKWARD' : 'FORWARD'}", ${rightSpeed})`);
+        break;
+      case 'wait': emit(`time.sleep(${Math.max(0, Number(p.secs ?? 1))})`); break;
+      case 'repeat': emit(`for _ in range(${Math.max(0, Math.round(Number(p.times ?? 3)))}):`); indent += 4; break;
+      case 'forever': emit('while True:'); indent += 4; break;
+      case 'if_then': {
+        const cond = /^[A-Za-z_]\w*$/.test(String(p.cond || '')) || /^-?\d+(\.\d+)?$/.test(String(p.cond || '')) ? p.cond : '0';
+        const value = /^-?\d+(\.\d+)?$/.test(String(p.val ?? '')) || /^[A-Za-z_]\w*$/.test(String(p.val ?? '')) ? p.val : '0';
+        const op = ({ '=': '==', '==': '==', '!=': '!=', '<': '<', '>': '>', '<=': '<=', '>=': '>=' })[p.op] || '==';
+        emit(`if ${cond} ${op} ${value}:`); indent += 4; break;
+      }
+      case 'if_end': case 'for_end': case 'while_end': case 'repeat_end':
+        if (indent) {
+          if (lines[lines.length - 1]?.trim().endsWith(':')) lines.push(`${' '.repeat(indent)}pass`);
+          indent = Math.max(0, indent - 4);
+        }
+        break;
+      case 'else_branch': {
+        if (lines[lines.length - 1]?.trim().endsWith(':')) lines.push(`${' '.repeat(indent)}pass`);
+        if (indent) indent = Math.max(0, indent - 4);
+        emit('else:'); indent += 4; break;
+      }
+      case 'else_if': {
+        if (lines[lines.length - 1]?.trim().endsWith(':')) lines.push(`${' '.repeat(indent)}pass`);
+        if (indent) indent = Math.max(0, indent - 4);
+        const cond = /^[A-Za-z_]\w*$/.test(String(p.cond || '')) || /^-?\d+(\.\d+)?$/.test(String(p.cond || '')) ? p.cond : '0';
+        const value = /^-?\d+(\.\d+)?$/.test(String(p.val ?? '')) || /^[A-Za-z_]\w*$/.test(String(p.val ?? '')) ? p.val : '0';
+        const op = ({ '=': '==', '==': '==', '!=': '!=', '<': '<', '>': '>', '<=': '<=', '>=': '>=' })[p.op] || '==';
+        emit(`elif ${cond} ${op} ${value}:`); indent += 4; break;
+      }
+      case 'if_dist': case 'if_line': case 'if_btn_a': case 'if_btn_b': case 'if_touch':
+      case 'if_shake': case 'if_tilt': case 'if_light': case 'if_temp': case 'if_compass':
+      case 'while_do': case 'for_range': {
+        warnings.add('Sensor and advanced control blocks need manual setup in PictoBlox; the export marks them with TODO comments.');
+        emit('if False:  # TODO: set up this condition with Quarky blocks in PictoBlox');
+        indent += 4;
+        break;
+      }
+      default:
+        warnings.add('Some blocks are not part of the Quarky export yet; see TODO comments in the file.');
+        emit(`# TODO: ByteBuddies block “${String(block.id || 'unknown').replace(/[^\w-]/g, '')}” is not mapped to the Quarky API yet.`);
+    }
+  }
+  return { source: lines.join('\n') + '\n', warnings: [...warnings] };
 }

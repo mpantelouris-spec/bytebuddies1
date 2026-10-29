@@ -6,6 +6,7 @@ import { getBalanceStatus } from '../services/design-service.js';
 import { migrateDesign } from '../config.js';
 import { migrateAssembly } from '../services/assembly-service.js';
 import { statValueColor, statHealthLabel } from '../utils/statColors.js';
+import { EmojiIcon, IconText } from '../../components/ui/Icon.jsx';
 
 const SENSOR_LABELS = {
   camera: 'Camera',
@@ -141,18 +142,18 @@ export default function TelemetryHUD({
 
       <div className="vrd-telemetry-actions">
         {onGoCode && (
-          <button type="button" className="vrd-telemetry-action" onClick={onGoCode}>🤖 Code Studio</button>
+          <button type="button" className="vrd-telemetry-action" onClick={onGoCode}><EmojiIcon e="🤖" style={{ marginRight: '0.35em' }} />Code Studio</button>
         )}
         {onGoSimulator && (
-          <button type="button" className="vrd-telemetry-action vrd-telemetry-action--primary" onClick={onGoSimulator}>⚡ Test Simulator</button>
+          <button type="button" className="vrd-telemetry-action vrd-telemetry-action--primary" onClick={onGoSimulator}><EmojiIcon e="⚡" style={{ marginRight: '0.35em' }} />Test Simulator</button>
         )}
         {onGenerateAI && (
           <button type="button" className="vrd-telemetry-action" disabled={generating} onClick={onGenerateAI}>
-            {generating ? '…' : '🤖 AI Variants'}
+            <IconText>{generating ? '…' : '🤖 AI Variants'}</IconText>
           </button>
         )}
         {onSave && (
-          <button type="button" className="vrd-telemetry-action" onClick={onSave}>💾 Save Design</button>
+          <button type="button" className="vrd-telemetry-action" onClick={onSave}><EmojiIcon e="💾" style={{ marginRight: '0.35em' }} />Save Design</button>
         )}
       </div>
 

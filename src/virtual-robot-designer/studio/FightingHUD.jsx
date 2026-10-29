@@ -2,6 +2,7 @@
  * FightingHUD.jsx — health, stamina, distance, combos, rounds, AI status.
  */
 import React from 'react';
+import { EmojiIcon, IconText } from '../../components/ui/Icon.jsx';
 
 export function FightingHUD({ combat = {}, robotName = 'You', enemyName = 'Opponent', academyLayout = false, minimal = false }) {
   if (!combat.active) return null;
@@ -40,7 +41,7 @@ export function FightingHUD({ combat = {}, robotName = 'You', enemyName = 'Oppon
       {combat.betweenRounds && (
         <div className="fight-round-overlay">
           <div className="fight-round-banner">
-            <span className="fight-round-bell">🔔</span>
+            <span className="fight-round-bell"><EmojiIcon e="🔔" /></span>
             <span>Round {combat.boxingRound} — Rest</span>
             <span className="fight-round-score">
               {combat.roundWinsPlayer || 0} — {combat.roundWinsEnemy || 0}
@@ -52,7 +53,7 @@ export function FightingHUD({ combat = {}, robotName = 'You', enemyName = 'Oppon
       {/* Victory presentation lives in the FightingResults modal — no duplicate banner here */}
 
       <div className="fight-hud-top">
-        <div className="fight-hud-mode">{combat.modeLabel || '⚔️ Combat'}</div>
+        <div className="fight-hud-mode"><IconText>{combat.modeLabel || '⚔️ Combat'}</IconText></div>
         {combat.difficulty && <div className="fight-hud-diff">AI: {combat.difficulty}</div>}
         {combat.wave > 0 && <div className="fight-hud-wave">Wave {combat.wave}</div>}
         {combat.strategyLabel && (
@@ -62,7 +63,7 @@ export function FightingHUD({ combat = {}, robotName = 'You', enemyName = 'Oppon
         )}
         {(combat.roundTimeLeft > 0 || showRounds) && (
           <div className="fight-hud-timer">
-            {combat.betweenRounds ? 'Rest…' : `⏱ ${mins}:${String(secs).padStart(2, '0')}`}
+            <IconText>{combat.betweenRounds ? 'Rest…' : `⏱ ${mins}:${String(secs).padStart(2, '0')}`}</IconText>
           </div>
         )}
         {showRounds && (
@@ -99,7 +100,7 @@ export function FightingHUD({ combat = {}, robotName = 'You', enemyName = 'Oppon
           Combo still shows briefly since it's a reward moment. */}
       <div className="fight-hud-center-info">
         {combat.playerCombo > 2 && (
-          <span className="fight-combo-chip">🔥 {combat.playerCombo}-Hit Combo!</span>
+          <span className="fight-combo-chip"><EmojiIcon e="🔥" style={{ marginRight: '0.35em' }} />{combat.playerCombo}-Hit Combo!</span>
         )}
       </div>
 
@@ -140,7 +141,7 @@ export function FightingHUD({ combat = {}, robotName = 'You', enemyName = 'Oppon
       {!academyLayout && (
       <div className="fight-hud-special-meter">
         <span className="fight-special-label">
-          {combat.specialActive ? '⚡ SPECIAL ACTIVE' : combat.specialReady ? '⭐ READY' : 'Special'}
+          <IconText>{combat.specialActive ? '⚡ SPECIAL ACTIVE' : combat.specialReady ? '⭐ READY' : 'Special'}</IconText>
         </span>
         <div className="fight-special-track">
           <div

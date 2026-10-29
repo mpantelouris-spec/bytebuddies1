@@ -8,7 +8,7 @@ export const ACTIVITIES = [
   { id: 'gamebuilder', title: 'Make a game', emoji: '🎮', hash: 'gamebuilder', blurb: 'Pupils build a game with blocks and hand in the project straight from Game Builder.', handIn: 'project', color: '#10b981' },
   { id: 'robot', title: 'Robot Lab challenge', emoji: '🤖', hash: 'robot', blurb: 'Program a micro:bit, mBot, Arduino or Quarky — hand in the code or a photo.', handIn: 'work', color: '#0ea5e9' },
   { id: 'studio', title: 'Robot Studio', emoji: '🏎️', hash: 'studio', blurb: 'Design and drive a 3D robot through an arena course.', handIn: 'work', color: '#f97316' },
-  { id: 'workspace', title: 'Coding workspace', emoji: '💻', hash: 'workspace', blurb: 'Free coding in blocks, Python or JavaScript — hand in the code.', handIn: 'work', color: '#8b5cf6' },
+  { id: 'workspace', title: 'Python workspace', emoji: '🐍', hash: 'workspace', blurb: 'Write and run Python, then hand in the code.', handIn: 'work', color: '#8b5cf6' },
 ];
 
 export const KIND_META = {

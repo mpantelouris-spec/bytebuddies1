@@ -5,6 +5,7 @@ import { CHASSIS_TYPES, slotAcceptsPart } from '../../data/assembly-parts.js';
 import { migrateAssembly } from '../../services/assembly-service.js';
 import { getBuildPhase, getSlotLabel } from '../../utils/build-slots.js';
 import PartDragGhost from './PartDragGhost.jsx';
+import { EmojiIcon } from '../../../components/ui/Icon.jsx';
 
 const QUICK_WHEELS = [
   { id: 'standard', label: 'Wheels', icon: '🛞' },
@@ -160,7 +161,7 @@ export default function KidBuildPanel({
 
       {chassisSection && (
         <section className="bb-parts-section bb-parts-section--compact">
-          <h3 className="bb-parts-section-label">{chassisSection.icon} Body shape</h3>
+          <h3 className="bb-parts-section-label"><EmojiIcon e={chassisSection.icon} style={{ marginRight: '0.35em' }} />Body shape</h3>
           <div className="bb-parts-grid bb-parts-grid--chassis">
             {CHASSIS_TYPES.slice(0, 6).map((c) => (
               <button
@@ -183,7 +184,7 @@ export default function KidBuildPanel({
                   material: 'industrial',
                 })}
               >
-                <span className="bb-part-tile-icon">{c.icon}</span>
+                <span className="bb-part-tile-icon"><EmojiIcon e={c.icon} /></span>
                 <span className="bb-part-tile-label">{c.label}</span>
               </button>
             ))}
@@ -207,7 +208,7 @@ export default function KidBuildPanel({
         <div className="bb-parts-sections">
           {ACADEMY_PART_SECTIONS.filter((s) => !['chassis', 'movement'].includes(s.id)).map((section) => (
             <section key={section.id} className="bb-parts-section">
-              <h3 className="bb-parts-section-label">{section.icon} {section.label}</h3>
+              <h3 className="bb-parts-section-label"><EmojiIcon e={section.icon} style={{ marginRight: '0.35em' }} />{section.label}</h3>
               {renderPartGrid(section)}
             </section>
           ))}
@@ -232,10 +233,10 @@ export default function KidBuildPanel({
 
       <div className="bb-parts-mode-toggle">
         <button type="button" className="bb-mode-toggle active" onClick={() => onSetBuildMode?.('advanced')}>
-          🤖 Build Robot
+          <EmojiIcon e="🤖" style={{ marginRight: '0.35em' }} />Build Robot
         </button>
         <button type="button" className="bb-mode-toggle" onClick={() => onSetBuildMode?.('blocks')}>
-          🧱 LEGO Blocks
+          <EmojiIcon e="🧱" style={{ marginRight: '0.35em' }} />LEGO Blocks
         </button>
       </div>
     </div>

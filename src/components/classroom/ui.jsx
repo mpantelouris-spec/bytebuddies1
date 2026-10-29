@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import './classroom.css';
+import { EmojiIcon } from '../ui/Icon.jsx';
+import ProfileAvatar from '../ui/ProfileAvatar.jsx';
 
 export const CLASS_COLORS = ['#6366f1', '#10b981', '#f97316', '#ec4899', '#0ea5e9', '#8b5cf6', '#eab308', '#14b8a6'];
 export const classGradient = (c = '#6366f1') => `linear-gradient(135deg, ${c} 0%, ${shade(c, -28)} 100%)`;
@@ -45,7 +47,7 @@ export function Modal({ title, icon, onClose, children, footer, wide }) {
     <div className="cr-modal-bg" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose?.(); }}>
       <div className={`cr-modal${wide ? ' cr-modal--wide' : ''}`} role="dialog" aria-modal="true" aria-label={title}>
         <div className="cr-modal__head">
-          {icon && <span style={{ fontSize: 24 }}>{icon}</span>}
+          {icon && <span style={{ fontSize: 22, display: 'inline-flex' }}><EmojiIcon e={icon} /></span>}
           <h3>{title}</h3>
           <button className="cr-btn cr-btn--ghost cr-btn--sm" onClick={onClose} aria-label="Close">✕</button>
         </div>
@@ -62,8 +64,8 @@ export function Avatar({ name = '?', emoji, photo, size = 36 }) {
   const bg = AV_COLORS[n % AV_COLORS.length];
   const initials = String(name).trim().split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase() || '?';
   return (
-    <span className="cr-av" style={{ width: size, height: size, background: emoji ? 'var(--bg-tertiary)' : bg, fontSize: emoji ? size * 0.55 : size * 0.38 }}>
-      {photo ? <img src={photo} alt="" referrerPolicy="no-referrer" /> : emoji || initials}
+    <span className="cr-av" style={{ width: size, height: size, background: photo ? bg : 'none', fontSize: size * 0.38 }}>
+      {photo ? <img src={photo} alt="" referrerPolicy="no-referrer" /> : <ProfileAvatar value={emoji} name={name} size={size} />}
     </span>
   );
 }
@@ -76,7 +78,7 @@ export function useToast() {
   const [msg, setMsg] = useState('');
   useEffect(() => {
     if (!msg) return undefined;
-    const t = setTimeout(() => setMsg(''), 2600);
+    const t = setTimeout(() => setMsg(''), Math.max(2600, msg.length * 70));
     return () => clearTimeout(t);
   }, [msg]);
   return [msg ? <div className="cr-toast" role="status">{msg}</div> : null, setMsg];

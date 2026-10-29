@@ -128,5 +128,6 @@ export function buildCapstoneDecor(scene, family, curve, zoneCount = 10) {
 }
 
 export function isCapstoneMode(challenge) {
+  if (challenge?.isExpandedMode) return challenge.difficulty === 'Advanced' && challenge.modeIndex === 10;
   return Number(challenge?.modeIndex) === 10 && challenge?.isChassisMode;
 }

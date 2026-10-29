@@ -4,6 +4,7 @@
 import React, { useState, useMemo } from 'react';
 import { MISSION_TYPE_LABELS } from '../data/robot-mission-campaign.js';
 import { RobotMissionProgress } from '../services/robot-mission-progress.js';
+import { EmojiIcon, IconText } from '../../components/ui/Icon.jsx';
 
 export function RobotMissionPanel({
   challenge,
@@ -30,11 +31,11 @@ export function RobotMissionPanel({
       <div className="rmp-head" style={{ '--mission-col': challenge?.color || '#22c55e' }}>
         <div className="rmp-head-top">
           <span className="rmp-type-badge" style={{ background: typeMeta.color }}>
-            {typeMeta.icon} {typeMeta.label}
+            <EmojiIcon e={typeMeta.icon} style={{ marginRight: '0.35em' }} />{typeMeta.label}
           </span>
           <span className="rmp-diff">{stars}</span>
           <button type="button" className="rmp-collapse" onClick={() => setExpanded((e) => !e)}>
-            {expanded ? '◀' : '▶'}
+            <IconText>{expanded ? '◀' : '▶'}</IconText>
           </button>
         </div>
         {expanded && (
@@ -53,7 +54,7 @@ export function RobotMissionPanel({
           <p className="rmp-story">{story?.story || challenge?.desc}</p>
 
           <div className="rmp-xp-bar">
-            <span>🎮 Mission XP</span>
+            <span><EmojiIcon e="🎮" style={{ marginRight: '0.35em' }} />Mission XP</span>
             <span className="rmp-xp-val">{earnedXp} / {maxXp}</span>
             <div className="rmp-xp-track">
               <div className="rmp-xp-fill" style={{ width: `${Math.min(100, (earnedXp / maxXp) * 100)}%` }} />
@@ -66,10 +67,10 @@ export function RobotMissionPanel({
           </div>
 
           <div className="rmp-stats">
-            <div className="rmp-stat"><span>🔋</span><span>{Math.round(stats.battery)}%</span></div>
-            <div className="rmp-stat"><span>💎</span><span>{stats.collected || 0}</span></div>
+            <div className="rmp-stat"><span><EmojiIcon e="🔋" /></span><span>{Math.round(stats.battery)}%</span></div>
+            <div className="rmp-stat"><span><EmojiIcon e="💎" /></span><span>{stats.collected || 0}</span></div>
             <div className="rmp-stat"><span>💥</span><span>{stats.collisions || 0}</span></div>
-            <div className="rmp-stat"><span>📏</span><span>{stats.dist?.toFixed?.(1) || 0}m</span></div>
+            <div className="rmp-stat"><span><EmojiIcon e="📏" /></span><span>{stats.dist?.toFixed?.(1) || 0}m</span></div>
           </div>
 
           {story?.teaches?.length > 0 && (

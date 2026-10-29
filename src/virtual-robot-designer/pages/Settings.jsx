@@ -3,6 +3,7 @@ import VirtualRobotDB from '../database/virtual-robot-db.js';
 import { VRD_CONFIG, VRD_ACHIEVEMENTS } from '../config.js';
 import { checkAchievements, computeDesignStats } from '../services/design-service.js';
 import { migrateDesign } from '../config.js';
+import { EmojiIcon } from '../../components/ui/Icon.jsx';
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState(VirtualRobotDB.getSettings());
@@ -28,7 +29,7 @@ export default function SettingsPage() {
 
   return (
     <div>
-      <h2 style={{ margin: '0 0 8px', fontSize: 22, fontWeight: 800 }}>⚙️ Settings</h2>
+      <h2 style={{ margin: '0 0 8px', fontSize: 22, fontWeight: 800 }}><EmojiIcon e="⚙️" style={{ marginRight: '0.35em' }} />Settings</h2>
       <p style={{ margin: '0 0 20px', color: 'rgba(240,230,255,0.6)', fontSize: 14 }}>Virtual Robot Designer — no hardware settings here.</p>
 
       <div className="vrd-grid-2">
@@ -72,12 +73,12 @@ export default function SettingsPage() {
       </div>
 
       <div className="vrd-card" style={{ marginTop: 20 }}>
-        <h3 style={{ margin: '0 0 12px' }}>🏅 Achievements ({unlocked.length}/{VRD_ACHIEVEMENTS.length})</h3>
+        <h3 style={{ margin: '0 0 12px' }}><EmojiIcon e="🏅" style={{ marginRight: '0.35em' }} />Achievements ({unlocked.length}/{VRD_ACHIEVEMENTS.length})</h3>
         {VRD_ACHIEVEMENTS.map((a) => {
           const done = unlocked.includes(a.id) || (stats[a.stat] || 0) >= a.target;
           return (
             <div key={a.id} className={`vrd-achievement ${done ? '' : 'locked'}`}>
-              <span style={{ fontSize: 24 }}>{a.icon}</span>
+              <span style={{ fontSize: 24 }}><EmojiIcon e={a.icon} /></span>
               <div>
                 <div style={{ fontWeight: 700 }}>{a.title}</div>
                 <div style={{ fontSize: 11, color: 'rgba(240,230,255,0.5)' }}>{a.desc}</div>

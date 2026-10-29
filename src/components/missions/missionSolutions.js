@@ -1,4 +1,4 @@
-/** One worked answer per mission ("Show me" button). Each is tested against PLANS objectives. */
+/** One worked answer per mission — used only by tests to prove every mission can be solved (never shown to pupils). */
 export const SOLUTIONS = {
   'space-1': `print("Systems check...")
 print("Fuel loading...")
@@ -188,5 +188,71 @@ def runDiagnostic():
         print("ALL SYSTEMS GO!")
 
 runDiagnostic()
+`,
+  'jungle-1': `supplies = ["map", "torch", "rope", "water", "compass"]
+for item in supplies:
+    print("Packed:", item)
+print("Supplies packed:", len(supplies))
+`,
+  'jungle-2': `animals = ["parrot", "monkey"]
+print("Notebook:", animals)
+animals.append("toucan")
+animals.append("jaguar")
+animals.append("tree frog")
+print("Notebook:", animals)
+print("Spotted", len(animals), "animals")
+`,
+  'jungle-3': `secret = "elpmet nedlog eht rednu"
+print("The map says:", secret)
+message = secret[::-1]
+message = message.upper()
+print("Treasure is " + message)
+`,
+  'jungle-4': `stones = [3, 7, 2, 9, 4, 6]
+highest = 0
+for height in stones:
+    print("Stone height:", height)
+    if height > highest:
+        highest = height
+print("Highest stone:", highest)
+`,
+  'jungle-5': `days = ["Monday", "Tuesday", "Wednesday", "Thursday"]
+finds = ["a red parrot", "a giant leaf", "frog footprints", "the golden temple"]
+for i in range(len(days)):
+    print(days[i] + ": we found " + finds[i])
+print("Expedition complete!", len(finds), "finds")
+`,
+  'dino-1': `print("Checking the gate...")
+print("Gate open")
+print("Dinos safe")
+`,
+  'dino-2': `dinos = ["Stego", "Tricera", "Bronto"]
+for i in range(len(dinos)):
+    print("Fed", dinos[i], "a big salad")
+print("Feeding done!")
+`,
+  'dino-3': `temperatures = [25, 31, 30, 18, 34]
+egg = 1
+for temp in temperatures:
+    if temp >= 30:
+        print("Egg", egg, "is hatching! (" + str(temp) + " degrees)")
+    else:
+        print("Egg", egg, "needs to stay warm")
+    egg += 1
+`,
+  'dino-4': `def call_ranger(zone):
+    print("Ranger, go to the", zone, "zone!")
+
+call_ranger("North")
+call_ranger("Lake")
+call_ranger("Volcano")
+print("All rangers called")
+`,
+  'dino-5': `pens = [4, 6, 2, 9]
+total = 0
+for count in pens:
+    total += count
+    print("This pen has", count, "dinos. Running total:", total)
+print("Total dinos:", total)
 `,
 };

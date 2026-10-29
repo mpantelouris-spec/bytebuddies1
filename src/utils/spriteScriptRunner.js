@@ -391,3 +391,41 @@ export function stepGreenFlagChains(spriteChains, execBodyImpl) {
 }
 
 export { isSpriteMotionBusy, executeSpriteMotion, isRotationStyleBlockType, applyRotationStyleBlock };
+
+/*
+ * Event scripts (when key pressed, when I receive, when this sprite clicked…) as threads,
+ * so a wait, glide or loop inside them keeps going on later frames instead of stopping.
+ * Kept outside the sprite object so clones (copies of their parent) never share them.
+ */
+const eventThreadsBySprite = new WeakMap();
+
+/**
+ * Start an event script. `restart` = Scratch's rule for broadcasts and backdrops (start over
+ * if already running); keys, clicks and touches are ignored while their script still runs.
+ */
+export function startEventScript(sprite, chain, execBodyImpl, { restart = false } = {}) {
+  if (!sprite || !chain?.body?.length) return;
+  let threads = eventThreadsBySprite.get(sprite);
+  if (!threads) {
+    threads = new Map();
+    eventThreadsBySprite.set(sprite, threads);
+  }
+  const running = threads.get(chain);
+  if (running && !running.stopped && !restart) return;
+  if (running) running.stopped = true;
+  const thread = createScriptThread(chain.body);
+  threads.set(chain, thread);
+  // First step runs now, like before; the rest continues in stepEventScripts
+  if (!stepThread(thread, sprite, execBodyImpl)) threads.delete(chain);
+}
+
+/** Continue every event script that paused (one step per frame). */
+export function stepEventScripts(playSprites, execBodyImpl) {
+  (playSprites || []).forEach((sprite) => {
+    const threads = eventThreadsBySprite.get(sprite);
+    if (!threads?.size) return;
+    threads.forEach((thread, chain) => {
+      if (thread.stopped || !stepThread(thread, sprite, execBodyImpl)) threads.delete(chain);
+    });
+  });
+}

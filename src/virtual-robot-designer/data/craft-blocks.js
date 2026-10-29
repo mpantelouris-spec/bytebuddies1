@@ -10,9 +10,11 @@
  */
 import { playBeepSound, playScoreSound, playCollisionSound, playWinSound } from '../studio/flappy-bird-audio.js';
 
-export function isCraftCourse(courseKey, arenaType) {
+export function isCraftCourse(courseKey, arenaType, chassisId = '') {
   const id = typeof courseKey === 'string' ? courseKey.split(':')[0] : '';
-  return arenaType === 'block_craft' || id.startsWith('blockbot_');
+  // Expanded modes use IDs like `tier_blockbot_11_...`, while the original
+  // Block Crafter modes start with `blockbot_`.
+  return arenaType === 'block_craft' || chassisId === 'blockbot' || /(^|_)blockbot_/.test(id);
 }
 
 const BLOCK_CHOICES = [
@@ -25,7 +27,7 @@ const ITEM_CHOICES = [
   ['log', 'log'], ['planks', 'planks'], ['stick', 'stick'], ['cobblestone', 'cobblestone'], ['dirt', 'dirt'], ['sand', 'sand'],
   ['coal', 'coal'], ['raw iron', 'raw_iron'], ['iron ingot', 'iron_ingot'], ['diamond', 'diamond'],
   ['crafting table', 'crafting_table'], ['furnace', 'furnace'], ['glowstone', 'glowstone'], ['snow', 'snow'], ['netherrack', 'netherrack'],
-  ['wooden pickaxe', 'wooden_pickaxe'], ['stone pickaxe', 'stone_pickaxe'], ['iron pickaxe', 'iron_pickaxe'],
+  ['wooden pickaxe', 'wooden_pickaxe'], ['stone pickaxe', 'stone_pickaxe'], ['iron pickaxe', 'iron_pickaxe'], ['sapling', 'sapling'],
 ];
 const PLACE_CHOICES = [['cobblestone', 'cobblestone'], ['planks', 'planks'], ['dirt', 'dirt'], ['log', 'log'], ['sand', 'sand'], ['sandstone', 'sandstone'], ['snow', 'snow'], ['glowstone', 'glowstone'], ['netherrack', 'netherrack'], ['crafting table', 'crafting_table'], ['furnace', 'furnace']];
 const RECIPE_CHOICES = [
@@ -80,6 +82,7 @@ export const CRAFT_BLOCK_LIBRARY = {
       { id: 'mine_down', label: 'Dig down', icon: '⬇️' },
       { id: 'dig_tunnel', label: 'Dig tunnel', icon: '🕳️', params: [{ key: 'steps', label: '', def: 3 }] },
       { id: 'chop_tree', label: 'Chop whole tree', icon: '🪓' },
+      { id: 'chop_all', label: 'Chop all trees', icon: '🌲' },
     ],
   },
   Building: {
@@ -89,6 +92,9 @@ export const CRAFT_BLOCK_LIBRARY = {
       { id: 'place_ahead', label: 'Place block ahead', icon: '🧱' },
       { id: 'pillar_up', label: 'Pillar up (place below me)', icon: '🗼' },
       { id: 'build_bridge', label: 'Build bridge', icon: '🌉', params: [{ key: 'steps', label: '', def: 3 }] },
+      { id: 'build_house', label: 'Build a house', icon: '🏠' },
+      { id: 'build_tower', label: 'Build a tower', icon: '🗼', params: [{ key: 'height', label: 'high', def: 5 }] },
+      { id: 'plant_tree', label: 'Plant a tree', icon: '🌱' },
     ],
   },
   Crafting: {
@@ -159,14 +165,13 @@ function compileBlock(b) {
     case 'walk': return { op: 'act', act: ['walk', n('steps', 1)], id };
     case 'walk_back': return { op: 'act', act: ['walk_back', n('steps', 1)], id };
     case 'walk_until': return { op: 'until', cond: cond(pv), body: [{ op: 'act', act: ['walk', 1], id }], id };
-    case 'chop_tree': return {
-      op: 'seq', id,
-      body: [
-        { op: 'act', act: ['mine', 'ahead'], id },
-        { op: 'act', act: ['walk', 1], id },
-        { op: 'while', cond: { where: 'above', op: 'is', what: 'log', n: 1 }, body: [{ op: 'act', act: ['mine', 'up'], id }], id },
-      ],
-    };
+    // The tree in front, or the nearest tree it can walk to: every log and its leaves
+    case 'chop_tree': return { op: 'act', act: ['chop_tree'], id };
+    // Keep chopping until there are no trees left
+    case 'chop_all': return { op: 'until', cond: { where: 'trees', op: 'is', what: 'none', n: 1 }, body: [{ op: 'act', act: ['chop_tree'], id }], id };
+    case 'build_house': return { op: 'act', act: ['build_house'], id };
+    case 'build_tower': return { op: 'act', act: ['build_tower', Math.max(2, Math.min(12, Number(pv.height ?? 5) || 5))], id };
+    case 'plant_tree': return { op: 'act', act: ['plant_tree'], id };
     case 'turn_left': return { op: 'act', act: ['turn', 1], id };
     case 'turn_right': return { op: 'act', act: ['turn', -1], id };
     case 'turn_around': return { op: 'act', act: ['turn', 2], id };

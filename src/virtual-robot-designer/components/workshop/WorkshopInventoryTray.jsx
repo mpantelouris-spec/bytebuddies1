@@ -4,6 +4,7 @@
 import React from 'react';
 import { SNAP_SLOTS } from '../../data/assembly-parts.js';
 import { getWorkshopPart } from '../../data/assembly-parts.js';
+import { EmojiIcon } from '../../../components/ui/Icon.jsx';
 
 export default function WorkshopInventoryTray({
   slots,
@@ -29,7 +30,7 @@ export default function WorkshopInventoryTray({
               onClick={() => onSelectSlot?.(slotId)}
               title={SNAP_SLOTS[slotId].label}
             >
-              <span>{SNAP_SLOTS[slotId].icon}</span>
+              <span><EmojiIcon e={SNAP_SLOTS[slotId].icon} /></span>
               {filled && (
                 <span
                   className="iw-socket-remove"

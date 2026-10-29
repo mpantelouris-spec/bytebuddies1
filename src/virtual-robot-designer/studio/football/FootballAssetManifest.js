@@ -7,8 +7,9 @@ const BASE = '/assets/football';
 export const FOOTBALL_GLB_PLAYERS_ENABLED = false;
 
 export const FOOTBALL_GLB = {
-  playerGreen: `${BASE}/player_green.glb`,
-  playerBlue: `${BASE}/player_blue.glb`,
+  // All three were identical 2.9 MB files: share one so it downloads once
+  playerGreen: `${BASE}/footballer.glb`,
+  playerBlue: `${BASE}/footballer.glb`,
   footballer: `${BASE}/footballer.glb`,
   cornerFlag: `${BASE}/corner_flag.glb`,
   crowdCard: `${BASE}/crowd_card.png`,

@@ -4,6 +4,12 @@
  */
 import { PRIMARY_STUDIO_ARENAS } from './primary-arena-bible-sets.js';
 import { applyCarRacingArena } from './car-racing-tracks.js';
+import { hasSkyCourse, getSkyStarterScript } from './sky-courses.js';
+import { hasSeaCourse, getSeaStarterScript } from './sea-courses.js';
+import { getMissionAction } from './mission-actions.js';
+import { getArmStarterScript } from '../studio/arm-world/ArmWorkshop.js';
+import { getTierLevel, getTierGoal, getTierTeach, getTierBaseMode, getTierLearningGoal, getTierMood, TIER_ENGINE } from './tier-levels/index.js';
+import { tint } from './tier-levels/moods.js';
 
 export { PRIMARY_STUDIO_ARENAS };
 
@@ -63,6 +69,7 @@ export const PRIMARY_ROBOT_DISPLAY = {
   hopbot: { name: 'Hop Bot', emoji: '🐸' },
   raiderbot: { name: 'Space Raider', emoji: '👾' },
   snakebot: { name: 'Snake Bot', emoji: '🐍' },
+  jumpbot: { name: 'Jump Bot', emoji: '🤖' },
   custom: { name: 'Custom Bot', emoji: '✨' },
 };
 
@@ -94,13 +101,39 @@ export const CHASSIS_FAMILY = {
   footballbot: FAMILY.football,
   birdbot: FAMILY.birdbot,
   medbot: FAMILY.wheeled, firebot: FAMILY.wheeled,
-  pacbot: FAMILY.arcade, brickbot: FAMILY.arcade, hopbot: FAMILY.arcade, snakebot: FAMILY.arcade, raiderbot: FAMILY.arcade,
+  pacbot: FAMILY.arcade, brickbot: FAMILY.arcade, hopbot: FAMILY.arcade, snakebot: FAMILY.arcade, raiderbot: FAMILY.arcade, jumpbot: FAMILY.arcade,
   custom: FAMILY.wheeled,
 };
 
 
 export function getStudioRobotGroup(chassisId) {
   return CHASSIS_FAMILY[chassisId] || FAMILY.wheeled;
+}
+
+/** A short real-world STEM connection shown alongside every robot mission. */
+const ROBOT_LEARNING_FRAMES = {
+  wheeled: { concept: 'Motion & friction', goal: 'Explore how wheel speed, turns, and surface grip change a route.', question: 'What changes if the robot moves more slowly or turns sooner?' },
+  aerial: { concept: 'Flight & forces', goal: 'Explore how lift, thrust, and balance help a flying robot move safely.', question: 'How does changing height or direction affect the flight path?' },
+  walker: { concept: 'Balance & biomechanics', goal: 'Explore how step size, timing, and balance help a walking robot stay upright.', question: 'Which step pattern helps the robot move smoothly without tipping?' },
+  underwater: { concept: 'Buoyancy & sonar', goal: 'Explore how depth, currents, and sonar help an underwater robot navigate.', question: 'How can a sonar scan help the robot find a safe route?' },
+  arm: { concept: 'Mechanisms & precision', goal: 'Explore how joints, reach, and gripping let a robot arm move objects accurately.', question: 'Which joint or grip adjustment makes the placement more accurate?' },
+  footballbot: { concept: 'Angles & teamwork', goal: 'Explore how direction, timing, and passing create a better route to goal.', question: 'Where should a pass go so a teammate can reach it?' },
+  birdbot: { concept: 'Forces & repeating patterns', goal: 'Explore how repeated flaps change height and forward movement.', question: 'How does changing the flap timing affect the flight path?' },
+  arcade: { concept: 'Algorithms & game systems', goal: 'Explore how rules, patterns, and precise inputs control a game character.', question: 'Which repeated pattern or rule helps solve this level?' },
+};
+
+export function getRobotLearningFrame(chassisId) {
+  const id = String(chassisId || '').toLowerCase();
+  const aliases = {
+    humanoid: 'walker', spiderbot: 'walker', walker: 'walker',
+    jet: 'aerial', hover: 'aerial', flyer: 'aerial',
+    underwater: 'underwater', submarinebot: 'underwater',
+    factory: 'arm', arm: 'arm',
+    football: 'footballbot', soccerbot: 'footballbot',
+    bird: 'birdbot', arcade: 'arcade',
+  };
+  const family = aliases[id] || getStudioRobotGroup(id);
+  return ROBOT_LEARNING_FRAMES[family] || ROBOT_LEARNING_FRAMES.wheeled;
 }
 
 /** First-screen Studio Create picks — one robot per play family. The rest stay behind More robots. */
@@ -120,6 +153,7 @@ export const STARTER_CHASSIS_IDS = [
   'brickbot',
   'hopbot',
   'raiderbot',
+  'jumpbot',
   'racedrone',
   'jetplane',
   'blockbot',
@@ -168,11 +202,51 @@ export function getPrimaryRobotDisplay(chassisId) {
 
 export function getPrimaryStudioArena(chassisId, modeIndex = 1) {
   const list = PRIMARY_STUDIO_ARENAS[chassisId] || PRIMARY_STUDIO_ARENAS.custom;
+  // Modes 11–50: the robot's own tier levels, dressed like its original arenas
+  // (Rover's races are kart tracks and keep their own arena rows 11–19.)
+  const level = TIER_ENGINE[chassisId] !== 'kart' ? getTierLevel(chassisId, modeIndex) : null;
+  if (level) return tierArena(chassisId, level, list);
   const mode = Math.max(1, Math.min(list.length, Math.floor(Number(modeIndex) || 1)));
   return list[mode - 1] || list[0];
 }
 
+const TIER_EST_MINUTES = { Easy: 5, Medium: 7, Hard: 9, Advanced: 12 };
+
+function tierArena(chassisId, level, list) {
+  const base = list[getTierBaseMode(chassisId, level) - 1] || list[0];
+  const teach = getTierTeach(level, chassisId);
+  const mood = getTierMood(chassisId, level);
+  return {
+    ...base,
+    // Same world as an original arena, but its own time of day and colour grade
+    sky: tint(base.sky, mood), ground: tint(base.ground, mood, 0.6), fog: tint(base.fog, mood),
+    mood,
+    mode: level.mode,
+    title: level.name,
+    objective: getTierGoal(chassisId, level),
+    difficulty: level.tier,
+    skill: teach.skill,
+    tryThis: teach.tryThis,
+    estMinutes: TIER_EST_MINUTES[level.tier] || 6,
+    action: level.action ?? null,
+    tierLevel: level,
+    isRace: false,
+  };
+}
+
 export function getPrimaryStarterScript(chassisId, modeIndex = 1) {
+  // Flyers with a sky course start with the first part of that course's program
+  if (hasSkyCourse(chassisId)) {
+    const action = getMissionAction({ chassisId, arenaBible: true, modeIndex });
+    const sky = getSkyStarterScript(chassisId, modeIndex, action?.id || null);
+    if (sky) return sky;
+  }
+  if (hasSeaCourse(chassisId)) {
+    const action = getMissionAction({ chassisId, arenaBible: true, modeIndex });
+    const sea = getSeaStarterScript(chassisId, modeIndex, action?.id || null);
+    if (sea) return sea;
+  }
+  if (chassisId === 'robotarm') return getArmStarterScript(modeIndex, typeof window !== 'undefined' && !!window.__bbArmFullSolution);
   const arena = getPrimaryStudioArena(chassisId, modeIndex);
   const family = getStudioRobotGroup(chassisId);
   const mode = arena.mode;
@@ -225,9 +299,27 @@ export function getPrimaryStarterScript(chassisId, modeIndex = 1) {
       [b('repeat', 'Repeat', { times: 4 }), move(2), turn, wait],
     ];
     body = patterns[mode - 1];
-    if (family === 'aerial') body = [b('fly_up', 'Fly up', { height: 3 }), ...body, b('hover_hold', 'Hover', { seconds: 1 })];
+    if (arena.tierLevel) {
+      // Tier levels: less help each tier — Easy shows the first leg, Advanced only the start block
+      const act = arena.action ? b(arena.action, ({ pick_up: 'Pick up', drop_off: 'Drop off', scan_here: 'Scan here', light_up: 'Light up', press_alarm: 'Press button', push_object: 'Push' })[arena.action] || 'Action') : null;
+      const tier = arena.tierLevel.tier;
+      body = tier === 'Easy' ? [move(2), turn, move(2), ...(act ? [act] : [])]
+        : tier === 'Medium' ? [move(2), ...(act ? [act] : [])]
+        : tier === 'Hard' ? [move(1)]
+        : [];
+      return [b('when_start', 'When START clicked'), ...body];
+    }
+    if (family === 'aerial') body = [b('fly_up', 'Fly up', { height: 8 }), ...body, b('hover_hold', 'Hover', { seconds: 1 })];
     if (family === 'underwater') body = [b('dive_deep', 'Dive', { depth: 2 }), ...body, b('sonar_ping', 'Sonar scan')];
     if (family === 'walker') body = [move(1), b('balance', 'Balance'), ...body];
+    const obj = String(arena.objective || '').toLowerCase();
+    const actionHint = /pick|collect|harvest|gather/.test(obj) ? b('pick_up', 'Pick up')
+      : /deliver|bring|carry/.test(obj) ? b('drop_off', 'Drop off')
+      : /alarm|button/.test(obj) ? b('press_alarm', 'Press button')
+      : /light|shine|lantern/.test(obj) ? b('light_up', 'Light up')
+      : /scan|check|inspect/.test(obj) ? b('scan_here', 'Scan here')
+      : null;
+    if (actionHint) body = [...body, actionHint];
   }
   return [b('when_start', 'When START clicked'), ...body];
 }
@@ -249,6 +341,13 @@ export function applyPrimaryStudioMeta(mode) {
   const arena = getPrimaryStudioArena(mode.chassisId, modeIndex);
   const display = getPrimaryRobotDisplay(mode.chassisId);
   const family = getStudioRobotGroup(mode.chassisId);
+  const learningFrame = getRobotLearningFrame(mode.chassisId);
+  // Modes 11–50 teach their own lesson (data/tier-levels/lessons.js)
+  const learningGoal = (arena.tierLevel && getTierLearningGoal(mode.chassisId, arena.tierLevel, learningFrame)) || {
+    ...learningFrame,
+    concept: arena.skill ? `${learningFrame.concept} · ${arena.skill}` : learningFrame.concept,
+    goal: arena.objective ? `${learningFrame.goal} In this challenge: ${arena.objective}` : learningFrame.goal,
+  };
   const keepFootball = family === 'footballbot' && (mode.linkedFootballCourse || mode.arenaType === 'robot_football');
   // Only the Boxing robot plays in the ring; tanks, mechs and power bots get
   // their own worlds instead of a boxing arena with garbled "challenge" names.
@@ -270,27 +369,34 @@ export function applyPrimaryStudioMeta(mode) {
       cat: 'combat',
       arenaType: 'robot_fight',
       linkedFightCourse: mode.linkedFightCourse,
+      learningGoal,
     };
   }
 
   if (arena.isRace) {
     const race = applyCarRacingArena({ ...mode, modeIndex });
+    // Rover races 11–50 have their own name, goal and track: show those, not the shared row
+    const kart = TIER_ENGINE[mode.chassisId] === 'kart' ? getTierLevel(mode.chassisId, modeIndex) : null;
+    const title = kart?.name || arena.title;
+    const goal = kart?.goal || arena.objective;
     return {
       ...race,
       arenaBible: false,
-      raceThemeId: arena.raceThemeId,
-      name: arena.title,
-      shortName: arena.title,
-      catalogName: arena.title,
-      raceTrackLabel: arena.title,
-      environmentName: arena.title,
+      // Modes 11–19 have their own race themes; later races show their own world, not the shared Safari theme
+      raceThemeId: kart ? (mode.modeIndex <= 19 ? arena.raceThemeId : undefined) : arena.raceThemeId,
+      name: title,
+      shortName: title,
+      catalogName: title,
+      raceTrackLabel: title,
+      environmentName: title,
       environmentEmoji: arena.emoji,
       icon: arena.emoji,
-      desc: arena.objective,
-      tagline: `Mode ${arena.mode} · Race · ${arena.objective}`,
+      desc: goal,
+      tagline: `Mode ${arena.mode} · Race · ${goal}`,
       difficulty: arena.difficulty,
       tryThis: arena.tryThis,
       skillLearned: arena.skill,
+      learningGoal,
       studioGradient: arena.gradient,
       displayRobotName: display.name,
       displayRobotEmoji: display.emoji,
@@ -321,6 +427,7 @@ export function applyPrimaryStudioMeta(mode) {
     estMinutes: arena.estMinutes,
     tryThis: arena.tryThis,
     skillLearned: arena.skill,
+    learningGoal,
     recommendedBlocks: [...new Set(getPrimaryStarterScript(mode.chassisId, modeIndex).slice(1).map(b => b.label))],
     studioGradient: arena.gradient,
     studioFloorKind: arena.floorKind,

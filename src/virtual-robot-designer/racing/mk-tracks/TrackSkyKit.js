@@ -1,8 +1,10 @@
+import { cachedNodes } from './AnimNodeCache.js';
 /**
  * TrackSkyKit.js — 3D gradient sky domes (NO PNG backdrops).
  * MeshBasic + scene.background so track switches never fall through to a black clear color.
  */
 import * as THREE from 'three';
+import { isCosmicSkywayArena, getCosmicTheme } from './CosmicSkywayRegistry.js';
 
 const SKY_PRESETS = {
   sunset_cove_01: { top: '#287fc4', mid: '#69c5ea', horizon: '#ffd39a', fog: 0xb7ddec },
@@ -12,7 +14,7 @@ const SKY_PRESETS = {
   jungle_ruins_01: { top: '#5dade2', mid: '#8fbc8f', horizon: '#c8e8a0', fog: 0xa8d090 },
   frost_peak_01: { top: '#e8f4ff', mid: '#b8ddf0', horizon: '#d0e8f8', fog: 0xd8eef8 },
   lava_foundry_01: { top: '#4a1808', mid: '#882200', horizon: '#ff6a20', fog: 0x662200 },
-  star_station_01: { top: '#120428', mid: '#2a1058', horizon: '#3a2080', fog: 0x1a0840 },
+  star_station_01: { top: '#03020a', mid: '#140c34', horizon: '#2e1a5e', fog: 0x120a2c },
   fairy_glen_01: { top: '#7ec8ff', mid: '#fff4b0', horizon: '#c8f080', fog: 0xd0ecc0 },
   thunder_ridge_01: { top: '#6a90c8', mid: '#9ab4d0', horizon: '#d0dce8', fog: 0xb0c4d8 },
 };
@@ -39,6 +41,7 @@ function removeNamed(scene, name) {
 }
 
 export function getTrackSkyPreset(arenaType) {
+  if (isCosmicSkywayArena(arenaType)) return getCosmicTheme(arenaType).sky;
   return SKY_PRESETS[arenaType] || SKY_PRESETS.sunset_cove_01;
 }
 
@@ -48,7 +51,11 @@ export function installTrackSky(scene, bounds, arenaType) {
   const preset = getTrackSkyPreset(arenaType);
   const bg = hex(preset.horizon);
   scene.background = bg;
-  scene.fog = new THREE.Fog(preset.fog ?? bg.getHex(), 70, 340);
+  const cosmicSky = isCosmicSkywayArena(arenaType);
+  const fogNear = cosmicSky ? 95 : 70;
+  const fogFar = cosmicSky ? 420 : 340;
+  scene.fog = new THREE.Fog(preset.fog ?? bg.getHex(), fogNear, fogFar);
+  if (scene.userData.lowPower || scene.userData.qualityTier === 'low') return;
 
   const r = 900;
   const geo = new THREE.SphereGeometry(r, 32, 20);
@@ -85,10 +92,7 @@ export function installTrackSky(scene, bounds, arenaType) {
   scene.userData.trackSkyDome = dome;
   scene.userData.customSky = true;
 
-  if (arenaType === 'star_station_01') {
-    addStarfield(scene, bounds, r * 0.85);
-    addNebula(scene, bounds);
-  }
+  // Cosmic Skyway kit provides its own nebula dome + stars — skip extra point cloud.
   if (arenaType === 'frost_peak_01') addAurora(scene, bounds);
   if (arenaType === 'thunder_ridge_01') addStormClouds(scene, bounds);
   if (arenaType === 'sunset_cove_01' || arenaType === 'candy_carnival_01') addVolumetricClouds(scene, bounds);
@@ -217,12 +221,16 @@ function addStormClouds(scene, bounds) {
   scene.add(mesh);
 }
 
+const ANIMATED_SKY = new Set(['track-aurora', 'storm-cloud-dome', 'track-volumetric-clouds', 'track-carnival-sky']);
+
 export function animateTrackSky(scene, time) {
-  const aurora = scene.getObjectByName('track-aurora');
+  const found = cachedNodes(scene, 'sky', (o) => ANIMATED_SKY.has(o.name));
+  const byName = (n) => found.find((o) => o.name === n);
+  const aurora = byName('track-aurora');
   if (aurora) aurora.material.opacity = 0.1 + Math.sin(time * 0.5) * 0.08;
-  const storm = scene.getObjectByName('storm-cloud-dome');
+  const storm = byName('storm-cloud-dome');
   if (storm) storm.material.opacity = 0.2 + Math.sin(time * 0.3) * 0.08;
-  const clouds = scene.getObjectByName('track-volumetric-clouds');
+  const clouds = byName('track-volumetric-clouds');
   if (clouds) {
     clouds.children.forEach((cloud) => {
       const ph = cloud.userData.driftPhase ?? 0;
@@ -231,7 +239,7 @@ export function animateTrackSky(scene, time) {
       cloud.position.y = baseY + Math.sin(time * 0.15 + ph) * 0.4;
     });
   }
-  const carnivalSky = scene.getObjectByName('track-carnival-sky');
+  const carnivalSky = byName('track-carnival-sky');
   if (carnivalSky) {
     carnivalSky.children.forEach((cloud) => {
       const ph = cloud.userData.driftPhase ?? 0;

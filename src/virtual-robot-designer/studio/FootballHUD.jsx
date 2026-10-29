@@ -3,6 +3,7 @@
  */
 import React from 'react';
 import { FOOTBALL_CONTROLS_HELP } from './football-keyboard-controls.js';
+import { EmojiIcon, IconText } from '../../components/ui/Icon.jsx';
 
 function formatMatchClock(matchTime = 0, timeLimit = 180) {
   const matchMinute = Math.min(90, Math.floor((matchTime / Math.max(1, timeLimit)) * 90));
@@ -97,7 +98,7 @@ export function FootballHUD({
                 onClick={onPause}
                 aria-label={isPaused ? 'Resume match' : 'Pause match'}
               >
-                {isPaused ? '▶' : '⏸'}
+                <IconText>{isPaused ? '▶' : '⏸'}</IconText>
               </button>
             )}
           </div>
@@ -106,7 +107,7 @@ export function FootballHUD({
           <div className="fifa-tv-player-card">
             <div className="fifa-tv-player-name">{playerLabel}</div>
             <div className="fifa-tv-stamina">
-              <span className={`fifa-tv-stamina-bolt${match.userSprinting ? ' on' : ''}`}>⚡</span>
+              <span className={`fifa-tv-stamina-bolt${match.userSprinting ? ' on' : ''}`}><EmojiIcon e="⚡" /></span>
               <div className="fifa-tv-stamina-track">
                 <div
                   className="fifa-tv-stamina-fill"

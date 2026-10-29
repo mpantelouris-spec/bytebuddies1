@@ -1,5 +1,6 @@
 import React from 'react';
 import { getCourseMeta } from '../../data/test-arena-courses.js';
+import { EmojiIcon } from '../../../components/ui/Icon.jsx';
 
 /** HUD overlays on the arena viewport — progress, celebration, robot badge */
 export default function TestArenaOverlay({
@@ -19,14 +20,14 @@ export default function TestArenaOverlay({
     <div className="ta-overlay" aria-hidden={false}>
       {showCelebrate && (
         <div className="ta-celebrate" role="status">
-          <span className="ta-celebrate-burst">🎉</span>
+          <span className="ta-celebrate-burst"><EmojiIcon e="🎉" /></span>
           <strong>Mission complete!</strong>
           <span>Your robot nailed it!</span>
         </div>
       )}
 
       <div className="ta-robot-badge">
-        <span className="ta-robot-badge-icon">🤖</span>
+        <span className="ta-robot-badge-icon"><EmojiIcon e="🤖" /></span>
         <span>{robotName || 'Your Robot'}</span>
       </div>
 

@@ -79,6 +79,11 @@ export function getMissionAction(challenge) {
   if (family === 'arm' || family === 'birdbot' || family === 'footballbot') return null;
   const arena = getPrimaryStudioArena(challenge.chassisId, challenge.modeIndex || 1);
   if (!arena || arena.isRace) return null;
+  // Tier levels (modes 11–50) say which action they need
+  if (arena.tierLevel) {
+    const b = arena.action ? ACTION_BY_ID[arena.action] : null;
+    return b ? { ...b, verb: b.label.toLowerCase(), hint: `Use ${b.icon} ${b.label} at each glowing marker` } : null;
+  }
   return actionForObjective(arena.objective || challenge.desc || '', challenge.chassisId, family);
 }
 

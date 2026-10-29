@@ -13,6 +13,6 @@ export default {
     '^.+\\.(t|j)sx?$': 'babel-jest',
   },
   transformIgnorePatterns: [
-    'node_modules/(?!(@mediapipe|@tensorflow|blockly)/)',
+    'node_modules/(?!(@mediapipe|@tensorflow|blockly|three)/)',
   ],
 };

@@ -3,6 +3,80 @@
  * Enterprise-grade validation for all block categories
  */
 
+import {
+  BLOCK_SOUND_OPTIONS,
+  ensureBlockSoundAudio,
+  playBlockSound,
+  setUserSoundVolume01,
+  stopAllBlockSounds,
+} from '../src/utils/blockSounds';
+import { createScriptThread } from '../src/utils/controlFlowRuntime';
+import {
+  estimateSoundDurationSec,
+  playSpriteSound,
+  playSpriteSoundUntilDone,
+} from '../src/utils/soundRuntime';
+
+function createAudioParam() {
+  const events = [];
+  return {
+    events,
+    setValueAtTime: jest.fn((value, time) => events.push(['set', value, time])),
+    linearRampToValueAtTime: jest.fn((value, time) => events.push(['linear', value, time])),
+    exponentialRampToValueAtTime: jest.fn((value, time) => events.push(['exponential', value, time])),
+  };
+}
+
+class MockAudioContext {
+  constructor() {
+    this.currentTime = 1;
+    this.sampleRate = 44100;
+    this.state = 'running';
+    this.destination = {};
+    this.sources = [];
+    this.gains = [];
+  }
+
+  createSource() {
+    const source = {
+      onended: null,
+      connect: jest.fn(),
+      start: jest.fn((time) => { source.startedAt = time; }),
+      stop: jest.fn((time) => { source.stoppedAt = time; source.onended?.(); }),
+      disconnect: jest.fn(),
+    };
+    this.sources.push(source);
+    return source;
+  }
+
+  createGain() {
+    const node = { gain: createAudioParam(), connect: jest.fn(), disconnect: jest.fn() };
+    this.gains.push(node);
+    return node;
+  }
+
+  createOscillator() {
+    return Object.assign(this.createSource(), {
+      type: 'sine',
+      frequency: createAudioParam(),
+      detune: createAudioParam(),
+    });
+  }
+
+  createBuffer(_channels, length) {
+    return { getChannelData: () => new Float32Array(length) };
+  }
+
+  createBufferSource() {
+    return Object.assign(this.createSource(), { buffer: null });
+  }
+
+  resume() {
+    this.state = 'running';
+    return Promise.resolve();
+  }
+}
+
 // Mock data for testing
 const BLOCK_DEFS = {
   'motion-movesteps': { category: 'motion', type: 'motion-movesteps', label: 'Move', color: '#4C97FF' },
@@ -391,93 +465,73 @@ describe('═══ LOOKS BLOCKS ═══', () => {
 });
 
 describe('═══ SOUND BLOCKS ═══', () => {
+  const expectedSources = {
+    pop: 2, click: 1, coin: 2, laser: 1, jump: 1, win: 4, lose: 1,
+    drum: 2, bell: 2, boing: 1, zap: 3, whoosh: 1, meow: 2,
+  };
   let audioContext;
 
+  beforeAll(() => {
+    audioContext = new MockAudioContext();
+    window.AudioContext = jest.fn(() => audioContext);
+    ensureBlockSoundAudio();
+  });
+
   beforeEach(() => {
-    audioContext = {
-      sounds: {},
-      playingAudio: new Map(),
-      masterVolume: 100,
-    };
+    stopAllBlockSounds();
+    audioContext.sources.length = 0;
+    audioContext.gains.length = 0;
+    setUserSoundVolume01(1);
   });
 
-  describe('play sound', () => {
-    test('should start playing sound', () => {
-      const soundName = 'meow';
-      audioContext.playingAudio.set(soundName, {
-        source: { mediaElement: { play: () => {} } },
-        startTime: Date.now(),
-      });
-      expect(audioContext.playingAudio.has(soundName)).toBe(true);
-    });
-
-    test('should handle overlapping sounds', () => {
-      audioContext.playingAudio.set('sound1', { startTime: Date.now() });
-      audioContext.playingAudio.set('sound2', { startTime: Date.now() });
-      audioContext.playingAudio.set('sound3', { startTime: Date.now() });
-      expect(audioContext.playingAudio.size).toBe(3);
-    });
-
-    test('should handle rapid sound replay', () => {
-      for (let i = 0; i < 100; i++) {
-        audioContext.playingAudio.set(`sound${i}`, { startTime: Date.now() });
-      }
-      expect(audioContext.playingAudio.size).toBe(100);
-    });
-
-    test('should handle missing sound gracefully', () => {
-      const soundName = 'nonexistent';
-      audioContext.playingAudio.set(soundName, null);
-      expect(audioContext.playingAudio.get(soundName)).toBeNull();
-    });
-
-    test('should recover from audio context suspend', () => {
-      const resumePromise = Promise.resolve();
-      expect(resumePromise).resolves.toBeUndefined();
-    });
+  afterAll(() => {
+    stopAllBlockSounds();
+    delete window.AudioContext;
   });
 
-  describe('stop all sounds', () => {
-    test('should stop all playing sounds', () => {
-      audioContext.playingAudio.clear();
-      expect(audioContext.playingAudio.size).toBe(0);
-    });
-
-    test('should handle already empty playback', () => {
-      audioContext.playingAudio.clear();
-      audioContext.playingAudio.clear();
-      expect(audioContext.playingAudio.size).toBe(0);
-    });
+  test.each(BLOCK_SOUND_OPTIONS)('schedules audio for %s', ({ id }) => {
+    playBlockSound(id);
+    expect(audioContext.sources.filter((source) => source.startedAt != null)).toHaveLength(expectedSources[id]);
   });
 
-  describe('volume control', () => {
-    test('should set master volume', () => {
-      audioContext.masterVolume = 75;
-      expect(audioContext.masterVolume).toBe(75);
-    });
+  test('stops and disconnects every active sound source', () => {
+    playBlockSound('boing');
+    const sources = [...audioContext.sources];
 
-    test('should clamp volume to 0-100', () => {
-      audioContext.masterVolume = Math.max(0, Math.min(100, 150));
-      expect(audioContext.masterVolume).toBe(100);
+    stopAllBlockSounds();
 
-      audioContext.masterVolume = Math.max(0, Math.min(100, -50));
-      expect(audioContext.masterVolume).toBe(0);
-    });
+    expect(sources.every((source) => source.stop.mock.calls.length > 1)).toBe(true);
+    expect(sources.every((source) => source.disconnect.mock.calls.length === 1)).toBe(true);
+  });
 
-    test('should handle volume changes during playback', () => {
-      audioContext.masterVolume = 50;
-      audioContext.playingAudio.set('sound', { volume: 50 });
-      audioContext.masterVolume = 75;
-      expect(audioContext.masterVolume).toBe(75);
-    });
+  test('applies a sprite volume only once', () => {
+    playSpriteSound({ _sound: { volume: 50, effects: { pitch: 0 } } }, 'click');
+    const ramps = audioContext.gains.flatMap((gain) => gain.gain.events);
 
-    test('should persist volume across sound switches', () => {
-      audioContext.masterVolume = 60;
-      audioContext.playingAudio.set('sound1', { startTime: Date.now() });
-      audioContext.playingAudio.clear();
-      audioContext.playingAudio.set('sound2', { startTime: Date.now() });
-      expect(audioContext.masterVolume).toBe(60);
-    });
+    expect(ramps.some(([kind, value]) => kind === 'linear' && value === 0.04)).toBe(true);
+  });
+
+  test('plays until done once and yields the thread for the sound duration', () => {
+    const sprite = {};
+    const thread = createScriptThread();
+    const before = Date.now();
+
+    expect(playSpriteSoundUntilDone(sprite, 'boing', thread)).toBe(true);
+    const after = Date.now();
+    // The block reads the clock itself, so allow for the time that passed while it ran
+    const dur = estimateSoundDurationSec('boing') * 1000;
+    expect(thread.waitEndTime).toBeGreaterThanOrEqual(before + dur);
+    expect(thread.waitEndTime).toBeLessThanOrEqual(after + dur);
+    expect(thread.soundWaitPending).toBe(true);
+
+    const sourceCount = audioContext.sources.length;
+    const now = jest.spyOn(Date, 'now').mockReturnValue(thread.waitEndTime + 1);
+    expect(playSpriteSoundUntilDone(sprite, 'boing', thread)).toBe(false);
+    now.mockRestore();
+
+    expect(audioContext.sources).toHaveLength(sourceCount);
+    expect(thread.soundWaitPending).toBe(false);
+    expect(thread.waitEndTime).toBeNull();
   });
 });
 

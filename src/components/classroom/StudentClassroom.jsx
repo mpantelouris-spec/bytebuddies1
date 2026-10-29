@@ -10,6 +10,7 @@ import { connectGoogleClassroom, getGcSession, listCourses, listMyByteBuddiesWor
 import { Modal, Avatar, Chip, GoogleClassroomLogo, GoogleG, useToast, timeAgo, classGradient } from './ui.jsx';
 import { KIND_META, openHash } from './assignables.js';
 import { GcErrorNote } from './GooglePanel.jsx';
+import { EmojiIcon, IconText } from '../ui/Icon.jsx';
 
 function normAssignment(a) {
   if (a.kind) return a;
@@ -61,12 +62,12 @@ function HandInModal({ a, existing, onClose, onSend }) {
 
   return (
     <Modal icon="📤" title={`Hand in: ${a.title}`} onClose={onClose}
-      footer={<><button className="cr-btn" onClick={onClose}>Not yet</button><button className="cr-btn cr-btn--green" disabled={!ok || busy} onClick={send}>{busy ? 'Handing in…' : '📤 Hand in'}</button></>}>
+      footer={<><button className="cr-btn" onClick={onClose}>Not yet</button><button className="cr-btn cr-btn--green" disabled={!ok || busy} onClick={send}><IconText>{busy ? 'Handing in…' : '📤 Hand in'}</IconText></button></>}>
       <div style={{ display: 'grid', gap: 12 }}>
         {a.description && <div className="cr-note cr-note--info">{a.description}</div>}
         {work && (
           <div className="cr-note cr-note--ok">
-            ✅ Your work from <b>{work.title || 'ByteBuddies'}</b> will be sent too
+            <EmojiIcon e="✅" style={{ marginRight: '0.35em' }} />Your work from <b>{work.title || 'ByteBuddies'}</b> will be sent too
             {work.blocks?.length ? ` (${work.blocks.length} blocks of code)` : ''}.
           </div>
         )}
@@ -133,13 +134,13 @@ function JoinScreen({ user, onJoined, toast }) {
 
   return (
     <div className="cr-join">
-      <div style={{ fontSize: 60 }}>🏫</div>
+      <div style={{ fontSize: 60 }}><EmojiIcon e="🏫" /></div>
       <h1 className="cr-title" style={{ margin: '6px 0 6px' }}>Join your class</h1>
       <p className="cr-muted" style={{ margin: '0 0 22px', fontSize: 15 }}>Type the code your teacher gave you.</p>
 
       {found.length > 0 && (
         <div className="cr-card" style={{ marginBottom: 16, textAlign: 'left' }}>
-          <div style={{ fontWeight: 900, marginBottom: 8 }}>🎉 Your teacher added you!</div>
+          <div style={{ fontWeight: 900, marginBottom: 8 }}><EmojiIcon e="🎉" style={{ marginRight: '0.35em' }} />Your teacher added you!</div>
           {found.map((c) => (
             <div key={c.id} className="cr-row" style={{ marginTop: 6 }}>
               <span className="cr-dot" style={{ background: c.color || '#6366f1' }} />
@@ -282,7 +283,7 @@ export default function StudentClassroom() {
     return (
       <div className="cr">
         <div className="cr-card cr-empty" style={{ maxWidth: 480, margin: '40px auto' }}>
-          <div className="cr-big">📡</div>
+          <div className="cr-big"><EmojiIcon e="📡" /></div>
           <b style={{ color: 'var(--text-primary)' }}>We can't reach your class right now.</b>
           <div style={{ margin: '6px 0 16px' }}>Check the internet connection and try again.</div>
           <button className="cr-btn cr-btn--primary" onClick={() => { setLoading(true); load(user.classroomId); }}>Try again</button>
@@ -313,12 +314,12 @@ export default function StudentClassroom() {
         <div className="cr-grow">
           <div className="cr-row" style={{ gap: 8 }}>
             <div className="cr-work__title">{a.title}</div>
-            <Chip color={s.color}>{s.icon} {s.label}</Chip>
+            <Chip color={s.color}><EmojiIcon e={s.icon} style={{ marginRight: '0.35em' }} />{s.label}</Chip>
           </div>
           <div className="cr-work__meta">
             <span>{meta.emoji} {meta.label}</span>
-            <span style={{ color: st === 'late' ? '#ef4444' : undefined, fontWeight: st === 'late' ? 800 : undefined }}>📅 {dueLabel(a.dueDate)}</span>
-            <span>🏅 {a.points || 10} points</span>
+            <span style={{ color: st === 'late' ? '#ef4444' : undefined, fontWeight: st === 'late' ? 800 : undefined }}><EmojiIcon e="📅" style={{ marginRight: '0.35em' }} />{dueLabel(a.dueDate)}</span>
+            <span><EmojiIcon e="🏅" style={{ marginRight: '0.35em' }} />{a.points || 10} points</span>
           </div>
           {a.description && <div style={{ fontSize: 14, marginTop: 6, lineHeight: 1.5 }}>{a.description}</div>}
           {(sub?.feedback || sub?.grade != null) && (
@@ -335,13 +336,13 @@ export default function StudentClassroom() {
         <div className="cr-work__actions">
           {a.kind !== 'task' && (
             <button className={`cr-btn cr-btn--sm${st === 'todo' || st === 'late' ? ' cr-btn--primary' : ''}`} onClick={() => start(a)}>
-              {st === 'todo' || st === 'late' ? '▶ Start' : '↻ Open again'}
+              <IconText>{st === 'todo' || st === 'late' ? '▶ Start' : '↻ Open again'}</IconText>
             </button>
           )}
           {canHandIn && !sub?.grade && (
             sub && !sub.byTeacher
               ? <button className="cr-btn cr-btn--sm cr-btn--ghost" onClick={async () => { await unsubmit(cls.id, sub.id); load(cls.id); }}>Unsubmit</button>
-              : <button className={`cr-btn cr-btn--sm${a.kind === 'task' ? ' cr-btn--primary' : ' cr-btn--green'}`} onClick={() => setHanding(a)}>📤 Hand in</button>
+              : <button className={`cr-btn cr-btn--sm${a.kind === 'task' ? ' cr-btn--primary' : ' cr-btn--green'}`} onClick={() => setHanding(a)}><EmojiIcon e="📤" style={{ marginRight: '0.35em' }} />Hand in</button>
           )}
         </div>
       </div>
@@ -398,7 +399,7 @@ export default function StudentClassroom() {
       </div>
 
       {tab === 'todo' && (todo.length ? todo.map(card) : (
-        <div className="cr-card cr-empty"><div className="cr-big">🌟</div><b style={{ color: 'var(--text-primary)' }}>Nothing to do right now!</b><div style={{ marginTop: 6 }}>Why not try a <a href="#missions">mission</a> or carry on with <a href="#learn">Learn</a>?</div></div>
+        <div className="cr-card cr-empty"><div className="cr-big"><EmojiIcon e="🌟" /></div><b style={{ color: 'var(--text-primary)' }}>Nothing to do right now!</b><div style={{ marginTop: 6 }}>Why not try a <a href="#missions">mission</a> or carry on with <a href="#learn">Learn</a>?</div></div>
       ))}
       {tab === 'done' && (done.length ? done.map(card) : <div className="cr-card cr-empty">Finished work will appear here.</div>)}
 
@@ -410,12 +411,12 @@ export default function StudentClassroom() {
               <div className="cr-row" style={{ gap: 8 }}>
                 <b style={{ fontSize: 14 }}>{p.author}</b>
                 <span className="cr-muted" style={{ fontSize: 12 }}>{timeAgo(p.createdAt)}</span>
-                {p.pinned && <Chip color="#6366f1">📌 Pinned</Chip>}
+                {p.pinned && <Chip color="#6366f1"><EmojiIcon e="📌" style={{ marginRight: '0.35em' }} />Pinned</Chip>}
               </div>
               <p>{p.text}</p>
             </div>
           </div>
-        )) : <div className="cr-card cr-empty"><div className="cr-big">📣</div>No class news yet.</div>
+        )) : <div className="cr-card cr-empty"><div className="cr-big"><EmojiIcon e="📣" /></div>No class news yet.</div>
       )}
 
       {tab === 'google' && (
@@ -436,7 +437,7 @@ export default function StudentClassroom() {
                 <div style={{ fontWeight: 800 }}>{w.title}</div>
                 <div className="cr-muted" style={{ fontSize: 12.5 }}>{w.courseName}{w.due ? ` · ${dueLabel(w.due)}` : ''}</div>
               </div>
-              <a className="cr-btn cr-btn--sm cr-btn--primary" href={w.link}>▶ Open</a>
+              <a className="cr-btn cr-btn--sm cr-btn--primary" href={w.link}><EmojiIcon e="▶" style={{ marginRight: '0.35em' }} />Open</a>
               {w.gcLink && <a className="cr-btn cr-btn--sm" href={w.gcLink} target="_blank" rel="noopener noreferrer">Turn in ↗</a>}
             </div>
           ))}
@@ -449,7 +450,7 @@ export default function StudentClassroom() {
         </button>
       </div>
 
-      <button className="cr-btn cr-btn--green cr-help-fab" onClick={() => setHelpOpen(true)}>🙋 I need help</button>
+      <button className="cr-btn cr-btn--green cr-help-fab" onClick={() => setHelpOpen(true)}><EmojiIcon e="🙋" style={{ marginRight: '0.35em' }} />I need help</button>
     </div>
   );
 }

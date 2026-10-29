@@ -109,13 +109,21 @@ function hashStr(str) {
 
 /** A sized, grounded copy of a model; tinted or snow-capped for the world. */
 function instance(src, height, theme, rand) {
-  const obj = src.clone(true);
-  const box = new THREE.Box3().setFromObject(obj);
+  const model = src.clone(true);
+  const box = new THREE.Box3().setFromObject(model);
   const h = Math.max(box.max.y - box.min.y, 0.01);
-  obj.scale.multiplyScalar(height / h);
-  obj.updateMatrixWorld(true);
-  box.setFromObject(obj);
-  obj.position.y -= box.min.y;
+  model.scale.multiplyScalar(height / h);
+  model.updateMatrixWorld(true);
+  box.setFromObject(model);
+  // Centre the model on its footprint: some models (the meteor) sit far from their own
+  // origin, which once scaled up put them on the road the clearance check had just kept clear.
+  const centre = box.getCenter(new THREE.Vector3());
+  model.position.x -= centre.x;
+  model.position.z -= centre.z;
+  model.position.y -= box.min.y;
+  const obj = new THREE.Group();
+  obj.name = src.name || 'scenery-prop';
+  obj.add(model);
   obj.rotation.y = rand() * Math.PI * 2;
   if (theme.tint || theme.snowCap) {
     const tint = theme.tint ? new THREE.Color(theme.tint) : null;
@@ -147,6 +155,19 @@ export function hideOldDecoration(world) {
 
 export function hasThemeScenery(themeId) {
   return Boolean(RECIPES[themeId]);
+}
+
+/** Hides old decoration before every render so late-streaming pieces never flash on screen. */
+export function keepOldDecorationHidden(world) {
+  const original = world.updateMatrixWorld;
+  world.updateMatrixWorld = function patched(force) {
+    hideOldDecoration(world);
+    return original.call(this, force);
+  };
+  return () => {
+    hideOldDecoration(world);
+    world.updateMatrixWorld = original;
+  };
 }
 
 /**

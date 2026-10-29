@@ -18,14 +18,15 @@ describe('coding lessons have coding activities', () => {
     expect(getCodingLabConfig('y3', 0)).toBeNull();
   });
 
-  test('every CS coding week has a blocks puzzle and a lab config', () => {
+  // Coding weeks get one full Coding Lab, so the puzzles above it skip the mini blocks lab
+  test('every CS coding week has a lab config and puzzles that do not repeat it', () => {
     const missing = [];
     for (const yr of ['y3', 'y4', 'y5', 'y6']) {
       COURSES[yr].lessons.forEach((lesson, idx) => {
         if (!isCodingLesson(lesson)) return;
         const puzzles = getPuzzleLevels(yr, idx, buildKs2LessonInteractives(yr, idx));
-        const hasBlocks = puzzles.some((p) => p.type === 'blocks');
-        if (!hasBlocks || !getCodingLabConfig(yr, idx)) {
+        const repeatsLab = puzzles.some((p) => p.type === 'blocks');
+        if (!puzzles.length || repeatsLab || !getCodingLabConfig(yr, idx)) {
           missing.push(`${yr} w${idx + 1} ${lesson.title}`);
         }
       });

@@ -5,6 +5,7 @@ import { migrateDesign } from '../config.js';
 import { placePartOnSlot } from '../services/assembly-service.js';
 import { motorPowerFromSlider, motorPowerToSlider } from '../utils/statColors.js';
 import { playVrdSoundSync } from '../utils/vrdSound.js';
+import { EmojiIcon, IconText } from '../../components/ui/Icon.jsx';
 
 const MOVEMENT_OPTS = [
   { id: 'standard', icon: '🚗', label: 'Wheels', partId: 'standard', wheels: { type: 'standard', count: 4 } },
@@ -102,7 +103,7 @@ export default function RobotQuickControls({ design, setDesign, onLog, showAdvan
               whileTap={{ scale: 0.95 }}
               title={opt.label}
             >
-              <span>{opt.icon}</span>
+              <span><EmojiIcon e={opt.icon} /></span>
               <span>{opt.label}</span>
             </motion.button>
           ))}
@@ -130,7 +131,7 @@ export default function RobotQuickControls({ design, setDesign, onLog, showAdvan
               title={s.desc}
             >
               <input type="checkbox" checked={!!d.sensors?.[s.key]} onChange={() => toggleSensor(s.key)} />
-              <span className="vrd-sensor-check-box">{d.sensors?.[s.key] ? '☑' : '☐'}</span>
+              <span className="vrd-sensor-check-box"><IconText>{d.sensors?.[s.key] ? '☑' : '☐'}</IconText></span>
               <span>{s.label}</span>
             </motion.label>
           ))}

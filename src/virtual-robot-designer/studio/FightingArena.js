@@ -6,9 +6,13 @@
  * enhanced VFX (motion trails, spark bursts, shockwaves, block shields).
  */
 import * as THREE from 'three';
+import { getRingSkinIndex, applyRingSkinStyle, buildCombatRingBackdrop, RING_SKIN_COLORS } from './CombatRingSkins.js';
+import { buildWorldArena } from './FightWorldArenas.js';
+import { getFightWorld } from '../data/fight-worlds.js';
 import { buildSeatedCrowd, createCrowdDirector } from './CrowdKit.js';
 import { createCombatEngine } from './fighting-combat-engine.js';
 import { buildCuteBoxer } from './fighter-character-models.js';
+import { buildKayKitFighter } from './fighter/KayKitFighters.js';
 // Optional enhanced VFX (safe import with fallback)
 import { createEnhancedCombatVFX } from './combat-vfx-enhanced.js';
 import { createCombatCamera } from './realistic-combat-animation.js';
@@ -309,21 +313,36 @@ function buildAcademyEnvironment() {
   return g;
 }
 
-function buildStadiumCrowd() {
+/** Crowd for each ring (same order as RING_SKIN_NAMES): shirt colours, stand colour, how full it is. */
+const CROWD_THEMES = [
+  { shirts: [0xffffff, 0xd6c3a5, 0xb91c1c, 0xfacc15], steps: 0x8a5a2b, fill: 0.93 },   // Classic Colosseum
+  { shirts: [0xec4899, 0x06b6d4, 0x8b5cf6, 0x111827], steps: 0x0f172a, fill: 0.9 },    // Neon Cyber Ring
+  { shirts: [0x1e293b, 0x334155, 0x64748b, 0xe2e8f0], steps: 0x0b1220, fill: 0.55 },   // Rooftop Night
+  { shirts: [0xdc2626, 0xf97316, 0x111111, 0xfacc15], steps: 0x2a0f05, fill: 0.85 },   // Lava Pit
+  { shirts: [0xffffff, 0x7dd3fc, 0x38bdf8, 0x1d4ed8], steps: 0xbfdbfe, fill: 0.9 },    // Ice Arena
+  { shirts: [0x78350f, 0x57534e, 0x92400e, 0xa8a29e], steps: 0x3f3f46, fill: 0.5 },    // Warehouse Brawl
+  { shirts: [0xe5e7eb, 0x94a3b8, 0x2563eb, 0xf97316], steps: 0x1f2937, fill: 0.75 },   // Space Station Ring
+  { shirts: [0x15803d, 0x65a30d, 0x854d0e, 0xfacc15], steps: 0x3f2a14, fill: 0.85 },   // Jungle Pit
+  { shirts: [0xfbbf24, 0x7c3aed, 0xffffff, 0xf59e0b], steps: 0x2e1065, fill: 0.97 },   // Championship Gold
+  { shirts: [0x3b0764, 0x111111, 0x7c3aed, 0x450a0a], steps: 0x050505, fill: 0.7 },    // Boss Throne Room
+];
+
+function buildStadiumCrowd(skinIndex = 0) {
   const g = new THREE.Group();
   g.name = 'Crowd';
   const director = createCrowdDirector();
   const U = director.uniforms;
+  const theme = CROWD_THEMES[skinIndex] || CROWD_THEMES[0];
   // Stepped stands on three sides of the ring (the camera looks in from the fourth)
   const blocks = [
-    { w: 22, rows: 7, pos: [0, 0, 8.2], rot: Math.PI, shirts: [0xdc2626, 0x2563eb, 0xffffff, 0xfacc15, 0x111827], seed: 3 },
-    { w: 15, rows: 6, pos: [-8.2, 0, 0.5], rot: Math.PI / 2, shirts: [0x2563eb, 0x1d4ed8, 0xffffff, 0xfacc15], seed: 5 },
-    { w: 15, rows: 6, pos: [8.2, 0, 0.5], rot: -Math.PI / 2, shirts: [0xdc2626, 0xb91c1c, 0xffffff, 0xfacc15], seed: 9 },
+    { w: 22, rows: 7, pos: [0, 0, 8.2], rot: Math.PI, seed: 3 + skinIndex },
+    { w: 15, rows: 6, pos: [-8.2, 0, 0.5], rot: Math.PI / 2, seed: 5 + skinIndex },
+    { w: 15, rows: 6, pos: [8.2, 0, 0.5], rot: -Math.PI / 2, seed: 9 + skinIndex },
   ];
   blocks.forEach((b) => {
     const block = buildSeatedCrowd({
       width: b.w, rows: b.rows, rowDepth: 0.9, rowRise: 0.5, y0: 0.2, zFront: 0,
-      shirts: b.shirts, seat: 0.6, fill: 0.93, scale: 1.05, steps: 0x1c2331, seed: b.seed, flags: 0.14, uniforms: U,
+      shirts: theme.shirts, seat: 0.6, fill: theme.fill, scale: 1.05, steps: theme.steps, seed: b.seed, flags: 0.14, uniforms: U,
     });
     block.position.set(...b.pos);
     block.rotation.y = b.rot;
@@ -420,8 +439,9 @@ function buildArenaLighting(scene) {
   return lights;
 }
 
-function makeEnemyMesh(type) {
-  const fighter = buildCuteBoxer({ team: 'red' });
+function makeEnemyMesh(type, outfit = null, model = null) {
+  // Fighting worlds use real animated characters; the boxing ring keeps its boxers
+  const fighter = model ? buildKayKitFighter(model) : buildCuteBoxer({ team: 'red', ...(outfit ? { outfit } : {}) });
 
   const g = new THREE.Group();
   g.name = type === 'dummy' ? 'TrainingDummy' : 'EnemyFighter';
@@ -560,12 +580,15 @@ function buildCombatArenaForChassis(scene, challenge, playerArchetype) {
   ringGroup.add(buildCornerPads());
   ringGroup.add(buildRingPosts());
   ringGroup.add(buildRingRopes());
-  const crowdGroup = buildStadiumCrowd();
+  // Each bout has its own ring: colours, crowd, sky and scenery (Colosseum, Neon Cyber, Lava Pit…)
+  const skinIndex = getRingSkinIndex(challenge);
+  const crowdGroup = buildStadiumCrowd(skinIndex);
   ringGroup.add(crowdGroup);
   ringGroup.add(buildSpotRigs());
+  applyRingSkinStyle(ringGroup, skinIndex);
 
   scene.add(ringGroup);
-  return { yard: ringGroup, crowdGroup, surfaceY: RING_SURFACE_Y, isRing: true };
+  return { yard: ringGroup, crowdGroup, surfaceY: RING_SURFACE_Y, isRing: true, skinIndex };
 }
 
 export function buildFightingArena(scene, challenge = {}, playerArchetype = 'striker') {
@@ -591,9 +614,31 @@ export function buildFightingArena(scene, challenge = {}, playerArchetype = 'str
     if (obj.isPointLight) obj.intensity *= 0.08;
   });
 
-  const { surfaceY, crowdGroup } = buildCombatArenaForChassis(scene, challenge, playerArchetype);
+  // Fighting worlds (castle, dojo, pirate ship, wizard tower, space) replace the boxing ring
+  const world = getFightWorld(challenge);
+  let surfaceY = RING_SURFACE_Y;
+  let crowdGroup = null;
+  if (import.meta.env?.DEV) { try { window.__bbFightScene = scene; } catch { /* ignore */ } }
+  if (world) {
+    buildWorldArena(scene, world.id, RING_SURFACE_Y);
+    scene.userData.fightWorld = world.id;
+  } else {
+    const arena = buildCombatArenaForChassis(scene, challenge, playerArchetype);
+    surfaceY = arena.surfaceY;
+    crowdGroup = arena.crowdGroup;
+  }
 
   buildArenaLighting(scene);
+  if (!world) {
+    // The ring's own sky, fog and scenery, plus a coloured light so each arena reads differently
+    const skinIndex = getRingSkinIndex(challenge);
+    scene.add(buildCombatRingBackdrop(scene, skinIndex));
+    const accent = tagCombatLight(new THREE.PointLight(RING_SKIN_COLORS[skinIndex].light, 1.6, 26));
+    accent.position.set(0, 6, 4);
+    scene.add(accent);
+  }
+  const rivalModel = (key) => (world ? (key === 'dummy' ? 'dummy' : world.rival.model || null) : null);
+  const rivalOutfit = (key) => (world ? (key === 'dummy' ? 'dummy' : world.rival.outfit) : null);
 
   // 3/4 ring camera — both boxers, ropes, crowd, and spots in frame
   scene.userData.combatCamPreset = {
@@ -618,7 +663,7 @@ export function buildFightingArena(scene, challenge = {}, playerArchetype = 'str
   if (enemyKey === 'wave') enemyKey = 'striker';
   if (challenge.fightMode === 'training') enemyKey = 'dummy';
 
-  let enemyMesh = makeEnemyMesh(enemyKey);
+  let enemyMesh = makeEnemyMesh(enemyKey, rivalOutfit(enemyKey), rivalModel(enemyKey));
   enemyMesh.position.set(ENEMY_X, 0, 0);
   enemyMesh.rotation.y = -Math.PI / 2;
   alignFighterToRingSurface(enemyMesh, surfaceY);
@@ -629,7 +674,7 @@ export function buildFightingArena(scene, challenge = {}, playerArchetype = 'str
   function swapEnemyMesh(newKey) {
     if (!newKey || newKey === 'dummy') return;
     scene.remove(enemyMesh);
-    enemyMesh = makeEnemyMesh(newKey);
+    enemyMesh = makeEnemyMesh(newKey, rivalOutfit(newKey), rivalModel(newKey));
     enemyMesh.position.set(ENEMY_X, 0, 0);
     enemyMesh.rotation.y = -Math.PI / 2;
     alignFighterToRingSurface(enemyMesh, surfaceY);

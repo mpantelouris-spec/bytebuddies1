@@ -2,6 +2,7 @@
  * Post-fight / post-match results — victory/defeat card with rewards.
  */
 import React from 'react';
+import { IconText } from '../../components/ui/Icon.jsx';
 
 export function FightingResults({
   variant = 'combat',
@@ -64,7 +65,7 @@ export function FightingResults({
             ↺ Rematch
           </button>
           <button type="button" className="fight-results-btn" onClick={onHub}>
-            {isFootball ? '🏟️ Football Modes' : '🥊 Modes'}
+            <IconText>{isFootball ? '🏟️ Football Modes' : '🥊 Modes'}</IconText>
           </button>
           <button type="button" className="fight-results-btn ghost" onClick={onClose}>
             Close

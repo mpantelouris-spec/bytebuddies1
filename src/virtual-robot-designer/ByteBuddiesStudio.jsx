@@ -3,6 +3,9 @@
  * Root component for the Robot Invention Studio.
  * Handles tab routing and shared robot config state.
  */
+import { Icon, EmojiIcon } from '../components/ui/Icon.jsx';
+import ProfileAvatar from '../components/ui/ProfileAvatar.jsx';
+import { useUser } from '../contexts/UserContext';
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import BuildPage          from './studio/BuildPage.jsx';
 import LiveLabPage        from './studio/LiveLabPage.jsx';
@@ -12,11 +15,13 @@ import DevDebugPanel      from './studio/DevDebugPanel.jsx';
 import ArcadeLab          from './arcade/ArcadeLab.jsx';
 import CreateHub          from './create/CreateHub.jsx';
 import { makeArenaGame, BUILTIN_ARENAS, loadMyArenas } from './arcade/games/arena.js';
+import { arenaToLabCourse } from './studio/CustomArenaLab.js';
 import { isArcadeChassis, RENAMED_ARCADE } from './arcade/games/index.js';
 import { CHASSIS_DATA } from './services/studio-robot-builder.js';
 import { validateRobot, validateCode, runPreflight } from './services/robotValidator.js';
 import { GameProgress } from './services/game-progress.js';
-import { saveRobotToLibrary } from './services/studio-robot-store.js';
+import { trackToRaceCourse } from './create/raceTracks.js';
+import { saveRobotToLibrary, asPrebuiltRobot, isCreatedRobot } from './services/studio-robot-store.js';
 import './styles/studio.css';
 
 const CP_LS_KEY = 'bb-studio-custom-parts';
@@ -90,7 +95,7 @@ function HealthBadge({ summary, onClick }) {
         transition: 'opacity 0.2s', whiteSpace: 'nowrap', flexShrink: 0,
       }}
     >
-      <span>{style.icon}</span>
+      <span><EmojiIcon e={style.icon} /></span>
       {summary.label}
     </button>
   );
@@ -106,7 +111,7 @@ const PIPELINE_STEPS = [
 function PipelineBar({ activeTab, onSelect }) {
   const activeStep = PIPELINE_STEPS.findIndex(s => s.id === activeTab);
   return (
-    <div style={{
+    <div className="bb-studio-pipeline" style={{
       display: 'flex', alignItems: 'center', gap: 0,
       background: 'rgba(0,0,0,0.25)', borderRadius: 20,
       padding: '4px 6px',
@@ -130,7 +135,7 @@ function PipelineBar({ activeTab, onSelect }) {
                 whiteSpace: 'nowrap',
               }}
             >
-              <span style={{ fontSize: 14 }}>{step.icon}</span>
+              <EmojiIcon e={step.icon} size="1.05em" />
               {step.label}
               {isDone && <span style={{ fontSize: 10, marginLeft: 2 }}>✓</span>}
             </button>
@@ -145,6 +150,11 @@ function PipelineBar({ activeTab, onSelect }) {
 }
 
 // ─── Header ────────────────────────────────────────────────────────────────
+function StudioUserAvatar() {
+  const { user } = useUser() || {};
+  return <ProfileAvatar value={user?.avatarEmoji} name={user?.name} size={34} />;
+}
+
 function StudioHeader({ activeTab, setActiveTab, robotConfig, userXP, robotValidation, onLogoClick, onExit }) {
   const tabs = [
     { id: 'challenges', icon: '🏆', label: 'Challenges' },
@@ -154,6 +164,18 @@ function StudioHeader({ activeTab, setActiveTab, robotConfig, userXP, robotValid
 
   return (
     <header className="bb-studio-header">
+      {onExit && (
+        <button
+          type="button"
+          className="bb-studio-exit"
+          onClick={onExit}
+          title="Back to homepage"
+          aria-label="Back to homepage"
+        >
+          <Icon name="arrow-left" />
+          <span className="bb-studio-exit-label">Back</span>
+        </button>
+      )}
       {/* Logo — click 5× to open DevTools */}
       <div
         className="bb-studio-logo"
@@ -161,12 +183,7 @@ function StudioHeader({ activeTab, setActiveTab, robotConfig, userXP, robotValid
         style={{ cursor: 'pointer', userSelect: 'none' }}
         title="ByteBuddies Studio"
       >
-        {onExit && (
-          <button type="button" className="bb-studio-exit" onClick={(e) => { e.stopPropagation(); onExit(); }} title="Back to ByteBuddies home" aria-label="Back to ByteBuddies home">
-            <span aria-hidden="true">←</span><span className="bb-studio-exit-label">Home</span>
-          </button>
-        )}
-        <div className="bb-studio-logo-icon">🤖</div>
+        <img className="bb-studio-logo-mascot" src="/images/bytebuddies-mascot-head.webp" alt="" draggable="false" />
         <span className="bb-studio-logo-text">ByteBuddies</span>
       </div>
 
@@ -188,7 +205,7 @@ function StudioHeader({ activeTab, setActiveTab, robotConfig, userXP, robotValid
             title={tab.label}
             aria-label={tab.label}
           >
-            <span className="bb-studio-nav-icon">{tab.icon}</span>
+            <span className="bb-studio-nav-icon"><EmojiIcon e={tab.icon} /></span>
             <span className="bb-studio-nav-label">{tab.label}</span>
           </button>
         ))}
@@ -201,10 +218,10 @@ function StudioHeader({ activeTab, setActiveTab, robotConfig, userXP, robotValid
           {activeTab === 'simulator' || activeTab === 'lab' || activeTab === 'code' ? 'Live Lab' : activeTab === 'build' ? 'Building' : 'Exploring'}
         </div>
         <div className="bb-studio-xp">
-          <span>⭐</span>
+          <Icon name="star" color="#fde047" />
           {userXP} XP
         </div>
-        <div className="bb-studio-avatar">A</div>
+        <StudioUserAvatar />
       </div>
     </header>
   );
@@ -217,6 +234,12 @@ export default function ByteBuddiesStudio({ onExit }) {
   const [robotCode, setRobotCode]       = useState(loadRobotCode);
   const [userXP, setUserXP]             = useState(0);
   const [labChallenge, setLabChallenge] = useState(null);
+  // An Arena Maker arena being played: it opens in the lab whatever robot is selected
+  const [myArenaRun, setMyArenaRun] = useState(null);
+  useEffect(() => { if (activeTab !== 'lab') setMyArenaRun(null); }, [activeTab]);
+  // My Robots → open a created robot (or a new one) straight in the Robot Builder
+  const [createOpen, setCreateOpen] = useState(null);
+  useEffect(() => { if (activeTab !== 'create') setCreateOpen(null); }, [activeTab]);
   const [arenaPlay, setArenaPlay]       = useState({ id: null, key: 0 });
   const [customParts, setCustomParts]   = useState(loadCustomParts);
   const [devMode, setDevMode]           = useState(false);
@@ -287,12 +310,38 @@ export default function ByteBuddiesStudio({ onExit }) {
     }
   }, []);
 
-  const applyRobot = useCallback((cfg) => {
-    if (!cfg) return;
-    const next = { ...DEFAULT_CONFIG, ...cfg };
-    setRobotConfig(next);
-    try { saveRobotToLibrary(next); } catch { /* ignore */ }
+  const [saveToast, setSaveToast] = useState('');
+  const showSaved = useCallback((name) => {
+    setSaveToast(`💾 Saved “${name}” to My Robots`);
+    setTimeout(() => setSaveToast(''), 2600);
   }, []);
+
+  const applyRobot = useCallback((cfg) => {
+    if (!cfg) return null;
+    const next = { ...DEFAULT_CONFIG, ...cfg };
+    try {
+      // Keep the saved id and name so the next save updates this robot instead of adding another
+      const { entry } = saveRobotToLibrary(next);
+      setRobotConfig({ ...next, id: entry.id, name: entry.name });
+      return entry;
+    } catch { setRobotConfig(next); return null; }
+  }, []);
+
+  // Create Studio "Save robot": store it as its own robot in My Robots without swapping
+  // the robot currently in use (that only happens on Test drive / Play)
+  const saveCreatedRobot = useCallback((cfg) => {
+    if (!cfg) return null;
+    try { return saveRobotToLibrary({ ...DEFAULT_CONFIG, ...cfg }, { makeCurrent: false }).entry; } catch { return null; }
+  }, []);
+
+  // Build page "Save Design": save the robot on screen to My Robots
+  const saveDesign = useCallback(() => {
+    try {
+      const { entry } = saveRobotToLibrary(robotConfig);
+      setRobotConfig((c) => ({ ...c, id: entry.id, name: entry.name }));
+      showSaved(entry.name);
+    } catch { /* ignore */ }
+  }, [robotConfig, showSaved]);
 
   const goToLab = useCallback(() => setActiveTab('lab'), []);
 
@@ -302,6 +351,7 @@ export default function ByteBuddiesStudio({ onExit }) {
   }, []);
 
   const testRobot = useCallback((robot) => {
+    setMyArenaRun(null);
     setRobotConfig({ ...DEFAULT_CONFIG, ...robot, chassisId: RENAMED_ARCADE[robot?.chassisId] || robot?.chassisId });
     setLabChallenge(null);
     setActiveTab('lab');
@@ -311,18 +361,22 @@ export default function ByteBuddiesStudio({ onExit }) {
     setLabChallenge(challenge || null);
     setActiveTab('lab');
   }, []);
+  if (import.meta.env.DEV && typeof window !== 'undefined') {
+    window.__bbPlayTrack = (track) => { const course = trackToRaceCourse(track); setMyArenaRun(course); startChallenge(course); };
+  }
 
   // Jump straight into an arcade game: switch to that robot (keeping the paint job) and open its game.
   const playArcade = useCallback((chassisId) => {
+    setMyArenaRun(null);
     if (chassisId === 'arenaquest') { setArenaPlay((a) => ({ id: null, key: a.key + 1 })); setActiveTab('arena'); return; }
     const ch = CHASSIS_DATA.find((c) => c.id === chassisId);
-    setRobotConfig((prev) => (prev.chassisId === chassisId ? prev : {
-      ...prev,
+    setRobotConfig((prev) => (prev.chassisId === chassisId && !isCreatedRobot(prev) ? prev : {
+      ...asPrebuiltRobot(prev),
       chassisId,
       name: ch?.name || prev.name,
       primaryColor: ch?.primaryColor || prev.primaryColor,
       accentColor: ch?.accentColor || prev.accentColor,
-      movementId: 'wheels',
+      movementId: chassisId === 'jumpbot' ? 'legs' : 'wheels',
       socketAttachments: {},
     }));
     setLabChallenge(null);
@@ -340,17 +394,14 @@ export default function ByteBuddiesStudio({ onExit }) {
             customParts={customParts}
             onGoCreate={() => setActiveTab('create')}
             robotValidation={robotValidation}
+            onSaveDesign={saveDesign}
           />
         );
       case 'lab':
       case 'code':
       case 'simulator':
-        // Robots made in the Robot Designer play Arena Quest (including arenas the child built).
-        if (robotConfig?.chassisBuildKey === 'designer') {
-          return <ArcadeLab key={`designed-${arenaPlay.key}`} robotConfig={robotConfig} gameOverride={makeArenaGame([...BUILTIN_ARENAS, ...loadMyArenas()])} onBack={() => setActiveTab('build')} />;
-        }
         // Arcade robots have their own game screen.
-        if (isArcadeChassis(robotConfig?.chassisId)) {
+        if (isArcadeChassis(robotConfig?.chassisId) && !myArenaRun) {
           return <ArcadeLab key={robotConfig.chassisId} robotConfig={robotConfig} onBack={() => setActiveTab('build')} />;
         }
         return (
@@ -363,6 +414,7 @@ export default function ByteBuddiesStudio({ onExit }) {
             initialChallenge={labChallenge}
             initialCourseId={labChallenge?.id || labChallenge?.arenaType || null}
             onChallengeConsumed={() => setLabChallenge(null)}
+            onExit={onExit}
           />
         );
       case 'myrobots':
@@ -370,6 +422,8 @@ export default function ByteBuddiesStudio({ onExit }) {
           <MyRobotsPage
             onEditRobot={editRobot}
             onTestRobot={testRobot}
+            onEditCreated={(r) => { setCreateOpen(r); setActiveTab('create'); }}
+            onBuildNew={() => { setCreateOpen('new'); setActiveTab('create'); }}
             onNewRobot={() => { setRobotConfig(DEFAULT_CONFIG); setActiveTab('build'); }}
           />
         );
@@ -378,10 +432,24 @@ export default function ByteBuddiesStudio({ onExit }) {
       case 'create':
         return (
           <CreateHub
+            openRobot={createOpen}
             robotConfig={robotConfig}
-            onSaveRobot={(cfg) => applyRobot(cfg)}
-            onPlayRobot={(cfg) => { applyRobot(cfg); setArenaPlay((a) => ({ id: null, key: a.key + 1 })); setActiveTab('lab'); }}
+            onSaveRobot={saveCreatedRobot}
+            onPlayRobot={(cfg) => { const entry = applyRobot(cfg); setArenaPlay((a) => ({ id: null, key: a.key + 1 })); setActiveTab('lab'); return entry; }}
             onPlayArena={(id) => { setArenaPlay((a) => ({ id, key: a.key + 1 })); setActiveTab('arena'); }}
+            onPlayMyArena={(arena) => { const course = arenaToLabCourse(arena); setMyArenaRun(course); startChallenge(course); }}
+            onPlayMyTrack={(track) => { const course = trackToRaceCourse(track); setMyArenaRun(course); startChallenge(course); }}
+            onChooseRobot={(choice) => {
+              if (choice.made) setRobotConfig({ ...DEFAULT_CONFIG, ...choice.made });
+              else if (choice.chassis) {
+                const ch = choice.chassis;
+                setRobotConfig((prev) => ({
+                  ...asPrebuiltRobot(prev), chassisId: ch.id, name: ch.name, socketAttachments: {},
+                  primaryColor: ch.primaryColor || prev.primaryColor, accentColor: ch.accentColor || prev.accentColor,
+                  movementId: ({ wheels: 'wheels', wheels6: 'wheels6', tracks: 'tracks', legs: 'legs', flying: 'flying', hover: 'flying', swim: 'flying', jets: 'jets' })[ch.movementHint] || prev.movementId,
+                }));
+              }
+            }}
           />
         );
       case 'arena':
@@ -401,6 +469,9 @@ export default function ByteBuddiesStudio({ onExit }) {
 
   return (
     <div className="bb-studio">
+      {saveToast && (
+        <div role="status" style={{ position: 'fixed', top: 76, left: '50%', transform: 'translateX(-50%)', zIndex: 3000, background: '#16a34a', color: '#fff', padding: '10px 18px', borderRadius: 12, fontWeight: 800, fontSize: 14, boxShadow: '0 10px 30px rgba(0,0,0,0.25)' }}>{saveToast}</div>
+      )}
       <StudioHeader
         activeTab={activeTab}
         setActiveTab={setActiveTab}

@@ -3,6 +3,7 @@
  * Geometry, materials, emissive values, and glow behavior match the design brief.
  */
 import * as THREE from 'three';
+import { dressFighter, outfitColors } from './fighter/FighterOutfits.js';
 import { buildXbotBoxer, loadXbotBoxer } from './fighter/XbotBoxerKit.js';
 
 const PI = Math.PI;
@@ -1451,9 +1452,12 @@ const BOXER_FOOT_Y = -0.79;
  * classic boxer stands in, then swaps to the robot boxer in place.
  */
 export function buildCuteBoxer(opts = {}) {
+  // Fighting-world outfits (knight, samurai, pirate…) set the colours, then add weapon and headgear
+  if (opts.outfit) opts = { ...opts, ...outfitColors(opts.outfit) };
   const xbot = buildXbotBoxer({ ...opts, height: BOXER_HEIGHT, footY: BOXER_FOOT_Y });
-  if (xbot) return xbot;
+  if (xbot) { if (opts.outfit) dressFighter(xbot, opts.outfit); return xbot; }
   const g = buildCuteBoxerClassic(opts);
+  if (opts.outfit) dressFighter(g, opts.outfit);
   loadXbotBoxer().then(() => {
     const s = g.scale.x || 1;
     const next = buildXbotBoxer({ ...opts, height: BOXER_HEIGHT / s, footY: BOXER_FOOT_Y / s });
@@ -1463,6 +1467,7 @@ export function buildCuteBoxer(opts = {}) {
     const keep = ['setAnimState', 'animate', 'setTimeScale', 'setHealthPct', 'setSkeletonDriven', 'leftGlove', 'rightGlove', 'isXbotBoxer', 'skipStudioPaint'];
     keep.forEach((k) => { g.userData[k] = next.userData[k]; });
     g.userData.rig = undefined;
+    if (opts.outfit) dressFighter(g, opts.outfit);
   });
   return g;
 }

@@ -5,6 +5,7 @@
 import React, { useState } from 'react';
 import TeachingVisual from './TeachingVisual.jsx';
 import LabBuddy from './CodingLab/LabBuddy.jsx';
+import { EmojiIcon } from '../ui/Icon.jsx';
 
 const card = { background: '#fff', color: '#0f172a', borderRadius: 18, padding: '18px 20px', boxShadow: '0 8px 24px rgba(0,0,0,0.25)' };
 const label = (color) => ({ fontSize: 12, fontWeight: 900, letterSpacing: '0.1em', textTransform: 'uppercase', color, marginBottom: 8 });
@@ -46,7 +47,7 @@ export default function PupilLearn({ teaching, color = '#14b8a6' }) {
           </div>
           {T.realWorld && (
             <div style={{ marginTop: 6, padding: '10px 12px', borderRadius: 12, background: '#eff6ff', border: '2px solid #bfdbfe', fontSize: 16 }}>
-              <b>🌍 In real life: </b>{T.realWorld}
+              <b><EmojiIcon e="🌍" style={{ marginRight: '0.35em' }} />In real life: </b>{T.realWorld}
             </div>
           )}
         </section>
@@ -63,10 +64,10 @@ export default function PupilLearn({ teaching, color = '#14b8a6' }) {
         <section style={{ ...card, display: 'grid', gap: 10 }}>
           <div style={label('#e8590c')}>Watch out!</div>
           <div style={{ padding: '10px 12px', borderRadius: 12, background: '#fff5f5', border: '2px solid #ffc9c9', fontSize: 17 }}>
-            <b style={{ color: '#c92a2a' }}>❌ </b>{T.mistake.wrong}
+            <b style={{ color: '#c92a2a' }}><EmojiIcon e="❌" /> </b>{T.mistake.wrong}
           </div>
           <div style={{ padding: '10px 12px', borderRadius: 12, background: '#ebfbee', border: '2px solid #b2f2bb', fontSize: 17 }}>
-            <b style={{ color: '#2b8a3e' }}>✅ </b>{T.mistake.fix}
+            <b style={{ color: '#2b8a3e' }}><EmojiIcon e="✅" /> </b>{T.mistake.fix}
           </div>
         </section>
       )}

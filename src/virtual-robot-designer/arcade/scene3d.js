@@ -5,13 +5,14 @@
  * 1 world unit = 40 game pixels.
  */
 import * as THREE from 'three';
-import { createSimWebGLRenderer } from '../services/art-direction.js';
+import { createSimWebGLRenderer, getStudioDeviceProfile } from '../services/art-direction.js';
 import { buildRobotModel } from '../services/studio-robot-builder.js';
 import { BRICK_CONSTS } from './games/brick.js';
 import { moverXs, HCOLS } from './games/hop.js';
 import { RW, RH, SHIP_Y } from './games/raiders.js';
 import { themeFor } from './games/arena.js';
-import { installMissionTheme, MISSION_PROPS } from '../studio/mission-world/themes/MissionThemeKit.js';
+import { gradeArcadeScene } from './tier-grade.js';
+import { installMissionTheme, MISSION_PROPS, surfaceTexture } from '../studio/mission-world/themes/MissionThemeKit.js';
 import { MISSION_THEME_RECIPES } from '../studio/mission-world/themes/recipes/index.js';
 
 const S = 40;
@@ -840,7 +841,7 @@ function raidersScene(scene, world, look, robotConfig) {
 }
 
 /* ─── Arena Quest / Arena Maker: themed tile worlds ─── */
-function ladybug() {
+export function ladybug() {
   const g = new THREE.Group();
   const shell = mesh(new THREE.SphereGeometry(0.32, 20, 14, 0, Math.PI * 2, 0, Math.PI / 2), stdMat(0xef4444, 0.3, 0.1));
   shell.scale.set(1, 0.8, 1.2);
@@ -853,6 +854,49 @@ function ladybug() {
   });
   [-0.06, 0.06].forEach((x) => { const e = mesh(new THREE.SphereGeometry(0.04, 8, 6), stdMat(0xffffff, 0.3)); e.position.set(x, 0.16, 0.48); g.add(e); });
   return g;
+}
+
+/** Floor and wall materials for an arena, taken from its world's own surfaces. */
+const PATH_TO_SURFACE = { cobble: 'cobble', wood: 'wood', boardwalk: 'wood', tiles: 'tiles', checker: 'tiles', glow: 'grid', stripes: 'carpet', rainbow: 'carpet' };
+const WALLS = {
+  grass: { wall: 'hedge' },
+  wood: { kind: 'wood', color: 0x9a6a3c, alt: 0x7a5230, cap: 0xf3d3a3 },
+  stone: { kind: 'cobble', color: 0xb8b2aa, alt: 0x8f8a84, cap: 0xd6d3d1 },
+  sand: { kind: 'cobble', color: 0xe2c27e, alt: 0xc9a25e, cap: 0xfde68a },
+  metal: { kind: 'grid', color: 0x64748b, alt: 0x94a3b8, cap: 0x22d3ee, glow: true, metal: 0.5 },
+  snow: { kind: 'speck', color: 0xcfe8ff, alt: 0xa5d4ff, cap: 0xffffff, opacity: 0.9, rough: 0.2 },
+  candy: { kind: 'tiles', color: 0xf472b6, alt: 0xfbcfe8, cap: 0xffffff },
+  seabed: { kind: 'cobble', color: 0x2aa198, alt: 0x0e7490, cap: 0xfda4af },
+  dirt: { kind: 'cobble', color: 0x8b8580, alt: 0x6b6560, cap: 0xfbbf24 },
+  lava: { kind: 'cobble', color: 0x44403c, alt: 0x292524, cap: 0xf97316, glow: true },
+  space: { kind: 'grid', color: 0x334155, alt: 0x5ce1ff, cap: 0x5ce1ff, glow: true, metal: 0.4 },
+  stage: { kind: 'grid', color: 0x312e81, alt: 0xf472b6, cap: 0xf472b6, glow: true },
+  tile: { kind: 'tiles', color: 0x93c5fd, alt: 0xdbeafe, cap: 0xffffff },
+  crystal: { kind: 'speck', color: 0xa78bfa, alt: 0xf0abfc, cap: 0xf0abfc, glow: true, rough: 0.2 },
+};
+export function boardLook(T, rc) {
+  const path = rc.path || {};
+  // Lava is orange-red, so a floor in those colours would hide the danger: calm it towards stone grey
+  const safe = (hex) => {
+    const c = new THREE.Color(hex);
+    const hsl = c.getHSL({});
+    return (hsl.h < 0.11 || hsl.h > 0.94) && hsl.s > 0.45 ? c.lerp(new THREE.Color(0x6b6b6b), 0.75).getHex() : hex;
+  };
+  const floorMap = surfaceTexture(PATH_TO_SURFACE[path.kind] ?? 'speck', safe(path.color ?? T.floorA), safe(path.edge ?? T.floorB));
+  const w = WALLS[T.board] || WALLS.stone;
+  return {
+    floorMap,
+    floorRough: path.glow ? 0.5 : 0.85,
+    floorMetal: path.metal ?? 0.02,
+    floorGlow: path.glow ?? null,
+    wall: w.wall,
+    wallMap: w.wall ? null : surfaceTexture(w.kind, w.color, w.alt),
+    wallRough: w.rough ?? 0.8,
+    wallMetal: w.metal ?? 0.05,
+    wallOpacity: w.opacity ?? 1,
+    cap: w.cap ?? T.wallTop,
+    capGlow: !!w.glow,
+  };
 }
 
 function arenaScene(scene, world, look, robotConfig) {
@@ -899,39 +943,68 @@ function arenaScene(scene, world, look, robotConfig) {
     }
   });
 
-  // ── The arena board ──
-  const plinth = mesh(new THREE.BoxGeometry(W + 0.5, 0.35, H + 0.5), stdMat(T.wall, 0.75), { cast: false });
-  plinth.position.y = -0.2;
-  board.add(plinth);
-  const trim = mesh(new THREE.BoxGeometry(W + 0.62, 0.08, H + 0.62), stdMat(T.wallTop, 0.5, 0.1, T.glow ? { emissive: T.wallTop, emissiveIntensity: 0.3 } : {}), { cast: false });
-  trim.position.y = -0.13; // sits below the floor tiles so the two never flicker
-  board.add(trim);
+  // ── The arena board: built from the same materials as the world around it ──
+  const rc = MISSION_THEME_RECIPES[T.recipe] || {};
+  const accent = rc.accent ?? T.wallTop;
+  const style = boardLook(T, rc);
+  const beams = [];
   const k = (x, y) => `${x},${y}`;
   const floorCells = [], wallCells = [];
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
     if (world.props.has(k(x, y))) floorCells.push([x, y]);
     else (world.walls.has(k(x, y)) ? wallCells : floorCells).push([x, y]);
   }
+  // A low kerb in the world's accent colour edges the arena, like the prebuilt routes
+  const kerb = mesh(new THREE.BoxGeometry(W + 0.24, 0.1, H + 0.24), stdMat(accent, 0.5, 0.1, { emissive: accent, emissiveIntensity: T.glow ? 0.35 : 0.12 }), { cast: false });
+  kerb.position.y = -0.02;
+  board.add(kerb);
   const m4 = new THREE.Matrix4();
-  const floorA = new THREE.InstancedMesh(new THREE.BoxGeometry(0.97, 0.1, 0.97), stdMat(T.floorA, 0.7), Math.max(1, floorCells.length));
-  const floorB = new THREE.InstancedMesh(new THREE.BoxGeometry(0.97, 0.1, 0.97), stdMat(T.floorB, 0.7), Math.max(1, floorCells.length));
+  // Floor: the world's path surface, two soft shades so the squares stay easy to count
+  const floorGeo = new THREE.BoxGeometry(0.97, 0.08, 0.97);
+  const floorMat = (k2) => new THREE.MeshStandardMaterial({
+    map: style.floorMap, color: new THREE.Color(0xffffff).multiplyScalar(k2), roughness: style.floorRough, metalness: style.floorMetal,
+    ...(style.floorGlow ? { emissive: style.floorGlow, emissiveMap: style.floorMap, emissiveIntensity: 0.25 } : {}),
+  });
+  const floorA = new THREE.InstancedMesh(floorGeo, floorMat(1), Math.max(1, floorCells.length));
+  const floorB = new THREE.InstancedMesh(floorGeo, floorMat(0.9), Math.max(1, floorCells.length));
   let na = 0, nb = 0;
-  floorCells.forEach(([x, y]) => { const p = cell(x, y, -0.05); if ((x + y) % 2) floorA.setMatrixAt(na++, m4.makeTranslation(p.x, p.y, p.z)); else floorB.setMatrixAt(nb++, m4.makeTranslation(p.x, p.y, p.z)); });
+  floorCells.forEach(([x, y]) => { const p = cell(x, y, 0.04); if ((x + y) % 2) floorA.setMatrixAt(na++, m4.makeTranslation(p.x, p.y, p.z)); else floorB.setMatrixAt(nb++, m4.makeTranslation(p.x, p.y, p.z)); });
   floorA.count = na; floorB.count = nb;
   floorA.receiveShadow = floorB.receiveShadow = true;
   board.add(floorA, floorB);
-  const hedge = T.board === 'grass';
-  const wallMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(0.98, 0.75, 0.98), stdMat(T.wall, hedge ? 0.9 : 0.6, 0.05, hedge ? { flatShading: true } : {}), Math.max(1, wallCells.length));
-  const capMesh = new THREE.InstancedMesh(hedge ? new THREE.IcosahedronGeometry(0.42, 1) : new THREE.BoxGeometry(1.0, 0.12, 1.0),
-    stdMat(T.wallTop, 0.6, 0.1, { ...(T.glow ? { emissive: T.wallTop, emissiveIntensity: 0.22 } : {}), ...(hedge ? { flatShading: true } : {}) }), Math.max(1, wallCells.length));
+  // Walls: hedges in green worlds, otherwise blocks of the world's own stone, ice, coral, panels…
+  const hedge = style.wall === 'hedge';
+  const wallH = hedge ? 0.75 : 0.7;
+  const wallMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(0.98, wallH, 0.98),
+    hedge ? stdMat(T.wall, 0.9, 0.05, { flatShading: true })
+      : new THREE.MeshStandardMaterial({
+        map: style.wallMap, roughness: style.wallRough, metalness: style.wallMetal, transparent: style.wallOpacity < 1, opacity: style.wallOpacity,
+        ...(style.capGlow ? { emissive: style.cap, emissiveMap: style.wallMap, emissiveIntensity: 0.18 } : {}),
+      }),
+    Math.max(1, wallCells.length));
+  // Block walls get a thin trim line round the top instead of a flat lid that hides the material
+  const capMesh = new THREE.InstancedMesh(hedge ? new THREE.IcosahedronGeometry(0.42, 1) : new THREE.BoxGeometry(1.0, 0.035, 1.0),
+    stdMat(style.cap, 0.6, 0.1, { ...(style.capGlow ? { emissive: style.cap, emissiveIntensity: 0.45 } : {}), ...(hedge ? { flatShading: true } : {}) }), Math.max(1, wallCells.length));
   wallCells.forEach(([x, y], i) => {
-    const p = cell(x, y, 0.375);
+    const p = cell(x, y, wallH / 2);
     wallMesh.setMatrixAt(i, m4.makeTranslation(p.x, p.y, p.z));
-    capMesh.setMatrixAt(i, hedge ? m4.compose(new THREE.Vector3(p.x, 0.8, p.z), new THREE.Quaternion(), new THREE.Vector3(1.15, 0.6, 1.15)) : m4.makeTranslation(p.x, 0.81, p.z));
+    capMesh.setMatrixAt(i, hedge ? m4.compose(new THREE.Vector3(p.x, 0.8, p.z), new THREE.Quaternion(), new THREE.Vector3(1.15, 0.6, 1.15)) : m4.makeTranslation(p.x, wallH * 0.55, p.z));
   });
   wallMesh.count = capMesh.count = wallCells.length;
   wallMesh.castShadow = true; wallMesh.receiveShadow = true; capMesh.castShadow = true;
   board.add(wallMesh, capMesh);
+  // Start pad, like the glowing start pads of the prebuilt arenas
+  {
+    const [sx, sy] = world.start;
+    const sp = new THREE.Group();
+    const disc = mesh(new THREE.CylinderGeometry(0.46, 0.48, 0.04, 28), new THREE.MeshStandardMaterial({ color: 0x4ade80, emissive: 0x16a34a, emissiveIntensity: 0.45 }), { cast: false });
+    disc.position.y = 0.1;
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.46, 0.035, 8, 32), new THREE.MeshBasicMaterial({ color: accent }));
+    ring.rotation.x = Math.PI / 2; ring.position.y = 0.13;
+    sp.add(disc, ring);
+    sp.position.copy(cell(sx, sy, 0));
+    board.add(sp);
+  }
   // Decoration tiles use real props from the theme (a sunflower, a rocket, a cupcake…)
   [...world.props].forEach((key, i) => {
     const [x, y] = key.split(',').map(Number);
@@ -998,7 +1071,11 @@ function arenaScene(scene, world, look, robotConfig) {
     const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace;
     const cloth = mesh(new THREE.PlaneGeometry(0.6, 0.42), new THREE.MeshStandardMaterial({ map: tx, side: THREE.DoubleSide })); cloth.position.set(0.31, 1.18, 0);
     const pad = mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.04, 24), new THREE.MeshStandardMaterial({ color: 0x22c55e, emissive: 0x16a34a, emissiveIntensity: 0.5 })); pad.position.y = 0.02;
-    fg.add(pole, cloth, pad); fg.position.copy(cell(x, y, 0)); board.add(fg);
+    // A tall light beam marks the goal from anywhere, like the prebuilt arenas
+    const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.26, 6, 20, 1, true), new THREE.MeshBasicMaterial({ color: 0xfff7c2, transparent: true, opacity: 0.14, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending }));
+    beam.position.y = 3;
+    beams.push(beam);
+    fg.add(pole, cloth, pad, beam); fg.position.copy(cell(x, y, 0)); board.add(fg);
   });
   const portals = world.portals.map(([x, y], i) => {
     const pg = new THREE.Group();
@@ -1020,11 +1097,65 @@ function arenaScene(scene, world, look, robotConfig) {
   let last = 0;
   const tmpV = new THREE.Vector3();
 
+  // Indoor worlds have a ceiling, so the camera stays low with a wider lens
+  const camera = MISSION_THEME_RECIPES[T.recipe]?.room
+    ? { pos: [0.3 * K, 14, halfH + 13], look: [0.3 * K, 0, 0.8 * K], fov: 56 }
+    : { pos: [0.3 * K, (Math.max(W, H) * 0.72 + 3) * K, (H * 0.72 + 4.5) * K], look: [0.3 * K, 0, 0.6 * K] };
+  // World scenery between the camera and the arena (a rocket, a tree…) would hide the board: tuck it away
+  const themeRoot = scene.userData.missionThemeRoot;
+  if (themed && themeRoot) {
+    const eye = new THREE.Vector3(...camera.pos);
+    const targets = [[0, 0], [-halfW, -halfH], [halfW, -halfH], [-halfW, halfH], [halfW, halfH], [0, halfH], [0, -halfH]]
+      .map(([x, z]) => new THREE.Vector3(x, 0.5, z));
+    const ray = new THREE.Ray();
+    const box = new THREE.Box3();
+    themeRoot.updateMatrixWorld(true);
+    const hitsView = () => targets.some((t) => {
+      ray.origin.copy(eye);
+      ray.direction.copy(t).sub(eye).normalize();
+      const hit = ray.intersectBox(box, tmpV);
+      return hit && hit.distanceTo(eye) < t.distanceTo(eye) - 1;
+    });
+    const im4 = new THREE.Matrix4();
+    const zero = new THREE.Matrix4().makeScale(0, 0, 0);
+    /** Instanced scenery (rows of desks, shelves…) is one mesh: hide just the copies in the way. */
+    const clearInstances = (o) => {
+      if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+      let changed = false;
+      for (let i = 0; i < o.count; i++) {
+        o.getMatrixAt(i, im4);
+        box.copy(o.geometry.boundingBox).applyMatrix4(im4).applyMatrix4(o.matrixWorld);
+        if (hitsView()) { o.setMatrixAt(i, zero); changed = true; }
+      }
+      if (changed) o.instanceMatrix.needsUpdate = true;
+    };
+    const blocks = (o) => {
+      box.setFromObject(o);
+      if (box.isEmpty()) return false;
+      return targets.some((t) => {
+        ray.origin.copy(eye);
+        ray.direction.copy(t).sub(eye).normalize();
+        const hit = ray.intersectBox(box, tmpV);
+        return hit && hit.distanceTo(eye) < t.distanceTo(eye) - 1;
+      });
+    };
+    // Scenery comes in groups (every desk, every tree…): hide only the pieces actually in the way
+    const visit = (o, depth) => {
+      if (!o.visible || /ground|sky|room|wall|floor|ceil|dome/i.test(o.name || '') || !blocks(o)) return;
+      const size = box.getSize(new THREE.Vector3());
+      if (o.isInstancedMesh) clearInstances(o);
+      else if (o.children.length && depth < 5 && Math.max(size.x, size.z) > 6) o.children.forEach((c) => visit(c, depth + 1));
+      else if (Math.max(size.x, size.z) < 60) o.visible = false;
+    };
+    themeRoot.children.forEach((o) => visit(o, 0));
+  }
+
   return {
     focus: () => bot.getWorldPosition(tmpV),
     update(w, t) {
       const dt = Math.min(0.05, Math.max(0, t - last)); last = t;
       lavaMat.emissiveIntensity = 0.8 + Math.sin(t * 3) * 0.3;
+      beams.forEach((bm) => { bm.material.opacity = 0.11 + Math.sin(t * 2.5) * 0.04; });
       lavaTiles.forEach((l, key) => { l.visible = w.lava.has(key); });
       gems.forEach((g, key) => { g.visible = w.gems.has(key); g.rotation.y = t * 2; g.position.y = 0.45 + Math.sin(t * 3 + g.position.x) * 0.06; });
       coins.forEach((c, key) => { c.visible = w.coins.has(key); c.rotation.z = t * 3; });
@@ -1059,10 +1190,7 @@ function arenaScene(scene, world, look, robotConfig) {
       while ((board.userData.sp ||= []).length < sparkles.length) { const m = new THREE.Mesh(new THREE.OctahedronGeometry(0.06), new THREE.MeshBasicMaterial({ transparent: true })); board.add(m); board.userData.sp.push(m); }
       board.userData.sp.forEach((m, i) => { const s = sparkles[i]; m.visible = !!s; if (s) { m.position.copy(s.p); m.material.color.set(s.col); m.material.opacity = s.life * 1.4; } });
     },
-    // Indoor worlds have a ceiling, so the camera stays low with a wider lens
-    camera: MISSION_THEME_RECIPES[T.recipe]?.room
-      ? { pos: [0.3 * K, 14, halfH + 13], look: [0.3 * K, 0, 0.8 * K], fov: 56 }
-      : { pos: [0.3 * K, (Math.max(W, H) * 0.72 + 3) * K, (H * 0.72 + 4.5) * K], look: [0.3 * K, 0, 0.6 * K] },
+    camera,
   };
 }
 
@@ -1164,15 +1292,174 @@ function snakeScene(scene, world, look) {
   };
 }
 
-const SCENES = { snakebot: snakeScene, pacbot: pacScene, brickbot: brickScene, hopbot: hopScene, raiderbot: raidersScene, arenaquest: arenaScene };
+function jumpScene(scene, world, look, robotConfig, game) {
+  const level = game.levels[world.level];
+  scene.background = new THREE.Color(0x8bd7ff);
+  scene.fog = new THREE.Fog(0x8bd7ff, 34, 78);
+  const earthMat = stdMat(0x8b4a32, 0.96);
+  const topMat = stdMat(0xa7e276, 0.9);
+  const cloudMat = stdMat(0xffffff, 1, 0, { emissive: 0xffffff, emissiveIntensity: 0.18 });
+  const trackEnd = level.goalX * 1.35;
+
+  // Rounded hills and puffy clouds keep the course playful while leaving the
+  // code-driven platforms easy to read.
+  for (let i = 0; i < 7; i++) {
+    const hill = mesh(new THREE.SphereGeometry(1, 18, 12), stdMat(i % 2 ? 0x7bd17a : 0x91df8c, 1), { cast: false });
+    hill.scale.set(3.8 + (i % 3), 1.8 + (i % 2) * 0.4, 0.5);
+    hill.position.set((i - 2.5) * 6.2, 0.55, -5 - (i % 2));
+    scene.add(hill);
+  }
+  for (let i = 0; i < 5; i++) {
+    const puff = cloud();
+    puff.position.set((i - 2) * 8, 8 + (i % 2) * 1.3, -7);
+    puff.scale.setScalar(0.8 + (i % 3) * 0.16);
+    scene.add(puff);
+  }
+  (level.platforms || []).forEach(([from, to, height]) => {
+    const width = Math.max(0.5, (to - from + 1) * 1.35);
+    const x = (from + to) * 0.675;
+    const y = height * 1.2;
+    const block = mesh(new THREE.BoxGeometry(width, 0.62, 3.7), earthMat);
+    block.position.set(x, y - 0.2, 0);
+    scene.add(block);
+    const grass = mesh(new THREE.BoxGeometry(width + 0.06, 0.16, 3.82), topMat);
+    grass.position.set(x, y + 0.17, 0);
+    scene.add(grass);
+    // Bright little edge tiles give platforms a chunky, classic game feel.
+    for (let tx = from; tx <= to; tx++) {
+      const tile = mesh(new THREE.BoxGeometry(1.23, 0.08, 0.12), stdMat(tx % 2 ? 0x7fcf58 : 0x9add65, 0.9), { cast: false });
+      tile.position.set(tx * 1.35, y + 0.27, 1.92);
+      scene.add(tile);
+    }
+  });
+
+  // Warm lava sits well below the route so each gap reads clearly from the
+  // side view without looking like a hidden floor under the platforms.
+  for (let i = 0; i <= level.goalX; i++) {
+    const platform = (level.platforms || []).find(([a, b]) => i >= a && i <= b);
+    if (platform) continue;
+    const lava = mesh(new THREE.BoxGeometry(1.25, 0.12, 3.45), stdMat(0xf97316, 0.55, 0.08, { emissive: 0xea580c, emissiveIntensity: 0.42 }), { cast: false });
+    lava.position.set(i * 1.35, -1.95, 0);
+    scene.add(lava);
+    const glow = mesh(new THREE.BoxGeometry(1.05, 0.05, 2.6), stdMat(0xfbbf24, 0.5, 0, { emissive: 0xf59e0b, emissiveIntensity: 0.55 }), { cast: false });
+    glow.position.set(i * 1.35, -1.86, 0);
+    scene.add(glow);
+  }
+
+  const coinObjects = (level.coins || []).map((x) => {
+    const group = new THREE.Group();
+    const ring = mesh(new THREE.TorusGeometry(0.31, 0.1, 10, 20), stdMat(0xffc928, 0.34, 0.12, { emissive: 0xf59e0b, emissiveIntensity: 0.25 }));
+    ring.rotation.y = Math.PI / 2;
+    group.add(ring);
+    const glint = mesh(new THREE.SphereGeometry(0.075, 8, 6), stdMat(0xffffff, 0.25, 0, { emissive: 0xffffff, emissiveIntensity: 0.4 }));
+    glint.position.set(0, 0.12, 0.08);
+    group.add(glint);
+    group.position.set(x * 1.35, 1.35 + ((level.platforms.find(([a, b]) => x >= a && x <= b)?.[2] || 0) * 1.2), 0);
+    scene.add(group);
+    return { x, group };
+  });
+  const keyObjects = (level.keys || []).map((x) => {
+    const key = new THREE.Group();
+    const bow = mesh(new THREE.TorusGeometry(0.19, 0.06, 8, 14), stdMat(0xfacc15, 0.3, 0.45, { emissive: 0xfacc15, emissiveIntensity: 0.3 }));
+    key.add(bow);
+    const shaft = mesh(new THREE.BoxGeometry(0.42, 0.08, 0.08), stdMat(0xfacc15, 0.3, 0.45));
+    shaft.position.x = 0.25; key.add(shaft);
+    key.position.set(x * 1.35, 1.45 + ((level.platforms.find(([a, b]) => x >= a && x <= b)?.[2] || 0) * 1.2), 0);
+    scene.add(key);
+    return { x, group: key };
+  });
+  const enemyObjects = (level.enemies || []).map((x) => {
+    const bug = new THREE.Group();
+    const shell = mesh(new THREE.SphereGeometry(0.43, 14, 10), stdMat(0xef4444, 0.5, 0.08));
+    shell.scale.set(1.2, 0.72, 0.9); shell.position.y = 0.35;
+    const face = mesh(new THREE.SphereGeometry(0.23, 12, 8), stdMat(0xf97316, 0.55));
+    face.position.set(0.28, 0.31, 0.18);
+    bug.add(shell, face);
+    [-0.12, 0.12].forEach((dx) => {
+      const eye = mesh(new THREE.SphereGeometry(0.055, 8, 6), stdMat(0xffffff));
+      eye.position.set(0.42, 0.48, dx); bug.add(eye);
+    });
+    const y = (level.platforms.find(([a, b]) => x >= a && x <= b)?.[2] || 0) * 1.2 + 0.25;
+    bug.position.set(x * 1.35, y, 0.05);
+    scene.add(bug);
+    return { x, group: bug };
+  });
+  const hazardObjects = (level.hazards || []).map((x) => {
+    const spike = new THREE.Group();
+    for (let j = -1; j <= 1; j++) {
+      const tooth = mesh(new THREE.ConeGeometry(0.25, 0.52, 4), stdMat(0xfb7185, 0.62, 0.08, { emissive: 0xbe123c, emissiveIntensity: 0.12 }));
+      tooth.position.set(j * 0.32, 0.23, 0); tooth.rotation.y = Math.PI / 4; spike.add(tooth);
+    }
+    const y = (level.platforms.find(([a, b]) => x >= a && x <= b)?.[2] || 0) * 1.2;
+    spike.position.set(x * 1.35, y + 0.27, 0);
+    scene.add(spike);
+    return { x, group: spike };
+  });
+  const doors = (level.doors || []).map((x) => {
+    const gate = new THREE.Group();
+    const frameMat = stdMat(0x8b5cf6, 0.42, 0.16, { emissive: 0x4c1d95, emissiveIntensity: 0.22 });
+    const postA = mesh(new THREE.BoxGeometry(0.17, 2.4, 0.18), frameMat); postA.position.x = -0.5;
+    const postB = postA.clone(); postB.position.x = 0.5;
+    const lintel = mesh(new THREE.BoxGeometry(1.17, 0.18, 0.18), frameMat); lintel.position.y = 1.2;
+    gate.add(postA, postB, lintel);
+    gate.position.set(x * 1.35, (level.platforms.find(([a, b]) => x >= a && x <= b)?.[2] || 0) * 1.2 + 0.25, -0.15);
+    scene.add(gate);
+    return { x, group: gate };
+  });
+
+  const flagPole = mesh(new THREE.CylinderGeometry(0.055, 0.07, 2.8, 10), stdMat(0xf8fafc, 0.45, 0.1));
+  const goalHeight = (level.platforms.find(([a, b]) => level.goalX >= a && level.goalX <= b)?.[2] || 0) * 1.2;
+  flagPole.position.set(level.goalX * 1.35, goalHeight + 1.4, -0.2);
+  scene.add(flagPole);
+  const flag = mesh(new THREE.BoxGeometry(1.05, 0.58, 0.08), stdMat(0xfb4f8b, 0.5, 0.05, { emissive: 0xdb2777, emissiveIntensity: 0.22 }));
+  flag.position.set(level.goalX * 1.35 + 0.51, goalHeight + 2.27, -0.2);
+  scene.add(flag);
+  const star = mesh(new THREE.OctahedronGeometry(0.42, 0), stdMat(0xffd43b, 0.3, 0.16, { emissive: 0xffb800, emissiveIntensity: 0.75 }));
+  star.position.set(level.goalX * 1.35 + 0.52, goalHeight + 2.27, -0.08);
+  scene.add(star);
+
+  const bot = robotModel({ ...robotConfig, chassisId: 'jumpbot', movementId: 'legs' }, 1.25);
+  bot.rotation.y = Math.PI / 4;
+  scene.add(bot);
+  const shadow = mesh(new THREE.CircleGeometry(0.6, 24), new THREE.MeshBasicMaterial({ color: 0x263650, transparent: true, opacity: 0.2 }), { cast: false, receive: false });
+  shadow.rotation.x = -Math.PI / 2; shadow.position.y = 0.035; scene.add(shadow);
+
+  return {
+    focus: () => bot.position,
+    update(w, t) {
+      bot.position.set(w.x * 1.35, w.y * 1.2 + 0.25, 0.1);
+      bot.rotation.z = w.move ? Math.sin(t * 16) * 0.055 : Math.sin(t * 2) * 0.018;
+      shadow.position.x = bot.position.x; shadow.scale.setScalar(w.move?.jump ? 0.76 : 1);
+      coinObjects.forEach(({ x, group }) => { group.visible = w.coins.includes(x); group.rotation.y = Math.sin(t * 2 + x) * 0.24; });
+      keyObjects.forEach(({ x, group }) => { group.visible = w.keys.includes(x); group.rotation.y = t * 1.4; });
+      enemyObjects.forEach(({ x, group }) => { group.visible = w.enemies.includes(x); group.position.y = (level.platforms.find(([a, b]) => x >= a && x <= b)?.[2] || 0) * 1.2 + 0.25 + Math.abs(Math.sin(t * 5 + x)) * 0.07; });
+      hazardObjects.forEach(({ x, group }) => { group.rotation.y = Math.sin(t * 2 + x) * 0.08; });
+      doors.forEach(({ x, group }) => { group.visible = w.keys.length > 0 || w.x < x - 0.1; });
+      star.rotation.y = t * 1.4;
+    },
+    cam(camera, mode) {
+      const center = mode === 'wide' || mode === 'top' ? 0 : bot.position.x;
+      const target = new THREE.Vector3(center, mode === 'top' ? 16 : 6.3, mode === 'top' ? 0.01 : 27);
+      camera.position.lerp(target, 0.08);
+      camera.lookAt(center, mode === 'top' ? 0 : 1.25, 0);
+      return true;
+    },
+    camera: { pos: [0, 7, 30], look: [0, 1.3, 0], fov: 43 },
+  };
+}
+
+const SCENES = { snakebot: snakeScene, pacbot: pacScene, brickbot: brickScene, hopbot: hopScene, raiderbot: raidersScene, jumpbot: jumpScene, arenaquest: arenaScene };
 
 /**
  * Creates the 3D view inside `host`. Returns { update(world, t), setCamera(mode), dispose(), ok }.
  */
 export function createArcadeView(host, game, world, look, robotConfig) {
-  const renderer = createSimWebGLRenderer({ antialias: true });
+  // Tablets, phones and Chromebooks: lower resolution, smaller shadows, no MSAA
+  const device = getStudioDeviceProfile();
+  const renderer = createSimWebGLRenderer({ antialias: !device.lowPower, lowPower: device.lowPower });
   if (!renderer) return { ok: false, update() {}, dispose() {}, setCamera() {} };
-  renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+  const maxPR = device.lowPower ? Math.max(0.75, device.maxPixelRatio) : Math.min(1.75, window.devicePixelRatio || 1);
+  renderer.setPixelRatio(maxPR);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -1189,7 +1476,7 @@ export function createArcadeView(host, game, world, look, robotConfig) {
   const sun = new THREE.DirectionalLight(0xfff4e0, 2.1);
   sun.position.set(6, 14, 8);
   sun.castShadow = true;
-  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.mapSize.set(device.lowPower ? 1024 : 2048, device.lowPower ? 1024 : 2048);
   Object.assign(sun.shadow.camera, { left: -12, right: 12, top: 12, bottom: -12, near: 1, far: 40 });
   sun.shadow.bias = -0.0004;
   scene.add(sun);
@@ -1197,6 +1484,9 @@ export function createArcadeView(host, game, world, look, robotConfig) {
 
   const cfg = { ...robotConfig, primaryColor: look.primary, accentColor: look.accent };
   const view = (SCENES[game.id] || snakeScene)(scene, world, look, cfg, game);
+  // Modes 11–50: each level gets its own colour world and lighting mood
+  const tierLevel = game.levels?.[world?.level];
+  if (tierLevel?.world != null) gradeArcadeScene(scene, game.id, tierLevel.world, tierLevel.mood);
   const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 200);
   let camMode = 'wide';
   const camPos = new THREE.Vector3(...view.camera.pos);
@@ -1218,9 +1508,23 @@ export function createArcadeView(host, game, world, look, robotConfig) {
   ro.observe(host);
 
   const tmp = new THREE.Vector3();
+  // Adaptive resolution: drop the pixel ratio when frames run slow, restore it when smooth
+  const perf = { frames: 0, since: performance.now(), pr: maxPR };
+  const minPR = device.lowPower ? 0.55 : 0.75;
+  const adapt = () => {
+    perf.frames++;
+    const now = performance.now();
+    if (now - perf.since < 2000) return;
+    const fps = (perf.frames * 1000) / (now - perf.since);
+    perf.frames = 0; perf.since = now;
+    const next = fps < 45 ? Math.max(minPR, perf.pr - 0.1) : fps > 57 ? Math.min(maxPR, perf.pr + 0.05) : perf.pr;
+    if (Math.abs(next - perf.pr) > 0.01) { perf.pr = next; renderer.setPixelRatio(next); resize(); }
+  };
+
   return {
     ok: true,
     update(w, t) {
+      adapt();
       view.update(w, t, game);
       const f = view.focus();
       if (view.cam && view.cam(camera, camMode, t)) {

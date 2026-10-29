@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useUser } from '../contexts/UserContext';
+import { EmojiIcon, IconText } from './ui/Icon.jsx';
+import ProfileAvatar, { AVATAR_IDS, BotAvatarArt } from './ui/ProfileAvatar.jsx';
 
-const AVATARS = ['🧑‍💻','🦊','🤖','🧙','🦸','👾','🐱','🦄','🐼','🐸','🦁','🐧','🦋','🌟','🚀','🎮'];
 const BLOCK_THEMES = [
   { id: 'default', label: 'Default',  preview: '🎨' },
   { id: 'pastel',  label: 'Pastel',   preview: '🌸', xpRequired: 5000 },
@@ -68,16 +69,16 @@ export default function Settings() {
   return (
     <div className="page" style={{ maxWidth: 680, margin: '0 auto' }}>
       <div className="page-header">
-        <h1>⚙️ Settings</h1>
+        <h1><EmojiIcon e="⚙️" style={{ marginRight: '0.35em' }} />Settings</h1>
         <p>Customise your ByteBuddies experience</p>
       </div>
 
       {/* ─── Profile ─── */}
       <div style={sectionStyle}>
-        <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>👤 Profile</h3>
+        <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}><EmojiIcon e="👤" style={{ marginRight: '0.35em' }} />Profile</h3>
         {saved === 'profile' && (
           <div style={{ padding: 10, borderRadius: 8, background: '#10b98120', color: '#10b981', fontSize: 13, fontWeight: 600, marginBottom: 12 }}>
-            ✅ Profile saved!
+            <EmojiIcon e="✅" style={{ marginRight: '0.35em' }} />Profile saved!
           </div>
         )}
 
@@ -85,27 +86,28 @@ export default function Settings() {
         <div style={{ marginBottom: 16 }}>
           <label style={labelStyle}>Choose Your Avatar</label>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            {AVATARS.map(emoji => (
+            {AVATAR_IDS.map((id, i) => (
               <button
-                key={emoji}
-                onClick={() => setUser(prev => ({ ...prev, avatarEmoji: emoji }))}
+                key={id}
+                type="button"
+                onClick={() => setUser(prev => ({ ...prev, avatarEmoji: id }))}
+                aria-label={`Robot avatar ${i + 1}`}
+                aria-pressed={user.avatarEmoji === id}
                 style={{
-                  width: 48, height: 48, fontSize: 28, border: `2px solid ${user.avatarEmoji === emoji ? 'var(--accent-primary)' : 'var(--border-color)'}`,
-                  borderRadius: 12, background: user.avatarEmoji === emoji ? 'rgba(99,102,241,0.15)' : 'var(--bg-tertiary)',
-                  cursor: 'pointer', transition: 'all 0.15s',
+                  width: 56, height: 56, padding: 3, borderRadius: '50%',
+                  border: `3px solid ${user.avatarEmoji === id ? 'var(--accent-primary)' : 'transparent'}`,
+                  background: 'none', cursor: 'pointer', transition: 'transform 0.15s',
+                  transform: user.avatarEmoji === id ? 'scale(1.08)' : 'none',
                 }}
-                title={emoji}
               >
-                {emoji}
+                <BotAvatarArt index={i} size={44} />
               </button>
             ))}
           </div>
         </div>
 
         <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', marginBottom: 16 }}>
-          <div className="avatar" style={{ width: 64, height: 64, fontSize: 36, flexShrink: 0 }}>
-            {user.avatarEmoji || user.avatar}
-          </div>
+          <ProfileAvatar value={user.avatarEmoji} name={user.name} size={64} />
           <div style={{ flex: 1 }}>
             <label style={labelStyle}>Username</label>
             <input
@@ -132,7 +134,7 @@ export default function Settings() {
 
       {/* ─── Role & Classroom ─── */}
       <div style={sectionStyle}>
-        <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>🏫 Role & Classroom</h3>
+        <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}><EmojiIcon e="🏫" style={{ marginRight: '0.35em' }} />Role & Classroom</h3>
         <div style={{ marginBottom: 16 }}>
           <label style={labelStyle}>I am a…</label>
           <div style={{ display: 'flex', gap: 8 }}>
@@ -143,7 +145,7 @@ export default function Settings() {
                 onClick={() => updateRole(role)}
                 style={{ textTransform: 'capitalize' }}
               >
-                {role === 'student' ? '🎓' : role === 'teacher' ? '👩‍🏫' : '👨‍👩‍👧'} {role}
+                <IconText>{role === 'student' ? '🎓' : role === 'teacher' ? '👩‍🏫' : '👨‍👩‍👧'}</IconText> {role}
               </button>
             ))}
           </div>
@@ -172,7 +174,7 @@ export default function Settings() {
 
       {/* ─── Age Mode ─── */}
       <div style={sectionStyle}>
-        <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>👶 Age Mode</h3>
+        <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}><EmojiIcon e="👶" style={{ marginRight: '0.35em' }} />Age Mode</h3>
         <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16 }}>Starter Mode uses large icon-only blocks — perfect for ages 5-7.</p>
         <div style={{ display: 'flex', gap: 12 }}>
           {[
@@ -189,7 +191,7 @@ export default function Settings() {
                 color: 'var(--text-primary)', transition: 'all 0.15s',
               }}
             >
-              <div style={{ fontSize: 24, marginBottom: 8 }}>{mode.icon}</div>
+              <div style={{ fontSize: 24, marginBottom: 8 }}><EmojiIcon e={mode.icon} /></div>
               <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>{mode.label}</div>
               <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{mode.desc}</div>
             </button>
@@ -199,14 +201,14 @@ export default function Settings() {
 
       {/* ─── Appearance ─── */}
       <div style={sectionStyle}>
-        <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>🎨 Appearance</h3>
+        <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}><EmojiIcon e="🎨" style={{ marginRight: '0.35em' }} />Appearance</h3>
         <div style={rowStyle}>
           <div>
             <div style={{ fontWeight: 600, fontSize: 14 }}>Theme</div>
             <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Switch between dark and light mode</div>
           </div>
           <button className="btn btn-secondary btn-sm" onClick={toggleTheme} style={{ minWidth: 100 }}>
-            {theme === 'dark' ? '☀️ Light' : '🌙 Dark'}
+            <IconText>{theme === 'dark' ? '☀️ Light' : '🌙 Dark'}</IconText>
           </button>
         </div>
 
@@ -249,7 +251,7 @@ export default function Settings() {
                 >
                   <span style={{ fontSize: 22 }}>{bt.preview}</span>
                   <span style={{ fontSize: 11, fontWeight: 600 }}>{bt.label}</span>
-                  {!unlocked && <span style={{ fontSize: 9, color: 'var(--text-muted)' }}>🔒 {(bt.xpRequired/1000).toFixed(0)}K XP</span>}
+                  {!unlocked && <span style={{ fontSize: 9, color: 'var(--text-muted)' }}><EmojiIcon e="🔒" style={{ marginRight: '0.35em' }} />{(bt.xpRequired/1000).toFixed(0)}K XP</span>}
                 </button>
               );
             })}
@@ -258,14 +260,14 @@ export default function Settings() {
 
         {saved === 'editor' && (
           <div style={{ padding: 10, borderRadius: 8, background: '#10b98120', color: '#10b981', fontSize: 13, fontWeight: 600, marginTop: 8 }}>
-            ✅ Editor settings saved!
+            <EmojiIcon e="✅" style={{ marginRight: '0.35em' }} />Editor settings saved!
           </div>
         )}
       </div>
 
       {/* ─── Accessibility ─── */}
       <div style={sectionStyle}>
-        <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>♿ Accessibility</h3>
+        <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}><EmojiIcon e="♿" style={{ marginRight: '0.35em' }} />Accessibility</h3>
 
         <div style={{ marginBottom: 16 }}>
           <label style={labelStyle}>Colour-Blind Mode</label>
@@ -303,7 +305,7 @@ export default function Settings() {
 
       {/* ─── Preferences ─── */}
       <div style={sectionStyle}>
-        <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>🔔 Preferences</h3>
+        <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}><EmojiIcon e="🔔" style={{ marginRight: '0.35em' }} />Preferences</h3>
         <ToggleSetting label="Sound Effects" description="Play sounds for achievements and XP gains" storageKey="cv-sounds" defaultVal={true} />
         <ToggleSetting label="Animations" description="Enable interface animations and transitions" storageKey="cv-animations" defaultVal={true} />
         <ToggleSetting label="Auto-save Projects" description="Automatically save your work every 30 seconds" storageKey="cv-autosave" defaultVal={true} />
@@ -312,7 +314,7 @@ export default function Settings() {
 
       {/* ─── Data ─── */}
       <div style={sectionStyle}>
-        <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>💾 Data</h3>
+        <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}><EmojiIcon e="💾" style={{ marginRight: '0.35em' }} />Data</h3>
         <div style={rowStyle}>
           <div>
             <div style={{ fontWeight: 600, fontSize: 14 }}>Reset Progress</div>

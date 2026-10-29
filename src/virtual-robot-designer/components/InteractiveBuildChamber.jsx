@@ -23,6 +23,7 @@ import { migrateDesign } from '../config.js';
 import { migrateAssembly } from '../services/assembly-service.js';
 import { SNAP_SLOTS } from '../data/assembly-parts.js';
 import { getBuildPhase, getVisibleSockets } from '../utils/build-slots.js';
+import { EmojiIcon, IconText } from '../../components/ui/Icon.jsx';
 
 function AssemblyDrone({ position, color }) {
   return (
@@ -500,7 +501,7 @@ export default function InteractiveBuildChamber({
           <button type="button" className="vrd-chamber-ctrl vrd-chamber-ctrl--light" onClick={() => controlsRef.current?.zoomOut?.()}>− Zoom</button>
           <button type="button" className="vrd-chamber-ctrl vrd-chamber-ctrl--light" onClick={() => controlsRef.current?.focusRobot?.()}>◎ Center</button>
           {isProduct && onPaint && (
-            <button type="button" className="vrd-chamber-ctrl vrd-chamber-ctrl--paint" onClick={onPaint}>🎨 Paint</button>
+            <button type="button" className="vrd-chamber-ctrl vrd-chamber-ctrl--paint" onClick={onPaint}><EmojiIcon e="🎨" style={{ marginRight: '0.35em' }} />Paint</button>
           )}
         </div>
         {isProduct && (
@@ -514,7 +515,7 @@ export default function InteractiveBuildChamber({
         {!isProduct && (
           <>
             <button type="button" className="vrd-chamber-ctrl" onClick={() => setAutoSpin((s) => !s)}>
-              {autoSpin ? '⏸ Stop spin' : '⟳ Spin preview'}
+              <IconText>{autoSpin ? '⏸ Stop spin' : '⟳ Spin preview'}</IconText>
             </button>
             <span className="vrd-chamber-hint">Drag to orbit · modules snap instantly · same robot in simulator</span>
           </>

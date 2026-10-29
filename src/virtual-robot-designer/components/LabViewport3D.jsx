@@ -7,6 +7,7 @@ import InteractiveRobotModel from './InteractiveRobotModel.jsx';
 import { migrateDesign } from '../config.js';
 import { migrateAssembly } from '../services/assembly-service.js';
 import { SNAP_SLOTS } from '../data/assembly-parts.js';
+import { IconText } from '../../components/ui/Icon.jsx';
 
 /** Rocksi-style lab viewport — white robot, dark bg, clean white grid */
 export default function LabViewport3D({
@@ -99,7 +100,7 @@ export default function LabViewport3D({
       {showControls && (
         <div className="vrd-lab-controls">
           <button type="button" className="vrd-lab-btn" onClick={() => setAutoSpin((s) => !s)}>
-            {autoSpin ? '⏸' : '▶'}
+            <IconText>{autoSpin ? '⏸' : '▶'}</IconText>
           </button>
           <span>Drag to orbit · Scroll to zoom</span>
         </div>

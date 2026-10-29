@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MODULE_CATEGORIES, MODULE_PARTS, ROBOT_COLORS, getActivePartId } from '../data/robot-catalog.js';
+import { EmojiIcon } from '../../components/ui/Icon.jsx';
 
 function PartTile({ part, active, onClick }) {
   return (
@@ -11,7 +12,7 @@ function PartTile({ part, active, onClick }) {
       whileHover={{ scale: 1.03, y: -2 }}
       whileTap={{ scale: 0.97 }}
     >
-      <span className="vrd-mod-part-icon">{part.icon}</span>
+      <span className="vrd-mod-part-icon"><EmojiIcon e={part.icon} /></span>
       <span className="vrd-mod-part-label">{part.label}</span>
     </motion.button>
   );
@@ -45,7 +46,7 @@ export default function ModularRobotBuilder({ design, onApplyModule, onColor, on
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -4 }}
           >
-            ⚡ {recentPart} locked into chassis
+            <EmojiIcon e="⚡" style={{ marginRight: '0.35em' }} />{recentPart} locked into chassis
           </motion.div>
         )}
       </AnimatePresence>
@@ -59,7 +60,7 @@ export default function ModularRobotBuilder({ design, onApplyModule, onColor, on
             onClick={() => setCategory(c.id)}
             title={c.desc}
           >
-            <span>{c.icon}</span>
+            <span><EmojiIcon e={c.icon} /></span>
             <span>{c.label.split(' ')[0]}</span>
           </button>
         ))}
@@ -67,7 +68,7 @@ export default function ModularRobotBuilder({ design, onApplyModule, onColor, on
 
       <div className="vrd-mod-panel">
         <div className="vrd-mod-panel-head">
-          <span>{catMeta?.icon} {catMeta?.label}</span>
+          <span><EmojiIcon e={catMeta?.icon} style={{ marginRight: '0.35em' }} />{catMeta?.label}</span>
           <span className="vrd-mod-panel-desc">{catMeta?.desc}</span>
         </div>
         <div className="vrd-mod-parts-grid">

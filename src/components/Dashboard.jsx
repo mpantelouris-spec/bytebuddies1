@@ -3,17 +3,16 @@ import { useUser } from '../contexts/UserContext';
 import { useProject } from '../contexts/ProjectContext';
 import { achievements, dailyChallenges, leaderboard, courses, dailyQuestTemplates } from '../data/courseData';
 import { getWeakModules, buildWhatNextCards } from '../utils/adaptiveLearning';
+import { EmojiIcon, IconText } from './ui/Icon.jsx';
+import ProfileAvatar from './ui/ProfileAvatar.jsx';
 
-const CAMPAIGN_META = [
-  { id: 'space', title: 'Space Explorer', emoji: '🚀', color: '#6366f1', missions: 5 },
-  { id: 'ocean', title: 'Ocean Deep', emoji: '🌊', color: '#0ea5e9', missions: 5 },
-  { id: 'city', title: 'City Builder', emoji: '🏙️', color: '#f59e0b', missions: 5 },
-  { id: 'cyber', title: 'Cyber Quest', emoji: '⚡', color: '#10b981', missions: 5 },
-];
+import { CAMPAIGNS as MISSION_WORLDS } from './missions/missionData.js';
+
+const CAMPAIGN_META = MISSION_WORLDS.map(({ id, title, emoji, color, missions }) => ({ id, title, emoji, color, missions: missions.length }));
 
 export default function Dashboard({ onNavigate }) {
   const { user, useStreakProtection, incrementQuestProgress } = useUser();
-  const { projects } = useProject();
+  const { projects, setActiveProject } = useProject();
 
   // Use real weeklyXP from user context, fall back to demo data
   const weeklyXP = useMemo(() => {
@@ -127,16 +126,16 @@ export default function Dashboard({ onNavigate }) {
           <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:6 }}>
             <h1 style={{ color:'white', fontSize:26, fontWeight:800 }}>Welcome back, {user.name}! 👋</h1>
             {user.streak >= 3 && (
-              <span style={{ background:'rgba(251,191,36,0.2)', border:'1px solid rgba(251,191,36,0.45)', color:'#fbbf24', padding:'3px 12px', borderRadius:20, fontSize:12, fontWeight:700 }}>🔥 ON FIRE · {user.streak} days</span>
+              <span style={{ background:'rgba(251,191,36,0.2)', border:'1px solid rgba(251,191,36,0.45)', color:'#fbbf24', padding:'3px 12px', borderRadius:20, fontSize:12, fontWeight:700 }}><EmojiIcon e="🔥" style={{ marginRight: '0.35em' }} />ON FIRE · {user.streak} days</span>
             )}
           </div>
           <p style={{ color:'rgba(255,255,255,0.75)', fontSize:14, marginBottom:18 }}>
             You've earned <strong style={{color:'#fbbf24'}}>{user.xp.toLocaleString()} XP</strong> — only {(user.xpToNext - user.xp).toLocaleString()} more to Level {user.level + 1}!
           </p>
           <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
-            <button className="btn" style={{ background:'white', color:'#6366f1', fontWeight:700 }} onClick={() => onNavigate('workspace')}>💻 Open Workspace</button>
-            <button className="btn" style={{ background:'rgba(255,255,255,0.18)', color:'white', border:'1px solid rgba(255,255,255,0.3)' }} onClick={() => onNavigate('learn/y3/w01')}>📚 Open Year 3 Week 1</button>
-            <button className="btn" style={{ background:'rgba(255,0,110,0.25)', color:'#ff9ed2', border:'1px solid rgba(255,0,110,0.5)' }} onClick={() => onNavigate('studio')}>🤖 Robot Studio</button>
+            <button className="btn" style={{ background:'white', color:'#6366f1', fontWeight:700 }} onClick={() => onNavigate('workspace')}><EmojiIcon e="🐍" style={{ marginRight: '0.35em' }} />Open Python</button>
+            <button className="btn" style={{ background:'rgba(255,255,255,0.18)', color:'white', border:'1px solid rgba(255,255,255,0.3)' }} onClick={() => onNavigate('learn/y3/w01')}><EmojiIcon e="📚" style={{ marginRight: '0.35em' }} />Open Year 3 Week 1</button>
+            <button className="btn" style={{ background:'rgba(255,0,110,0.25)', color:'#ff9ed2', border:'1px solid rgba(255,0,110,0.5)' }} onClick={() => onNavigate('studio')}><EmojiIcon e="🤖" style={{ marginRight: '0.35em' }} />Robot Studio</button>
           </div>
         </div>
 
@@ -160,6 +159,17 @@ export default function Dashboard({ onNavigate }) {
         </div>
       </div>
 
+      {user.completedLessons === 0 && (
+        <div style={{ display:'flex', alignItems:'center', gap:16, flexWrap:'wrap', background:'var(--bg-secondary)', border:'1px solid var(--accent-primary)', borderRadius:14, padding:'16px 20px', marginBottom:24 }}>
+          <div style={{ fontSize:28 }}><EmojiIcon e="🧭" /></div>
+          <div style={{ flex:1, minWidth:220 }}>
+            <div style={{ fontWeight:800, color:'var(--text-primary)', marginBottom:3 }}>Your first step: try a coding lesson</div>
+            <div style={{ fontSize:13, color:'var(--text-muted)' }}>Follow a short guided lesson, then come back to build a project of your own.</div>
+          </div>
+          <button className="btn btn-primary" onClick={() => onNavigate('learn/y3/w01')}>Start Year 3, Week 1 →</button>
+        </div>
+      )}
+
       {/* ─── Robot Design & Lab ─── */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(280px, 1fr))', gap:16, marginBottom:24 }}>
         <div style={{
@@ -169,7 +179,7 @@ export default function Dashboard({ onNavigate }) {
           display:'flex', flexDirection:'column', gap:12,
         }}>
           <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-            <span style={{ fontSize:36 }}>🤖</span>
+            <span style={{ fontSize:36 }}><EmojiIcon e="🤖" /></span>
             <div>
               <div style={{ fontWeight:800, fontSize:17, color:'var(--text-primary)' }}>Robot Invention Studio</div>
               <div style={{ fontSize:12, color:'var(--text-muted)' }}>Build · Simulate · Challenge — no hardware needed</div>
@@ -187,7 +197,7 @@ export default function Dashboard({ onNavigate }) {
               style={{ fontWeight:700, background:'rgba(0,200,83,0.2)', color:'#00c853', border:'1px solid rgba(0,200,83,0.45)' }}
               onClick={() => onNavigate('studio')}
             >
-              🏆 Try Challenges
+              <EmojiIcon e="🏆" style={{ marginRight: '0.35em' }} />Try Challenges
             </button>
           </div>
         </div>
@@ -199,7 +209,7 @@ export default function Dashboard({ onNavigate }) {
           display:'flex', flexDirection:'column', gap:12,
         }}>
           <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-            <span style={{ fontSize:36 }}>🤖</span>
+            <span style={{ fontSize:36 }}><EmojiIcon e="🤖" /></span>
             <div>
               <div style={{ fontWeight:800, fontSize:17, color:'var(--text-primary)' }}>Physical Robot Lab</div>
               <div style={{ fontSize:12, color:'var(--text-muted)' }}>Connect & program real hardware</div>
@@ -229,17 +239,17 @@ export default function Dashboard({ onNavigate }) {
         ))}
         {/* Streak card with protection mechanic */}
         <div className="stat-card" style={{ position:'relative' }}>
-          <div className="stat-card-value" style={{ color:'#ef4444' }}>🔥 {user.streak}</div>
+          <div className="stat-card-value" style={{ color:'#ef4444' }}><EmojiIcon e="🔥" style={{ marginRight: '0.35em' }} />{user.streak}</div>
           <div className="stat-card-label">Day Streak</div>
           {user.streakProtected ? (
-            <div style={{ fontSize:10, color:'#10b981', marginTop:4, fontWeight:700 }}>🛡️ Protected!</div>
+            <div style={{ fontSize:10, color:'#10b981', marginTop:4, fontWeight:700 }}><EmojiIcon e="🛡️" style={{ marginRight: '0.35em' }} />Protected!</div>
           ) : (
             <button
               style={{ marginTop:6, fontSize:10, background:'rgba(99,102,241,0.12)', border:'1px solid rgba(99,102,241,0.3)', borderRadius:6, padding:'2px 8px', color:'var(--accent-primary)', cursor:'pointer', fontWeight:600 }}
               onClick={useStreakProtection}
               title="Spend 50 XP to protect your streak for today"
             >
-              🛡️ Protect (-50 XP)
+              <EmojiIcon e="🛡️" style={{ marginRight: '0.35em' }} />Protect (-50 XP)
             </button>
           )}
         </div>
@@ -270,7 +280,7 @@ export default function Dashboard({ onNavigate }) {
             style={{ background: activeCampaign.color, color: '#fff', border: 'none', padding: '10px 20px', fontWeight: 700, flexShrink: 0 }}
             onClick={() => onNavigate('missions')}
           >
-            {(missionProgress[activeCampaign.id]?.completed?.length || 0) === 0 ? '🚀 Start Mission' : '▶ Continue'}
+            <IconText>{(missionProgress[activeCampaign.id]?.completed?.length || 0) === 0 ? '🚀 Start Mission' : '▶ Continue'}</IconText>
           </button>
         </div>
       )}
@@ -278,7 +288,7 @@ export default function Dashboard({ onNavigate }) {
       {/* ─── Coding Skills ─── */}
       <div className="card" style={{ marginBottom:24 }}>
         <div className="card-header">
-          <h3 style={{ fontSize:15, fontWeight:700 }}>🧠 My Coding Skills</h3>
+          <h3 style={{ fontSize:15, fontWeight:700 }}><EmojiIcon e="🧠" style={{ marginRight: '0.35em' }} />My Coding Skills</h3>
           <div style={{ display:'flex', gap:16, fontSize:12, color:'var(--text-muted)' }}>
             <span>Programs Run: <strong style={{ color:'var(--text-primary)' }}>{cvConcepts.totalRuns || 0}</strong></span>
             <span>Last Active: <strong style={{ color:'var(--text-primary)' }}>{formatLastActive(cvConcepts.lastRun)}</strong></span>
@@ -292,7 +302,7 @@ export default function Dashboard({ onNavigate }) {
               const lvl = getLevel(count);
               return (
                 <div key={skill.key} style={{ padding:14, background:'var(--bg-tertiary)', borderRadius:12, border:`1px solid var(--border-color)`, textAlign:'center' }}>
-                  <div style={{ fontSize:28, marginBottom:6 }}>{skill.icon}</div>
+                  <div style={{ fontSize:28, marginBottom:6 }}><EmojiIcon e={skill.icon} /></div>
                   <div style={{ fontWeight:700, fontSize:13, marginBottom:4 }}>{skill.label}</div>
                   <div style={{ width:'100%', height:6, background:'var(--bg-secondary)', borderRadius:3, marginBottom:6, overflow:'hidden' }}>
                     <div style={{ width:`${pct}%`, height:'100%', background:skill.color, borderRadius:3, transition:'width 0.5s ease' }} />
@@ -311,7 +321,7 @@ export default function Dashboard({ onNavigate }) {
         {/* weekly bar chart */}
         <div className="card" style={{ flex:1 }}>
           <div className="card-header">
-            <h3 style={{ fontSize:15, fontWeight:700 }}>📈 This Week's XP</h3>
+            <h3 style={{ fontSize:15, fontWeight:700 }}><EmojiIcon e="📈" style={{ marginRight: '0.35em' }} />This Week's XP</h3>
             <span style={{ fontSize:12, color:'var(--text-muted)' }}>{weeklyXP.reduce((a,b)=>a+b,0).toLocaleString()} XP total</span>
           </div>
           <div style={{ padding:'12px 16px 16px' }}>
@@ -336,7 +346,7 @@ export default function Dashboard({ onNavigate }) {
         {/* activity heatmap */}
         <div className="card" style={{ flex:1.6 }}>
           <div className="card-header">
-            <h3 style={{ fontSize:15, fontWeight:700 }}>🗓️ Coding Activity</h3>
+            <h3 style={{ fontSize:15, fontWeight:700 }}><EmojiIcon e="🗓️" style={{ marginRight: '0.35em' }} />Coding Activity</h3>
             <span style={{ fontSize:12, color:'var(--text-muted)' }}>Last 12 weeks</span>
           </div>
           <div style={{ padding:'10px 16px 16px' }}>
@@ -363,7 +373,7 @@ export default function Dashboard({ onNavigate }) {
       {/* ─── What's Next ─── */}
       <div className="card" style={{ marginBottom:24 }}>
         <div className="card-header">
-          <h3 style={{ fontSize:15, fontWeight:700 }}>🚀 What's Next For You</h3>
+          <h3 style={{ fontSize:15, fontWeight:700 }}><EmojiIcon e="🚀" style={{ marginRight: '0.35em' }} />What's Next For You</h3>
           <span style={{ fontSize:12, color:'var(--text-muted)' }}>Personalised for Level {user.level}</span>
         </div>
         <div style={{ padding:16, display:'flex', gap:14, flexWrap:'wrap' }}>
@@ -380,7 +390,7 @@ export default function Dashboard({ onNavigate }) {
             >
               {item.urgent && <span style={{ position:'absolute', top:8, right:8, fontSize:9, fontWeight:700, background:'#f59e0b', color:'#000', borderRadius:6, padding:'1px 5px' }}>REVIEW</span>}
               <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}>
-                <span style={{ fontSize:22 }}>{item.icon}</span>
+                <span style={{ fontSize:22 }}><EmojiIcon e={item.icon} /></span>
                 {item.badge && <span style={{ fontSize:10, fontWeight:700, color:item.color }}>{item.badge}</span>}
               </div>
               <div style={{ fontWeight:700, fontSize:13, marginBottom:3 }}>{item.title}</div>
@@ -394,7 +404,7 @@ export default function Dashboard({ onNavigate }) {
       {/* ─── Daily Challenges ─── */}
       <div className="card" style={{ marginBottom:24 }}>
         <div className="card-header">
-          <h3 style={{ fontSize:15, fontWeight:700 }}>⚡ Daily Challenges</h3>
+          <h3 style={{ fontSize:15, fontWeight:700 }}><EmojiIcon e="⚡" style={{ marginRight: '0.35em' }} />Daily Challenges</h3>
           <span className="tag tag-warning">Resets in 6h</span>
         </div>
         <div style={{ padding:16, display:'flex', gap:14 }}>
@@ -409,7 +419,7 @@ export default function Dashboard({ onNavigate }) {
               </div>
               <div style={{ textAlign:'right', flexShrink:0, marginLeft:12 }}>
                 {ch.completed ? (
-                  <span style={{ color:'var(--accent-success)', fontWeight:700 }}>✅ Done</span>
+                  <span style={{ color:'var(--accent-success)', fontWeight:700 }}><EmojiIcon e="✅" style={{ marginRight: '0.35em' }} />Done</span>
                 ) : (
                   <>
                     <div style={{ color:'var(--accent-warning)', fontWeight:700, fontSize:14 }}>+{ch.xp} XP</div>
@@ -426,7 +436,7 @@ export default function Dashboard({ onNavigate }) {
       {todayQuests.length > 0 && (
         <div className="card" style={{ marginBottom:24 }}>
           <div className="card-header">
-            <h3 style={{ fontSize:15, fontWeight:700 }}>🎯 Daily Quests</h3>
+            <h3 style={{ fontSize:15, fontWeight:700 }}><EmojiIcon e="🎯" style={{ marginRight: '0.35em' }} />Daily Quests</h3>
             <span className="tag tag-primary">Resets at midnight</span>
           </div>
           <div style={{ padding:16, display:'flex', gap:14, flexWrap:'wrap' }}>
@@ -447,7 +457,7 @@ export default function Dashboard({ onNavigate }) {
                     <div style={{ width:`${done ? 100 : pct}%`, height:'100%', background: done ? 'var(--accent-success)' : 'var(--accent-primary)', transition:'width 0.5s ease' }} />
                   </div>
                   <div style={{ fontSize:10, color:'var(--text-muted)', marginTop:4 }}>
-                    {done ? '✅ Complete!' : `${progress} / ${quest.goal}`}
+                    <IconText>{done ? '✅ Complete!' : `${progress} / ${quest.goal}`}</IconText>
                   </div>
                 </div>
               );
@@ -459,16 +469,16 @@ export default function Dashboard({ onNavigate }) {
       {/* ─── Leaderboard ─── */}
       <div className="card" style={{ marginBottom:24 }}>
         <div className="card-header">
-          <h3 style={{ fontSize:15, fontWeight:700 }}>🏆 Weekly Leaderboard</h3>
+          <h3 style={{ fontSize:15, fontWeight:700 }}><EmojiIcon e="🏆" style={{ marginRight: '0.35em' }} />Weekly Leaderboard</h3>
           <span className="tag tag-primary">Global</span>
         </div>
         <div>
           {leaderboard.slice(0, 7).map(entry => (
             <div key={entry.rank} className="leaderboard-row" style={{ background: entry.isUser ? 'rgba(99,102,241,0.08)' : 'transparent' }}>
               <span className={`leaderboard-rank ${entry.rank === 1 ? 'gold' : entry.rank === 2 ? 'silver' : entry.rank === 3 ? 'bronze' : ''}`}>
-                {entry.rank <= 3 ? ['🥇','🥈','🥉'][entry.rank-1] : `#${entry.rank}`}
+                {entry.rank <= 3 ? <EmojiIcon e="🥇" size="1.2em" color={['#f59e0b', '#94a3b8', '#b45309'][entry.rank - 1]} /> : `#${entry.rank}`}
               </span>
-              <div className="avatar avatar-sm" style={{ background: entry.isUser ? 'var(--gradient-accent)' : 'var(--gradient-primary)' }}>{entry.avatar}</div>
+              <ProfileAvatar value={entry.avatarEmoji || entry.avatar} name={entry.name} size={28} />
               <div style={{ flex:1 }}>
                 <div style={{ fontWeight:600, fontSize:13 }}>{entry.name} {entry.isUser && <span style={{ color:'var(--accent-primary)' }}>(You)</span>}</div>
                 <div style={{ fontSize:11, color:'var(--text-muted)' }}>Lv.{entry.level} · {entry.badges} badges</div>
@@ -482,7 +492,7 @@ export default function Dashboard({ onNavigate }) {
       {/* ─── Achievements ─── */}
       <div className="card" style={{ marginBottom:24 }}>
         <div className="card-header">
-          <h3 style={{ fontSize:15, fontWeight:700 }}>🏅 Achievements</h3>
+          <h3 style={{ fontSize:15, fontWeight:700 }}><EmojiIcon e="🏅" style={{ marginRight: '0.35em' }} />Achievements</h3>
           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
             <span style={{ fontSize:12, color:'var(--text-muted)' }}>{earnedAchievements.length}/{achievements.length} earned</span>
             <div style={{ width:80, height:6, background:'var(--bg-tertiary)', borderRadius:3 }}>
@@ -493,11 +503,11 @@ export default function Dashboard({ onNavigate }) {
         <div style={{ padding:16 }}>
           {/* Earned badges */}
           <div style={{ marginBottom:20 }}>
-            <div style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:1, marginBottom:12 }}>✅ Earned</div>
+            <div style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:1, marginBottom:12 }}><EmojiIcon e="✅" style={{ marginRight: '0.35em' }} />Earned</div>
             <div style={{ display:'flex', gap:12, flexWrap:'wrap' }}>
               {earnedAchievements.map(badge => (
                 <div key={badge.id} title={badge.desc} style={{ textAlign:'center', padding:'12px 14px', background:'var(--bg-tertiary)', borderRadius:12, border:'2px solid var(--accent-primary)', minWidth:76 }}>
-                  <div style={{ fontSize:30 }}>{badge.icon}</div>
+                  <div style={{ fontSize:30 }}><EmojiIcon e={badge.icon} /></div>
                   <div style={{ fontSize:11, fontWeight:600, marginTop:4 }}>{badge.name}</div>
                 </div>
               ))}
@@ -505,7 +515,7 @@ export default function Dashboard({ onNavigate }) {
           </div>
           {/* In-progress badges */}
           <div>
-            <div style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:1, marginBottom:12 }}>🔒 In Progress</div>
+            <div style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:1, marginBottom:12 }}><EmojiIcon e="🔒" style={{ marginRight: '0.35em' }} />In Progress</div>
             <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12 }}>
               {unearnedAchievements.map(badge => {
                 const prog = achievementProgress[badge.id];
@@ -513,7 +523,7 @@ export default function Dashboard({ onNavigate }) {
                 return (
                   <div key={badge.id} style={{ padding:14, background:'var(--bg-primary)', borderRadius:12, border:'1px solid var(--border-color)' }}>
                     <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:8 }}>
-                      <span style={{ fontSize:22 }}>{badge.icon}</span>
+                      <span style={{ fontSize:22 }}><EmojiIcon e={badge.icon} /></span>
                       <div>
                         <div style={{ fontSize:12, fontWeight:600 }}>{badge.name}</div>
                         <div style={{ fontSize:10, color:'var(--text-muted)' }}>{badge.desc}</div>
@@ -534,28 +544,28 @@ export default function Dashboard({ onNavigate }) {
       {/* ─── Recent Projects ─── */}
       <div className="card">
         <div className="card-header">
-          <h3 style={{ fontSize:15, fontWeight:700 }}>📁 Recent Projects</h3>
+          <h3 style={{ fontSize:15, fontWeight:700 }}><IconText>{projects.some(p => p.isExample) ? '🧪 Projects & examples' : '📁 Recent Projects'}</IconText></h3>
           <button className="btn btn-secondary btn-sm" onClick={() => onNavigate('workspace')}>View All</button>
         </div>
         <div style={{ padding:16 }}>
           <div className="grid grid-3" style={{ gap:16 }}>
             {projects.slice(0, 3).map(p => (
-              <div key={p.id} className="project-card" onClick={() => onNavigate('workspace')}>
+              <div key={p.id} className="project-card" onClick={() => { setActiveProject(p); onNavigate('workspace'); }}>
                 <div className="project-card-preview" style={{ height:100 }}>
-                  <span style={{ fontSize:36 }}>{p.type === 'game' ? '🎮' : p.type === 'website' ? '🌐' : '📱'}</span>
+                  <span style={{ fontSize:36 }}><IconText>{p.type === 'game' ? '🎮' : p.type === 'website' ? '🌐' : '📱'}</IconText></span>
                 </div>
                 <div className="project-card-info">
-                  <h4>{p.name}</h4>
+                  <h4>{p.isExample ? `Example · ${p.name}` : p.name}</h4>
                   <div className="project-card-meta">
                     <span>{p.language}</span>
-                    <span>Modified {p.modified}</span>
+                    <span>{p.isExample ? 'Open to explore and remix' : `Modified ${p.modified}`}</span>
                   </div>
                 </div>
               </div>
             ))}
             {projects.length === 0 && (
               <div style={{ gridColumn:'1/-1', textAlign:'center', padding:40, color:'var(--text-muted)' }}>
-                <div style={{ fontSize:40, marginBottom:12 }}>🚀</div>
+                <div style={{ fontSize:40, marginBottom:12 }}><EmojiIcon e="🚀" /></div>
                 <div style={{ fontWeight:600, marginBottom:8 }}>No projects yet!</div>
                 <button className="btn btn-primary" onClick={() => onNavigate('workspace')}>Create your first project</button>
               </div>

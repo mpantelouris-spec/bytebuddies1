@@ -1,9 +1,119 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { communityProjects } from '../data/courseData';
+import { findStageBackdrop } from '../data/stageBackdrops';
+import { assetUrl } from '../utils/assetUrl';
 import { useUser } from '../contexts/UserContext';
-import { saveStudioToFirestore, getAllStudios, deleteStudioFromFirestore } from '../firebase';
+import {
+  auth, saveStudioToFirestore, getAllStudios, deleteStudioFromFirestore,
+  getCommunityProjectsFromFirestore, getCommunityProjectData,
+  deleteCommunityProject, updateCommunityProjectCount, toggleCommunityProjectLike,
+} from '../firebase';
+import { EmojiIcon, IconText } from './ui/Icon.jsx';
 
 const TYPE_LABELS = { game: '🎮 Game', website: '🌐 Website', app: '📱 App', simulation: '🔬 Sim' };
+
+// Keep the separate project payload lazy: only request it for previews that enter
+// the viewport, and reuse that request if the coder opens the project details.
+const communityPreviewRequests = new Map();
+function loadCommunityPreview(projectId) {
+  if (!communityPreviewRequests.has(projectId)) {
+    communityPreviewRequests.set(projectId, getCommunityProjectData(projectId).catch((error) => {
+      communityPreviewRequests.delete(projectId);
+      throw error;
+    }));
+  }
+  return communityPreviewRequests.get(projectId);
+}
+
+function safeCommunityImage(src) {
+  if (typeof src !== 'string') return '';
+  if (/^data:image\/(?:png|jpe?g|gif|webp|svg\+xml);base64,/i.test(src)) return src;
+  if (src.startsWith('/assets/')) return assetUrl(src);
+  return '';
+}
+
+function CommunityGamePreview({ project, compact = false }) {
+  const sprites = Array.isArray(project?.sprites) ? project.sprites : [];
+  const level = project?.levels?.[0];
+  const backdropName = level?.backdrop || project?.background || '';
+  const customBackdrop = project?.customBackdrops?.find((item) => item?.name === backdropName);
+  const backdrop = findStageBackdrop(backdropName);
+  const backgroundImage = safeCommunityImage(customBackdrop?.dataUrl || backdrop?.image);
+  const layout = level?.layout || {};
+  const stageStyle = backgroundImage
+    ? { backgroundImage: `url("${backgroundImage}")` }
+    : { background: backdropName === 'White' ? '#fff' : 'linear-gradient(145deg, #172554, #312e81 60%, #0e7490)' };
+
+  return (
+    <div className={`bb-community-game-preview${compact ? ' bb-community-game-preview--compact' : ''}`} role="img" aria-label={`${project?.name || 'Shared game'} stage preview`}>
+      <div className="bb-community-game-stage" style={stageStyle}>
+        {sprites.map((sprite) => {
+          const position = layout[sprite.id] || {};
+          if (sprite.visible === false || position.visible === false || sprite.isClone) return null;
+          const costume = sprite.costumes?.[sprite.currentCostumeIndex || 0];
+          const image = safeCommunityImage(costume?.customImage || costume?.src || sprite.customImage);
+          const x = Number(position.x ?? sprite.x) || 0;
+          const y = Number(position.y ?? sprite.y) || 0;
+          const width = Math.max(8, Number(sprite.w) || 48);
+          const height = Math.max(8, Number(sprite.h) || 48);
+          const rotation = Number(sprite.rotation);
+          const style = {
+            left: `${(x / 480) * 100}%`,
+            top: `${(y / 360) * 100}%`,
+            width: `${(width / 480) * 100}%`,
+            height: `${(height / 360) * 100}%`,
+            transform: `rotate(${Number.isFinite(rotation) ? rotation - 90 : 0}deg) scaleX(${sprite.costumeFlipX || costume?.flipX ? -1 : 1})`,
+            filter: sprite.costumeHue || costume?.hue ? `hue-rotate(${Number(sprite.costumeHue || costume?.hue) || 0}deg)` : undefined,
+          };
+          return image
+            ? <img key={sprite.id} className="bb-community-game-sprite" src={image} alt="" draggable="false" style={style} />
+            : <span key={sprite.id} className="bb-community-game-sprite bb-community-game-sprite--fallback" style={style} aria-hidden="true"><IconText>{sprite.emoji || '✨'}</IconText></span>;
+        })}
+      </div>
+      <span className="bb-community-preview-label">Game preview</span>
+    </div>
+  );
+}
+
+function CommunityProjectCardPreview({ project }) {
+  const hostRef = useRef(null);
+  const [inView, setInView] = useState(false);
+  const [data, setData] = useState(null);
+
+  useEffect(() => {
+    if (project.static || project.type !== 'game') return undefined;
+    const host = hostRef.current;
+    if (!host || typeof IntersectionObserver === 'undefined') {
+      setInView(true);
+      return undefined;
+    }
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        setInView(true);
+        observer.disconnect();
+      }
+    }, { rootMargin: '180px' });
+    observer.observe(host);
+    return () => observer.disconnect();
+  }, [project.id, project.static, project.type]);
+
+  useEffect(() => {
+    if (!inView || project.static || project.type !== 'game') return undefined;
+    let active = true;
+    loadCommunityPreview(project.id).then((preview) => {
+      if (active) setData(preview);
+    }).catch(() => {});
+    return () => { active = false; };
+  }, [inView, project.id, project.static, project.type]);
+
+  return (
+    <div ref={hostRef} className="project-card-preview-scene">
+      {data
+        ? <CommunityGamePreview project={data} compact />
+        : <span className="project-card-preview-cover" aria-hidden="true"><IconText>{project.preview || '🎮'}</IconText></span>}
+    </div>
+  );
+}
 
 const STUDIO_ICONS = ['🎮','🚀','🌊','🏙️','⚡','🎨','🤖','🧠','🔬','🎵','🦊','🌍'];
 const STUDIO_COLORS = ['#6366f1','#ec4899','#f59e0b','#10b981','#0ea5e9','#8b5cf6','#ef4444','#06b6d4'];
@@ -28,7 +138,7 @@ function CreateStudioModal({ onClose, onCreate, userName }) {
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }} onClick={onClose}>
       <div style={{ background: 'var(--bg-secondary)', borderRadius: 20, width: '100%', maxWidth: 460, border: '1px solid var(--border-color)', boxShadow: '0 24px 80px rgba(0,0,0,0.5)' }} onClick={e => e.stopPropagation()}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px', borderBottom: '1px solid var(--border-color)' }}>
-          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>🏛️ Create a Studio</h3>
+          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}><EmojiIcon e="🏛️" style={{ marginRight: '0.35em' }} />Create a Studio</h3>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 18, cursor: 'pointer' }}>✕</button>
         </div>
         <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -78,7 +188,7 @@ function CreateStudioModal({ onClose, onCreate, userName }) {
   );
 }
 
-export default function Community() {
+export default function Community({ onNavigate = () => {} }) {
   const { user } = useUser();
   const [tab, setTab] = useState('trending');
   const [filter, setFilter] = useState('all');
@@ -92,14 +202,55 @@ export default function Community() {
   const [studios, setStudios] = useState([]);
   const [studiosLoading, setStudiosLoading] = useState(true);
   const [selectedStudio, setSelectedStudio] = useState(null);
+  const [projects, setProjects] = useState(communityProjects);
+  const [projectsLoading, setProjectsLoading] = useState(true);
+  const [projectsError, setProjectsError] = useState('');
+  const [selectedProjectData, setSelectedProjectData] = useState(null);
+  const [projectDataLoading, setProjectDataLoading] = useState(false);
+  const [shareError, setShareError] = useState('');
 
   // Load studios from Firestore on mount
   useEffect(() => {
-    getAllStudios().then(data => {
-      setStudios(data);
-      setStudiosLoading(false);
-    });
+    let active = true;
+    getAllStudios()
+      .then(data => { if (active) setStudios(Array.isArray(data) ? data : []); })
+      .catch(() => { if (active) setStudios([]); })
+      .finally(() => { if (active) setStudiosLoading(false); });
+    return () => { active = false; };
   }, []);
+
+  const refreshProjects = async () => {
+    setProjectsLoading(true);
+    setProjectsError('');
+    try {
+      const remote = await getCommunityProjectsFromFirestore();
+      const safe = remote.filter(p => p && p.id && p.title && p.author);
+      setProjects([...communityProjects, ...safe]);
+      const uid = auth.currentUser?.uid;
+      setLikedProjects(new Set(safe.filter(p => p.likedBy?.includes(uid)).map(p => p.id)));
+    } catch (e) {
+      console.error('[Community] Project gallery could not load:', e);
+      setProjectsError('We couldn’t load the shared project gallery. Check your connection and try again.');
+      setProjects(communityProjects);
+    } finally { setProjectsLoading(false); }
+  };
+
+  useEffect(() => { refreshProjects(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    let active = true;
+    if (!selectedProject?.id) { setSelectedProjectData(null); return undefined; }
+    setSelectedProjectData(null);
+    setShareError('');
+    if (selectedProject.static) return undefined;
+    setProjectDataLoading(true);
+    loadCommunityPreview(selectedProject.id)
+      .then(data => { if (active) setSelectedProjectData(data); })
+      .catch(e => { if (active) setShareError(e.message || 'Could not open this project.'); })
+      .finally(() => { if (active) setProjectDataLoading(false); });
+    updateCommunityProjectCount(selectedProject.id, 'views');
+    return () => { active = false; };
+  }, [selectedProject?.id]);
 
   const createStudio = async (studio) => {
     const ok = await saveStudioToFirestore(studio);
@@ -118,24 +269,60 @@ export default function Community() {
   };
 
   const types = ['all', 'game', 'website', 'app', 'simulation'];
-  const featuredProjects = communityProjects.filter(p => p.featured);
+  const featuredProjects = projects.filter(p => p.featured);
 
   const filtered = useMemo(() => {
-    let list = communityProjects
+    let list = projects
       .filter(p => filter === 'all' || p.type === filter)
-      .filter(p => !search || p.title.toLowerCase().includes(search.toLowerCase()) || p.author.toLowerCase().includes(search.toLowerCase()));
+      .filter(p => !search || `${p.title} ${p.author} ${p.description}`.toLowerCase().includes(search.trim().toLowerCase()));
     if (tab === 'popular') return [...list].sort((a, b) => b.likes - a.likes);
     if (tab === 'newest') return [...list].sort((a, b) => b.id.localeCompare(a.id));
     if (tab === 'featured') return list.filter(p => p.featured);
     return [...list].sort((a, b) => b.views - a.views); // trending
-  }, [filter, search, tab]);
+  }, [filter, search, tab, projects]);
 
-  const toggleLike = (id) => {
-    setLikedProjects(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
-    });
+  const toggleLike = async (id) => {
+    try {
+      const result = await toggleCommunityProjectLike(id);
+      setLikedProjects(prev => { const next = new Set(prev); result.liked ? next.add(id) : next.delete(id); return next; });
+      setProjects(prev => prev.map(p => p.id === id ? { ...p, likes: result.likes } : p));
+      setSelectedProject(prev => prev?.id === id ? { ...prev, likes: result.likes } : prev);
+    } catch (e) {
+      setShareError(e.code === 'permission-denied' ? 'Likes are not enabled by this project’s Firestore rules yet.' : 'Could not save your like. Please try again.');
+    }
+  };
+
+  const handlePublishProject = async (listing) => {
+    setProjects(prev => [listing, ...prev.filter(p => p.id !== listing.id)]);
+    setSelectedProject(null);
+    await refreshProjects();
+  };
+
+  const openRemixInStudio = async () => {
+    if (!selectedProjectData) return;
+    const base = selectedProjectData;
+    const remix = { ...base, id: `remix-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`, name: `${selectedProject.title} remix`, remixOf: selectedProject.id, savedAt: Date.now() };
+    try {
+      const current = JSON.parse(localStorage.getItem('cv_gamebuilder_projects') || '[]');
+      const next = [remix, ...current];
+      localStorage.setItem('cv_gamebuilder_projects', JSON.stringify(next));
+      sessionStorage.setItem('bb-open-game-project', remix.id);
+      await updateCommunityProjectCount(selectedProject.id, 'remixes');
+      onNavigate('gamebuilder');
+    } catch (e) {
+      setShareError('Could not save a remix on this device. Check that browser storage is available.');
+    }
+  };
+
+  const removePublishedProject = async (project) => {
+    if (!window.confirm(`Remove “${project.title}” from Community?`)) return;
+    try {
+      await deleteCommunityProject(project.id);
+      setProjects(prev => prev.filter(p => p.id !== project.id));
+      setSelectedProject(null);
+    } catch (e) {
+      setShareError(e.code === 'permission-denied' ? 'Only the creator can remove this project.' : e.message || 'Could not remove the project. Please try again.');
+    }
   };
 
   const addComment = (projectId) => {
@@ -156,11 +343,14 @@ export default function Community() {
     return (
       <div className="page">
         <button className="btn btn-ghost mb-4" onClick={() => setSelectedProject(null)}>← Back to Community</button>
+        {shareError && <div className="community-share-error" role="alert">{shareError}<button className="btn btn-ghost btn-sm" onClick={() => setShareError('')}>Dismiss</button></div>}
         <div style={{ display: 'flex', gap: 24 }}>
           <div style={{ flex: 1 }}>
             <div className="card">
-              <div style={{ height: 300, background: 'var(--bg-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 80, borderBottom: '1px solid var(--border-color)' }}>
-                {p.preview}
+              <div className="community-detail-preview">
+                {selectedProjectData && p.type === 'game'
+                  ? <CommunityGamePreview project={selectedProjectData} />
+                  : <div className="community-detail-preview-cover">{projectDataLoading ? 'Loading game preview…' : p.preview}</div>}
               </div>
               <div className="card-body">
                 <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:8 }}>
@@ -170,16 +360,15 @@ export default function Community() {
                 </div>
                 <p style={{ color: 'var(--text-secondary)', marginBottom: 16 }}>{p.description}</p>
                 <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
-                  <button className={`btn ${likedProjects.has(p.id) ? 'btn-primary' : 'btn-secondary'}`} onClick={() => toggleLike(p.id)}>
-                    {likedProjects.has(p.id) ? '❤️' : '🤍'} {p.likes + (likedProjects.has(p.id) ? 1 : 0)}
+                  <button className={`btn ${likedProjects.has(p.id) ? 'btn-primary' : 'btn-secondary'}`} onClick={() => toggleLike(p.id)} disabled={Boolean(p.static)}>
+                    <IconText>{likedProjects.has(p.id) ? '❤️' : '🤍'}</IconText> {p.likes || 0}
                   </button>
-                  <button className="btn btn-secondary">🔄 Remix</button>
-                  <button className="btn btn-secondary">🔗 Share</button>
-                  <button className="btn btn-success">▶ Open in Editor</button>
+                  <button className="btn btn-primary" onClick={openRemixInStudio} disabled={!selectedProjectData || projectDataLoading}><IconText>{projectDataLoading ? 'Loading game…' : '🔄 Remix in Game Builder'}</IconText></button>
+                  {p.ownerUid && p.ownerUid === auth.currentUser?.uid && <button className="btn btn-secondary" onClick={() => removePublishedProject(p)}><EmojiIcon e="🗑" style={{ marginRight: '0.35em' }} />Remove my project</button>}
                 </div>
                 <div style={{ display: 'flex', gap: 16, fontSize: 13, color: 'var(--text-muted)' }}>
-                  <span>👁️ {p.views} views</span>
-                  <span>🔄 {p.remixes} remixes</span>
+                  <span><EmojiIcon e="👁️" style={{ marginRight: '0.35em' }} />{p.views} views</span>
+                  <span><EmojiIcon e="🔄" style={{ marginRight: '0.35em' }} />{p.remixes} remixes</span>
                   <span>By <strong style={{ color: 'var(--accent-primary)' }}>{p.author}</strong></span>
                 </div>
               </div>
@@ -188,7 +377,7 @@ export default function Community() {
           <div style={{ width: 360 }}>
             <div className="card" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
               <div className="card-header">
-                <h3 style={{ fontSize: 15, fontWeight: 700 }}>💬 Comments ({projectComments.length})</h3>
+                <h3 style={{ fontSize: 15, fontWeight: 700 }}><EmojiIcon e="💬" style={{ marginRight: '0.35em' }} />Comments ({projectComments.length})</h3>
               </div>
               <div style={{ flex: 1, overflow: 'auto', padding: 16 }}>
                 {projectComments.map((c, i) => (
@@ -217,10 +406,25 @@ export default function Community() {
 
   return (
     <div className="page">
-      <div className="page-header">
-        <h1>🌍 Community</h1>
-        <p>Discover amazing projects, remix ideas, and share your creations with the world!</p>
+      <div className="page-header community-page-header">
+        <h1><EmojiIcon e="🌍" style={{ marginRight: '0.35em' }} />Community</h1>
+        <p>Explore what other coders are making, or team up in a studio and start something together.</p>
       </div>
+
+      <section className="community-welcome" aria-label="Community overview">
+        <div className="community-welcome-copy">
+          <span className="community-eyebrow">MAKE SOMETHING TOGETHER</span>
+          <h2>Your next idea starts here.</h2>
+          <p>Publish a game from Game Builder, then let other coders play with your idea and remix it into something new.</p>
+        </div>
+        <div className="community-welcome-actions">
+          <button className="btn btn-primary" onClick={() => onNavigate('gamebuilder')}><EmojiIcon e="🎮" style={{ marginRight: '0.35em' }} />Build &amp; publish</button>
+          <button className="btn btn-secondary" onClick={() => setShowCreateStudio(true)}><EmojiIcon e="🏛️" style={{ marginRight: '0.35em' }} />Create a studio</button>
+        </div>
+        <div className="community-welcome-orb" aria-hidden="true"><EmojiIcon e="✦" /></div>
+      </section>
+      {shareError && <div className="community-gallery-error" role="alert">{shareError}<button className="btn btn-ghost btn-sm" onClick={() => setShareError('')}>Dismiss</button></div>}
+      {projectsError && <div className="community-gallery-error" role="alert">{projectsError}<button className="btn btn-secondary btn-sm" onClick={refreshProjects}>Retry</button></div>}
 
       {/* Featured rotating banner */}
       {featuredProjects.length > 0 && (
@@ -257,21 +461,21 @@ export default function Community() {
       )}
 
       {/* Search + filter row */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
+      <div className="community-toolbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div className="tab-nav">
-            {['trending', 'featured', 'newest', 'popular'].map(t => (
+            {['trending', 'newest', 'popular'].map(t => (
               <button key={t} className={`tab-nav-item ${tab === t ? 'active' : ''}`} onClick={() => setTab(t)}>
-                {t === 'trending' ? '🔥' : t === 'featured' ? '⭐' : t === 'newest' ? '🆕' : '❤️'} {t.charAt(0).toUpperCase() + t.slice(1)}
+                <IconText>{t === 'trending' ? '🔥' : t === 'newest' ? '🆕' : '❤️'}</IconText> {t.charAt(0).toUpperCase() + t.slice(1)}
               </button>
             ))}
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <div style={{ position: 'relative' }}>
-            <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 14, pointerEvents: 'none' }}>🔍</span>
+            <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 14, pointerEvents: 'none' }}><EmojiIcon e="🔍" /></span>
             <input
-              className="input"
+              className="input community-search"
               placeholder="Search projects or creators..."
               value={search}
               onChange={e => setSearch(e.target.value)}
@@ -281,7 +485,7 @@ export default function Community() {
           <div style={{ display: 'flex', gap: 4 }}>
             {types.map(f => (
               <button key={f} className={`btn btn-sm ${filter === f ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setFilter(f)}>
-                {f === 'all' ? '🗂️' : f === 'game' ? '🎮' : f === 'website' ? '🌐' : f === 'app' ? '📱' : '🔬'} {f === 'all' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1) + 's'}
+                <IconText>{f === 'all' ? '🗂️' : f === 'game' ? '🎮' : f === 'website' ? '🌐' : f === 'app' ? '📱' : '🔬'}</IconText> {f === 'all' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1) + 's'}
               </button>
             ))}
           </div>
@@ -289,18 +493,18 @@ export default function Community() {
       </div>
 
       {/* Studios row */}
-      <div className="card" style={{ marginBottom: 20 }}>
+      <div className="card community-studios" style={{ marginBottom: 24 }}>
         <div className="card-header">
-          <h3 style={{ fontSize: 15, fontWeight: 700 }}>🏛️ Studios</h3>
+          <h3 style={{ fontSize: 15, fontWeight: 700 }}><EmojiIcon e="🏛️" style={{ marginRight: '0.35em' }} />Studios</h3>
           <button className="btn btn-primary btn-sm" onClick={() => setShowCreateStudio(true)}>+ Create Studio</button>
         </div>
         <div style={{ padding: '12px 16px' }}>
           {studiosLoading ? (
-            <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text-muted)', fontSize: 13 }}>⏳ Loading studios…</div>
+            <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text-muted)', fontSize: 13 }}><EmojiIcon e="⏳" style={{ marginRight: '0.35em' }} />Loading studios…</div>
           ) : studios.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text-muted)' }}>
-              <div style={{ fontSize: 32, marginBottom: 8 }}>🏛️</div>
-              <p style={{ fontSize: 13, margin: '0 0 12px' }}>No studios yet — create one to group projects with friends!</p>
+              <div className="community-studios-empty">
+              <div className="community-studios-empty-icon"><EmojiIcon e="🏛️" /></div>
+              <div><strong>No studios yet</strong><p>Make a studio to collect ideas and build projects with friends.</p></div>
               <button className="btn btn-primary btn-sm" onClick={() => setShowCreateStudio(true)}>+ Create the first studio</button>
             </div>
           ) : (
@@ -315,7 +519,7 @@ export default function Community() {
                   onMouseEnter={e => { e.currentTarget.style.borderColor = s.color; e.currentTarget.style.transform = 'translateY(-2px)'; }}
                   onMouseLeave={e => { if (selectedStudio?.id !== s.id) { e.currentTarget.style.borderColor = 'var(--border-color)'; e.currentTarget.style.transform = 'none'; } }}
                 >
-                  <div style={{ fontSize: 26, marginBottom: 6 }}>{s.icon}</div>
+                  <div style={{ fontSize: 26, marginBottom: 6 }}><EmojiIcon e={s.icon} /></div>
                   <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 2 }}>{s.name}</div>
                   {s.desc && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>{s.desc}</div>}
                   <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{s.projects} projects · {s.members} member{s.members !== 1 ? 's' : ''}</div>
@@ -339,7 +543,7 @@ export default function Community() {
             <div style={{ padding: '24px 24px 20px', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                 <div style={{ width: 56, height: 56, borderRadius: 14, background: `${selectedStudio.color}20`, border: `2px solid ${selectedStudio.color}50`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28 }}>
-                  {selectedStudio.icon}
+                  <EmojiIcon e={selectedStudio.icon} />
                 </div>
                 <div>
                   <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: 'var(--text-primary)' }}>{selectedStudio.name}</h2>
@@ -367,11 +571,11 @@ export default function Community() {
             <div style={{ padding: 24 }}>
               <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 20 }}>
                 Created by <strong style={{ color: 'var(--text-primary)' }}>{selectedStudio.creator}</strong>
-                {selectedStudio.localOnly && <span style={{ marginLeft: 8, fontSize: 11, color: '#f59e0b' }}>⚠️ Saved locally only</span>}
+                {selectedStudio.localOnly && <span style={{ marginLeft: 8, fontSize: 11, color: '#f59e0b' }}><EmojiIcon e="⚠️" style={{ marginRight: '0.35em' }} />Saved locally only</span>}
               </div>
 
               <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--text-muted)', borderTop: '1px solid var(--border-color)', borderBottom: '1px solid var(--border-color)', marginBottom: 20 }}>
-                <div style={{ fontSize: 32, marginBottom: 8 }}>📂</div>
+                <div style={{ fontSize: 32, marginBottom: 8 }}><EmojiIcon e="📂" /></div>
                 <p style={{ fontSize: 13, margin: '0 0 12px' }}>No projects in this studio yet.</p>
                 <button className="btn btn-secondary" style={{ fontSize: 13 }}>+ Add a Project</button>
               </div>
@@ -382,11 +586,11 @@ export default function Community() {
                     onClick={() => { if (window.confirm(`Delete studio "${selectedStudio.name}"?`)) deleteStudio(selectedStudio.id); }}
                     style={{ padding: '9px 16px', background: 'none', border: '1px solid #ef444460', borderRadius: 8, color: '#ef4444', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
                   >
-                    🗑️ Delete Studio
+                    <EmojiIcon e="🗑️" style={{ marginRight: '0.35em' }} />Delete Studio
                   </button>
                 )}
                 <button className="btn btn-primary" style={{ marginLeft: 'auto', padding: '9px 20px' }}>
-                  👥 Invite Members
+                  <EmojiIcon e="👥" style={{ marginRight: '0.35em' }} />Invite Members
                 </button>
               </div>
             </div>
@@ -395,25 +599,42 @@ export default function Community() {
       )}
 
       {/* Project grid */}
-      {filtered.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-muted)' }}>
-          <div style={{ fontSize: 48, marginBottom: 12 }}>🔍</div>
-          <div style={{ fontWeight: 600, marginBottom: 6 }}>No projects found</div>
-          <div style={{ fontSize: 13 }}>Try a different search or filter</div>
+      <section className="community-projects-section">
+      <div className="community-section-heading">
+        <div><span className="community-eyebrow">GET INSPIRED</span><h2>Shared projects</h2></div>
+        <span className="community-project-count">{filtered.length} {filtered.length === 1 ? 'project' : 'projects'}</span>
+      </div>
+      {projectsLoading && <div className="community-loading-projects">Loading shared projects…</div>}
+      {!projectsLoading && filtered.length === 0 ? (
+        <div className="community-empty-state">
+          <div className="community-empty-art" aria-hidden="true"><span><EmojiIcon e="💡" /></span><i><EmojiIcon e="✦" /></i><b>✧</b></div>
+          <div className="community-empty-copy">
+            <span className="community-eyebrow">{projects.length === 0 ? 'A SPACE FOR YOUR IDEAS' : 'NO MATCHES THIS TIME'}</span>
+            <h3>{projects.length === 0 ? 'Be the first to publish a game.' : 'We couldn’t find a matching project.'}</h3>
+            <p>{projects.length === 0
+              ? 'Open Game Builder, make something you’re proud of, then press 🌍 Share in the top toolbar. Your project will appear here for others to discover and remix.'
+              : 'Try a different search or clear the filters to see more projects.'}</p>
+            <div className="community-empty-actions">
+              {projects.length === 0 ? <>
+                <button className="btn btn-primary" onClick={() => onNavigate('gamebuilder')}><EmojiIcon e="🎮" style={{ marginRight: '0.35em' }} />Open Game Builder</button>
+                <span className="community-publish-hint">Make your game, then use <strong><EmojiIcon e="🌍" style={{ marginRight: '0.35em' }} />Share</strong> in the top bar.</span>
+              </> : <button className="btn btn-secondary" onClick={() => { setSearch(''); setFilter('all'); setTab('trending'); }}>Clear filters</button>}
+            </div>
+          </div>
         </div>
-      ) : (
+      ) : !projectsLoading && (
         <div className="grid grid-3" style={{ gap: 20 }}>
           {filtered.map(project => (
-            <div key={project.id} className="project-card" onClick={() => setSelectedProject(project)}>
+            <div key={project.id} className="project-card" role="button" tabIndex={0} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedProject(project); } }} onClick={() => { setShareError(''); setSelectedProject(project); }}>
               <div className="project-card-preview" style={{ background: `${project.type === 'game' ? '#ec489918' : project.type === 'website' ? '#06b6d418' : '#8b5cf618'}` }}>
-                <span style={{ fontSize: 56 }}>{project.preview}</span>
+                <CommunityProjectCardPreview project={project} />
                 {project.featured && (
                   <div style={{ position: 'absolute', top: 10, left: 10 }}>
                     <span className="tag tag-warning">⭐ Featured</span>
                   </div>
                 )}
                 <div className="overlay">
-                  <button className="btn btn-primary">▶ View Project</button>
+                  <button className="btn btn-primary"><EmojiIcon e="▶" style={{ marginRight: '0.35em' }} />View Project</button>
                 </div>
               </div>
               <div className="project-card-info">
@@ -427,17 +648,18 @@ export default function Community() {
                 </div>
                 <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>by <strong style={{ color: 'var(--text-secondary)' }}>{project.author}</strong></p>
                 <div className="project-card-meta">
-                  <span onClick={e => { e.stopPropagation(); toggleLike(project.id); }} style={{ cursor: 'pointer' }}>
-                    {likedProjects.has(project.id) ? '❤️' : '🤍'} {project.likes + (likedProjects.has(project.id) ? 1 : 0)}
-                  </span>
-                  <span>👁️ {project.views}</span>
-                  <span>🔄 {project.remixes}</span>
+                  <button className="community-card-like" aria-label={`Like ${project.title}`} onClick={e => { e.stopPropagation(); toggleLike(project.id); }} disabled={Boolean(project.static)}>
+                    <IconText>{likedProjects.has(project.id) ? '❤️' : '🤍'}</IconText> {project.likes || 0}
+                  </button>
+                  <span><EmojiIcon e="👁️" style={{ marginRight: '0.35em' }} />{project.views}</span>
+                  <span><EmojiIcon e="🔄" style={{ marginRight: '0.35em' }} />{project.remixes}</span>
                 </div>
               </div>
             </div>
           ))}
         </div>
       )}
+      </section>
     </div>
   );
 }

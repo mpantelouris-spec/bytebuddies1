@@ -5,6 +5,7 @@ import {
   BACKDROP_SELECT_OPTIONS,
 } from '../data/stageLookOptions';
 import { EXTENSION_BLOCKLY_TO_GAME, extensionBlocklyForShort, extensionGameTypeForBlockly } from './extensionBlockMaps';
+import { EmojiIcon } from '../components/ui/Icon.jsx';
 
 /* ─── Block type definitions ─── */
 export const BLOCK_DEFS = {
@@ -227,6 +228,12 @@ export const BLOCK_DEFS = {
   'chat-ask':         { label: 'Ask coding helper', icon: '✨', color: '#fb7185', category: 'chat', params: { question: 'How do I move the sprite?' } },
   'nlp-sentiment-val': { label: 'Sentiment (0–1)', icon: '💬', color: '#60a5fa', category: 'nlp', params: { text: 'I love coding' } },
   'nlp-positive':     { label: 'Is positive?', icon: '💬', color: '#60a5fa', category: 'nlp', params: { text: 'Great job!' } },
+  'video-play':       { label: 'Play clip', icon: '▶️', color: '#ef4444', category: 'video', params: {} },
+  'video-pause':      { label: 'Pause clip', icon: '⏸️', color: '#ef4444', category: 'video', params: {} },
+  'video-seek':       { label: 'Seek clip', icon: '⏩', color: '#ef4444', category: 'video', params: { sec: 0 } },
+  'log-add':          { label: 'Add log row', icon: '📝', color: '#0ea5e9', category: 'log', params: {} },
+  'log-clear':        { label: 'Clear log', icon: '🧹', color: '#0ea5e9', category: 'log', params: {} },
+  'log-count':        { label: 'Log row count', icon: '🔢', color: '#0ea5e9', category: 'log', params: {} },
   'weather-city':     { label: 'Weather city', icon: '⛅', color: '#38bdf8', category: 'weather', params: { city: 'London' } },
   'weather-temp':     { label: 'Temperature', icon: '🌡️', color: '#38bdf8', category: 'weather', params: {} },
   'weather-cond':     { label: 'Weather condition', icon: '☁️', color: '#38bdf8', category: 'weather', params: {} },
@@ -238,6 +245,8 @@ export const BLOCK_DEFS = {
   'pen-up':           { label: 'Pen up', icon: '📄', color: '#e74c3c', category: 'pen', params: {} },
   'pen-color':        { label: 'Set pen color', icon: '🎨', color: '#e74c3c', category: 'pen', params: { color: '#000000' } },
   'pen-size':         { label: 'Set pen size', icon: '📏', color: '#e74c3c', category: 'pen', params: { size: '1' } },
+  'pen-change-color': { label: 'Change pen colour by', icon: '🌈', color: '#e74c3c', category: 'pen', params: { amount: '10' } },
+  'pen-change-size':  { label: 'Change pen size by', icon: '📏', color: '#e74c3c', category: 'pen', params: { amount: '1' } },
   // TEXT TO SPEECH
   'tts-set-voice':    { label: 'Set voice', icon: '🎙️', color: '#3498db', category: 'tts', params: { voice: 'default' } },
   'tts-set-language': { label: 'Set language', icon: '🌍', color: '#3498db', category: 'tts', params: { lang: 'en' } },
@@ -387,6 +396,8 @@ export const BLOCK_DEFS = {
   'game-over':          { label: 'Game Over', icon: '💀', color: '#f59e0b', category: 'game', params: {} },
   'game-win':           { label: 'You Win!', icon: '🎉', color: '#f59e0b', category: 'game', params: {} },
   'game-next-level':    { label: 'Next Level', icon: '⬆️', color: '#f59e0b', category: 'game', params: {} },
+  'game-goto-level':    { label: 'Go to level', icon: '🗺', color: '#f59e0b', category: 'game', params: { level: '1' } },
+  'event-level':        { label: 'When level starts', icon: '🏁', color: '#f59e0b', category: 'event', params: { level: '1' } },
   'game-spawn':         { label: 'Spawn clone of', icon: '✨', color: '#f59e0b', category: 'game', params: { sprite: 'this' } },
   'game-destroy':       { label: 'Destroy this', icon: '💥', color: '#f59e0b', category: 'game', params: {} },
   'game-pause':         { label: 'Pause game', icon: '⏸️', color: '#f59e0b', category: 'game', params: {} },
@@ -554,6 +565,8 @@ export const SIDEBAR_TO_TYPE = {
   'add to score': 'game-score-add', 'set score': 'game-score-set',
   'lose a life': 'game-lose-life', 'set lives': 'game-set-lives',
   'game over': 'game-over', 'you win': 'game-win', 'next level': 'game-next-level',
+  'go to level': 'game-goto-level', 'when level starts': 'event-level',
+  'level': 'game-level-reporter', 'score': 'game-score-reporter', 'lives': 'game-lives-reporter',
   'spawn clone': 'game-spawn', 'destroy': 'game-destroy', 'pause game': 'game-pause',
   'point toward mouse': 'motion-point',
   'set rotation': 'motion-rotation', 'change angle by': 'motion-change-angle', 'wrap around': 'motion-wrap', 'stop motion': 'motion-stop',
@@ -572,7 +585,7 @@ export const SIDEBAR_TO_TYPE = {
   // POSE DETECTION
   'detect pose': 'pose-detect', 'pose landmark x': 'pose-landmark-x', 'pose landmark y': 'pose-landmark-y',
   // HAND DETECTION
-  'hand detected': 'hand-detect', 'gesture name': 'hand-gesture',
+  'hand detected': 'hand-detected', 'gesture name': 'hand-gesture',
   // EMOTION
   'detect emotion': 'emotion-detect', 'emotion label': 'emotion-label',
   // IMAGE CLASSIFICATION
@@ -712,10 +725,12 @@ export const SIDEBAR_TO_TYPE = {
   // Pen
   '[pen] down': 'pen-down', '[pen] up': 'pen-up', '[pen] clear': 'pen-clear',
   '[pen] set color': 'pen-set-color', '[pen] set size': 'pen-set-size',
+  '[pen] change color by': 'pen-change-color', '[pen] change size by': 'pen-change-size', '[pen] stamp': 'pen-stamp',
+  'change pen color by': 'pen-change-color', 'change pen size by': 'pen-change-size',
 
   // Video Sensing
   '[video] motion amount': 'video-motion', '[video] stage mirror': 'video-mirror',
-  '[video] play clip': 'video-motion', '[video] pause': 'control-wait', '[video] seek sec': 'control-wait',
+  '[video] play clip': 'video-play', '[video] pause': 'video-pause', '[video] seek sec': 'video-seek',
 
   // IoT / WiFi / ThingSpeak / HTTP / Weather / Webhook / QR / Log (stubs map to closest runtime blocks)
   '[wifi] connect to wi-fi': 'esp32-wifi', '[wifi] is wifi connected?': 'esp32-wifi',
@@ -749,7 +764,7 @@ export const SIDEBAR_TO_TYPE = {
   '[qr] get angle': 'qr-angle',
   '[qr] scan camera': 'qr-analyse-camera',
   '[qr] last payload': 'qr-data',
-  '[log] add row': 'action-print', '[log] clear': 'action-print', '[log] row count': 'sense-answer',
+  '[log] add row': 'log-add', '[log] clear': 'log-clear', '[log] row count': 'log-count',
 
   // Quarky Robot
   '[quarky] move [forward v] at () % speed': 'quarky-move', '[quarky] turn [left v] by () degrees': 'quarky-turn',
@@ -1172,11 +1187,11 @@ export function BlockContent({ block, onParamChange, context = {} }) {
   );
 
   switch (block.type) {
-    case 'var-create':  return <>{block.icon} Create{PI('name', 70)}={PI('value', 50)}</>;
-    case 'var-set':     return <>{block.icon} Set{PI('name', 70)}={PI('value', 50)}</>;
-    case 'var-change':  return <>{block.icon} Change{PI('name', 70)}by{PI('amount', 40)}</>;
-    case 'var-show':    return <>{block.icon} Show{PI('name', 80)}</>;
-    case 'logic-if':    return <>{block.icon} If{PI('condition', 120)}</>;
+    case 'var-create':  return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Create{PI('name', 70)}={PI('value', 50)}</>;
+    case 'var-set':     return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Set{PI('name', 70)}={PI('value', 50)}</>;
+    case 'var-change':  return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Change{PI('name', 70)}by{PI('amount', 40)}</>;
+    case 'var-show':    return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Show{PI('name', 80)}</>;
+    case 'logic-if':    return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />If{PI('condition', 120)}</>;
     case 'logic-and':   return <>{block.icon}{PI('left', 50)}{PI('op', 35)}{PI('right', 50)}</>;
     case 'logic-compare': return <>{block.icon}{PI('left', 50)}{PI('op', 30)}{PI('right', 50)}</>;
     case 'logic-bool': return (
@@ -1191,18 +1206,18 @@ export function BlockContent({ block, onParamChange, context = {} }) {
         />
       </>
     );
-    case 'loop-repeat': return <>{block.icon} Repeat{PI('times', 40)}times</>;
-    case 'loop-forever': return <>{block.icon} Forever</>;
-    case 'loop-while':  return <>{block.icon} While{PI('condition', 120)}</>;
-    case 'loop-foreach': return <>{block.icon} For{PI('item', 50)}in{PI('list', 60)}</>;
-    case 'loop-break':  return <>{block.icon} Break</>;
-    case 'func-define': return <>{block.icon} Define{PI('name', 80)}</>;
-    case 'func-call':   return <>{block.icon} Call{PI('name', 80)}</>;
-    case 'func-return': return <>{block.icon} Return{PI('value', 60)}</>;
-    case 'func-params': return <>{block.icon} Params{PI('params', 100)}</>;
-    case 'action-print': return <>{block.icon} Print{PI('message', 120)}</>;
-    case 'action-ask':  return <>{block.icon} Ask{PI('prompt', 130)}</>;
-    case 'action-alert': return <>{block.icon} Alert{PI('message', 120)}</>;
+    case 'loop-repeat': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Repeat{PI('times', 40)}times</>;
+    case 'loop-forever': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Forever</>;
+    case 'loop-while':  return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />While{PI('condition', 120)}</>;
+    case 'loop-foreach': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />For{PI('item', 50)}in{PI('list', 60)}</>;
+    case 'loop-break':  return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Break</>;
+    case 'func-define': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Define{PI('name', 80)}</>;
+    case 'func-call':   return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Call{PI('name', 80)}</>;
+    case 'func-return': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Return{PI('value', 60)}</>;
+    case 'func-params': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Params{PI('params', 100)}</>;
+    case 'action-print': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Print{PI('message', 120)}</>;
+    case 'action-ask':  return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Ask{PI('prompt', 130)}</>;
+    case 'action-alert': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Alert{PI('message', 120)}</>;
     case 'math-add':
     case 'math-subtract':
       return <>{PI('a', 36)}{PI('op', 28)}{PI('b', 36)}</>;
@@ -1223,100 +1238,99 @@ export function BlockContent({ block, onParamChange, context = {} }) {
       return <>letter{PI('letter', 28)}of{PI('text', 72)}</>;
     case 'text-contains':
       return <>{PI('text', 64)}contains{PI('search', 48)}?</>;
-    case 'text-create': return <>{block.icon} Text{PI('text', 100)}</>;
-    case 'text-join':   return <>{block.icon} Join{PI('a', 60)}+{PI('b', 60)}</>;
-    case 'text-length': return <>{block.icon} Length of{PI('text', 80)}</>;
-    case 'list-create': return <>{block.icon} Create list{PI('name', 70)}</>;
-    case 'list-add': return <>{block.icon} add{PI('item', 60)}to list{PI('list', 60)}</>;
-    case 'list-delete': return <>{block.icon} delete{PI('index', 30)}of list{PI('list', 60)}</>;
-    case 'list-delete-all': return <>{block.icon} delete all of{PI('list', 70)}</>;
-    case 'list-insert': return <>{block.icon} insert{PI('item', 50)}at{PI('index', 28)}of list{PI('list', 55)}</>;
-    case 'list-replace': return <>{block.icon} replace item{PI('index', 28)}of list{PI('list', 50)}with{PI('item', 50)}</>;
+    case 'text-create': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Text{PI('text', 100)}</>;
+    case 'text-join':   return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Join{PI('a', 60)}+{PI('b', 60)}</>;
+    case 'text-length': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Length of{PI('text', 80)}</>;
+    case 'list-create': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Create list{PI('name', 70)}</>;
+    case 'list-add': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />add{PI('item', 60)}to list{PI('list', 60)}</>;
+    case 'list-delete': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />delete{PI('index', 30)}of list{PI('list', 60)}</>;
+    case 'list-delete-all': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />delete all of{PI('list', 70)}</>;
+    case 'list-insert': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />insert{PI('item', 50)}at{PI('index', 28)}of list{PI('list', 55)}</>;
+    case 'list-replace': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />replace item{PI('index', 28)}of list{PI('list', 50)}with{PI('item', 50)}</>;
     case 'list-item': return <>( item{PI('index', 28)}of list{PI('list', 60)} )</>;
     case 'list-index': return <>( item # of{PI('item', 50)}in list{PI('list', 60)} )</>;
     case 'list-length': return <>( length of list{PI('list', 70)} )</>;
     case 'list-contains': return <>{PI('list', 60)}contains{PI('item', 50)}?</>;
-    case 'list-show': return <>{block.icon} show list{PI('list', 70)}</>;
-    case 'list-hide': return <>{block.icon} hide list{PI('list', 70)}</>;
-    case 'list-get': return <>{block.icon} Get #{PI('index', 30)}from{PI('list', 60)}</>;
-    case 'sprite-move': return <>{block.icon} Move{PI('steps', 40)}steps</>;
-    case 'sprite-turn': return <>{block.icon} Turn{PI('degrees', 40)}°</>;
-    case 'sprite-turn-right': return <>{block.icon} Turn clockwise{PI('degrees', 40)}°</>;
-    case 'sprite-turn-left': return <>{block.icon} Turn anticlockwise{PI('degrees', 40)}°</>;
-    case 'sprite-goto': return <>{block.icon} Go to x{PI('x', 35)}y{PI('y', 35)}</>;
-    case 'sprite-changex': return <>{block.icon} Change X by{PI('amount', 40)}</>;
-    case 'sprite-changey': return <>{block.icon} Change Y by{PI('amount', 40)}</>;
-    case 'sprite-setsize': return <>{block.icon} Set size to{PI('size', 40)}%</>;
-    case 'sprite-show': return <>{block.icon} Show</>;
-    case 'sprite-hide': return <>{block.icon} Hide</>;
-    case 'sprite-say':  return <>{block.icon} Say{PI('text', 80)}for{PI('secs', 25)}s</>;
-    case 'control-wait': return <><span>⏱</span> Wait{PI('secs', 35)} seconds</>;
-    case 'control-wait-until': return <><span>⏱</span> Wait until <span style={{ opacity: 0.5 }}>(condition)</span></>;
-    case 'control-repeat-until': return <><span>🔁</span> Repeat until <span style={{ opacity: 0.5 }}>(condition)</span></>;
-    case 'control-stop': return <><span>⏹</span> Stop{ParamSelect({ value: p.stopOption || 'all', onChange: (v) => onParamChange(block.id, 'stopOption', v), width: 120, options: ['all', 'this script', 'other scripts in sprite'] })}</>;
-    case 'control-create-clone': return <><span>🧬</span> Create clone of{ParamSelect({ value: p.sprite || 'myself', onChange: (v) => onParamChange(block.id, 'sprite', v), width: 72, options: ['myself', 'Sprite1'] })}</>;
+    case 'list-show': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />show list{PI('list', 70)}</>;
+    case 'list-hide': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />hide list{PI('list', 70)}</>;
+    case 'list-get': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Get #{PI('index', 30)}from{PI('list', 60)}</>;
+    case 'sprite-move': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Move{PI('steps', 40)}steps</>;
+    case 'sprite-turn': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Turn{PI('degrees', 40)}°</>;
+    case 'sprite-turn-right': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Turn clockwise{PI('degrees', 40)}°</>;
+    case 'sprite-turn-left': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Turn anticlockwise{PI('degrees', 40)}°</>;
+    case 'sprite-goto': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Go to x{PI('x', 35)}y{PI('y', 35)}</>;
+    case 'sprite-changex': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Change X by{PI('amount', 40)}</>;
+    case 'sprite-changey': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Change Y by{PI('amount', 40)}</>;
+    case 'sprite-setsize': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Set size to{PI('size', 40)}%</>;
+    case 'sprite-show': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Show</>;
+    case 'sprite-hide': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Hide</>;
+    case 'sprite-say':  return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Say{PI('text', 80)}for{PI('secs', 25)}s</>;
+    case 'control-wait': return <><span><EmojiIcon e="⏱" /></span> Wait{PI('secs', 35)} seconds</>;
+    case 'control-wait-until': return <><span><EmojiIcon e="⏱" /></span> Wait until <span style={{ opacity: 0.5 }}>(condition)</span></>;
+    case 'control-repeat-until': return <><span><EmojiIcon e="🔁" /></span> Repeat until <span style={{ opacity: 0.5 }}>(condition)</span></>;
+    case 'control-stop': return <><span><EmojiIcon e="⏹" /></span> Stop{ParamSelect({ value: p.stopOption || 'all', onChange: (v) => onParamChange(block.id, 'stopOption', v), width: 120, options: ['all', 'this script', 'other scripts in sprite'] })}</>;
+    case 'control-create-clone': return <><span><EmojiIcon e="🧬" /></span> Create clone of{ParamSelect({ value: p.sprite || 'myself', onChange: (v) => onParamChange(block.id, 'sprite', v), width: 72, options: ['myself', 'Sprite1'] })}</>;
     case 'control-delete-clone': return <><span>💥</span> Delete this clone</>;
-    case 'event-clone': return <><span>🧬</span> When I start as a clone</>;
-    case 'sound-play': return <>{block.icon} Start sound{PI('sound', 72)}</>;
-    case 'sound-play-until-done': return <>{block.icon} Play sound{PI('sound', 72)} until done</>;
-    case 'sound-stop': return <>{block.icon} Stop all sounds</>;
+    case 'event-clone': return <><span><EmojiIcon e="🧬" /></span> When I start as a clone</>;
+    case 'sound-play': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Start sound{PI('sound', 72)}</>;
+    case 'sound-play-until-done': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Play sound{PI('sound', 72)} until done</>;
+    case 'sound-stop': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Stop all sounds</>;
     case 'sound-set-volume':
-    case 'sound-volume': return <>{block.icon} Set volume to{PI('volume', 40)}%</>;
-    case 'sound-get-volume': return <>{block.icon} volume</>;
+    case 'sound-volume': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Set volume to{PI('volume', 40)}%</>;
+    case 'sound-get-volume': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />volume</>;
     case 'sound-change-effect': return <>Change{PI('effect', 52)} effect by{PI('value', 40)}</>;
     case 'sound-set-effect': return <>Set{PI('effect', 52)} effect to{PI('value', 40)}</>;
-    case 'sound-clear-effects': return <>{block.icon} Clear sound effects</>;
-    case 'ai-classify': return <>{block.icon} Classify{PI('input', 100)}</>;
-    case 'ai-generate': return <>{block.icon} Generate{PI('prompt', 120)}</>;
-    case 'event-start': return <>{block.icon} When ▶ clicked</>;
-    case 'event-keypress': return <>{block.icon} On key{PI('key', 55)}press</>;
-    case 'event-click': return <>{block.icon} On this sprite clicked</>;
-    case 'event-collision': return <>{block.icon} On collision with {PI('with', 70)}</>;
-    case 'event-message': return <>{block.icon} On message{PI('message', 60)}</>;
-    case 'event-broadcast': return <>{block.icon} Broadcast{PI('message', 60)}</>;
-    case 'sense-touching': return <>{block.icon} Touching edge?</>;
-    case 'sense-touching-sprite': return <>{block.icon} Touching{PI('sprite', 70)}?</>;
-    case 'sense-key': return <>{block.icon} Key{PI('key', 60)}pressed?</>;
-    case 'sense-mouse-x': return <>{block.icon} Mouse X</>;
-    case 'sense-mouse-y': return <>{block.icon} Mouse Y</>;
-    case 'sense-distance': return <>{block.icon} Distance to mouse</>;
-    case 'sense-timer': return <>{block.icon} Timer</>;
-    case 'sense-reset-timer': return <>{block.icon} Reset timer</>;
-    case 'sprite-x-reporter': return <>{block.icon} X position</>;
-    case 'sprite-y-reporter': return <>{block.icon} Y position</>;
-    case 'sprite-direction-reporter': return <>{block.icon} Direction</>;
-    case 'looks-say': return <>{block.icon} Say{PI('text', 80)}</>;
-    case 'sprite-think': return <>{block.icon} Think{PI('text', 80)}for{PI('secs', 25)}s</>;
-    case 'looks-think': return <>{block.icon} Think{PI('text', 80)}</>;
-    case 'looks-costume': return <>{block.icon} Switch costume to{PI('costume', 50)}</>;
-    case 'looks-change-size': return <>{block.icon} Change size by{PI('amount', 40)}</>;
-    case 'looks-change-effect': return <>{block.icon} Change{PI('effect', 55)}effect by{PI('value', 40)}</>;
-    case 'looks-set-effect': return <>{block.icon} Set{PI('effect', 55)}effect to{PI('value', 40)}</>;
-    case 'looks-goto-layer': return <>{block.icon} Go to{PI('layer', 50)}layer</>;
-    case 'looks-layer-step': return <>{block.icon} Go{PI('direction', 55)}{PI('layers', 30)}layers</>;
-    case 'looks-next-costume': return <>{block.icon} Next costume</>;
-    case 'looks-color-effect': return <>{block.icon} Color effect{PI('value', 40)}</>;
-    case 'looks-ghost-effect': return <>{block.icon} Ghost effect{PI('value', 40)}</>;
-    case 'looks-clear-effects': return <>{block.icon} Clear effects</>;
-    case 'looks-grow': return <>{block.icon} Grow by{PI('amount', 40)}</>;
-    case 'looks-shrink': return <>{block.icon} Shrink by{PI('amount', 40)}</>;
-    case 'looks-front': return <>{block.icon} Go to front</>;
-    case 'looks-back': return <>{block.icon} Go to back</>;
-    case 'looks-backdrop': return <>{block.icon} Switch backdrop to{PI('backdrop', 72)}</>;
-    case 'looks-next-backdrop': return <>{block.icon} Next backdrop</>;
-    case 'looks-forward-layers': return <>{block.icon} Go forward{PI('layers', 40)}layers</>;
-    case 'looks-costume-reporter': return <>{block.icon} Costume number</>;
-    case 'looks-backdrop-reporter': return <>{block.icon} Backdrop number</>;
-    case 'sprite-size-reporter': return <>{block.icon} Size</>;
-    case 'physics-velocity': return <>{block.icon} Velocity X{PI('vx', 35)}Y{PI('vy', 35)}</>;
-    case 'physics-gravity': return <>{block.icon} Gravity{PI('amount', 40)}</>;
-    case 'physics-bounce': return <>{block.icon} Bounce off edges</>;
-    case 'physics-friction': return <>{block.icon} Friction{PI('amount', 40)}</>;
-    case 'physics-jump': return <>{block.icon} Physics jump{PI('power', 40)}</>;
+    case 'sound-clear-effects': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Clear sound effects</>;
+    case 'ai-classify': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Classify{PI('input', 100)}</>;
+    case 'ai-generate': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Generate{PI('prompt', 120)}</>;
+    case 'event-start': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />When ▶ clicked</>;
+    case 'event-keypress': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />On key{PI('key', 55)}press</>;
+    case 'event-click': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />On this sprite clicked</>;
+    case 'event-collision': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />On collision with {PI('with', 70)}</>;
+    case 'event-message': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />On message{PI('message', 60)}</>;
+    case 'event-broadcast': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Broadcast{PI('message', 60)}</>;
+    case 'sense-touching': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Touching edge?</>;
+    case 'sense-touching-sprite': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Touching{PI('sprite', 70)}?</>;
+    case 'sense-key': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Key{PI('key', 60)}pressed?</>;
+    case 'sense-mouse-x': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Mouse X</>;
+    case 'sense-mouse-y': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Mouse Y</>;
+    case 'sense-distance': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Distance to mouse</>;
+    case 'sense-timer': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Timer</>;
+    case 'sense-reset-timer': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Reset timer</>;
+    case 'sprite-x-reporter': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />X position</>;
+    case 'sprite-y-reporter': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Y position</>;
+    case 'sprite-direction-reporter': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Direction</>;
+    case 'looks-say': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Say{PI('text', 80)}</>;
+    case 'sprite-think': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Think{PI('text', 80)}for{PI('secs', 25)}s</>;
+    case 'looks-think': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Think{PI('text', 80)}</>;
+    case 'looks-costume': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Switch costume to{PI('costume', 50)}</>;
+    case 'looks-change-size': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Change size by{PI('amount', 40)}</>;
+    case 'looks-change-effect': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Change{PI('effect', 55)}effect by{PI('value', 40)}</>;
+    case 'looks-set-effect': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Set{PI('effect', 55)}effect to{PI('value', 40)}</>;
+    case 'looks-goto-layer': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Go to{PI('layer', 50)}layer</>;
+    case 'looks-layer-step': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Go{PI('direction', 55)}{PI('layers', 30)}layers</>;
+    case 'looks-next-costume': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Next costume</>;
+    case 'looks-color-effect': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Color effect{PI('value', 40)}</>;
+    case 'looks-ghost-effect': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Ghost effect{PI('value', 40)}</>;
+    case 'looks-clear-effects': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Clear effects</>;
+    case 'looks-grow': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Grow by{PI('amount', 40)}</>;
+    case 'looks-shrink': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Shrink by{PI('amount', 40)}</>;
+    case 'looks-front': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Go to front</>;
+    case 'looks-back': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Go to back</>;
+    case 'looks-backdrop': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Switch backdrop to{PI('backdrop', 72)}</>;
+    case 'looks-next-backdrop': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Next backdrop</>;
+    case 'looks-forward-layers': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Go forward{PI('layers', 40)}layers</>;
+    case 'looks-costume-reporter': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Costume number</>;
+    case 'looks-backdrop-reporter': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Backdrop number</>;
+    case 'sprite-size-reporter': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Size</>;
+    case 'physics-velocity': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Velocity X{PI('vx', 35)}Y{PI('vy', 35)}</>;
+    case 'physics-gravity': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Gravity{PI('amount', 40)}</>;
+    case 'physics-bounce': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Bounce off edges</>;
+    case 'physics-friction': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Friction{PI('amount', 40)}</>;
+    case 'physics-jump': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Physics jump{PI('power', 40)}</>;
     case 'physics-allow-double-jump': return (
       <>
-        {block.icon}
-        Allow double jump
+        <EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Allow double jump
         <ParamSelect
           value={p.enable === 'false' ? 'false' : 'true'}
           onChange={(v) => onParamChange(block.id, 'enable', v)}
@@ -1326,130 +1340,130 @@ export function BlockContent({ block, onParamChange, context = {} }) {
         />
       </>
     );
-    case 'motion-jump': return <>{block.icon} Jump with power{PI('power', 40)}</>;
-    case 'physics-push': return <>{block.icon} Push dir{PI('direction', 35)}force{PI('force', 35)}</>;
-    case 'game-score-add': return <>{block.icon} Add{PI('amount', 40)}to score</>;
-    case 'game-score-set': return <>{block.icon} Set score to{PI('value', 40)}</>;
-    case 'game-lose-life': return <>{block.icon} Lose a life</>;
-    case 'game-set-lives': return <>{block.icon} Set lives to{PI('value', 35)}</>;
-    case 'game-over': return <>{block.icon} Game Over</>;
-    case 'game-win': return <>{block.icon} You Win!</>;
-    case 'game-next-level': return <>{block.icon} Next Level</>;
-    case 'game-spawn': return <>{block.icon} Spawn clone of{PI('sprite', 60)}</>;
-    case 'game-destroy': return <>{block.icon} Destroy this</>;
-    case 'game-pause': return <>{block.icon} Pause game</>;
-    case 'motion-glide': return <>{block.icon} Glide{PI('secs', 30)}s to x{PI('x', 35)}y{PI('y', 35)}</>;
-    case 'motion-point': return <>{block.icon} Point toward mouse</>;
-    case 'motion-point-dir': return <>{block.icon} Point dir{PI('direction', 40)}</>;
-    case 'motion-setx': return <>{block.icon} Set X to{PI('x', 40)}</>;
-    case 'motion-sety': return <>{block.icon} Set Y to{PI('y', 40)}</>;
-    case 'motion-speed': return <>{block.icon} Speed{PI('speed', 40)}</>;
-    case 'motion-rotation': return <>{block.icon} Set rotation to{PI('rotation', 40)}°</>;
-    case 'motion-change-angle': return <>{block.icon} Change angle by{PI('angle', 40)}°</>;
-    case 'motion-wrap': return <>{block.icon} Wrap around</>;
-    case 'motion-stop': return <>{block.icon} Stop motion</>;
-    case 'myblock-define': return <>{block.icon} Define{PI('name', 100)}</>;
+    case 'motion-jump': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Jump with power{PI('power', 40)}</>;
+    case 'physics-push': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Push dir{PI('direction', 35)}force{PI('force', 35)}</>;
+    case 'game-score-add': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Add{PI('amount', 40)}to score</>;
+    case 'game-score-set': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Set score to{PI('value', 40)}</>;
+    case 'game-lose-life': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Lose a life</>;
+    case 'game-set-lives': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Set lives to{PI('value', 35)}</>;
+    case 'game-over': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Game Over</>;
+    case 'game-win': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />You Win!</>;
+    case 'game-next-level': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Next Level</>;
+    case 'game-spawn': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Spawn clone of{PI('sprite', 60)}</>;
+    case 'game-destroy': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Destroy this</>;
+    case 'game-pause': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Pause game</>;
+    case 'motion-glide': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Glide{PI('secs', 30)}s to x{PI('x', 35)}y{PI('y', 35)}</>;
+    case 'motion-point': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Point toward mouse</>;
+    case 'motion-point-dir': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Point dir{PI('direction', 40)}</>;
+    case 'motion-setx': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Set X to{PI('x', 40)}</>;
+    case 'motion-sety': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Set Y to{PI('y', 40)}</>;
+    case 'motion-speed': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Speed{PI('speed', 40)}</>;
+    case 'motion-rotation': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Set rotation to{PI('rotation', 40)}°</>;
+    case 'motion-change-angle': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Change angle by{PI('angle', 40)}°</>;
+    case 'motion-wrap': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Wrap around</>;
+    case 'motion-stop': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Stop motion</>;
+    case 'myblock-define': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Define{PI('name', 100)}</>;
 
-    case 'myblock-run': return <>{block.icon} Run{PI('name', 100)}</>;
+    case 'myblock-run': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Run{PI('name', 100)}</>;
     // PEN
-    case 'pen-erase': return <>{block.icon} Erase all</>;
-    case 'pen-stamp': return <>{block.icon} Stamp</>;
-    case 'pen-down': return <>{block.icon} Pen down</>;
-    case 'pen-up': return <>{block.icon} Pen up</>;
-    case 'pen-color': return <>{block.icon} Pen color{PI('color', 60)}</>;
-    case 'pen-size': return <>{block.icon} Pen size{PI('size', 40)}</>;
+    case 'pen-erase': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Erase all</>;
+    case 'pen-stamp': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Stamp</>;
+    case 'pen-down': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Pen down</>;
+    case 'pen-up': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Pen up</>;
+    case 'pen-color': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Pen color{PI('color', 60)}</>;
+    case 'pen-size': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Pen size{PI('size', 40)}</>;
     // TTS
-    case 'tts-set-voice': return <>{block.icon} Voice{PI('voice', 80)}</>;
-    case 'tts-set-language': return <>{block.icon} Language{PI('lang', 50)}</>;
+    case 'tts-set-voice': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Voice{PI('voice', 80)}</>;
+    case 'tts-set-language': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Language{PI('lang', 50)}</>;
     // FACE
-    case 'face-detect': return <>{block.icon} Detect face</>;
-    case 'face-x': return <>{block.icon} Face X</>;
-    case 'face-y': return <>{block.icon} Face Y</>;
-    case 'face-width': return <>{block.icon} Face width</>;
-    case 'face-height': return <>{block.icon} Face height</>;
-    case 'face-count': return <>{block.icon} Faces count</>;
+    case 'face-detect': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Detect face</>;
+    case 'face-x': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Face X</>;
+    case 'face-y': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Face Y</>;
+    case 'face-width': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Face width</>;
+    case 'face-height': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Face height</>;
+    case 'face-count': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Faces count</>;
     // OBJECT
-    case 'object-detect': return <>{block.icon} Detect objects</>;
-    case 'object-label': return <>{block.icon} Object label{PI('index', 35)}</>;
-    case 'object-confidence': return <>{block.icon} Confidence{PI('index', 35)}</>;
+    case 'object-detect': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Detect objects</>;
+    case 'object-label': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Object label{PI('index', 35)}</>;
+    case 'object-confidence': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Confidence{PI('index', 35)}</>;
     // POSE
-    case 'pose-detect': return <>{block.icon} Detect pose</>;
-    case 'pose-landmark-x': return <>{block.icon} Landmark X{PI('landmark', 35)}</>;
-    case 'pose-landmark-y': return <>{block.icon} Landmark Y{PI('landmark', 35)}</>;
+    case 'pose-detect': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Detect pose</>;
+    case 'pose-landmark-x': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Landmark X{PI('landmark', 35)}</>;
+    case 'pose-landmark-y': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Landmark Y{PI('landmark', 35)}</>;
     // HAND
-    case 'hand-detect': return <>{block.icon} Hand detected</>;
-    case 'hand-gesture': return <>{block.icon} Gesture</>;
+    case 'hand-detect': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Hand detected</>;
+    case 'hand-gesture': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Gesture</>;
     // EMOTION
-    case 'emotion-detect': return <>{block.icon} Emotion</>;
-    case 'emotion-label': return <>{block.icon} Label</>;
+    case 'emotion-detect': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Emotion</>;
+    case 'emotion-label': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Label</>;
     // ML
-    case 'img-classify': return <>{block.icon} Classify</>;
-    case 'img-class-label': return <>{block.icon} Class</>;
-    case 'ml-train': return <>{block.icon} Train classifier (sim)</>;
-    case 'ml-training-open': return <>{block.icon} Training window open</>;
-    case 'ml-predict': return <>{block.icon} Predict{PI('input', 70)}</>;
+    case 'img-classify': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Classify</>;
+    case 'img-class-label': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Class</>;
+    case 'ml-train': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Train classifier (sim)</>;
+    case 'ml-training-open': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Training window open</>;
+    case 'ml-predict': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Predict{PI('input', 70)}</>;
     // CHATBOT
-    case 'chatbot-ask': return <>{block.icon} Ask{PI('question', 100)}</>;
-    case 'chatbot-response': return <>{block.icon} Response</>;
+    case 'chatbot-ask': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Ask{PI('question', 100)}</>;
+    case 'chatbot-response': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Response</>;
     // NLP
-    case 'nlp-sentiment': return <>{block.icon} Sentiment{PI('text', 80)}</>;
-    case 'nlp-keywords': return <>{block.icon} Keywords{PI('text', 80)}</>;
-    case 'nlp-language': return <>{block.icon} Language{PI('text', 80)}</>;
+    case 'nlp-sentiment': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Sentiment{PI('text', 80)}</>;
+    case 'nlp-keywords': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Keywords{PI('text', 80)}</>;
+    case 'nlp-language': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Language{PI('text', 80)}</>;
     // ARDUINO
-    case 'arduino-digital': return <>{block.icon} Digital{PI('pin', 35)}{PI('value', 30)}</>;
-    case 'arduino-analog': return <>{block.icon} Analog{PI('pin', 35)}{PI('value', 30)}</>;
-    case 'arduino-read-digital': return <>{block.icon} Read digital{PI('pin', 35)}</>;
-    case 'arduino-read-analog': return <>{block.icon} Read analog{PI('pin', 35)}</>;
-    case 'arduino-servo': return <>{block.icon} Servo{PI('pin', 35)}@{PI('angle', 40)}°</>;
-    case 'arduino-buzzer': return <>{block.icon} Buzzer{PI('pin', 35)}{PI('freq', 40)}Hz</>;
+    case 'arduino-digital': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Digital{PI('pin', 35)}{PI('value', 30)}</>;
+    case 'arduino-analog': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Analog{PI('pin', 35)}{PI('value', 30)}</>;
+    case 'arduino-read-digital': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Read digital{PI('pin', 35)}</>;
+    case 'arduino-read-analog': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Read analog{PI('pin', 35)}</>;
+    case 'arduino-servo': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Servo{PI('pin', 35)}@{PI('angle', 40)}°</>;
+    case 'arduino-buzzer': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Buzzer{PI('pin', 35)}{PI('freq', 40)}Hz</>;
     // MICROBIT
-    case 'microbit-display': return <>{block.icon} Display{PI('text', 80)}</>;
-    case 'microbit-button': return <>{block.icon} Button{PI('button', 50)}</>;
-    case 'microbit-accel-x': return <>{block.icon} Accel X</>;
-    case 'microbit-accel-y': return <>{block.icon} Accel Y</>;
-    case 'microbit-accel-z': return <>{block.icon} Accel Z</>;
-    case 'microbit-compass': return <>{block.icon} Compass</>;
-    case 'microbit-temp': return <>{block.icon} Temp</>;
-    case 'microbit-radio-send': return <>{block.icon} Radio send{PI('message', 70)}</>;
-    case 'microbit-radio-recv': return <>{block.icon} Radio recv</>;
+    case 'microbit-display': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Display{PI('text', 80)}</>;
+    case 'microbit-button': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Button{PI('button', 50)}</>;
+    case 'microbit-accel-x': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Accel X</>;
+    case 'microbit-accel-y': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Accel Y</>;
+    case 'microbit-accel-z': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Accel Z</>;
+    case 'microbit-compass': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Compass</>;
+    case 'microbit-temp': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Temp</>;
+    case 'microbit-radio-send': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Radio send{PI('message', 70)}</>;
+    case 'microbit-radio-recv': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Radio recv</>;
     // ESP32
-    case 'esp32-wifi': return <>{block.icon} WiFi{PI('ssid', 70)}</>;
-    case 'esp32-http-get': return <>{block.icon} GET{PI('url', 100)}</>;
-    case 'esp32-http-post': return <>{block.icon} POST{PI('url', 80)}</>;
-    case 'esp32-mqtt-pub': return <>{block.icon} Publish{PI('topic', 70)}</>;
-    case 'esp32-mqtt-sub': return <>{block.icon} Subscribe{PI('topic', 70)}</>;
+    case 'esp32-wifi': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />WiFi{PI('ssid', 70)}</>;
+    case 'esp32-http-get': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />GET{PI('url', 100)}</>;
+    case 'esp32-http-post': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />POST{PI('url', 80)}</>;
+    case 'esp32-mqtt-pub': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Publish{PI('topic', 70)}</>;
+    case 'esp32-mqtt-sub': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Subscribe{PI('topic', 70)}</>;
     // MOTOR
-    case 'motor-forward': return <>{block.icon} Forward{PI('speed', 50)}</>;
-    case 'motor-backward': return <>{block.icon} Backward{PI('speed', 50)}</>;
-    case 'motor-stop': return <>{block.icon} Stop</>;
-    case 'motor-turn-left': return <>{block.icon} Left{PI('speed', 50)}</>;
-    case 'motor-turn-right': return <>{block.icon} Right{PI('speed', 50)}</>;
+    case 'motor-forward': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Forward{PI('speed', 50)}</>;
+    case 'motor-backward': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Backward{PI('speed', 50)}</>;
+    case 'motor-stop': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Stop</>;
+    case 'motor-turn-left': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Left{PI('speed', 50)}</>;
+    case 'motor-turn-right': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Right{PI('speed', 50)}</>;
     // SERVO
-    case 'servo-rotate': return <>{block.icon} Rotate{PI('angle', 50)}°</>;
-    case 'servo-cont-rot': return <>{block.icon} Continuous{PI('speed', 50)}</>;
+    case 'servo-rotate': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Rotate{PI('angle', 50)}°</>;
+    case 'servo-cont-rot': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Continuous{PI('speed', 50)}</>;
     // SENSORS
-    case 'sensor-line': return <>{block.icon} Line sensor</>;
-    case 'sensor-obstacle': return <>{block.icon} Obstacle</>;
-    case 'sensor-distance': return <>{block.icon} Distance</>;
-    case 'sensor-temperature': return <>{block.icon} Temperature</>;
-    case 'sensor-humidity': return <>{block.icon} Humidity</>;
-    case 'sensor-light': return <>{block.icon} Light</>;
+    case 'sensor-line': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Line sensor</>;
+    case 'sensor-obstacle': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Obstacle</>;
+    case 'sensor-distance': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Distance</>;
+    case 'sensor-temperature': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Temperature</>;
+    case 'sensor-humidity': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Humidity</>;
+    case 'sensor-light': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Light</>;
     // DISPLAY
-    case 'lcd-print': return <>{block.icon} LCD{PI('text', 80)}</>;
-    case 'oled-print': return <>{block.icon} OLED{PI('text', 80)}</>;
-    case 'lcd-clear': return <>{block.icon} Clear</>;
+    case 'lcd-print': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />LCD{PI('text', 80)}</>;
+    case 'oled-print': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />OLED{PI('text', 80)}</>;
+    case 'lcd-clear': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Clear</>;
     // IOT
-    case 'iot-relay-on': return <>{block.icon} Relay ON</>;
-    case 'iot-relay-off': return <>{block.icon} Relay OFF</>;
-    case 'iot-send-data': return <>{block.icon} Send{PI('data', 70)}</>;
-    case 'iot-recv-data': return <>{block.icon} Receive</>;
+    case 'iot-relay-on': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Relay ON</>;
+    case 'iot-relay-off': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Relay OFF</>;
+    case 'iot-send-data': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Send{PI('data', 70)}</>;
+    case 'iot-recv-data': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Receive</>;
     // GAMEPAD
-    case 'gamepad-button': return <>{block.icon} Button{PI('button', 50)}</>;
-    case 'gamepad-stick-x': return <>{block.icon} Stick X</>;
-    case 'gamepad-stick-y': return <>{block.icon} Stick Y</>;
+    case 'gamepad-button': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Button{PI('button', 50)}</>;
+    case 'gamepad-stick-x': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Stick X</>;
+    case 'gamepad-stick-y': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Stick Y</>;
     // CLOUD
-    case 'cloud-set': return <>{block.icon} Cloud{PI('var', 60)}={PI('value', 50)}</>;
-    case 'cloud-get': return <>{block.icon} Cloud{PI('var', 60)}</>;
-    default:            return <>{block.icon} {block.label}</>;
+    case 'cloud-set': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Cloud{PI('var', 60)}={PI('value', 50)}</>;
+    case 'cloud-get': return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />Cloud{PI('var', 60)}</>;
+    default:            return <><EmojiIcon e={block.icon} style={{ marginRight: '0.35em' }} />{block.label}</>;
   }
 }

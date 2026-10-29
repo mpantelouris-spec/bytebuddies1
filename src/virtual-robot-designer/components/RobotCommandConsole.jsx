@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { migrateDesign } from '../config.js';
+import { EmojiIcon, IconText } from '../../components/ui/Icon.jsx';
 
 const BOOT = [
   'ByteBuddies Robotics OS v3.1',
@@ -39,10 +40,10 @@ export default function RobotCommandConsole({ design, onTest, onGenerate, genera
       </div>
       <div className="vrd-console-actions">
         <button type="button" className="vrd-console-btn vrd-console-btn--gen" disabled={generating} onClick={onGenerate}>
-          {generating ? '⏳ AI PROCESSING…' : '🤖 GENERATE VARIANTS'}
+          <IconText>{generating ? '⏳ AI PROCESSING…' : '🤖 GENERATE VARIANTS'}</IconText>
         </button>
         <button type="button" className="vrd-console-btn vrd-console-btn--sim" onClick={onTest}>
-          ⚡ RUN SIMULATION
+          <EmojiIcon e="⚡" style={{ marginRight: '0.35em' }} />RUN SIMULATION
         </button>
       </div>
     </div>

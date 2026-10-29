@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { EmojiIcon } from '../../../components/ui/Icon.jsx';
 
 /** Follows cursor while dragging parts from the library */
 export default function PartDragGhost() {
@@ -41,7 +42,7 @@ export default function PartDragGhost() {
       style={{ left: ghost.x + 12, top: ghost.y + 12 }}
       aria-hidden
     >
-      <span className="bb-drag-ghost-icon">{ghost.icon}</span>
+      <span className="bb-drag-ghost-icon"><EmojiIcon e={ghost.icon} /></span>
       <span className="bb-drag-ghost-label">{ghost.label}</span>
     </div>
   );

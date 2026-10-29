@@ -4,6 +4,7 @@ import { ACADEMY_PART_SECTIONS, BRIGHT_ROBOT_COLORS } from '../../data/academy-p
 import { slotAcceptsPart } from '../../data/assembly-parts.js';
 import { migrateAssembly } from '../../services/assembly-service.js';
 import { canAttachPartAnywhere, findFirstOpenSlot } from '../../utils/build-slots.js';
+import { EmojiIcon, IconText } from '../../../components/ui/Icon.jsx';
 
 function PartTile({ part, active, disabled, onClick, onDragStart }) {
   return (
@@ -18,7 +19,7 @@ function PartTile({ part, active, disabled, onClick, onDragStart }) {
       whileTap={disabled ? {} : { scale: 0.96 }}
       title={part.label}
     >
-      <span className="bb-part-tile-icon">{part.icon}</span>
+      <span className="bb-part-tile-icon"><EmojiIcon e={part.icon} /></span>
       <span className="bb-part-tile-label">{part.label}</span>
     </motion.button>
   );
@@ -97,8 +98,8 @@ export default function AcademyPartsPanel({
                 className="bb-parts-section-title"
                 onClick={() => toggleSection(section.id)}
               >
-                <span>{section.icon} {section.label}</span>
-                <span>{open ? '▼' : '▶'}</span>
+                <span><EmojiIcon e={section.icon} style={{ marginRight: '0.35em' }} />{section.label}</span>
+                <span><IconText>{open ? '▼' : '▶'}</IconText></span>
               </button>
               {open && (
                 <div className="bb-parts-grid">
@@ -165,14 +166,14 @@ export default function AcademyPartsPanel({
           className={`bb-mode-toggle ${!isLego ? 'active' : ''}`}
           onClick={() => onSetBuildMode?.('advanced')}
         >
-          🤖 Advanced
+          <EmojiIcon e="🤖" style={{ marginRight: '0.35em' }} />Advanced
         </button>
         <button
           type="button"
           className={`bb-mode-toggle ${isLego ? 'active' : ''}`}
           onClick={() => onSetBuildMode?.('blocks')}
         >
-          🧱 LEGO Mode
+          <EmojiIcon e="🧱" style={{ marginRight: '0.35em' }} />LEGO Mode
         </button>
       </div>
     </div>

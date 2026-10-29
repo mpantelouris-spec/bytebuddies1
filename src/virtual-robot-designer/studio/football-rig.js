@@ -24,32 +24,38 @@ export function attachFootballRig(g, { team, jerseyNum } = {}) {
   g.userData.animate = (t, dt = 1 / 60) => {
     if (skeletonDriven) return;
     const step = Math.max(dt, 1 / 120);
-    const speedNorm = Math.min(1.4, Math.max(0, runSpeed / 5.2));
-    const strideRate = 7 + speedNorm * 7;
+    const speedNorm = Math.min(1, Math.max(0, runSpeed / 6.2));
+    // A measured football jog-to-sprint cadence. The old rate climbed to
+    // almost three full strides per second, making the little robots look
+    // like they were cycling their legs instead of running.
+    const strideRate = 6.2 + speedNorm * 4.4;
     animPhase += step * strideRate;
     const { torsoGrp, headGrp, legGrps, armGrps } = rig;
-    const bob = Math.sin(animPhase * 1.15) * (0.018 + speedNorm * 0.022);
+    const bob = Math.max(0, Math.sin(animPhase * 2)) * (0.006 + speedNorm * 0.012);
 
     if (animState === 'run' || animState === 'chase_ball' || animState === 'dribble') {
       const stride = Math.sin(animPhase);
-      const lean = animState === 'dribble' ? 0.05 + speedNorm * 0.04 : 0.07 + speedNorm * 0.05;
+      const lean = animState === 'dribble' ? 0.045 + speedNorm * 0.035 : 0.07 + speedNorm * 0.055;
       torsoGrp.rotation.x = lean;
-      torsoGrp.rotation.z *= 0.86;
+      torsoGrp.rotation.z = -stride * 0.025;
       torsoGrp.position.y = bob;
-      torsoGrp.position.x *= 0.86;
-      headGrp.rotation.x = animState === 'dribble' ? 0.18 + speedNorm * 0.08 : 0.04;
+      torsoGrp.position.x = -stride * 0.008;
+      headGrp.rotation.x = animState === 'dribble' ? 0.09 : 0.025;
 
       legGrps.forEach(({ hipGrp, shinGrp, li }) => {
         const phase = li === 0 ? stride : -stride;
-        const lift = 0.42 + speedNorm * 0.28;
+        const lift = 0.38 + speedNorm * 0.16;
         if (hipGrp) hipGrp.rotation.x = phase * lift + (li === 0 ? 0.1 : -0.06);
-        if (shinGrp) shinGrp.rotation.x = -0.12 + Math.max(0, phase) * (0.55 + speedNorm * 0.22);
+        if (shinGrp) shinGrp.rotation.x = -0.08 + Math.max(0, phase) * (0.34 + speedNorm * 0.14);
+        const ankleGrp = legGrps[li]?.ankleGrp;
+        if (ankleGrp) ankleGrp.rotation.x = -Math.max(0, phase) * 0.12;
       });
 
       armGrps.forEach(({ grp, si }) => {
         const armPhase = si === 0 ? -stride : stride;
-        grp.rotation.x = -0.42 + armPhase * (0.28 + speedNorm * 0.14);
-        grp.rotation.z = (si === 0 ? 0.1 : -0.1) + armPhase * 0.08;
+        grp.rotation.x = -0.24 + armPhase * (0.34 + speedNorm * 0.1);
+        grp.rotation.z = (si === 0 ? 0.045 : -0.045) + armPhase * 0.035;
+        if (armGrps[si]?.forearmGrp) armGrps[si].forearmGrp.rotation.x = -0.3 + Math.max(0, armPhase) * 0.16;
       });
     } else if (animState === 'celebrate') {
       const c = Math.sin(animPhase * 10);
@@ -67,6 +73,11 @@ export function attachFootballRig(g, { team, jerseyNum } = {}) {
       legGrps.forEach(({ hipGrp, shinGrp, li }) => {
         if (hipGrp) hipGrp.rotation.x = li === 0 ? 0.1 : -0.06;
         if (shinGrp) shinGrp.rotation.x = -0.12;
+      });
+      armGrps.forEach(({ grp, forearmGrp, si }) => {
+        grp.rotation.x += (-0.18 - grp.rotation.x) * 0.18;
+        grp.rotation.z += ((si === 0 ? 0.04 : -0.04) - grp.rotation.z) * 0.18;
+        if (forearmGrp) forearmGrp.rotation.x += (-0.24 - forearmGrp.rotation.x) * 0.18;
       });
     } else if (['kick', 'shoot', 'short_pass', 'long_pass', 'lob_pass'].includes(animState)) {
       const kickId = animState === 'shoot' ? 'heavy_kick' : 'light_kick';

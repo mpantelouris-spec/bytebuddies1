@@ -6,6 +6,7 @@ import { useUser } from '../contexts/UserContext';
 import PythonRunner from './PythonRunner';
 import HtmlEditor from './HtmlEditor';
 import { INTERACTIVE } from '../data/interactiveContent';
+import { EmojiIcon, IconText } from './ui/Icon.jsx';
 
 // ─────────────────────────────────────────
 // HELPERS
@@ -96,7 +97,7 @@ function CodeTracer({ code, color }) {
           onClick={() => { setActive(true); setStepIdx(0); }}
           style={{ display: 'flex', alignItems: 'center', gap: 7, margin: '6px 16px 12px', background: `${color}18`, color, border: `1.5px solid ${color}35`, borderRadius: 8, padding: '7px 16px', fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s' }}
         >
-          ▶ Step Through Code
+          <EmojiIcon e="▶" style={{ marginRight: '0.35em' }} />Step Through Code
         </button>
       </div>
     );
@@ -127,7 +128,7 @@ function CodeTracer({ code, color }) {
       {/* Narration bubble */}
       <div style={{ margin: '10px 16px 0', padding: '10px 14px', borderRadius: 8, background: `${color}12`, border: `1px solid ${color}25`, fontSize: 13, minHeight: 44, display: 'flex', alignItems: 'center', gap: 8 }}>
         {comment
-          ? <><span style={{ fontSize: 16 }}>💬</span><span style={{ color: 'var(--text-secondary)', lineHeight: 1.5 }}><strong style={{ color }}>{comment}</strong></span></>
+          ? <><span style={{ fontSize: 16 }}><EmojiIcon e="💬" /></span><span style={{ color: 'var(--text-secondary)', lineHeight: 1.5 }}><strong style={{ color }}>{comment}</strong></span></>
           : <span style={{ color: 'var(--text-muted)' }}>Executing: <code style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color, background: `${color}15`, padding: '1px 6px', borderRadius: 4 }}>{curLine.trim()}</code></span>
         }
       </div>
@@ -181,7 +182,7 @@ function FlashcardMode({ course, completedSet, onClose }) {
   if (queue.length === 0) {
     return (
       <div style={{ textAlign: 'center', padding: '40px 20px' }}>
-        <div style={{ fontSize: 48, marginBottom: 16 }}>📖</div>
+        <div style={{ fontSize: 48, marginBottom: 16 }}><EmojiIcon e="📖" /></div>
         <h3 style={{ marginBottom: 8 }}>No flashcards yet!</h3>
         <p style={{ color: 'var(--text-muted)', marginBottom: 20, fontSize: 13 }}>Complete some modules first to unlock your flashcard deck.</p>
         <button className="btn btn-secondary" onClick={onClose}>← Back to Lesson</button>
@@ -193,10 +194,10 @@ function FlashcardMode({ course, completedSet, onClose }) {
     const allDone = review.length === 0;
     return (
       <div style={{ textAlign: 'center', padding: '32px 20px' }}>
-        <div style={{ fontSize: 56, marginBottom: 12 }}>{allDone ? '🏆' : '🔁'}</div>
+        <div style={{ fontSize: 56, marginBottom: 12 }}><IconText>{allDone ? '🏆' : '🔁'}</IconText></div>
         <h3 style={{ fontSize: 20, fontWeight: 900, marginBottom: 8 }}>{allDone ? 'Deck Complete!' : 'Round Done!'}</h3>
         <p style={{ color: 'var(--text-muted)', marginBottom: 16, fontSize: 13 }}>
-          ✅ {known.length} known &nbsp;·&nbsp; 🔁 {review.length} to review
+          <EmojiIcon e="✅" style={{ marginRight: '0.35em' }} />{known.length} known &nbsp;·&nbsp; 🔁 {review.length} to review
         </p>
         {allDone
           ? <><p style={{ color: 'var(--accent-success)', fontWeight: 700, marginBottom: 20 }}>You nailed every word! 🎉</p>
@@ -205,7 +206,7 @@ function FlashcardMode({ course, completedSet, onClose }) {
               <button className="btn btn-secondary" onClick={onClose}>← Back</button>
               <button className="btn btn-primary" style={{ background: `linear-gradient(135deg, ${course.color}, ${course.color}bb)` }}
                 onClick={() => { setQueue([...review]); setCardIdx(0); setFlipped(false); setKnown(k => [...k, ...known]); setReview([]); }}>
-                🔁 Review {review.length} cards
+                <EmojiIcon e="🔁" style={{ marginRight: '0.35em' }} />Review {review.length} cards
               </button>
             </div>
         }
@@ -255,7 +256,7 @@ function FlashcardMode({ course, completedSet, onClose }) {
         <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
           <button onClick={() => { setReview(r => [...r, card]); setFlipped(false); setCardIdx(i => i + 1); }}
             style={{ flex: 1, maxWidth: 155, padding: '11px 20px', borderRadius: 10, border: '1.5px solid #ef444444', background: '#ef444415', color: 'var(--accent-danger)', fontWeight: 700, cursor: 'pointer', fontSize: 14 }}>
-            🔁 See Again
+            <EmojiIcon e="🔁" style={{ marginRight: '0.35em' }} />See Again
           </button>
           <button onClick={() => { setKnown(k => [...k, card]); setFlipped(false); setCardIdx(i => i + 1); }}
             style={{ flex: 1, maxWidth: 155, padding: '11px 20px', borderRadius: 10, border: '1.5px solid #10b98144', background: '#10b98115', color: 'var(--accent-success)', fontWeight: 700, cursor: 'pointer', fontSize: 14 }}>
@@ -363,12 +364,12 @@ function SkillTreeView({ completedSet, onSelectCourse }) {
               onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.zIndex = '1'; }}
             >
               <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px' }}>
-                <span style={{ fontSize: 22, flexShrink: 0 }}>{course.icon}</span>
+                <span style={{ fontSize: 22, flexShrink: 0 }}><EmojiIcon e={course.icon} /></span>
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <div style={{ fontSize: 11, fontWeight: 800, lineHeight: 1.3, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{course.title}</div>
                   <div style={{ fontSize: 9, color: 'var(--text-muted)', marginTop: 1 }}>{total} modules · {getTotalXP(course)} XP</div>
                 </div>
-                {isComplete && <span style={{ fontSize: 14, flexShrink: 0 }}>✅</span>}
+                {isComplete && <span style={{ fontSize: 14, flexShrink: 0 }}><EmojiIcon e="✅" /></span>}
               </div>
               <div style={{ height: 4, background: 'var(--bg-tertiary)' }}>
                 <div style={{ height: '100%', width: `${pct}%`, background: yc, transition: 'width 0.4s' }} />
@@ -394,14 +395,14 @@ function DailyChallenge({ addXP }) {
 
   return (
     <div style={{ background: 'linear-gradient(135deg, #6366f115, #8b5cf612)', border: '1.5px solid #6366f130', borderRadius: 16, padding: '20px 24px', marginBottom: 24, position: 'relative', overflow: 'hidden' }}>
-      <div style={{ position: 'absolute', right: -10, top: -10, fontSize: 90, opacity: 0.04, pointerEvents: 'none', lineHeight: 1 }}>🧠</div>
+      <div style={{ position: 'absolute', right: -10, top: -10, fontSize: 90, opacity: 0.04, pointerEvents: 'none', lineHeight: 1 }}><EmojiIcon e="🧠" /></div>
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ fontSize: 20 }}>☀️</span>
+          <span style={{ fontSize: 20 }}><EmojiIcon e="☀️" /></span>
           <div>
             <div style={{ fontSize: 13, fontWeight: 800 }}>Daily Brain Teaser</div>
-            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{q.icon} {q.courseTitle} · refreshes each day</div>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}><EmojiIcon e={q.icon} style={{ marginRight: '0.35em' }} />{q.courseTitle} · refreshes each day</div>
           </div>
         </div>
         {answered === null && <span style={{ fontSize: 11, color: '#f59e0b', fontWeight: 700, background: '#f59e0b18', border: '1px solid #f59e0b30', padding: '3px 10px', borderRadius: 20 }}>+15 XP</span>}
@@ -435,7 +436,7 @@ function DailyChallenge({ addXP }) {
       </div>
       {answered !== null && (
         <div style={{ marginTop: 10, fontSize: 13, fontWeight: 600, color: answered === q.answer ? 'var(--accent-success)' : 'var(--accent-danger)' }}>
-          {answered === q.answer ? '🎉 Correct! Brilliant work!' : `❌ Not quite — the answer was: ${q.options[q.answer]}`}
+          <IconText>{answered === q.answer ? '🎉 Correct! Brilliant work!' : `❌ Not quite — the answer was: ${q.options[q.answer]}`}</IconText>
         </div>
       )}
     </div>
@@ -530,14 +531,14 @@ function LessonView({ course, completedSet, onComplete, onBack }) {
         borderRadius: 16, padding: '20px 24px', marginBottom: 24,
         display: 'flex', alignItems: 'center', gap: 20,
       }}>
-        <div style={{ fontSize: 52, lineHeight: 1 }}>{course.icon}</div>
+        <div style={{ fontSize: 52, lineHeight: 1 }}><EmojiIcon e={course.icon} /></div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
             <button
               onClick={onBack}
               style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 13, padding: 0 }}
             >
-              📚 Learning Hub
+              <EmojiIcon e="📚" style={{ marginRight: '0.35em' }} />Learning Hub
             </button>
             <span style={{ color: 'var(--text-muted)' }}>›</span>
             <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 600 }}>{course.title}</span>
@@ -550,7 +551,7 @@ function LessonView({ course, completedSet, onComplete, onBack }) {
               {completedInCourse}/{course.modules.length} modules
             </span>
             <span style={{ fontSize: 12, color: 'var(--accent-warning)', fontWeight: 700 }}>
-              ⚡ {getTotalXP(course)} XP total
+              <EmojiIcon e="⚡" style={{ marginRight: '0.35em' }} />{getTotalXP(course)} XP total
             </span>
             <div style={{ flex: 1, minWidth: 120, maxWidth: 200 }}>
               <div style={{ height: 6, background: 'var(--border-color)', borderRadius: 4, overflow: 'hidden' }}>
@@ -567,7 +568,7 @@ function LessonView({ course, completedSet, onComplete, onBack }) {
         <div style={{ width: 260, flexShrink: 0, position: 'sticky', top: 0 }}>
           <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
             <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-color)', fontWeight: 700, fontSize: 13 }}>
-              📋 Modules
+              <EmojiIcon e="📋" style={{ marginRight: '0.35em' }} />Modules
             </div>
             <div style={{ maxHeight: 450, overflowY: 'auto', padding: 8 }}>
               {course.modules.map((m, i) => {
@@ -586,7 +587,7 @@ function LessonView({ course, completedSet, onComplete, onBack }) {
                       color: active ? 'var(--text-primary)' : 'var(--text-secondary)',
                     }}
                   >
-                    <span style={{ fontSize: 14, flexShrink: 0 }}>{done ? '✅' : active ? '▶️' : '📖'}</span>
+                    <span style={{ fontSize: 14, flexShrink: 0 }}><IconText>{done ? '✅' : active ? '▶️' : '📖'}</IconText></span>
                     <span style={{ fontSize: 12, fontWeight: active ? 700 : 500, flex: 1, lineHeight: 1.3 }}>{m.title}</span>
                     <span style={{ fontSize: 10, color: 'var(--accent-warning)', fontWeight: 700, flexShrink: 0 }}>+{m.xp}</span>
                   </button>
@@ -630,7 +631,7 @@ function LessonView({ course, completedSet, onComplete, onBack }) {
                 ⚡ +{mod.xp} XP
               </span>
               {isModuleDone && (
-                <span style={{ fontSize: 11, color: 'var(--accent-success)', fontWeight: 700 }}>✅ Completed</span>
+                <span style={{ fontSize: 11, color: 'var(--accent-success)', fontWeight: 700 }}><EmojiIcon e="✅" style={{ marginRight: '0.35em' }} />Completed</span>
               )}
             </div>
           </div>
@@ -662,7 +663,7 @@ function LessonView({ course, completedSet, onComplete, onBack }) {
                 <div style={{ marginBottom: 24 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontSize: 18 }}>📝</span>
+                      <span style={{ fontSize: 18 }}><EmojiIcon e="📝" /></span>
                       <h4 style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-primary)' }}>Lesson</h4>
                     </div>
                     <button
@@ -692,7 +693,7 @@ function LessonView({ course, completedSet, onComplete, onBack }) {
               {/* Key Words */}
               {content?.keyWords && content.keyWords.length > 0 && (
                 <div style={{ background: 'var(--bg-tertiary)', borderRadius: 10, padding: '12px 16px', marginBottom: 20, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', border: '1px solid var(--border-color)' }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)' }}>🔑 Key words:</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)' }}><EmojiIcon e="🔑" style={{ marginRight: '0.35em' }} />Key words:</span>
                   {content.keyWords.map(w => (
                     <span key={w} style={{ fontSize: 11, padding: '3px 10px', borderRadius: 20, background: `${course.color}20`, color: course.color, fontWeight: 700, border: `1px solid ${course.color}30` }}>{w}</span>
                   ))}
@@ -704,10 +705,10 @@ function LessonView({ course, completedSet, onComplete, onBack }) {
                 <div style={{ borderRadius: 12, overflow: 'hidden', marginBottom: 20, border: `1px solid ${course.color}33` }}>
                   <div style={{ background: `${course.color}22`, padding: '10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontSize: 15 }}>💻</span>
+                      <span style={{ fontSize: 15 }}><EmojiIcon e="💻" /></span>
                       <span style={{ fontSize: 13, fontWeight: 700, color: course.color }}>Code Example</span>
                     </div>
-                    <span style={{ fontSize: 10, color: course.color, opacity: 0.7, fontWeight: 600 }}>▶ Step through available below</span>
+                    <span style={{ fontSize: 10, color: course.color, opacity: 0.7, fontWeight: 600 }}><EmojiIcon e="▶" style={{ marginRight: '0.35em' }} />Step through available below</span>
                   </div>
                   <CodeTracer code={content.example} color={course.color} />
                 </div>
@@ -717,7 +718,7 @@ function LessonView({ course, completedSet, onComplete, onBack }) {
               {content?.objectives && content.objectives.length > 0 && (
                 <div style={{ background: `${course.color}0d`, border: `1px solid ${course.color}30`, borderRadius: 12, padding: '14px 18px', marginBottom: 16 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                    <span style={{ fontSize: 16 }}>🎯</span>
+                    <span style={{ fontSize: 16 }}><EmojiIcon e="🎯" /></span>
                     <h4 style={{ fontSize: 13, fontWeight: 800, color: course.color, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Learning Objectives</h4>
                   </div>
                   <ul style={{ margin: 0, paddingLeft: 20, listStyle: 'none' }}>
@@ -735,7 +736,7 @@ function LessonView({ course, completedSet, onComplete, onBack }) {
               {content?.activity && (
                 <div style={{ background: 'linear-gradient(135deg, #f59e0b12, #ef444412)', borderRadius: 12, padding: '16px 20px', marginBottom: 16, border: '1px solid #f59e0b30' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                    <span style={{ fontSize: 18 }}>🌟</span>
+                    <span style={{ fontSize: 18 }}><EmojiIcon e="🌟" /></span>
                     <h4 style={{ fontSize: 14, fontWeight: 800, color: '#f59e0b' }}>Try It Yourself</h4>
                   </div>
                   <p style={{ color: 'var(--text-secondary)', lineHeight: 1.8 }}>{content.activity}</p>
@@ -746,7 +747,7 @@ function LessonView({ course, completedSet, onComplete, onBack }) {
               {content?.activities && content.activities.length > 0 && (
                 <div style={{ marginBottom: 20 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                    <span style={{ fontSize: 18 }}>🔬</span>
+                    <span style={{ fontSize: 18 }}><EmojiIcon e="🔬" /></span>
                     <h4 style={{ fontSize: 14, fontWeight: 800, color: 'var(--text-primary)' }}>Activities</h4>
                   </div>
                   {content.activities.map((act, ai) => (
@@ -763,7 +764,7 @@ function LessonView({ course, completedSet, onComplete, onBack }) {
                         }}>{act.num}</span>
                         <div style={{ flex: 1 }}>
                           <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-primary)' }}>{act.title}</div>
-                          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>⏱ {act.duration}</div>
+                          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}><EmojiIcon e="⏱" style={{ marginRight: '0.35em' }} />{act.duration}</div>
                         </div>
                       </div>
                       {act.desc && <p style={{ fontSize: 13, color: 'var(--text-muted)', fontStyle: 'italic', marginBottom: 8 }}>{act.desc}</p>}
@@ -783,7 +784,7 @@ function LessonView({ course, completedSet, onComplete, onBack }) {
               {content?.extension && (
                 <div style={{ background: 'linear-gradient(135deg, #10b98112, #06b6d412)', border: '1px solid #10b98130', borderRadius: 12, padding: '14px 18px', marginBottom: 16 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                    <span style={{ fontSize: 16 }}>🚀</span>
+                    <span style={{ fontSize: 16 }}><EmojiIcon e="🚀" /></span>
                     <h4 style={{ fontSize: 13, fontWeight: 800, color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Extension Challenge</h4>
                   </div>
                   <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.75 }}>{content.extension}</p>
@@ -794,7 +795,7 @@ function LessonView({ course, completedSet, onComplete, onBack }) {
               {content?.reflection && (
                 <div style={{ background: '#f59e0b0a', border: '1px solid #f59e0b25', borderRadius: 12, padding: '14px 18px', marginBottom: 16 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                    <span style={{ fontSize: 16 }}>💭</span>
+                    <span style={{ fontSize: 16 }}><EmojiIcon e="💭" /></span>
                     <h4 style={{ fontSize: 13, fontWeight: 800, color: '#f59e0b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Think & Reflect</h4>
                   </div>
                   <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.75, fontStyle: 'italic' }}>{content.reflection}</p>
@@ -849,7 +850,7 @@ function LessonView({ course, completedSet, onComplete, onBack }) {
               <div className="card-body">
                 {!showQuiz ? (
                   <div style={{ textAlign: 'center', padding: '24px 0' }}>
-                    <div style={{ fontSize: 40, marginBottom: 12 }}>🧠</div>
+                    <div style={{ fontSize: 40, marginBottom: 12 }}><EmojiIcon e="🧠" /></div>
                     <h3 style={{ fontSize: 17, fontWeight: 800, marginBottom: 8 }}>
                       {isModuleDone ? 'Quiz Complete!' : 'Ready to test your knowledge?'}
                     </h3>
@@ -861,14 +862,14 @@ function LessonView({ course, completedSet, onComplete, onBack }) {
                       style={{ background: `linear-gradient(135deg, ${course.color}, ${course.color}cc)` }}
                       onClick={() => { setShowQuiz(true); setQuizAnswers({}); setCurrentQuizIdx(0); }}
                     >
-                      {isModuleDone ? '🔄 Retake Quiz' : '📝 Start Quiz'}
+                      <IconText>{isModuleDone ? '🔄 Retake Quiz' : '📝 Start Quiz'}</IconText>
                     </button>
                   </div>
                 ) : (
                   <div>
                     {/* Quiz header */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                      <h4 style={{ fontSize: 15, fontWeight: 800 }}>🧠 Quiz</h4>
+                      <h4 style={{ fontSize: 15, fontWeight: 800 }}><EmojiIcon e="🧠" style={{ marginRight: '0.35em' }} />Quiz</h4>
                       <div style={{ display: 'flex', gap: 6 }}>
                         {quizList.map((_, i) => (
                           <div key={i} style={{
@@ -948,10 +949,10 @@ function LessonView({ course, completedSet, onComplete, onBack }) {
                               color: quizAnswers[`${activeModule}-${currentQuizIdx}`] === currentQuiz.answer ? 'var(--accent-success)' : 'var(--accent-danger)',
                               border: `1px solid ${quizAnswers[`${activeModule}-${currentQuizIdx}`] === currentQuiz.answer ? '#10b98133' : '#ef444433'}`,
                             }}>
-                              {quizAnswers[`${activeModule}-${currentQuizIdx}`] === currentQuiz.answer
+                              <IconText>{quizAnswers[`${activeModule}-${currentQuizIdx}`] === currentQuiz.answer
                                 ? '🎉 Correct! Great job!'
                                 : `❌ Not quite! The correct answer is: ${String.fromCharCode(65 + currentQuiz.answer)}. ${currentQuiz.options[currentQuiz.answer]}`
-                              }
+                              }</IconText>
                             </div>
                             {currentQuizIdx < quizList.length - 1 && (
                               <button className="btn btn-primary" style={{ background: `linear-gradient(135deg, ${course.color}, ${course.color}bb)` }} onClick={() => setCurrentQuizIdx(p => p + 1)}>
@@ -964,7 +965,7 @@ function LessonView({ course, completedSet, onComplete, onBack }) {
                     ) : (
                       /* Quiz results */
                       <div style={{ textAlign: 'center', padding: '16px 0' }}>
-                        <div style={{ fontSize: 52, marginBottom: 12 }}>{quizPerfect ? '🏆' : correctCount >= quizList.length / 2 ? '👍' : '📖'}</div>
+                        <div style={{ fontSize: 52, marginBottom: 12 }}><IconText>{quizPerfect ? '🏆' : correctCount >= quizList.length / 2 ? '👍' : '📖'}</IconText></div>
                         <h3 style={{ fontSize: 20, fontWeight: 900, marginBottom: 8 }}>
                           {quizPerfect ? 'Perfect Score!' : `${correctCount}/${quizList.length} Correct`}
                         </h3>
@@ -978,7 +979,7 @@ function LessonView({ course, completedSet, onComplete, onBack }) {
                         </p>
                         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
                           <button className="btn btn-secondary" onClick={() => { setQuizAnswers({}); setCurrentQuizIdx(0); }}>
-                            🔄 Retake
+                            <EmojiIcon e="🔄" style={{ marginRight: '0.35em' }} />Retake
                           </button>
                           {quizPerfect && !isModuleDone && (
                             <button
@@ -986,7 +987,7 @@ function LessonView({ course, completedSet, onComplete, onBack }) {
                               style={{ background: 'linear-gradient(135deg, #10b981, #06b6d4)' }}
                               onClick={handleModuleComplete}
                             >
-                              ✅ Complete & Earn +{mod.xp} XP →
+                              <EmojiIcon e="✅" style={{ marginRight: '0.35em' }} />Complete & Earn +{mod.xp} XP →
                             </button>
                           )}
                           {quizPerfect && isModuleDone && activeModule < course.modules.length - 1 && (
@@ -1007,7 +1008,7 @@ function LessonView({ course, completedSet, onComplete, onBack }) {
           {showReviewBanner && (
             <div style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.4)', borderRadius: 12, padding: '14px 18px', marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <div style={{ fontWeight: 700, color: '#f59e0b', marginBottom: 4 }}>📖 Review Recommended</div>
+                <div style={{ fontWeight: 700, color: '#f59e0b', marginBottom: 4 }}><EmojiIcon e="📖" style={{ marginRight: '0.35em' }} />Review Recommended</div>
                 <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>You scored below 70% — reviewing this module will help you remember it better!</div>
               </div>
               <button style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 18 }} onClick={() => setShowReviewBanner(false)}>✕</button>
@@ -1030,7 +1031,7 @@ function LessonView({ course, completedSet, onComplete, onBack }) {
                 style={{ background: 'linear-gradient(135deg, #10b981, #06b6d4)', flex: 1, maxWidth: 260 }}
                 onClick={handleModuleComplete}
               >
-                ✅ Mark Complete & Earn +{mod.xp} XP
+                <EmojiIcon e="✅" style={{ marginRight: '0.35em' }} />Mark Complete & Earn +{mod.xp} XP
               </button>
             )}
             <button
@@ -1048,7 +1049,7 @@ function LessonView({ course, completedSet, onComplete, onBack }) {
                   <div style={{ flex: 1, position: 'sticky', top: 16 }}>
                     {interactive.type === 'blocks' && (
                       <div style={{ padding: '16px', background: 'var(--bg-secondary)', borderRadius: '8px', color: 'var(--text-muted)', textAlign: 'center', fontStyle: 'italic' }}>
-                        📝 Block-based lessons are available in Game Builder mode only. Visit Game Builder to practice this lesson.
+                        <EmojiIcon e="📝" style={{ marginRight: '0.35em' }} />Block-based lessons are available in Game Builder mode only. Visit Game Builder to practice this lesson.
                       </div>
                     )}
                     {interactive.type === 'python' && (
@@ -1144,13 +1145,13 @@ export default function LearningHub() {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <h1 style={{ fontSize: 26, fontWeight: 900, marginBottom: 4 }}>📚 Learning Hub</h1>
+          <h1 style={{ fontSize: 26, fontWeight: 900, marginBottom: 4 }}><EmojiIcon e="📚" style={{ marginRight: '0.35em' }} />Learning Hub</h1>
           <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>Structured courses from Year 3 to Year 6. Learn at your own pace!</p>
         </div>
         <div style={{ display: 'flex', gap: 10, flexShrink: 0, flexWrap: 'wrap', alignItems: 'center' }}>
           {/* Search bar */}
           <div style={{ position: 'relative' }}>
-            <span style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', fontSize: 13, opacity: 0.45, pointerEvents: 'none' }}>🔍</span>
+            <span style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', fontSize: 13, opacity: 0.45, pointerEvents: 'none' }}><EmojiIcon e="🔍" /></span>
             <input
               value={search} onChange={e => setSearch(e.target.value)}
               placeholder="Search courses…"
@@ -1180,7 +1181,7 @@ export default function LearningHub() {
           { icon: '⚡', label: 'XP Available', value: totalXP.toLocaleString(), sub: 'total reward' },
         ].map(stat => (
           <div key={stat.label} style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 14, padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span style={{ fontSize: 22 }}>{stat.icon}</span>
+            <span style={{ fontSize: 22 }}><EmojiIcon e={stat.icon} /></span>
             <div>
               <div style={{ fontSize: 19, fontWeight: 900, lineHeight: 1.1 }}>{stat.value}</div>
               <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>{stat.label}</div>
@@ -1213,7 +1214,7 @@ export default function LearningHub() {
       {inProgressCourses.length > 0 && (
         <div style={{ marginBottom: 28 }}>
           <h2 style={{ fontSize: 15, fontWeight: 800, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-            ▶️ Continue Learning
+            <EmojiIcon e="▶️" style={{ marginRight: '0.35em' }} />Continue Learning
             <span style={{ fontSize: 11, background: 'var(--accent-primary)', color: '#fff', borderRadius: 20, padding: '2px 9px', fontWeight: 700 }}>{inProgressCourses.length}</span>
           </h2>
           <div style={{ display: 'flex', gap: 14, overflowX: 'auto', paddingBottom: 6 }}>
@@ -1226,7 +1227,7 @@ export default function LearningHub() {
                   onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = `0 8px 24px ${course.color}30`; }}
                   onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = ''; }}
                 >
-                  <span style={{ fontSize: 30, flexShrink: 0 }}>{course.icon}</span>
+                  <span style={{ fontSize: 30, flexShrink: 0 }}><EmojiIcon e={course.icon} /></span>
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div style={{ fontSize: 13, fontWeight: 800, marginBottom: 5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{course.title}</div>
                     <div style={{ height: 5, background: 'var(--bg-tertiary)', borderRadius: 4, overflow: 'hidden', marginBottom: 4 }}>
@@ -1245,7 +1246,7 @@ export default function LearningHub() {
       {viewMode === 'tree' ? (
         <div className="card" style={{ padding: 24 }}>
           <div style={{ marginBottom: 16 }}>
-            <h3 style={{ fontSize: 16, fontWeight: 800, marginBottom: 4 }}>🗺️ Learning Path</h3>
+            <h3 style={{ fontSize: 16, fontWeight: 800, marginBottom: 4 }}><EmojiIcon e="🗺️" style={{ marginRight: '0.35em' }} />Learning Path</h3>
             <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>Your full journey from Year 3 to Year 6. Complete a course to unlock connections.</p>
           </div>
           <SkillTreeView completedSet={completedSet} onSelectCourse={openCourse} />
@@ -1278,7 +1279,7 @@ export default function LearningHub() {
               return (
                 <button key={sf.key} onClick={() => setStatusFilter(sf.key)}
                   style={{ padding: '7px 14px', borderRadius: 20, border: `1.5px solid ${active ? 'var(--accent-primary)' : 'var(--border-color)'}`, background: active ? 'var(--accent-primary)18' : 'var(--bg-card)', color: active ? 'var(--accent-primary)' : 'var(--text-secondary)', fontWeight: 700, fontSize: 12, cursor: 'pointer', transition: 'all 0.15s', display: 'flex', alignItems: 'center', gap: 5 }}>
-                  {sf.icon && <span style={{ fontSize: 12 }}>{sf.icon}</span>}
+                  {sf.icon && <span style={{ fontSize: 12 }}><EmojiIcon e={sf.icon} /></span>}
                   {sf.label}
                 </button>
               );
@@ -1288,7 +1289,7 @@ export default function LearningHub() {
           {/* Empty state */}
           {filtered.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '64px 20px', color: 'var(--text-muted)' }}>
-              <div style={{ fontSize: 52, marginBottom: 14 }}>🔍</div>
+              <div style={{ fontSize: 52, marginBottom: 14 }}><EmojiIcon e="🔍" /></div>
               <div style={{ fontWeight: 800, fontSize: 17, marginBottom: 6, color: 'var(--text-primary)' }}>No courses found</div>
               <div style={{ fontSize: 13, marginBottom: 20 }}>{search ? `No results for "${search}"` : 'Try a different filter combination'}</div>
               <button onClick={() => { setFilter('all'); setStatusFilter('all'); setSearch(''); }}
@@ -1316,7 +1317,7 @@ export default function LearningHub() {
                   >
                     {/* Thumbnail */}
                     <div style={{ height: 140, display: 'flex', alignItems: 'center', justifyContent: 'center', background: `linear-gradient(135deg, ${course.color}35 0%, ${course.color}12 100%)`, position: 'relative', overflow: 'hidden', borderRadius: '12px 12px 0 0' }}>
-                      <div style={{ fontSize: 62, filter: 'drop-shadow(0 6px 12px rgba(0,0,0,0.22))' }}>{course.icon}</div>
+                      <div style={{ fontSize: 62, filter: 'drop-shadow(0 6px 12px rgba(0,0,0,0.22))' }}><EmojiIcon e={course.icon} /></div>
                       {/* Difficulty / year badge */}
                       {course.difficulty && <div style={{ position: 'absolute', top: 10, right: 10, background: `${course.color}25`, border: `1px solid ${course.color}40`, color: course.color, borderRadius: 20, padding: '3px 10px', fontSize: 10, fontWeight: 800 }}>{course.difficulty}</div>}
                       {/* Year badge */}
@@ -1324,7 +1325,7 @@ export default function LearningHub() {
                       {course.year && !course.yearGroup && <div style={{ position: 'absolute', top: 10, left: 10, background: course.color, color: '#fff', borderRadius: 20, padding: '3px 10px', fontSize: 10, fontWeight: 800 }}>{course.year}</div>}
                       {isCsCurriculum && <div style={{ position: 'absolute', top: 10, right: 10, background: 'rgba(0,0,0,0.5)', color: '#fff', borderRadius: 20, padding: '3px 10px', fontSize: 9, fontWeight: 800, letterSpacing: '0.04em' }}>🇬🇧 UK CURRICULUM</div>}
                       {/* Completed glow */}
-                      {isComplete && <div style={{ position: 'absolute', inset: 0, background: 'rgba(16,185,129,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><span style={{ fontSize: 38 }}>🏆</span></div>}
+                      {isComplete && <div style={{ position: 'absolute', inset: 0, background: 'rgba(16,185,129,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><span style={{ fontSize: 38 }}><EmojiIcon e="🏆" /></span></div>}
                       {/* Progress bar on thumbnail */}
                       {isStarted && !isComplete && <div style={{ position: 'absolute', bottom: 0, left: 0, height: 4, background: `linear-gradient(90deg, ${course.color}, ${course.color}55)`, width: `${progress}%`, transition: 'width 0.4s' }} />}
                     </div>
@@ -1341,9 +1342,9 @@ export default function LearningHub() {
                         {(course.topics || []).length > 3 && <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 10, background: 'var(--bg-tertiary)', color: 'var(--text-muted)', fontWeight: 700 }}>+{course.topics.length - 3}</span>}
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-muted)', marginBottom: 10 }}>
-                        <span>📖 {course.modules.length} lessons</span>
-                        {course.duration && <span>⏱️ {course.duration}</span>}
-                        <span style={{ color: '#f59e0b', fontWeight: 700 }}>⚡ {totalXPCourse} XP</span>
+                        <span><EmojiIcon e="📖" style={{ marginRight: '0.35em' }} />{course.modules.length} lessons</span>
+                        {course.duration && <span><EmojiIcon e="⏱️" style={{ marginRight: '0.35em' }} />{course.duration}</span>}
+                        <span style={{ color: '#f59e0b', fontWeight: 700 }}><EmojiIcon e="⚡" style={{ marginRight: '0.35em' }} />{totalXPCourse} XP</span>
                       </div>
                       <div style={{ height: 5, background: 'var(--bg-tertiary)', borderRadius: 4, overflow: 'hidden', marginBottom: 10 }}>
                         <div style={{ height: '100%', width: `${progress}%`, background: `linear-gradient(90deg, ${course.color}, ${course.color}88)`, borderRadius: 4, transition: 'width 0.4s' }} />

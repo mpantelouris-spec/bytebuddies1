@@ -70,7 +70,7 @@ function isCombatPBRNode(o) {
 /** Soften existing meshes to match art direction (post-process robots & arenas) */
 export function stylizeMeshMaterials(root, { keepEmissive = true } = {}) {
   root.traverse((o) => {
-    if (!o.isMesh || !o.material || isCombatPBRNode(o)) return;
+    if (!o.isMesh || !o.material || isCombatPBRNode(o) || o.userData?.skipStudioPaint) return;
     const mats = Array.isArray(o.material) ? o.material : [o.material];
     mats.forEach((m) => {
       if (!m.isMeshStandardMaterial && !m.isMeshPhysicalMaterial) return;
@@ -244,11 +244,9 @@ export function setupRaceEnvironment(scene, { space = false } = {}) {
   const ctx = canvas.getContext('2d');
   const grad = ctx.createLinearGradient(0, 0, 0, 128);
   if (space) {
-    // For space courses: near-black environment so the purple env map doesn't
-    // wash the scene. The cosmic track lights provide all the ambient colour.
-    grad.addColorStop(0, '#050208');
-    grad.addColorStop(0.5, '#080415');
-    grad.addColorStop(1, '#030108');
+    grad.addColorStop(0, '#1a1440');
+    grad.addColorStop(0.5, '#3a2c70');
+    grad.addColorStop(1, '#5a4a80');
   } else {
     grad.addColorStop(0, '#b8e0ff');
     grad.addColorStop(0.5, '#ffe0f0');
@@ -261,7 +259,7 @@ export function setupRaceEnvironment(scene, { space = false } = {}) {
   scene.environment = tex;
   // Space courses: very low env intensity — we don't want the env map
   // competing with the neon track colours.
-  scene.environmentIntensity = space ? 0.04 : 0.8;
+  scene.environmentIntensity = space ? 0.4 : 0.8;
   return tex;
 }
 
@@ -366,9 +364,8 @@ export function setupSimLighting(scene, { isForest = false, shadowEnabled = true
 /** Renderer + bloom tuned for educational clarity (not cinematic neon).
  *  Race courses default to direct renderer.render() (no EffectComposer) for 60fps. */
 export function configureLabRenderer(renderer, bloomPass, { isForest = false, isRace = false } = {}) {
-  // ACESFilmic gives richer, more vivid colours than Reinhard and is the
-  // industry standard for game-quality rendering. Minimal perf difference.
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  const lowPower = typeof window !== 'undefined' && getStudioDeviceProfile().lowPower;
+  renderer.toneMapping = lowPower ? THREE.NoToneMapping : THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = isForest ? 1.05 : isRace ? 1.22 : 1.1;
   if (bloomPass) {
     bloomPass.strength   = isForest ? 0.18 : isRace ? 0.35 : 0.20;
@@ -380,58 +377,192 @@ export function configureLabRenderer(renderer, bloomPass, { isForest = false, is
 /**
  * Detect device quality tier once at startup.
  * Returns 'low' | 'medium' | 'high'.
- * Tablets and phones default to low; MacBooks/laptops use medium (no bloom).
+ * Chromebooks, tablets, and phones stay on a cheap GPU path; Macs and PCs
+ * keep medium/high when they can actually hold 60fps.
  */
-export function isMobileOrTablet() {
-  const ua = navigator.userAgent || '';
-  const touch = navigator.maxTouchPoints > 1;
-  const narrow = (window.innerWidth || 1920) < 1100;
-  const isIPad = /Macintosh|iPad/i.test(ua) && touch;
-  const isTabletUA = /iPad|Android(?!.*Mobile)|Tablet|Kindle|Silk/i.test(ua);
-  return isTabletUA || isIPad || (touch && narrow);
+let _deviceProfileCache = null;
+
+function uaString() {
+  return (typeof navigator !== 'undefined' && navigator.userAgent) || '';
 }
 
-export function detectQualityTier() {
-  const saved = localStorage.getItem('bb_quality_tier');
-  if (saved === 'low' || saved === 'medium' || saved === 'high') return saved;
+export function isChromebook() {
+  return /CrOS|Chromebook/i.test(uaString());
+}
 
+export function isIPadLike() {
+  if (typeof navigator === 'undefined') return false;
+  const ua = uaString();
+  const touch = (navigator.maxTouchPoints || 0) > 1;
+  if (/iPad/i.test(ua)) return true;
+  // iPadOS 13+ pretends to be a Mac in the user agent.
+  return /Macintosh|Mac OS X/i.test(ua) && touch;
+}
+
+export function isMobileOrTablet() {
+  const ua = uaString();
+  if (isIPadLike()) return true;
+  if (/iPhone|iPod|Android.*Mobile|Windows Phone/i.test(ua)) return true;
+  if (/Android(?!.*Mobile)|Tablet|Kindle|Silk/i.test(ua)) return true;
+  const touch = typeof navigator !== 'undefined' && (navigator.maxTouchPoints || 0) > 1;
+  const coarse = typeof window !== 'undefined' && !!window.matchMedia?.('(pointer: coarse)')?.matches;
+  const shortSide = Math.min(
+    (typeof window !== 'undefined' && (window.screen?.width || window.innerWidth)) || 1920,
+    (typeof window !== 'undefined' && (window.screen?.height || window.innerHeight)) || 1080,
+  );
+  if (coarse && touch && shortSide <= 1366) return true;
+  const narrow = (typeof window !== 'undefined' ? window.innerWidth : 1920) < 1100;
+  return !!(touch && narrow && coarse);
+}
+
+function peekGpuRenderer() {
+  if (isIPadLike() || isMobileOrTablet()) return { renderer: '', weak: true };
+  try {
+    const c = document.createElement('canvas');
+    const gl = c.getContext('webgl') || c.getContext('experimental-webgl');
+    if (!gl) return { renderer: '', weak: true };
+    const dbg = gl.getExtension('WEBGL_debug_renderer_info');
+    const renderer = dbg ? String(gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) || '') : '';
+    const weak = /SwiftShader|llvmpipe|SoftGL|Microsoft Basic Render|Mali-|PowerVR|Adreno \(TM\) [2-5]|Intel (U?HD|Iris( Xe)? Graphics)|ANGLE \(Intel/i.test(renderer)
+      || renderer === '';
+    const lose = gl.getExtension('WEBGL_lose_context');
+    lose?.loseContext?.();
+    return { renderer, weak };
+  } catch {
+    return { renderer: '', weak: true };
+  }
+}
+
+/**
+ * One snapshot used by 3D quality, layout CSS, and WebGL flags.
+ * kind: chromebook | tablet | phone | laptop | desktop
+ */
+export function getStudioDeviceProfile() {
+  if (_deviceProfileCache) return overlaySavedQuality(_deviceProfileCache);
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') {
+    return {
+      kind: 'desktop',
+      tier: 'medium',
+      lowPower: false,
+      maxPixelRatio: 1.5,
+      allowGtao: false,
+      allowBloom: true,
+      stackedLayout: false,
+      gpuHint: '',
+    };
+  }
+
+  const ua = uaString();
   const mem = navigator.deviceMemory;
   const cores = navigator.hardwareConcurrency;
   const dpr = window.devicePixelRatio || 1;
-  const px = (window.screen?.width || 1920) * (window.screen?.height || 1080);
+  const screenW = window.screen?.width || window.innerWidth || 1920;
+  const screenH = window.screen?.height || window.innerHeight || 1080;
+  const chromebook = isChromebook();
+  const tabletOrPhone = isMobileOrTablet();
+  const phone = /iPhone|iPod|Android.*Mobile/i.test(ua);
+  const gpu = peekGpuRenderer();
+  const schoolMachine = chromebook
+    || (mem != null && mem <= 4)
+    || (cores != null && cores <= 4 && (mem == null || mem <= 8))
+    || gpu.weak;
 
-  // Phones + tablets → low (smooth 60fps, minimal GPU)
-  if (isMobileOrTablet()) return 'low';
+  let kind = 'desktop';
+  if (phone) kind = 'phone';
+  else if (tabletOrPhone) kind = 'tablet';
+  else if (chromebook) kind = 'chromebook';
+  else if (/Macintosh|Mac OS X/i.test(ua) || /Windows NT|Linux/i.test(ua)) {
+    kind = (mem != null && mem >= 16 && cores != null && cores >= 8) ? 'desktop' : 'laptop';
+  }
 
-  const isLow =
-    (mem != null && mem <= 2) ||
-    (cores != null && cores <= 2) ||
-    px < 1280 * 720;
+  let tier = 'medium';
+  if (phone || tabletOrPhone) {
+    tier = 'low';
+  } else if (chromebook) {
+    tier = (mem != null && mem >= 8 && !gpu.weak && cores >= 8) ? 'medium' : 'low';
+  } else if ((mem != null && mem <= 2) || (cores != null && cores <= 2) || screenW * screenH < 1280 * 720 || gpu.renderer && /SwiftShader|llvmpipe|Microsoft Basic/i.test(gpu.renderer)) {
+    tier = 'low';
+  } else if (kind === 'desktop' && mem != null && mem >= 16 && cores != null && cores >= 8 && dpr <= 2 && !schoolMachine) {
+    tier = 'high';
+  } else {
+    tier = 'medium';
+  }
 
-  if (isLow) return 'low';
+  const lowPower = kind === 'chromebook' || kind === 'tablet' || kind === 'phone' || tier === 'low';
+  const maxPixelRatio = kind === 'phone' || kind === 'tablet'
+    ? Math.min(dpr, 1)
+    : kind === 'chromebook'
+      ? Math.min(dpr, tier === 'low' ? 0.9 : 1.0)
+      : tier === 'high'
+        ? Math.min(dpr, 1.75)
+        : Math.min(dpr, 1.25);
 
-  // High only on powerful desktops — MacBooks and school laptops stay medium
-  const isHigh =
-    mem != null && mem >= 16 &&
-    cores != null && cores >= 8 &&
-    dpr <= 2 &&
-    !isMobileOrTablet();
-
-  return isHigh ? 'high' : 'medium';
+  _deviceProfileCache = {
+    kind,
+    tier,
+    lowPower,
+    maxPixelRatio,
+    allowGtao: tier === 'high' && !lowPower,
+    allowBloom: tier !== 'low' && kind !== 'chromebook',
+    stackedLayout: false,
+    gpuHint: gpu.renderer,
+  };
+  return overlaySavedQuality(_deviceProfileCache);
 }
 
-/** CodeRacer cup tracks — sharper defaults than generic sim (MK8-style detail). */
-export function detectCupTrackQualityTier() {
-  const saved = localStorage.getItem('bb_quality_tier');
-  if (saved === 'low' || saved === 'medium' || saved === 'high') return saved;
+function overlaySavedQuality(profile) {
+  if (profile.kind === 'tablet' || profile.kind === 'phone') {
+    return {
+      ...profile,
+      tier: 'low',
+      lowPower: true,
+      allowGtao: false,
+      allowBloom: false,
+      maxPixelRatio: 1,
+      stackedLayout: false,
+    };
+  }
+  const saved = (() => {
+    try { return localStorage.getItem('bb_quality_tier'); } catch { return null; }
+  })();
+  if (saved !== 'low' && saved !== 'medium' && saved !== 'high') return profile;
+  const dpr = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
+  const lowPower = profile.lowPower || saved === 'low';
+  return {
+    ...profile,
+    tier: saved,
+    lowPower,
+    allowGtao: saved === 'high' && !lowPower,
+    allowBloom: saved !== 'low' && profile.kind !== 'chromebook',
+    maxPixelRatio: saved === 'low'
+      ? Math.min(dpr, profile.kind === 'chromebook' ? 0.9 : 1.0)
+      : profile.maxPixelRatio,
+  };
+}
 
-  const base = detectQualityTier();
-  if (base === 'high') return 'high';
-  // School laptops / MacBooks: prefer high for cup track fidelity
-  if (base === 'medium') return 'high';
-  // Low-tier phones stay low; low-tier desktops bump to medium
-  if (base === 'low' && !isMobileOrTablet()) return 'medium';
-  return base;
+export function detectQualityTier() {
+  const profile = getStudioDeviceProfile();
+  if (profile.kind === 'tablet' || profile.kind === 'phone') return 'low';
+  const saved = (() => {
+    try { return localStorage.getItem('bb_quality_tier'); } catch { return null; }
+  })();
+  if (saved === 'low' || saved === 'medium' || saved === 'high') return saved;
+  return profile.tier;
+}
+
+/** Cup tracks used to force high on every laptop — that melted Chromebooks. */
+export function detectCupTrackQualityTier() {
+  const profile = getStudioDeviceProfile();
+  if (profile.kind === 'chromebook' || profile.kind === 'tablet' || profile.kind === 'phone') {
+    return profile.kind === 'chromebook' ? (profile.tier === 'high' ? 'medium' : profile.tier) : 'low';
+  }
+  const saved = (() => {
+    try { return localStorage.getItem('bb_quality_tier'); } catch { return null; }
+  })();
+  if (saved === 'low' || saved === 'medium' || saved === 'high') return saved;
+  // Real desktops can take the extra track detail; school laptops stay on auto tier.
+  if (profile.kind === 'desktop' && profile.tier === 'medium') return 'high';
+  return profile.tier;
 }
 
 /**
@@ -439,7 +570,7 @@ export function detectCupTrackQualityTier() {
  */
 export const QUALITY_PRESETS = {
   low: {
-    pixelRatio:     0.85,
+    pixelRatio:     1.0,
     shadowEnabled:  false,
     shadowMapSize:  512,
     postProcessing: false,
@@ -495,13 +626,22 @@ export function isEmbeddedPreviewBrowser() {
   return /Electron|Cursor/i.test(ua);
 }
 
-export function createSimWebGLRenderer({ antialias = false, lowPower = false, canvas } = {}) {
+export function createSimWebGLRenderer({
+  antialias = false,
+  lowPower = false,
+  canvas,
+  preserveDrawingBuffer = false,
+} = {}) {
+  const profile = typeof window !== 'undefined' ? getStudioDeviceProfile() : { lowPower: false, kind: 'desktop' };
+  const preferLow = lowPower || profile.lowPower;
+  const aa = antialias && !preferLow;
+  const power = preferLow ? 'low-power' : (profile.kind === 'desktop' ? 'high-performance' : 'default');
   const baseCanvas = canvas || document.createElement('canvas');
   const attempts = [
-    { canvas: baseCanvas, antialias, powerPreference: lowPower ? 'low-power' : 'default', precision: 'mediump', stencil: false, preserveDrawingBuffer: true, failIfMajorPerformanceCaveat: false },
-    { canvas: baseCanvas, antialias: false, powerPreference: 'low-power', precision: 'lowp', stencil: false, alpha: false, preserveDrawingBuffer: true, failIfMajorPerformanceCaveat: false },
-    { canvas: baseCanvas, antialias: false, forceWebGL: true, powerPreference: 'default', precision: 'lowp', stencil: false, alpha: false, depth: true, preserveDrawingBuffer: true, failIfMajorPerformanceCaveat: false },
-    { canvas: baseCanvas, antialias: false, powerPreference: 'default', precision: 'lowp', stencil: false, alpha: false, depth: true, preserveDrawingBuffer: true, failIfMajorPerformanceCaveat: false },
+    { canvas: baseCanvas, antialias: aa, powerPreference: power, precision: preferLow ? 'mediump' : 'highp', stencil: false, preserveDrawingBuffer, failIfMajorPerformanceCaveat: false },
+    { canvas: baseCanvas, antialias: false, powerPreference: 'low-power', precision: 'lowp', stencil: false, alpha: false, preserveDrawingBuffer, failIfMajorPerformanceCaveat: false },
+    { canvas: baseCanvas, antialias: false, forceWebGL: true, powerPreference: 'default', precision: 'lowp', stencil: false, alpha: false, depth: true, preserveDrawingBuffer, failIfMajorPerformanceCaveat: false },
+    { canvas: baseCanvas, antialias: false, powerPreference: 'default', precision: 'lowp', stencil: false, alpha: false, depth: true, preserveDrawingBuffer, failIfMajorPerformanceCaveat: false },
   ];
   let lastErr = null;
   for (const opts of attempts) {

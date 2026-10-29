@@ -76,204 +76,45 @@ export const CAMPAIGNS = [
       { id: 'cyber-5', title: 'System Victory', emoji: '🏆', story: 'Run the final diagnostic — a function that calls all your previous functions.', challenge: 'Write a "runDiagnostic" function that calls fixBug, decrypt, and lockdown in order.', xp: 150, hint: 'Your final function should call all the functions you wrote in earlier missions.' },
     ],
   },
+  {
+    id: 'jungle',
+    title: 'Jungle Expedition',
+    emoji: '🌿',
+    tagline: 'Explore the rainforest with lists & strings',
+    color: '#22c55e',
+    glow: 'rgba(34,197,94,0.4)',
+    bg: 'linear-gradient(135deg, #021a0c 0%, #064e3b 50%, #022c16 100%)',
+    concept: 'Lists & Strings',
+    difficulty: 'Intermediate',
+    xpTotal: 600,
+    missions: [
+      { id: 'jungle-1', title: 'Supply Pack', emoji: '🎒', story: 'The expedition leaves at dawn! Professor Fern needs every supply checked into the pack before the boat sails up the river.', challenge: 'Store the supplies in a list, use a loop to print each one as it is packed, then report how many there are with len().', xp: 100, hint: 'A for loop can visit every item in a list: for item in supplies:' },
+      { id: 'jungle-2', title: 'Animal Spotter', emoji: '🦜', story: 'The rainforest is alive with animals. Every time you spot a new one, add it to the field notebook.', challenge: 'Start with a list of 2 animals. Use .append() to add 3 more as you spot them, then print how many you have seen.', xp: 110, hint: 'animals.append("toucan") adds toucan to the end of the list.' },
+      { id: 'jungle-3', title: 'Secret Map Code', emoji: '🗺️', story: 'You found an old map with a message written backwards in lowercase. Decode it to find where the treasure is hidden!', challenge: 'Reverse the secret message and turn it into capital letters, then print where the treasure is.', xp: 120, hint: 'text[::-1] reverses a string and text.upper() makes it CAPITALS.' },
+      { id: 'jungle-4', title: 'River Crossing', emoji: '🪨', story: 'The bridge is gone! You must hop across the river on stepping stones — but only the highest stone is safe to rest on.', challenge: 'Loop through the stone heights and use if to remember the highest one. Print the highest stone and which number it is.', xp: 130, hint: 'Keep a variable called highest. If a stone is taller than highest, update it.' },
+      { id: 'jungle-5', title: 'Expedition Log', emoji: '📓', story: 'The expedition is over! Write up the log for the museum: one line for every day and what you found.', challenge: 'Loop through two lists together (days and finds) and print a log line for each day, then a final summary.', xp: 140, hint: 'for i in range(len(days)): lets you use days[i] and finds[i] together.' },
+    ],
+  },
+  {
+    id: 'dino',
+    title: 'Dino Park Rescue',
+    emoji: '🦕',
+    tagline: 'Find and fix the bugs to keep the dinosaurs safe',
+    color: '#14b8a6',
+    glow: 'rgba(20,184,166,0.4)',
+    bg: 'linear-gradient(135deg, #04201d 0%, #134e4a 50%, #042f2e 100%)',
+    concept: 'Debugging',
+    difficulty: 'All levels',
+    xpTotal: 600,
+    missions: [
+      { id: 'dino-1', title: 'Broken Gate', emoji: '🚧', story: 'Oh no! The gate program crashed and the dinosaurs are wandering towards the gift shop. The code has two little mistakes in it.', challenge: 'Find and fix the bugs so the program runs, opens the gate and prints "Dinos safe".', xp: 100, hint: 'Read the error message — it tells you the line. Check that every piece of text has a quote mark at both ends, and that print is spelt correctly.' },
+      { id: 'dino-2', title: 'Feeding Time', emoji: '🥬', story: 'Three hungry dinosaurs are waiting for lunch, but the feeding robot only feeds two of them. Someone is going to be grumpy!', challenge: 'Fix the loop so that every dinosaur in the list gets fed.', xp: 110, hint: 'How many times does the loop run? How many dinosaurs are in the list? Try len(dinos).' },
+      { id: 'dino-3', title: 'Egg Hatchery', emoji: '🥚', story: 'The eggs hatch when they are warm enough — 30 degrees or more. The hatchery code is hatching the cold eggs instead!', challenge: 'Fix the if so that only eggs at 30 degrees or warmer hatch.', xp: 120, hint: 'The sign is the wrong way round. Which comparison means "30 or more"?' },
+      { id: 'dino-4', title: 'Ranger Radio', emoji: '📻', story: 'A T-Rex has escaped into the forest! The radio code should call a ranger in every zone, but it crashes straight away.', challenge: 'Fix the function call so a ranger is called in all 3 zones.', xp: 130, hint: 'A function must be called by exactly the name it was given with def — capitals and underscores matter.' },
+      { id: 'dino-5', title: 'Park Report', emoji: '📋', story: 'The park owner wants to know how many dinosaurs live in the park. The counting code says 9 — but there are many more than that!', challenge: 'Fix the running total so it adds up every pen and reports the right number of dinosaurs.', xp: 140, hint: 'Use total += count to ADD each pen. total = count throws away what you had before.' },
+    ],
+  },
 ];
-
-export const MISSION_CHECKS = {
-  'space-1': {
-    starter: `# 🔥 Launch Sequence\n# Print each step of your rocket launch\nprint("Systems check...")\nprint("Fuel loading...")\n# Add at least 3 more launch steps below!\n`,
-    check: (code, out) => {
-      if (out.includes('Error')) return { ok: false, msg: 'Fix the error in your code first!' };
-      const lines = out.split('\n').filter(l => l.trim());
-      if (lines.length < 5) return { ok: false, msg: `Need at least 5 steps! You have ${lines.length}. Add more print() statements.` };
-      return { ok: true, msg: '🚀 Launch sequence confirmed! Rocket is away!' };
-    },
-  },
-  'space-2': {
-    starter: `# 🌍 Orbit Calculator\n# Use a loop to orbit the planet exactly 3 times\nfor orbit in range(3):\n    print(f"Orbit {orbit + 1}/3 - adjusting speed...")\n`,
-    check: (code, out) => {
-      if (out.includes('Error')) return { ok: false, msg: 'Fix the error first!' };
-      if (!code.includes('for') && !code.includes('while')) return { ok: false, msg: 'Use a loop! Try: for orbit in range(3):' };
-      const lines = out.split('\n').filter(l => l.trim());
-      if (lines.length < 3) return { ok: false, msg: 'Make your loop run at least 3 times!' };
-      return { ok: true, msg: '🌍 Perfect orbit! 3 laps around the planet complete!' };
-    },
-  },
-  'space-3': {
-    starter: `# ☄️ Asteroid Field\nscore = 0\nfor i in range(5):\n    asteroid = True  # simulate detection\n    if asteroid:\n        print(f"Asteroid {i+1}! Dodging...")\n        score += 1\n    else:\n        print("Clear...")\nprint(f"Final score: {score}")\n`,
-    check: (code, out) => {
-      if (out.includes('Error')) return { ok: false, msg: 'Fix the error first!' };
-      if (!code.includes('if')) return { ok: false, msg: 'Use an if statement to detect asteroids!' };
-      if (!code.includes('score')) return { ok: false, msg: 'Add a score variable to track dodges!' };
-      return { ok: true, msg: '☄️ Asteroid field cleared! Great flying!' };
-    },
-  },
-  'space-4': {
-    starter: `# 📡 Space Beacon\ndef respond_to_signal(signal):\n    if signal == "SOS":\n        print("SOS received - sending rescue coordinates!")\n    elif signal == "PING":\n        print("PING - sending PONG!")\n    else:\n        print(f"Unknown signal: {signal}")\n\nrespond_to_signal("SOS")\nrespond_to_signal("PING")\nrespond_to_signal("DATA")\n`,
-    check: (code, out) => {
-      if (out.includes('Error')) return { ok: false, msg: 'Fix the error first!' };
-      if (!code.includes('def')) return { ok: false, msg: 'Define a function to handle signals!' };
-      const lines = out.split('\n').filter(l => l.trim());
-      if (lines.length < 2) return { ok: false, msg: 'Call your function with at least 2 different signals!' };
-      return { ok: true, msg: '📡 Beacon decoded! Signal response system working!' };
-    },
-  },
-  'space-5': {
-    starter: `# 🏆 Safe Landing - use ALL concepts!\ndef check_altitude(alt):\n    if alt > 1000:\n        return "descending"\n    elif alt > 100:\n        return "approach"\n    else:\n        return "landing"\n\naltitude = 5000\nfor step in range(5):\n    altitude -= 1000\n    status = check_altitude(altitude)\n    print(f"Altitude: {altitude}m | {status}")\nprint("Touchdown!")\n`,
-    check: (code, out) => {
-      if (out.includes('Error')) return { ok: false, msg: 'Fix the error first!' };
-      if (!code.includes('for') && !code.includes('while')) return { ok: false, msg: 'Missing a loop (for/while)!' };
-      if (!code.includes('if')) return { ok: false, msg: 'Missing an if statement!' };
-      if (!code.includes('def')) return { ok: false, msg: 'Missing a function (def)!' };
-      return { ok: true, msg: '🏆 Safe landing! You used loops, conditions AND functions!' };
-    },
-  },
-  'ocean-1': {
-    starter: `# 🤿 Dive Protocol\ndepth = 0\nlife_support = 100\nfor target in [10, 50, 200]:\n    depth = target\n    if depth > 100:\n        life_support -= 10\n        print(f"Depth: {depth}m - Adjusting life support: {life_support}%")\n    else:\n        print(f"Depth: {depth}m - Systems nominal")\n`,
-    check: (code, out) => {
-      if (out.includes('Error')) return { ok: false, msg: 'Fix the error first!' };
-      if (!code.includes('depth')) return { ok: false, msg: 'Create a depth variable!' };
-      if (!code.includes('if')) return { ok: false, msg: 'Use if to check pressure at each depth!' };
-      const lines = out.split('\n').filter(l => l.trim());
-      if (lines.length < 3) return { ok: false, msg: 'Dive through all 3 depth stages!' };
-      return { ok: true, msg: '🤿 Dive complete! All depths reached safely!' };
-    },
-  },
-  'ocean-2': {
-    starter: `# 🪸 Coral Maze\nposition = 0\nfor step in range(8):\n    if position >= 5:\n        print(f"Step {step+1}: Coral! Dodging...")\n        position = 0\n    else:\n        print(f"Step {step+1}: Moving forward...")\n        position += 1\nprint("Maze complete!")\n`,
-    check: (code, out) => {
-      if (out.includes('Error')) return { ok: false, msg: 'Fix the error first!' };
-      if (!code.includes('if')) return { ok: false, msg: 'Use if to detect and dodge coral!' };
-      if (!out.includes('complete') && !out.includes('done') && !out.includes('Clear')) return { ok: false, msg: 'Navigate to the end of the maze!' };
-      return { ok: true, msg: '🪸 Coral maze navigated! No scratches on the sub!' };
-    },
-  },
-  'ocean-3': {
-    starter: `# 🦈 Shark Alert!\ndef sound_alarm():\n    print("ALARM SOUNDING!")\ndef flash_lights():\n    print("LIGHTS FLASHING!")\ndef radio_surface():\n    print("Radioing surface: SHARK DETECTED!")\n\nshark_detected = True\nif shark_detected:\n    sound_alarm()\n    flash_lights()\n    radio_surface()\n`,
-    check: (code, out) => {
-      if (out.includes('Error')) return { ok: false, msg: 'Fix the error first!' };
-      const fns = (code.match(/def /g) || []).length;
-      if (fns < 3) return { ok: false, msg: `Create 3 functions (alarm, lights, radio). You have ${fns}.` };
-      const lines = out.split('\n').filter(l => l.trim());
-      if (lines.length < 3) return { ok: false, msg: 'All 3 events must trigger!' };
-      return { ok: true, msg: '🦈 Shark alert handled! All 3 systems triggered!' };
-    },
-  },
-  'ocean-4': {
-    starter: `# 💎 Treasure Grid - scan an 8x8 grid!\ntreasure_count = 0\nfor row in range(8):\n    for col in range(8):\n        if (row + col) % 7 == 0:\n            treasure_count += 1\n            print(f"Treasure at ({row},{col})!")\nprint(f"Total treasures: {treasure_count}")\n`,
-    check: (code, out) => {
-      if (out.includes('Error')) return { ok: false, msg: 'Fix the error first!' };
-      const forCount = (code.match(/for /g) || []).length;
-      if (forCount < 2) return { ok: false, msg: 'Use nested loops — a for loop INSIDE another for loop!' };
-      if (!out.includes('Total') && !out.includes('count') && !out.includes('found')) return { ok: false, msg: 'Display your total treasure count!' };
-      return { ok: true, msg: '💎 Grid fully scanned! Treasure hunt complete!' };
-    },
-  },
-  'ocean-5': {
-    starter: `# 🏆 Surface! Emergency ascent!\noxygen = 60\ndepth = 200\nwhile oxygen > 0 and depth > 0:\n    oxygen -= 5\n    depth -= 30\n    if depth < 0:\n        depth = 0\n    print(f"Depth: {depth}m | Oxygen: {oxygen}s")\n    if depth == 0:\n        break\nif depth == 0:\n    print("SURFACED! You made it!")\n`,
-    check: (code, out) => {
-      if (out.includes('Error')) return { ok: false, msg: 'Fix the error first!' };
-      if (!code.includes('while') && !code.includes('for')) return { ok: false, msg: 'Use a loop for the ascent!' };
-      if (!out.toLowerCase().includes('surface') && !out.toLowerCase().includes('surfaced') && !out.includes('made it')) return { ok: false, msg: "Make sure your sub reaches the surface!" };
-      return { ok: true, msg: '🌊 Surfaced safely! You escaped in time!' };
-    },
-  },
-  'city-1': {
-    starter: `# 📐 City Blueprint\npopulation = 100\nbudget = 50000\nhappiness = 75\ndays = 0\nprint(f"Population: {population}")\nprint(f"Budget: {budget}")\nprint(f"Happiness: {happiness}%")\nprint(f"Day: {days}")\n`,
-    check: (code, out) => {
-      if (out.includes('Error')) return { ok: false, msg: 'Fix the error first!' };
-      if (!code.includes('population') || !code.includes('budget') || !code.includes('happiness')) return { ok: false, msg: 'Create all 4 variables: population, budget, happiness, days!' };
-      const lines = out.split('\n').filter(l => l.trim());
-      if (lines.length < 4) return { ok: false, msg: 'Display all 4 variables!' };
-      return { ok: true, msg: '📐 Blueprint complete! City variables all set!' };
-    },
-  },
-  'city-2': {
-    starter: `# 🛣️ Build the Roads!\nbudget = 50000\nhappiness = 75\nfor road in range(5):\n    budget -= 2000\n    happiness += 3\n    if budget < 0:\n        print("Budget depleted!")\n        break\n    print(f"Road {road+1} built | Budget: {budget} | Happiness: {happiness}%")\n`,
-    check: (code, out) => {
-      if (out.includes('Error')) return { ok: false, msg: 'Fix the error first!' };
-      if (!code.includes('for') && !code.includes('while')) return { ok: false, msg: 'Use a loop to build 5 roads!' };
-      if (!code.includes('budget')) return { ok: false, msg: 'Deduct from budget each iteration!' };
-      return { ok: true, msg: '🛣️ Roads built! The city is connected!' };
-    },
-  },
-  'city-3': {
-    starter: `# ⚡ Power Grid\ndistricts = [40, 80, 30, 90]\nbudget = 50000\ntotal_cost = 0\nfor i in range(len(districts)):\n    if districts[i] < 50:\n        districts[i] += 20\n        total_cost += 5000\n        print(f"District {i+1}: Powered up | Cost: 5000")\n    else:\n        print(f"District {i+1}: Power OK ({districts[i]})")\nprint(f"Total cost: {total_cost}")\n`,
-    check: (code, out) => {
-      if (out.includes('Error')) return { ok: false, msg: 'Fix the error first!' };
-      if (!code.includes('[')) return { ok: false, msg: 'Use a list for the 4 districts!' };
-      if (!code.includes('if')) return { ok: false, msg: 'Check power levels with if!' };
-      return { ok: true, msg: '⚡ Power grid stable! All districts online!' };
-    },
-  },
-  'city-4': {
-    starter: `# 📈 Population Boom!\npopulation = 100\nhappiness = 75\nfor day in range(10):\n    if happiness > 70:\n        population = int(population * 1.05)\n    else:\n        population = int(population * 1.01)\n    print(f"Day {day+1}: Population {population}")\nprint(f"Final population: {population}")\n`,
-    check: (code, out) => {
-      if (out.includes('Error')) return { ok: false, msg: 'Fix the error first!' };
-      if (!code.includes('for') && !code.includes('while')) return { ok: false, msg: 'Use a loop to simulate the days!' };
-      if (!code.includes('population')) return { ok: false, msg: 'Track the population variable!' };
-      const nums = out.split('\n').filter(l => l.trim()).filter(l => /\d+/.test(l));
-      if (nums.length < 5) return { ok: false, msg: 'Run through at least 5 days and print population each time!' };
-      return { ok: true, msg: '📈 Population boom! The city is thriving!' };
-    },
-  },
-  'city-5': {
-    starter: `# 🏆 Grand Opening!\npopulation = 350\nbudget = 30000\nhappiness = 90\ncity_score = (happiness * 10) + (population // 10)\nprint("=== CITY REPORT ===")\nprint(f"Population: {population}")\nprint(f"Budget: {budget}")\nprint(f"Happiness: {happiness}%")\nprint(f"CITY SCORE: {city_score}")\nprint("FIREWORKS! Grand opening!")\n`,
-    check: (code, out) => {
-      if (out.includes('Error')) return { ok: false, msg: 'Fix the error first!' };
-      if (!code.includes('score') && !code.includes('Score')) return { ok: false, msg: 'Calculate a city score!' };
-      if (!out.includes('Score') && !out.includes('score')) return { ok: false, msg: 'Display your city score!' };
-      return { ok: true, msg: '🏆 Grand opening complete! The mayor is impressed!' };
-    },
-  },
-  'cyber-1': {
-    starter: `# 🐛 Debug Protocol\ndef fixBug(bug_type):\n    if bug_type == "memory":\n        print("Fixing memory leak...")\n    elif bug_type == "network":\n        print("Patching network...")\n    elif bug_type == "syntax":\n        print("Correcting syntax...")\n    else:\n        print(f"Fixing {bug_type} bug...")\n    print(f"{bug_type} bug fixed!")\n\nfixBug("memory")\nfixBug("network")\nfixBug("syntax")\nfixBug("logic")\nfixBug("runtime")\n`,
-    check: (code, out) => {
-      if (out.includes('Error')) return { ok: false, msg: 'Fix the error first!' };
-      if (!code.includes('def fixBug') && !code.includes('def fix_bug')) return { ok: false, msg: 'Create a function called fixBug!' };
-      const calls = (code.match(/fixBug|fix_bug/g) || []).length - 1;
-      if (calls < 5) return { ok: false, msg: `Call fixBug at least 5 times! You have ${calls}.` };
-      return { ok: true, msg: '🐛 All bugs squashed! Network systems repaired!' };
-    },
-  },
-  'cyber-2': {
-    starter: `# 🔐 Pattern Lock\ndef generate_sequence(steps):\n    result = 1\n    for i in range(steps):\n        result *= 2\n        print(result)\n\ngenerate_sequence(5)  # Should print: 2, 4, 8, 16, 32\n`,
-    check: (code, out) => {
-      if (out.includes('Error')) return { ok: false, msg: 'Fix the error first!' };
-      if (!code.includes('def')) return { ok: false, msg: 'Write the sequence inside a function!' };
-      if (!code.includes('for') && !code.includes('while')) return { ok: false, msg: 'Use a loop inside your function!' };
-      const nums = out.split('\n').filter(l => l.trim()).filter(l => /^\d+$/.test(l.trim()));
-      if (nums.length < 3) return { ok: false, msg: 'Your function should print at least 3 numbers in the sequence!' };
-      return { ok: true, msg: '🔐 Pattern cracked! Vault unlocked!' };
-    },
-  },
-  'cyber-3': {
-    starter: `# 🤖 Neural Guard\ndef lockdown():\n    print("LOCKDOWN INITIATED")\ndef classify(signal):\n    if signal % 2 != 0:\n        return "threat"\n    return "safe"\n\nsignals = [10, 7, 4, 13, 6]\nfor s in signals:\n    result = classify(s)\n    print(f"Signal {s}: {result}")\n    if result == "threat":\n        lockdown()\n`,
-    check: (code, out) => {
-      if (out.includes('Error')) return { ok: false, msg: 'Fix the error first!' };
-      if (!code.includes('def')) return { ok: false, msg: 'Define a classify function and a lockdown function!' };
-      if (!out.toLowerCase().includes('lockdown')) return { ok: false, msg: 'Your lockdown must trigger for threats!' };
-      return { ok: true, msg: '🤖 Neural Guard active! All threats neutralised!' };
-    },
-  },
-  'cyber-4': {
-    starter: `# 💾 Recursive Decryption\ndef decrypt(count):\n    if count == 0:\n        print("Decryption complete! Data restored.")\n        return\n    print(f"Peeling layer {count}...")\n    decrypt(count - 1)\n\ndecrypt(5)\n`,
-    check: (code, out) => {
-      if (out.includes('Error')) return { ok: false, msg: 'Fix the error first!' };
-      if (!code.includes('def decrypt')) return { ok: false, msg: 'Write a recursive function called decrypt!' };
-      if (!out.includes('complete') && !out.includes('restored')) return { ok: false, msg: 'Reach the base case — decrypt until count == 0!' };
-      return { ok: true, msg: '💾 Decryption complete! All 5 layers peeled!' };
-    },
-  },
-  'cyber-5': {
-    starter: `# 🏆 System Victory!\ndef fixBug(t): print(f"Fixed {t} bug")\ndef decrypt(n):\n    if n == 0: return\n    decrypt(n-1)\ndef lockdown(): print("Lockdown cleared")\n\ndef runDiagnostic():\n    score = 0\n    print("Running diagnostic...")\n    fixBug("memory"); score += 1\n    decrypt(3); score += 1\n    lockdown(); score += 1\n    print(f"Systems passed: {score}/3")\n    if score == 3:\n        print("ALL SYSTEMS GO! Network secured!")\n\nrunDiagnostic()\n`,
-    check: (code, out) => {
-      if (out.includes('Error')) return { ok: false, msg: 'Fix the error first!' };
-      if (!code.includes('def runDiagnostic')) return { ok: false, msg: 'Write a runDiagnostic function!' };
-      if (!out.includes('passed') && !out.includes('score') && !out.includes('Score')) return { ok: false, msg: 'Your diagnostic should show a score!' };
-      return { ok: true, msg: '🏆 SYSTEM VICTORY! All networks secured! You are a Cyber Master!' };
-    },
-  },
-};
 
 // ── Mission Block Editor ────────────────────────────────────────────────────
 
@@ -282,8 +123,11 @@ export const MBLOCK_DEFS = {
     params: [{ key: 'message', label: 'Value', default: '"Hello!"' }],
     gen: (p) => {
       const msg = (p.message || '""').trim();
-      if (/^["']/.test(msg) || /^f["']/.test(msg) || /^[a-zA-Z_][a-zA-Z0-9_.()[\]]*$/.test(msg)) return `print(${msg})`;
-      return `print("${msg}")`;
+      // Quoted text, f-strings, names, numbers and calculations are code; plain words become text
+      const isCode = /^f?["']/.test(msg) || /^-?\d+(\.\d+)?$/.test(msg) || /^[a-zA-Z_][\w.]*$/.test(msg)
+        || (/[+\-*/%()[\]<>=,]/.test(msg) && !/^[A-Za-z][A-Za-z ]*[!?.]*$/.test(msg));
+      if (isCode) return `print(${msg})`;
+      return `print("${msg.replace(/"/g, '\\"')}")`;
     },
   },
   repeat:     { label: 'Repeat',          color: '#f59e0b', icon: '🔄',
@@ -322,9 +166,39 @@ export const MBLOCK_DEFS = {
     params: [{ key: 'text', label: 'Text', default: 'My note' }],
     gen: (p) => `# ${p.text || ''}`,
   },
+  elif:       { label: 'Else if',         color: '#7c3aed', icon: '❓',
+    params: [{ key: 'cond', label: 'Condition', default: 'x > 0' }],
+    gen: (p) => `elif ${p.cond || 'True'}:`, container: true,
+  },
+  else:       { label: 'Else',            color: '#6d28d9', icon: '↩',
+    params: [],
+    gen: () => 'else:', container: true,
+  },
+  'for-each': { label: 'For each',        color: '#d97706', icon: '🔁',
+    params: [{ key: 'var', label: 'Item', default: 'item' }, { key: 'list', label: 'In', default: '[1, 2, 3]' }],
+    gen: (p) => `for ${p.var || 'item'} in ${p.list || '[]'}:`, container: true,
+  },
+  code:       { label: 'Python line',     color: '#475569', icon: '🐍',
+    params: [{ key: 'code', label: 'Code', default: 'x = 1' }],
+    gen: (p) => p.code || 'pass',
+  },
 };
 
+/** Blocks every mission gets on top of its own palette. */
+const ALWAYS = ['comment', 'code'];
+const WITH_IF = ['elif', 'else'];
+
 export const MISSION_PALETTE = {
+  'jungle-1': ['var-set', 'for-each', 'print', 'comment'],
+  'jungle-2': ['var-set', 'func-call', 'print', 'comment'],
+  'jungle-3': ['var-set', 'print', 'comment'],
+  'jungle-4': ['var-set', 'for-each', 'if', 'print', 'comment'],
+  'jungle-5': ['var-set', 'repeat', 'for-each', 'print', 'comment'],
+  'dino-1': ['print', 'var-set', 'comment'],
+  'dino-2': ['var-set', 'repeat', 'for-each', 'print', 'comment'],
+  'dino-3': ['var-set', 'for-each', 'if', 'print', 'comment'],
+  'dino-4': ['func-def', 'func-call', 'print', 'comment'],
+  'dino-5': ['var-set', 'var-change', 'for-each', 'print', 'comment'],
   'space-1':  ['print', 'comment'],
   'space-2':  ['repeat', 'print', 'var-set', 'comment'],
   'space-3':  ['var-set', 'var-change', 'repeat', 'if', 'print', 'comment'],
@@ -347,228 +221,19 @@ export const MISSION_PALETTE = {
   'cyber-5':  ['func-def', 'func-call', 'var-set', 'var-change', 'print', 'comment'],
 };
 
+// Extend each mission's palette: Else / Else-if next to If, For-each next to loops,
+// and a Python line for anything the blocks can't say.
+for (const [id, list] of Object.entries(MISSION_PALETTE)) {
+  const out = [...list];
+  if (out.includes('if')) out.splice(out.indexOf('if') + 1, 0, ...WITH_IF.filter((t) => !out.includes(t)));
+  if ((out.includes('repeat') || out.includes('while')) && !out.includes('for-each')) out.splice(out.indexOf(out.includes('repeat') ? 'repeat' : 'while') + 1, 0, 'for-each');
+  ALWAYS.forEach((t) => { if (!out.includes(t)) out.push(t); });
+  MISSION_PALETTE[id] = out;
+}
+
 export function mb(type, indent, params) {
   return { id: Math.random().toString(36).slice(2), type, indent, params };
 }
-
-export const MISSION_STARTERS = {
-  'space-1': [
-    mb('print', 0, { message: '"Systems check..."' }),
-    mb('print', 0, { message: '"Fuel loading..."' }),
-    mb('print', 0, { message: '"Engines ignite!"' }),
-    mb('print', 0, { message: '"Clamps released!"' }),
-    mb('print', 0, { message: '"Liftoff!"' }),
-    mb('comment', 0, { text: 'Add more steps to make a great launch!' }),
-  ],
-  'space-2': [
-    mb('repeat', 0, { times: '3' }),
-    mb('print', 1, { message: 'f"Orbit {i+1}/3 - adjusting speed..."' }),
-    mb('comment', 0, { text: 'You can add more actions inside the loop!' }),
-  ],
-  'space-3': [
-    mb('var-set', 0, { name: 'score', value: '0' }),
-    mb('repeat', 0, { times: '5' }),
-    mb('var-set', 1, { name: 'asteroid', value: 'True' }),
-    mb('if', 1, { cond: 'asteroid' }),
-    mb('print', 2, { message: 'f"Asteroid {i+1}! Dodging..."' }),
-    mb('var-change', 2, { name: 'score', op: '+=', amount: '1' }),
-    mb('print', 0, { message: 'f"Final score: {score}"' }),
-  ],
-  'space-4': [
-    mb('func-def', 0, { name: 'respond_to_signal', args: 'signal' }),
-    mb('if', 1, { cond: 'signal == "SOS"' }),
-    mb('print', 2, { message: '"SOS received - sending rescue coordinates!"' }),
-    mb('if', 1, { cond: 'signal == "PING"' }),
-    mb('print', 2, { message: '"PING - sending PONG!"' }),
-    mb('func-call', 0, { name: 'respond_to_signal', args: '"SOS"' }),
-    mb('func-call', 0, { name: 'respond_to_signal', args: '"PING"' }),
-    mb('func-call', 0, { name: 'respond_to_signal', args: '"DATA"' }),
-  ],
-  'space-5': [
-    mb('func-def', 0, { name: 'check_altitude', args: 'alt' }),
-    mb('if', 1, { cond: 'alt > 1000' }),
-    mb('return', 2, { value: '"descending"' }),
-    mb('return', 1, { value: '"landing"' }),
-    mb('var-set', 0, { name: 'altitude', value: '5000' }),
-    mb('repeat', 0, { times: '5' }),
-    mb('var-change', 1, { name: 'altitude', op: '-=', amount: '1000' }),
-    mb('var-set', 1, { name: 'status', value: 'check_altitude(altitude)' }),
-    mb('print', 1, { message: 'f"Altitude: {altitude}m | {status}"' }),
-    mb('print', 0, { message: '"Touchdown!"' }),
-  ],
-  'ocean-1': [
-    mb('var-set', 0, { name: 'depth', value: '0' }),
-    mb('var-set', 0, { name: 'life_support', value: '100' }),
-    mb('repeat', 0, { times: '3' }),
-    mb('var-change', 1, { name: 'depth', op: '+=', amount: '70' }),
-    mb('if', 1, { cond: 'depth > 100' }),
-    mb('var-change', 2, { name: 'life_support', op: '-=', amount: '10' }),
-    mb('print', 2, { message: 'f"Depth: {depth}m - Adjusting life support: {life_support}%"' }),
-    mb('if', 1, { cond: 'depth <= 100' }),
-    mb('print', 2, { message: 'f"Depth: {depth}m - Systems nominal"' }),
-  ],
-  'ocean-2': [
-    mb('var-set', 0, { name: 'position', value: '0' }),
-    mb('repeat', 0, { times: '8' }),
-    mb('if', 1, { cond: 'position >= 5' }),
-    mb('print', 2, { message: 'f"Step {i+1}: Coral! Dodging..."' }),
-    mb('var-set', 2, { name: 'position', value: '0' }),
-    mb('if', 1, { cond: 'position < 5' }),
-    mb('print', 2, { message: 'f"Step {i+1}: Moving forward..."' }),
-    mb('var-change', 2, { name: 'position', op: '+=', amount: '1' }),
-    mb('print', 0, { message: '"Maze complete!"' }),
-  ],
-  'ocean-3': [
-    mb('func-def', 0, { name: 'sound_alarm', args: '' }),
-    mb('print', 1, { message: '"ALARM SOUNDING!"' }),
-    mb('func-def', 0, { name: 'flash_lights', args: '' }),
-    mb('print', 1, { message: '"LIGHTS FLASHING!"' }),
-    mb('func-def', 0, { name: 'radio_surface', args: '' }),
-    mb('print', 1, { message: '"Radioing surface: SHARK DETECTED!"' }),
-    mb('var-set', 0, { name: 'shark_detected', value: 'True' }),
-    mb('if', 0, { cond: 'shark_detected' }),
-    mb('func-call', 1, { name: 'sound_alarm', args: '' }),
-    mb('func-call', 1, { name: 'flash_lights', args: '' }),
-    mb('func-call', 1, { name: 'radio_surface', args: '' }),
-  ],
-  'ocean-4': [
-    mb('var-set', 0, { name: 'treasure_count', value: '0' }),
-    mb('repeat', 0, { times: '8' }),
-    mb('repeat', 1, { times: '8' }),
-    mb('if', 2, { cond: 'treasure_count < 3' }),
-    mb('var-change', 3, { name: 'treasure_count', op: '+=', amount: '1' }),
-    mb('print', 3, { message: 'f"Treasure found! Total: {treasure_count}"' }),
-    mb('print', 0, { message: 'f"Total treasures: {treasure_count}"' }),
-  ],
-  'ocean-5': [
-    mb('var-set', 0, { name: 'oxygen', value: '60' }),
-    mb('var-set', 0, { name: 'depth', value: '200' }),
-    mb('while', 0, { cond: 'oxygen > 0 and depth > 0' }),
-    mb('var-change', 1, { name: 'oxygen', op: '-=', amount: '5' }),
-    mb('var-change', 1, { name: 'depth', op: '-=', amount: '30' }),
-    mb('if', 1, { cond: 'depth < 0' }),
-    mb('var-set', 2, { name: 'depth', value: '0' }),
-    mb('print', 0, { message: '"SURFACED! You made it!"' }),
-  ],
-  'city-1': [
-    mb('var-set', 0, { name: 'population', value: '100' }),
-    mb('var-set', 0, { name: 'budget', value: '50000' }),
-    mb('var-set', 0, { name: 'happiness', value: '75' }),
-    mb('var-set', 0, { name: 'days', value: '0' }),
-    mb('print', 0, { message: 'f"Population: {population}"' }),
-    mb('print', 0, { message: 'f"Budget: {budget}"' }),
-    mb('print', 0, { message: 'f"Happiness: {happiness}%"' }),
-    mb('print', 0, { message: 'f"Day: {days}"' }),
-  ],
-  'city-2': [
-    mb('var-set', 0, { name: 'budget', value: '50000' }),
-    mb('var-set', 0, { name: 'happiness', value: '75' }),
-    mb('repeat', 0, { times: '5' }),
-    mb('var-change', 1, { name: 'budget', op: '-=', amount: '2000' }),
-    mb('var-change', 1, { name: 'happiness', op: '+=', amount: '3' }),
-    mb('if', 1, { cond: 'budget < 0' }),
-    mb('print', 2, { message: '"Budget depleted!"' }),
-    mb('print', 1, { message: 'f"Road {i+1} built | Budget: {budget} | Happiness: {happiness}%"' }),
-  ],
-  'city-3': [
-    mb('var-set', 0, { name: 'districts', value: '[40, 80, 30, 90]' }),
-    mb('var-set', 0, { name: 'total_cost', value: '0' }),
-    mb('var-set', 0, { name: 'power_needed', value: '50' }),
-    mb('repeat', 0, { times: '4' }),
-    mb('if', 1, { cond: 'i < 2' }),
-    mb('var-change', 2, { name: 'total_cost', op: '+=', amount: '5000' }),
-    mb('print', 2, { message: 'f"District {i+1}: Powered up | Cost: 5000"' }),
-    mb('print', 0, { message: 'f"Total cost: {total_cost}"' }),
-  ],
-  'city-4': [
-    mb('var-set', 0, { name: 'population', value: '100' }),
-    mb('var-set', 0, { name: 'happiness', value: '75' }),
-    mb('repeat', 0, { times: '10' }),
-    mb('if', 1, { cond: 'happiness > 70' }),
-    mb('var-set', 2, { name: 'population', value: 'int(population * 1.05)' }),
-    mb('if', 1, { cond: 'happiness <= 70' }),
-    mb('var-set', 2, { name: 'population', value: 'int(population * 1.01)' }),
-    mb('print', 1, { message: 'f"Day {i+1}: Population {population}"' }),
-    mb('print', 0, { message: 'f"Final population: {population}"' }),
-  ],
-  'city-5': [
-    mb('var-set', 0, { name: 'population', value: '350' }),
-    mb('var-set', 0, { name: 'budget', value: '30000' }),
-    mb('var-set', 0, { name: 'happiness', value: '90' }),
-    mb('var-set', 0, { name: 'city_score', value: '(happiness * 10) + (population // 10)' }),
-    mb('print', 0, { message: '"=== CITY REPORT ==="' }),
-    mb('print', 0, { message: 'f"Population: {population}"' }),
-    mb('print', 0, { message: 'f"Budget: {budget}"' }),
-    mb('print', 0, { message: 'f"Happiness: {happiness}%"' }),
-    mb('print', 0, { message: 'f"CITY SCORE: {city_score}"' }),
-    mb('print', 0, { message: '"FIREWORKS! Grand opening!"' }),
-  ],
-  'cyber-1': [
-    mb('func-def', 0, { name: 'fixBug', args: 'bug_type' }),
-    mb('if', 1, { cond: 'bug_type == "memory"' }),
-    mb('print', 2, { message: '"Fixing memory leak..."' }),
-    mb('if', 1, { cond: 'bug_type == "network"' }),
-    mb('print', 2, { message: '"Patching network..."' }),
-    mb('print', 1, { message: 'f"{bug_type} bug fixed!"' }),
-    mb('func-call', 0, { name: 'fixBug', args: '"memory"' }),
-    mb('func-call', 0, { name: 'fixBug', args: '"network"' }),
-    mb('func-call', 0, { name: 'fixBug', args: '"syntax"' }),
-    mb('func-call', 0, { name: 'fixBug', args: '"logic"' }),
-    mb('func-call', 0, { name: 'fixBug', args: '"runtime"' }),
-  ],
-  'cyber-2': [
-    mb('func-def', 0, { name: 'generate_sequence', args: 'steps' }),
-    mb('var-set', 1, { name: 'result', value: '1' }),
-    mb('repeat', 1, { times: 'steps' }),
-    mb('var-change', 2, { name: 'result', op: '*=', amount: '2' }),
-    mb('print', 2, { message: 'result' }),
-    mb('func-call', 0, { name: 'generate_sequence', args: '5' }),
-  ],
-  'cyber-3': [
-    mb('func-def', 0, { name: 'lockdown', args: '' }),
-    mb('print', 1, { message: '"LOCKDOWN INITIATED"' }),
-    mb('func-def', 0, { name: 'classify', args: 'signal' }),
-    mb('if', 1, { cond: 'signal > 10' }),
-    mb('return', 2, { value: '"threat"' }),
-    mb('return', 1, { value: '"safe"' }),
-    mb('repeat', 0, { times: '5' }),
-    mb('var-set', 1, { name: 'sig', value: 'i * 3 + 4' }),
-    mb('var-set', 1, { name: 'result', value: 'classify(sig)' }),
-    mb('print', 1, { message: 'f"Signal {sig}: {result}"' }),
-    mb('if', 1, { cond: 'result == "threat"' }),
-    mb('func-call', 2, { name: 'lockdown', args: '' }),
-  ],
-  'cyber-4': [
-    mb('func-def', 0, { name: 'decrypt', args: 'count' }),
-    mb('if', 1, { cond: 'count == 0' }),
-    mb('print', 2, { message: '"Decryption complete! Data restored."' }),
-    mb('return', 2, { value: '' }),
-    mb('print', 1, { message: 'f"Peeling layer {count}..."' }),
-    mb('func-call', 1, { name: 'decrypt', args: 'count - 1' }),
-    mb('func-call', 0, { name: 'decrypt', args: '5' }),
-  ],
-  'cyber-5': [
-    mb('func-def', 0, { name: 'fixBug', args: 't' }),
-    mb('print', 1, { message: 'f"Fixed {t} bug"' }),
-    mb('func-def', 0, { name: 'decrypt', args: 'n' }),
-    mb('if', 1, { cond: 'n == 0' }),
-    mb('return', 2, { value: '' }),
-    mb('func-call', 1, { name: 'decrypt', args: 'n - 1' }),
-    mb('func-def', 0, { name: 'lockdown', args: '' }),
-    mb('print', 1, { message: '"Lockdown cleared"' }),
-    mb('func-def', 0, { name: 'runDiagnostic', args: '' }),
-    mb('var-set', 1, { name: 'score', value: '0' }),
-    mb('print', 1, { message: '"Running diagnostic..."' }),
-    mb('func-call', 1, { name: 'fixBug', args: '"memory"' }),
-    mb('var-change', 1, { name: 'score', op: '+=', amount: '1' }),
-    mb('func-call', 1, { name: 'decrypt', args: '3' }),
-    mb('var-change', 1, { name: 'score', op: '+=', amount: '1' }),
-    mb('func-call', 1, { name: 'lockdown', args: '' }),
-    mb('var-change', 1, { name: 'score', op: '+=', amount: '1' }),
-    mb('print', 1, { message: 'f"Systems passed: {score}/3"' }),
-    mb('func-call', 0, { name: 'runDiagnostic', args: '' }),
-  ],
-};
 
 export function genPyFromBlocks(blocks) {
   if (!blocks.length) return '# Add blocks from the palette!\n';
@@ -590,3 +255,34 @@ export function genPyFromBlocks(blocks) {
   return lines.join('\n');
 }
 
+/**
+ * Turn a Python program into mission blocks, so a mission's Blocks starter is the
+ * same unfinished program as its Python starter. Anything the blocks can't
+ * express becomes a "Python line" block, so nothing is ever lost.
+ */
+export function pyToBlocks(code) {
+  const loopVars = ['i', 'j', 'k', 'n'];
+  const out = [];
+  for (const raw of String(code || '').split('\n')) {
+    if (!raw.trim()) continue;
+    const indent = Math.floor((raw.match(/^ */)[0].length) / 4);
+    const t = raw.trim();
+    let m;
+    const add = (type, params) => out.push(mb(type, indent, params));
+    if ((m = t.match(/^#\s?(.*)$/))) add('comment', { text: m[1] });
+    else if ((m = t.match(/^print\((.*)\)$/))) add('print', { message: m[1] });
+    else if ((m = t.match(/^for\s+(\w+)\s+in\s+range\(\s*([^,()]+?)\s*\):$/)) && m[1] === loopVars[indent]) add('repeat', { times: m[2] });
+    else if ((m = t.match(/^for\s+(\w+)\s+in\s+(.+):$/))) add('for-each', { var: m[1], list: m[2] });
+    else if ((m = t.match(/^while\s+(.+):$/))) add('while', { cond: m[1] });
+    else if ((m = t.match(/^if\s+(.+):$/))) add('if', { cond: m[1] });
+    else if ((m = t.match(/^elif\s+(.+):$/))) add('elif', { cond: m[1] });
+    else if (t === 'else:') add('else', {});
+    else if ((m = t.match(/^def\s+(\w+)\((.*)\):$/))) add('func-def', { name: m[1], args: m[2] });
+    else if ((m = t.match(/^return(?:\s+(.+))?$/))) add('return', { value: m[1] || '' });
+    else if ((m = t.match(/^(\w+)\s*(\+=|-=|\*=|\/=|\/\/=)\s*(.+)$/))) add('var-change', { name: m[1], op: m[2], amount: m[3] });
+    else if ((m = t.match(/^(\w+)\s*=\s*(?!=)(.+)$/))) add('var-set', { name: m[1], value: m[2] });
+    else if ((m = t.match(/^(\w+)\((.*)\)$/))) add('func-call', { name: m[1], args: m[2] });
+    else add('code', { code: t });
+  }
+  return out;
+}

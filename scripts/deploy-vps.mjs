@@ -33,11 +33,17 @@ if (!fs.existsSync(indexPath)) {
 run('node scripts/verify-dist-index.mjs');
 run('node scripts/write-bb-entry.mjs');
 
-console.log('[deploy-vps] syncing app (characters preserved on server)…');
-run(`rsync -az --delete --exclude='assets/characters/' ${rsyncSsh} "${dist}/" ${host}:${remote}/`);
+// Publish hashed bundles before the HTML/manifest that points at them. If the
+// entrypoint goes first, a visitor can request a new immutable chunk while it
+// is still missing, and a CDN may cache that temporary 404 for a long time.
+console.log('[deploy-vps] syncing app assets before entrypoint (characters preserved)…');
+run(`rsync -az --delete --exclude='index.html' --exclude='bb-entry.json' --exclude='assets/characters/' ${rsyncSsh} "${dist}/" ${host}:${remote}/`);
 
 console.log('[deploy-vps] syncing characters…');
 run(`rsync -az --checksum ${rsyncSsh} "${path.join(dist, 'assets/characters')}/" ${host}:${remote}/assets/characters/`);
+
+console.log('[deploy-vps] publishing page entrypoint…');
+run(`rsync -az ${rsyncSsh} "${indexPath}" "${path.join(dist, 'bb-entry.json')}" ${host}:${remote}/`);
 
 run(`ssh ${sshOpts} ${host} "test -f ${remote}/index.html && test -f ${remote}/bb-entry.json && find ${remote} -type d -exec chmod 755 {} \\; && find ${remote} -type f -exec chmod 644 {} \\; && sudo nginx -t && sudo systemctl reload nginx && curl -sf -o /dev/null http://127.0.0.1/ && echo Site OK"`);
 

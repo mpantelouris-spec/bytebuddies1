@@ -141,9 +141,8 @@ export const KART_ASSET_MANIFEST = {
   student_race: '/assets/karts/student_race.glb',
 };
 
-/** Runtime probe cache — static BUNDLED_TRACKS alone is not trusted. */
+/** Runtime probe cache. */
 const _verifiedTracks = new Map();
-const _pendingProbes = new Map();
 
 export function getTrackManifest(trackId) {
   return TRACK_ASSET_MANIFEST[trackId] ?? null;
@@ -156,58 +155,25 @@ export function getTrackAssetUrl(trackId, assetKey) {
   return `${manifest.base}/${file}`;
 }
 
-function firstManifestFile(manifest) {
-  if (!manifest) return null;
-  const scatterKey = Object.keys(manifest.scatter ?? {})[0];
-  if (scatterKey && manifest.scatter[scatterKey]) {
-    return `${manifest.base}/${manifest.scatter[scatterKey]}`;
-  }
-  const assetKey = Object.keys(manifest.assets ?? {})[0];
-  if (assetKey && manifest.assets[assetKey]) {
-    return `${manifest.base}/${manifest.assets[assetKey]}`;
-  }
-  return null;
-}
-
-/** Sync check — optimistic for bundled tracks; probe confirms later. */
+/** Sync check — bundled tracks are served from our origin. */
 export function trackHasBundledAssets(trackId) {
   if (_verifiedTracks.has(trackId)) return _verifiedTracks.get(trackId);
   return BUNDLED_TRACKS[trackId] === true;
 }
 
-/** HEAD-probe one manifest file; caches result. */
+/** Bundled tracks skip a network probe so slow Wi-Fi cannot stall the world. */
 export async function probeTrackBundledAssets(trackId) {
   if (_verifiedTracks.has(trackId)) return _verifiedTracks.get(trackId);
-  if (_pendingProbes.has(trackId)) return _pendingProbes.get(trackId);
 
   if (BUNDLED_TRACKS[trackId] !== true) {
     _verifiedTracks.set(trackId, false);
     return false;
   }
 
-  const manifest = getTrackManifest(trackId);
-  const url = firstManifestFile(manifest);
-  if (!url) {
-    _verifiedTracks.set(trackId, false);
-    return false;
-  }
-
-  const promise = fetch(url, { method: 'HEAD', cache: 'force-cache', signal: AbortSignal.timeout(5000) })
-    .then((res) => {
-      const len = parseInt(res.headers.get('content-length') || '0', 10);
-      const ok = res.ok && len > 512;
-      _verifiedTracks.set(trackId, ok);
-      if (!ok) console.warn('[TrackAssetManifest] glTF probe failed:', trackId, url, res.status, len);
-      return ok;
-    })
-    .catch(() => {
-      _verifiedTracks.set(trackId, false);
-      return false;
-    })
-    .finally(() => _pendingProbes.delete(trackId));
-
-  _pendingProbes.set(trackId, promise);
-  return promise;
+  // Bundled tracks are on our origin. Do not HEAD-probe — slow school Wi-Fi
+  // was waiting up to 5s before the world could finish loading.
+  _verifiedTracks.set(trackId, true);
+  return true;
 }
 
 /** Warm Kenney glTF probes + priority models so first cup track loads fast. */

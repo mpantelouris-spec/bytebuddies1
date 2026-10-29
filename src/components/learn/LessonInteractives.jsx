@@ -2,6 +2,7 @@
  * Fun interactive tasks for Learn lessons (Read & Practice levels).
  */
 import React, { useState, useCallback, useMemo } from 'react';
+import { EmojiIcon } from '../ui/Icon.jsx';
 
 function TaskHeader({ task, done }) {
   return (
@@ -355,7 +356,7 @@ export function LessonInteractivePanel({ tasks, color, onAllComplete, compact })
   return (
     <div className={`corg-interactive-panel ${compact ? 'compact' : ''}`}>
       <div className="corg-interactive-progress">
-        <span>🎮 Interactive Challenge</span>
+        <span><EmojiIcon e="🎮" style={{ marginRight: '0.35em' }} />Interactive Challenge</span>
         <span>{completed.size}/{tasks.length}</span>
         <div className="corg-interactive-bar"><div style={{ width: `${pct}%`, background: color }} /></div>
       </div>

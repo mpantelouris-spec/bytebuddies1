@@ -12,6 +12,7 @@ import 'blockly/blocks';
 import { defineBytebuddiesBlocks } from '../utils/blocklySetup';
 import { buildBlocklyToolboxForPage } from '../data/sharedBlocklyToolbox';
 import { BB_ADD_SIDEBAR_BLOCK } from '../utils/blockLibraryEvents';
+import { createMusicPreviewListener } from '../utils/musicPreview';
 import {
   SCRATCH_BLOCK_DEFAULT_FIELDS,
   gameTypeToBlocklyType,
@@ -36,7 +37,9 @@ function blockToNode(block) {
   block.inputList.forEach((input) => {
     input.fieldRow.forEach((field) => {
       if (field?.name && field.name !== 'CAT_HEX') {
-        fields[field.name] = block.getFieldValue(field.name);
+        // Variables are stored by id; the game runs them by name ("score", "side"…)
+        const variable = typeof field.getVariable === 'function' ? field.getVariable() : null;
+        fields[field.name] = variable?.name ?? block.getFieldValue(field.name);
       }
     });
   });
@@ -98,6 +101,26 @@ function safeClearWorkspace(ws) {
       /* ignore stale connection errors during recovery */
     }
   });
+}
+
+/**
+ * Read a sprite's saved script without opening it in the editor (e.g. a Game Mode
+ * template's other sprites), returning the same nodes the live workspace produces.
+ */
+export function xmlToWorkspaceNodes(xmlText) {
+  if (!xmlText || !String(xmlText).trim()) return [];
+  if (!Blockly.Blocks.bb_pen_color) defineBytebuddiesBlocks();
+  const ws = new Blockly.Workspace();
+  try {
+    const textToDom = Blockly.utils?.xml?.textToDom || Blockly.Xml.textToDom;
+    Blockly.Xml.domToWorkspace(textToDom(String(xmlText)), ws);
+    return ws.getTopBlocks(true).flatMap((b) => chainToNodes(b));
+  } catch (e) {
+    console.warn('[UnifiedBlocklyWorkspace] could not read script XML', e);
+    return [];
+  } finally {
+    ws.dispose();
+  }
 }
 
 function workspaceModelFromWs(ws) {
@@ -217,7 +240,9 @@ const UnifiedBlocklyWorkspace = forwardRef(function UnifiedBlocklyWorkspace({
     safeClearWorkspace(ws);
     if (selectedSpriteXmlLocal && String(selectedSpriteXmlLocal).trim()) {
       try {
-        const xml = Blockly.Xml.textToDom(String(selectedSpriteXmlLocal));
+        // Blockly 10 moved textToDom to utils.xml; the old name no longer exists, so restores silently failed
+        const textToDom = Blockly.utils?.xml?.textToDom || Blockly.Xml.textToDom;
+        const xml = textToDom(String(selectedSpriteXmlLocal));
         Blockly.Xml.domToWorkspace(xml, ws);
         upgradeLibraryStubBlocks(ws);
         restoredFromXml = (ws.getTopBlocks(false).length > 0);
@@ -604,6 +629,8 @@ const UnifiedBlocklyWorkspace = forwardRef(function UnifiedBlocklyWorkspace({
     const onChange = () => emitModel();
     onChangeRef.current = onChange;
     ws.addChangeListener(onChange);
+    // Music blocks play when clicked, and picking an instrument plays a sample (like Scratch)
+    ws.addChangeListener(createMusicPreviewListener(Blockly));
     // Load saved sprite/blocks before syncing to parent — an empty emit here wipes Game Builder code + XML.
     hydrateWorkspace(ws);
     if (libraryPage === 'gamebuilder') {

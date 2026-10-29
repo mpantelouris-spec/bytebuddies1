@@ -7,6 +7,7 @@ import {
 import { KIND_META } from './classroom/assignables.js';
 import { classGradient, GoogleClassroomLogo, timeAgo } from './classroom/ui.jsx';
 import './TeacherHome.css';
+import { EmojiIcon } from './ui/Icon.jsx';
 
 const WEEK_MS = 7 * 86400000;
 
@@ -124,7 +125,7 @@ export default function TeacherHome({ onNavigate }) {
       <header className="th-head">
         <div>
           <div className="th-date">{today}</div>
-          <h1>{greeting()}, {user.name || 'Teacher'} 👋</h1>
+          <h1>{greeting()}, {user.name || 'Teacher'}</h1>
           <p>
             {classes.length === 0
               ? 'Create your first class to start setting work.'
@@ -134,7 +135,8 @@ export default function TeacherHome({ onNavigate }) {
           </p>
         </div>
         <div className="th-head-actions">
-          <button className="th-btn" onClick={() => onNavigate('learn')}>📚 Teach a lesson</button>
+          <button className="th-btn" onClick={() => onNavigate('learn')}><EmojiIcon e="📚" style={{ marginRight: '0.35em' }} />Teach a lesson</button>
+          <button className="th-btn" onClick={() => onNavigate('classroom/add')}><EmojiIcon e="➕" style={{ marginRight: '0.35em' }} />Add pupils</button>
           <button className="th-btn th-btn--primary" onClick={() => onNavigate('classroom')}>
             {classes.length ? '＋ Set work' : '＋ Create a class'}
           </button>
@@ -150,7 +152,7 @@ export default function TeacherHome({ onNavigate }) {
               className={`th-attn th-attn--${t.tone}${t.value ? ' is-hot' : ''}`}
               onClick={() => openClass((summaries.find((s) => s[t.count]) || summaries[0]).cls, t.tab)}
             >
-              <span className="th-attn-icon">{t.icon}</span>
+              <span className="th-attn-icon"><EmojiIcon e={t.icon} /></span>
               <span className="th-attn-copy">
                 <b>{loading && !t.value ? '–' : t.value}</b> <span>{t.label}</span>
                 <small>{t.value ? t.hint : 'All clear ✓'}</small>
@@ -159,7 +161,7 @@ export default function TeacherHome({ onNavigate }) {
             </button>
           ))}
           <div className="th-attn th-attn--stat">
-            <span className="th-attn-icon">👥</span>
+            <span className="th-attn-icon"><EmojiIcon e="👥" /></span>
             <span className="th-attn-copy">
               <b>{totals.active}</b> <span>of {totals.pupils} active</span>
               <small>Pupils who worked this week</small>
@@ -177,9 +179,14 @@ export default function TeacherHome({ onNavigate }) {
         {classes.length === 0 ? (
           <div className="th-empty-grid">
             <button className="th-empty-card" onClick={() => onNavigate('classroom')}>
-              <span className="th-empty-icon">🏫</span>
+              <span className="th-empty-icon"><EmojiIcon e="🏫" /></span>
               <b>Create a class</b>
               <small>Get a 6-letter code your pupils type in to join.</small>
+            </button>
+            <button className="th-empty-card" onClick={() => onNavigate('classroom/add')}>
+              <span className="th-empty-icon"><EmojiIcon e="➕" /></span>
+              <b>Add pupils</b>
+              <small>Create a class, then enter pupil school emails to assign their places.</small>
             </button>
             <button className="th-empty-card" onClick={() => onNavigate('classroom/google')}>
               <span className="th-empty-icon"><GoogleClassroomLogo size={34} /></span>
@@ -205,8 +212,8 @@ export default function TeacherHome({ onNavigate }) {
                     <span><b>{work.length}</b> set</span>
                   </div>
                   <div className="th-class-flags">
-                    {toMark > 0 && <span className="th-flag th-flag--indigo">🖍️ {toMark} to mark</span>}
-                    {help.length > 0 && <span className="th-flag th-flag--amber">🙋 {help.length} need help</span>}
+                    {toMark > 0 && <span className="th-flag th-flag--indigo"><EmojiIcon e="🖍️" style={{ marginRight: '0.35em' }} />{toMark} to mark</span>}
+                    {help.length > 0 && <span className="th-flag th-flag--amber"><EmojiIcon e="🙋" style={{ marginRight: '0.35em' }} />{help.length} need help</span>}
                     {cls.gcCourseId && <span className="th-flag"><GoogleClassroomLogo size={13} /> Linked</span>}
                     {!toMark && !help.length && !cls.gcCourseId && <span className="th-flag th-flag--ok">✓ All caught up</span>}
                   </div>
@@ -227,7 +234,7 @@ export default function TeacherHome({ onNavigate }) {
             </div>
             {upcoming.length === 0 ? (
               <div className="th-empty">
-                <div>📋</div>
+                <div><EmojiIcon e="📋" /></div>
                 <p>No upcoming deadlines.</p>
                 <button className="th-btn th-btn--sm" onClick={() => onNavigate('classroom')}>＋ Set some work</button>
               </div>
@@ -256,7 +263,7 @@ export default function TeacherHome({ onNavigate }) {
             </div>
             {helpList.length === 0 ? (
               <div className="th-empty">
-                <div>🙌</div>
+                <div><EmojiIcon e="🙌" /></div>
                 <p>No one needs help right now.</p>
               </div>
             ) : helpList.map((h) => (
@@ -291,13 +298,13 @@ export default function TeacherHome({ onNavigate }) {
         <div className="th-tools">
           {tools.map((t) => (
             <button key={t.title} className="th-tool" onClick={() => onNavigate(t.page)}>
-              <span className="th-tool-icon">{t.icon}</span>
+              <span className="th-tool-icon"><EmojiIcon e={t.icon} /></span>
               <span><b>{t.title}</b><small>{t.desc}</small></span>
             </button>
           ))}
           {user.role === 'admin' && (
             <button className="th-tool" onClick={() => onNavigate('admin')}>
-              <span className="th-tool-icon">🛡️</span>
+              <span className="th-tool-icon"><EmojiIcon e="🛡️" /></span>
               <span><b>Admin panel</b><small>All users and classes</small></span>
             </button>
           )}

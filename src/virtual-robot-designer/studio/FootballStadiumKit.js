@@ -31,7 +31,9 @@ function makeGrassMap() {
   // Broadcast mowing stripes: two close greens, like a real pitch under floodlights
   const stripes = 12;
   for (let i = 0; i < stripes; i++) {
-    ctx.fillStyle = i % 2 === 0 ? '#3f9a3c' : '#4aab45';
+    // Deeper broadcast greens read as cut turf under the stadium lighting,
+    // while the alternating bands keep the far side of the pitch legible.
+    ctx.fillStyle = i % 2 === 0 ? '#287b39' : '#348a40';
     ctx.fillRect(0, (h / stripes) * i, w, h / stripes + 1);
   }
   // Fine grass grain so it never looks like flat paint
@@ -39,8 +41,8 @@ function makeGrassMap() {
   const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
   for (let i = 0; i < 26000; i++) {
     const g = rnd();
-    ctx.fillStyle = g < 0.5 ? 'rgba(20,70,25,0.18)' : 'rgba(160,220,120,0.14)';
-    ctx.fillRect(rnd() * w, rnd() * h, 1.5, 2.5);
+    ctx.fillStyle = g < 0.5 ? 'rgba(8,42,18,0.2)' : 'rgba(170,220,140,0.12)';
+    ctx.fillRect(rnd() * w, rnd() * h, 1.2, 3.4);
   }
   // Slight worn patches in the goalmouths and centre circle
   [[w / 2, h / 2, 90], [w / 2, 30, 110], [w / 2, h - 30, 110]].forEach(([x, y, r]) => {
@@ -116,7 +118,27 @@ export function buildPbrPitch() {
     ring.renderOrder = 2;
     grp.add(ring);
   };
+  const addArc = (r, x, z, start, end) => {
+    const points = [];
+    const segments = 32;
+    for (let i = 0; i <= segments; i += 1) {
+      const a = start + (end - start) * (i / segments);
+      points.push(new THREE.Vector3(x + Math.cos(a) * r, lineY, z + Math.sin(a) * r));
+    }
+    const curve = new THREE.CatmullRomCurve3(points);
+    const arc = new THREE.Mesh(new THREE.TubeGeometry(curve, segments, 0.035, 5, false), chalk);
+    arc.renderOrder = 2;
+    grp.add(arc);
+  };
+  const addSpot = (x, z, radius = 0.12) => {
+    const spot = new THREE.Mesh(new THREE.CircleGeometry(radius, 16), chalk);
+    spot.rotation.x = -Math.PI / 2;
+    spot.position.set(x, lineY + 0.004, z);
+    spot.renderOrder = 2;
+    grp.add(spot);
+  };
   addRing(3.6, 0, 0);
+  addSpot(0, 0, 0.13);
   const boxW = 12.4;
   const boxD = 5.1;
   const sixW = 6.2;
@@ -129,7 +151,38 @@ export function buildPbrPitch() {
     addLine(sixW, 0.07, 0, sign * (PITCH_HALF_Z - sixD / 2));
     addLine(0.07, sixD, -sixW / 2, sign * (PITCH_HALF_Z - sixD / 2));
     addLine(0.07, sixD, sixW / 2, sign * (PITCH_HALF_Z - sixD / 2));
-    addRing(0.12, 0, sign * (PITCH_HALF_Z - 3.55));
+    const spotZ = sign * (PITCH_HALF_Z - 3.45);
+    addSpot(0, spotZ);
+    // The D-shaped penalty arc sits outside the box, opening toward midfield.
+    addArc(2.0, 0, sign * (PITCH_HALF_Z - boxD), sign > 0 ? Math.PI : 0, sign > 0 ? Math.PI * 2 : Math.PI);
+  });
+
+  // Corner quarter-circles and small coach technical areas finish the
+  // broadcast-pitch markings without crowding the playable surface.
+  [-1, 1].forEach((sx) => [-1, 1].forEach((sz) => {
+    const x = sx * (PITCH_HALF_X - 0.04);
+    const z = sz * (PITCH_HALF_Z - 0.04);
+    const points = [];
+    for (let i = 0; i <= 12; i += 1) {
+      const a = (Math.PI / 2) * (i / 12);
+      points.push(new THREE.Vector3(x - sx * 0.55 * (1 - Math.cos(a)), lineY, z - sz * 0.55 * (1 - Math.sin(a))));
+    }
+    const curve = new THREE.CatmullRomCurve3(points);
+    const arc = new THREE.Mesh(new THREE.TubeGeometry(curve, 12, 0.035, 5, false), chalk);
+    arc.renderOrder = 2;
+    grp.add(arc);
+  }));
+
+  const technical = new THREE.MeshStandardMaterial({ color: 0xdde7df, roughness: 0.9, transparent: true, opacity: 0.62 });
+  [-1, 1].forEach((side) => {
+    const area = new THREE.Mesh(new THREE.BoxGeometry(5.2, 0.012, 1.1), technical);
+    area.position.set(0, lineY - 0.008, side * (PITCH_HALF_Z + 1.1));
+    grp.add(area);
+    for (let i = -2; i <= 2; i += 1) {
+      const dash = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.014, 0.16), chalk);
+      dash.position.set(i * 0.9, lineY, side * (PITCH_HALF_Z + 0.15));
+      grp.add(dash);
+    }
   });
 
   return grp;
@@ -358,8 +411,8 @@ export function buildFootballStadium(scene, tier = 'medium', opts = {}) {
   ].forEach(([x, z]) => root.add(buildFloodlight(x, z, lite)));
 
   const ads = [
-    [0, -hz - 0.55, hx * 1.85, 0, 'FORGE FC  BYTEBUDDIES CUP  GREEN 3v3', '#052e16'],
-    [0, hz + 0.55, hx * 1.85, Math.PI, 'FORGE FC  BYTEBUDDIES CUP  BLUE 3v3', '#0c4a6e'],
+    [0, -hz - 0.55, hx * 1.85, 0, opts.matchLabel || 'FORGE FC  BYTEBUDDIES CUP  GREEN 3v3', '#052e16'],
+    [0, hz + 0.55, hx * 1.85, Math.PI, opts.awayLabel || 'FORGE FC  BYTEBUDDIES CUP  BLUE 3v3', '#0c4a6e'],
     [-hx - 0.55, 0, hz * 1.7, Math.PI / 2, 'GREEN FC', '#14532d'],
     [hx + 0.55, 0, hz * 1.7, -Math.PI / 2, 'BLUE UNITED', '#1e3a8a'],
   ];
@@ -410,8 +463,31 @@ export function buildStreetBackdrop(scene) {
     const wall = new THREE.Mesh(new THREE.BoxGeometry(hx * 2.2, 3.2, 0.35), wallMat);
     wall.position.set(0, 1.6, side * (hz + 1.8));
     root.add(wall);
+    // Simple painted mural panels break up the blank concrete and make this
+    // feel like a neighborhood cage pitch instead of a cut-down stadium.
+    [-11, -5, 5, 11].forEach((x, i) => {
+      const mural = new THREE.Mesh(
+        new THREE.BoxGeometry(2.4, 1.3, 0.045),
+        new THREE.MeshStandardMaterial({
+          color: [0x22d3ee, 0xf472b6, 0xfacc15, 0xa78bfa][i],
+          roughness: 0.78,
+          emissive: [0x063943, 0x42172f, 0x40310c, 0x281a4f][i],
+          emissiveIntensity: 0.22,
+        }),
+      );
+      mural.position.set(x, 2.25, side * (hz + 1.6));
+      root.add(mural);
+    });
   });
   root.add(buildAdBoard(0, hz + 0.55, hx * 1.1, Math.PI, 'STREET FOOTBALL  CONCRETE CUP', '#64748b'));
+  const fenceMat = new THREE.MeshStandardMaterial({ color: 0x64748b, metalness: 0.58, roughness: 0.44 });
+  [-1, 1].forEach((side) => {
+    for (let x = -14; x <= 14; x += 7) {
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 4.4, 6), fenceMat);
+      post.position.set(x, 2.2, side * (hz + 2.1));
+      root.add(post);
+    }
+  });
   scene.add(root);
   return root;
 }
@@ -420,6 +496,17 @@ export function buildTrainingBackdrop(scene) {
   const root = new THREE.Group();
   root.name = 'TrainingBackdrop';
   const hz = PITCH_HALF_Z;
+  const railMat = stdMat(0x1f5135, { roughness: 0.8 });
+  [-1, 1].forEach((side) => {
+    const rail = new THREE.Mesh(new THREE.BoxGeometry(PITCH_HALF_X * 1.8, 1.15, 0.18), railMat);
+    rail.position.set(0, 0.58, side * (hz + 2.3));
+    root.add(rail);
+    for (let x = -16; x <= 16; x += 4) {
+      const post = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.8, 0.12), stdMat(0xe2e8f0, { metalness: 0.28 }));
+      post.position.set(x, 0.9, side * (hz + 2.3));
+      root.add(post);
+    }
+  });
   root.add(buildAdBoard(0, hz + 0.55, PITCH_HALF_X * 1.2, Math.PI, 'TRAINING GROUND  PRACTICE SHOTS', '#16a34a'));
   scene.add(root);
   return root;
@@ -432,6 +519,15 @@ export function buildArcadeBackdrop(scene) {
   const hx = PITCH_HALF_X;
   root.add(buildStand(hx * 0.9, 2.2, 2.4, 0, hz + 2, Math.PI, false));
   root.add(buildAdBoard(0, hz + 0.55, hx * 1.1, Math.PI, 'ARCADE RUSH  FIRST GOAL WINS', '#f472b6'));
+  const neon = [0x22d3ee, 0xf472b6, 0xa78bfa, 0xfacc15];
+  [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([sx, sz], i) => {
+    const post = new THREE.Mesh(
+      new THREE.BoxGeometry(0.28, 4.6, 0.28),
+      new THREE.MeshStandardMaterial({ color: neon[i], emissive: neon[i], emissiveIntensity: 0.7, roughness: 0.38 }),
+    );
+    post.position.set(sx * (hx + 1.6), 2.3, sz * (hz + 1.4));
+    root.add(post);
+  });
   scene.add(root);
   return root;
 }
@@ -442,6 +538,9 @@ export function buildKeeperBackdrop(scene) {
   const hz = PITCH_HALF_Z;
   root.add(buildStand(PITCH_HALF_X * 0.85, 2.4, 2.6, 0, hz + 1.8, Math.PI, false));
   root.add(buildAdBoard(0, hz + 0.45, PITCH_HALF_X, Math.PI, 'GOALKEEPER HERO  CLEAN SHEET', '#facc15'));
+  [-1, 1].forEach((side) => {
+    root.add(buildAdBoard(side * (PITCH_HALF_X * 0.62), hz + 0.5, PITCH_HALF_X * 0.45, Math.PI, side < 0 ? 'SAVE ZONE' : 'REFLEX LAB', side < 0 ? '#0c4a6e' : '#14532d'));
+  });
   scene.add(root);
   return root;
 }

@@ -147,7 +147,8 @@ export function RacingMinimap({ stats, challenge, themeAccent = '#ff44cc', pillB
   const currentSection = minimap ? getSectionAtT(minimap.segments, trackT) : null;
   const nextSection = minimap ? getNextSection(minimap.segments, trackT) : null;
   const progressPct = Math.round(trackT * 100);
-  const trackTitle = std?.displayName
+  const trackTitle = (challenge?.isTierMode ? challenge?.raceTrackLabel : null)
+    ?? std?.displayName
     ?? biome?.label
     ?? challenge?.raceTrackLabel
     ?? challenge?.racing?.displayName

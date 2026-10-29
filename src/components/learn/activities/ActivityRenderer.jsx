@@ -3,6 +3,7 @@ import { CHARACTERS } from '../../../data/learnWorldData';
 import BlockCodingLab from '../CodingLab/BlockCodingLab';
 import FunGame from '../games/FunGame.jsx';
 import CodeRacerSequenceSprint from './CodeRacerSequenceSprint';
+import { EmojiIcon, IconText } from '../../ui/Icon.jsx';
 
 // ─── SHARED STYLES ────────────────────────────────────────────────────────────
 const successBox = { marginTop:12, padding:'12px 16px', background:'rgba(16,185,129,0.12)',
@@ -82,7 +83,7 @@ function GridRobot({ config, color, onComplete }) {
                 background:isO?'#374151':isR?color:isG?'#059669':inT?color+'1a':'rgba(255,255,255,0.05)',
                 border:`2px solid ${isR?color:isG?'#059669':isO?'#4b5563':'rgba(255,255,255,0.08)'}`,
                 boxShadow:isR?`0 0 14px ${color}88`:isG?'0 0 14px #05966988':undefined}}>
-                {isR?'🤖':isG?'⭐':isO?'🧱':''}
+                <IconText>{isR?'🤖':isG?'⭐':isO?'🧱':''}</IconText>
               </div>
             );
           })}
@@ -98,7 +99,7 @@ function GridRobot({ config, color, onComplete }) {
                   {d==='U'?'▲':d==='D'?'▼':d==='L'?'◄':'►'}
                 </button>
               : <div key={i} style={{width:44,height:44,display:'flex',alignItems:'center',justifyContent:'center',
-                  fontSize:16,color:'rgba(255,255,255,0.2)'}}>{i===4?'🤖':''}</div>
+                  fontSize:16,color:'rgba(255,255,255,0.2)'}}><IconText>{i===4?'🤖':''}</IconText></div>
             )}
           </div>
         </div>
@@ -125,16 +126,16 @@ function GridRobot({ config, color, onComplete }) {
           style={{padding:'9px 18px',background:status==='success'?'#059669':color,color:'#fff',
             border:'none',borderRadius:9,cursor:'pointer',fontWeight:700,fontSize:13,
             opacity:running||!seq.length?0.5:1}}>
-          {running?'⏳ Running…':status==='success'?'✅ Goal reached!':'▶ Run Program'}
+          <IconText>{running?'⏳ Running…':status==='success'?'✅ Goal reached!':'▶ Run Program'}</IconText>
         </button>
         <button onClick={reset}
           style={{padding:'9px 14px',background:'rgba(255,255,255,0.06)',color:'#fff',
             border:'1px solid rgba(255,255,255,0.12)',borderRadius:9,cursor:'pointer',fontSize:13}}>
-          🔄 Reset
+          <EmojiIcon e="🔄" style={{ marginRight: '0.35em' }} />Reset
         </button>
       </div>
-      {status==='success'&&<div style={successBox}>🎉 Robot reached the goal in {seq.length} steps!</div>}
-      {status==='fail'   &&<div style={failBox}><span>❌ Robot didn't reach the goal — check your sequence and try again!</span></div>}
+      {status==='success'&&<div style={successBox}><EmojiIcon e="🎉" style={{ marginRight: '0.35em' }} />Robot reached the goal in {seq.length} steps!</div>}
+      {status==='fail'   &&<div style={failBox}><span><EmojiIcon e="❌" style={{ marginRight: '0.35em' }} />Robot didn't reach the goal — check your sequence and try again!</span></div>}
     </div>
   );
 }
@@ -356,16 +357,16 @@ function SequenceGame({ config, color, onComplete }) {
         {checked && !correct && (
           <button onClick={retry}
             style={{ padding:'9px 16px', background:'rgba(255,255,255,0.07)', color:'#fff', border:'1px solid rgba(255,255,255,0.14)', borderRadius:9, cursor:'pointer', fontSize:13 }}>
-            🔄 Shuffle &amp; Restart
+            <EmojiIcon e="🔄" style={{ marginRight: '0.35em' }} />Shuffle &amp; Restart
           </button>
         )}
       </div>
-      {checked && correct && <div style={successBox}>🎉 Perfect order! You understand sequencing!</div>}
+      {checked && correct && <div style={successBox}><EmojiIcon e="🎉" style={{ marginRight: '0.35em' }} />Perfect order! You understand sequencing!</div>}
       {checked && !correct && (
         <div style={correctCount > 0 ? { ...successBox, background:'rgba(251,191,36,0.1)', border:'1px solid rgba(251,191,36,0.35)', color:'#fde68a' } : failBox}>
-          {correctCount > 0
+          <IconText>{correctCount > 0
             ? `👍 ${correctCount} of ${order.length} steps are in the right place — keep dragging the others, then check again!`
-            : `💡 Start with "${answerKey[0]}" at the top — drag steps into order from step 1 to step ${order.length}.`}
+            : `💡 Start with "${answerKey[0]}" at the top — drag steps into order from step 1 to step ${order.length}.`}</IconText>
         </div>
       )}
     </div>
@@ -455,25 +456,25 @@ function DebugChallenge({ config, color, onComplete }) {
     return (
       <div>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
-          <span style={{fontSize:15,fontWeight:700,color:'#fff'}}>🐛 {ch.title}</span>
+          <span style={{fontSize:15,fontWeight:700,color:'#fff'}}><EmojiIcon e="🐛" style={{ marginRight: '0.35em' }} />{ch.title}</span>
           <span style={{fontSize:12,color:'rgba(255,255,255,0.4)'}}>Bug {challengeIdx+1}/{challenges.length}</span>
         </div>
         
         {phase === 'find' && (
           <>
             <p style={{color:'#e2e8f0',marginBottom:8,fontSize:14}}>
-              🔍 This algorithm has a BUG! One step is in the wrong place. Click to find it!
+              <EmojiIcon e="🔍" style={{ marginRight: '0.35em' }} />This algorithm has a BUG! One step is in the wrong place. Click to find it!
             </p>
             {!showHint && ch.hint && (
               <button onClick={() => setShowHint(true)}
                 style={{marginBottom:12,padding:'6px 12px',background:'rgba(251,191,36,0.15)',border:'1px solid rgba(251,191,36,0.3)',
                   color:'#fbbf24',borderRadius:8,cursor:'pointer',fontSize:12}}>
-                💡 Need a hint?
+                <EmojiIcon e="💡" style={{ marginRight: '0.35em' }} />Need a hint?
               </button>
             )}
             {showHint && ch.hint && (
               <p style={{fontSize:12,color:'#fbbf24',marginBottom:12,padding:8,background:'rgba(251,191,36,0.1)',borderRadius:8}}>
-                💡 Hint: {ch.hint}
+                <EmojiIcon e="💡" style={{ marginRight: '0.35em' }} />Hint: {ch.hint}
               </p>
             )}
           </>
@@ -481,7 +482,7 @@ function DebugChallenge({ config, color, onComplete }) {
         
         {phase === 'fix' && (
           <div style={{marginBottom:12,padding:12,background:'rgba(16,185,129,0.12)',border:'1px solid rgba(16,185,129,0.3)',borderRadius:10}}>
-            <p style={{color:'#6ee7b7',fontSize:14,fontWeight:600,marginBottom:4}}>🎯 You found the bug!</p>
+            <p style={{color:'#6ee7b7',fontSize:14,fontWeight:600,marginBottom:4}}><EmojiIcon e="🎯" style={{ marginRight: '0.35em' }} />You found the bug!</p>
             <p style={{color:'#a7f3d0',fontSize:13}}>
               "{buggyStep}" is in position {actualBugIdx + 1}, but it should be in position {correctPosition}!
             </p>
@@ -502,7 +503,7 @@ function DebugChallenge({ config, color, onComplete }) {
                   borderRadius:10, cursor: phase === 'find' ? 'pointer' : 'default', color:'#e2e8f0', fontSize:14}}>
                 <span style={{fontSize:13,color:'rgba(255,255,255,0.4)',width:28,fontWeight:600}}>{i+1}.</span>
                 <span style={{flex:1}}>{step}</span>
-                {isBug && <span style={{fontSize:18}}>🐛</span>}
+                {isBug && <span style={{fontSize:18}}><EmojiIcon e="🐛" /></span>}
                 {isWrongGuess && <span style={{fontSize:13,color:'#fbbf24'}}>Not this one!</span>}
               </button>
             );
@@ -520,7 +521,7 @@ function DebugChallenge({ config, color, onComplete }) {
           <button onClick={handleRetry}
             style={{padding:'8px 16px',background:'rgba(255,255,255,0.1)',border:'1px solid rgba(255,255,255,0.2)',
               color:'#fff',borderRadius:8,cursor:'pointer',fontSize:13}}>
-            🔄 Try Again
+            <EmojiIcon e="🔄" style={{ marginRight: '0.35em' }} />Try Again
           </button>
         )}
       </div>
@@ -582,9 +583,9 @@ function DebugChallenge({ config, color, onComplete }) {
           </button>
         </>
       )}
-      {confirmed&&correct  &&<div style={successBox}>🎉 Bug squashed! Excellent debugging!</div>}
+      {confirmed&&correct  &&<div style={successBox}><EmojiIcon e="🎉" style={{ marginRight: '0.35em' }} />Bug squashed! Excellent debugging!</div>}
       {confirmed&&!correct &&<div style={failBox}>
-        <span>❌ Not quite the right fix. Think about which step causes the problem!</span>
+        <span><EmojiIcon e="❌" style={{ marginRight: '0.35em' }} />Not quite the right fix. Think about which step causes the problem!</span>
         <button onClick={retry}
           style={{flexShrink:0,padding:'4px 10px',background:'rgba(255,255,255,0.09)',border:'1px solid rgba(255,255,255,0.18)',color:'#fff',borderRadius:6,cursor:'pointer',fontSize:12}}>
           Try Again
@@ -628,7 +629,7 @@ function CodeTrace({ config, color, onComplete }) {
       {questions.map((q,i)=>(
         <div key={i} style={{marginBottom:14}}>
           <div style={{fontSize:13,fontWeight:600,color:'#e2e8f0',marginBottom:6}}>{i+1}. {q.q}</div>
-          {q.hint && <div style={{fontSize:11,color:'rgba(255,255,255,0.35)',marginBottom:6}}>💡 Hint: {q.hint}</div>}
+          {q.hint && <div style={{fontSize:11,color:'rgba(255,255,255,0.35)',marginBottom:6}}><EmojiIcon e="💡" style={{ marginRight: '0.35em' }} />Hint: {q.hint}</div>}
           <input value={answers[i]||''} onChange={e=>!checked&&setAnswers(a=>({...a,[i]:e.target.value}))}
             placeholder="Type your answer…"
             style={{padding:'8px 12px',background:'rgba(255,255,255,0.06)',border:`1.5px solid ${checked?(results[i]?'#10b981':'#ef4444'):'rgba(255,255,255,0.15)'}`,
@@ -648,11 +649,11 @@ function CodeTrace({ config, color, onComplete }) {
         {checked && !Object.values(results).every(Boolean) && (
           <button onClick={retry}
             style={{padding:'9px 16px',background:'rgba(255,255,255,0.07)',color:'#fff',border:'1px solid rgba(255,255,255,0.14)',borderRadius:9,cursor:'pointer',fontSize:13}}>
-            🔄 Try Again
+            <EmojiIcon e="🔄" style={{ marginRight: '0.35em' }} />Try Again
           </button>
         )}
       </div>
-      {checked&&Object.values(results).every(Boolean)&&<div style={successBox}>🎉 Correct! You traced the code perfectly!</div>}
+      {checked&&Object.values(results).every(Boolean)&&<div style={successBox}><EmojiIcon e="🎉" style={{ marginRight: '0.35em' }} />Correct! You traced the code perfectly!</div>}
     </div>
   );
 }
@@ -691,7 +692,7 @@ function MultiSequenceGame({ tasks=[], color, onComplete }) {
       <SequenceGame key={taskIdx}
         config={{ steps: task.steps || [], instructions: `Put the steps for "${task.name || 'this task'}" in order!`, context: task.name || '' }}
         color={color} onComplete={handleTaskComplete} />
-      {done.length === safeTasks.length && <div style={successBox}>🎉 All {safeTasks.length} algorithms sorted! Algorithm Finder badge unlocked!</div>}
+      {done.length === safeTasks.length && <div style={successBox}><EmojiIcon e="🎉" style={{ marginRight: '0.35em' }} />All {safeTasks.length} algorithms sorted! Algorithm Finder badge unlocked!</div>}
     </div>
   );
 }
@@ -750,10 +751,10 @@ function CharacterExplorer({ color, onComplete }) {
             </div>
           {!answered.has(active) && CHAR_DIALOGUES[active] && (
             <>
-              <div style={{fontSize:13,color:'rgba(255,255,255,0.7)',marginBottom:10}}>❓ {CHAR_DIALOGUES[active].q}</div>
+              <div style={{fontSize:13,color:'rgba(255,255,255,0.7)',marginBottom:10}}><EmojiIcon e="❓" style={{ marginRight: '0.35em' }} />{CHAR_DIALOGUES[active].q}</div>
               <button onClick={()=>answer(active)}
                 style={{padding:'8px 16px',background:color,color:'#fff',border:'none',borderRadius:8,cursor:'pointer',fontWeight:700,fontSize:13}}>
-                💡 {CHAR_DIALOGUES[active].a}
+                <EmojiIcon e="💡" style={{ marginRight: '0.35em' }} />{CHAR_DIALOGUES[active].a}
               </button>
             </>
           )}
@@ -761,7 +762,7 @@ function CharacterExplorer({ color, onComplete }) {
           </div>
         </div>
       )}
-      {answered.size >= chars.length && <div style={successBox}>🎉 You met all {chars.length} Academy robots!</div>}
+      {answered.size >= chars.length && <div style={successBox}><EmojiIcon e="🎉" style={{ marginRight: '0.35em' }} />You met all {chars.length} Academy robots!</div>}
     </div>
   );
 }
@@ -807,7 +808,7 @@ function GlossaryExplorer({ terms=[], color, onComplete }) {
           </button>
         ))}
       </div>
-      {learned.size >= safeTerms.length && <div style={successBox}>📚 All {safeTerms.length} terms learned! +5 XP each</div>}
+      {learned.size >= safeTerms.length && <div style={successBox}><EmojiIcon e="📚" style={{ marginRight: '0.35em' }} />All {safeTerms.length} terms learned! +5 XP each</div>}
     </div>
   );
 }
@@ -862,7 +863,7 @@ function PredictionChallenge({ sequence=[], start={x:0,y:0}, size=5, options=[],
                   display:'flex',alignItems:'center',justifyContent:'center',
                   background:isStart?color+'33':isEnd&&revealed?'rgba(16,185,129,0.2)':'rgba(255,255,255,0.05)',
                   border:`1px solid ${isStart?color:isEnd&&revealed?'#10b981':'rgba(255,255,255,0.08)'}`}}>
-                  {isStart?'🤖':isEnd&&revealed?'⭐':''}
+                  <IconText>{isStart?'🤖':isEnd&&revealed?'⭐':''}</IconText>
                 </div>
               );
             })}
@@ -885,7 +886,7 @@ function PredictionChallenge({ sequence=[], start={x:0,y:0}, size=5, options=[],
       </div>
       {revealed && (
         <div style={picked===correctIndex?successBox:failBox}>
-          <span>{picked===correctIndex ? '🎉 Correct prediction!' : `❌ Robot ended at (${endPos.x}, ${endPos.y}). Trace the path on the grid and try again!`}</span>
+          <span><IconText>{picked===correctIndex ? '🎉 Correct prediction!' : `❌ Robot ended at (${endPos.x}, ${endPos.y}). Trace the path on the grid and try again!`}</IconText></span>
           {picked!==correctIndex && (
             <button onClick={retry}
               style={{flexShrink:0,padding:'4px 10px',background:'rgba(255,255,255,0.09)',border:'1px solid rgba(255,255,255,0.18)',color:'#fff',borderRadius:6,cursor:'pointer',fontSize:12}}>
@@ -959,12 +960,12 @@ function PatternPainter({ target=[], showSeconds, creative, color, onComplete })
     <div>
       <div style={{marginBottom:16}}>
         <div style={{fontSize:12,color:'rgba(255,255,255,0.4)',marginBottom:10}}>
-          {showTarget ? '🎯 MEMORIZE THIS PATTERN!' : '🤔 Can you remember the pattern?'}
+          <IconText>{showTarget ? '🎯 MEMORIZE THIS PATTERN!' : '🤔 Can you remember the pattern?'}</IconText>
         </div>
         {showTarget && renderEmojiGrid(safeTarget)}
         {!showTarget && !completed && (
           <div style={{textAlign:'center',padding:20,color:'rgba(255,255,255,0.6)'}}>
-            <div style={{fontSize:32,marginBottom:10}}>🧠</div>
+            <div style={{fontSize:32,marginBottom:10}}><EmojiIcon e="🧠" /></div>
             <div>What was the pattern?</div>
             <div style={{fontSize:12,marginTop:8,color:'rgba(255,255,255,0.4)'}}>
               Think about what you saw...
@@ -975,7 +976,7 @@ function PatternPainter({ target=[], showSeconds, creative, color, onComplete })
           <div>
             {renderEmojiGrid(safeTarget)}
             <div style={{...successBox, marginTop:12}}>
-              🎨 Great job spotting the pattern!
+              <EmojiIcon e="🎨" style={{ marginRight: '0.35em' }} />Great job spotting the pattern!
             </div>
           </div>
         )}
@@ -1041,7 +1042,7 @@ function CollectorPuzzle({ config, color, onComplete }) {
     <div>
       <p style={{ color: '#e2e8f0', marginBottom: 10, fontSize: 14 }}>{instructions}</p>
       <div style={{ fontSize: 13, fontWeight: 700, color: '#fbbf24', marginBottom: 10 }}>
-        📦 {collected.length}/{coins.length} collected
+        <EmojiIcon e="📦" style={{ marginRight: '0.35em' }} />{collected.length}/{coins.length} collected
       </div>
       <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-start' }}>
         <div style={{ display: 'grid', gridTemplateColumns: `repeat(${size}, 42px)`, gap: 2 }}>
@@ -1055,7 +1056,7 @@ function CollectorPuzzle({ config, color, onComplete }) {
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 background: isR ? color : 'rgba(255,255,255,0.05)',
                 border: `2px solid ${isR ? color : 'rgba(255,255,255,0.08)'}` }}>
-                {isR ? '🤖' : coin && !got ? '📦' : got ? '✓' : ''}
+                <IconText>{isR ? '🤖' : coin && !got ? '📦' : got ? '✓' : ''}</IconText>
               </div>
             );
           })}
@@ -1068,7 +1069,7 @@ function CollectorPuzzle({ config, color, onComplete }) {
                   style={{ width: 44, height: 44, borderRadius: 8, background: d === 'G' ? '#be185d22' : color + '22',
                     border: `2px solid ${d === 'G' ? '#be185d55' : color + '55'}`, color: '#fff', fontSize: d === 'G' ? 14 : 18,
                     cursor: 'pointer', fontWeight: 700 }}>
-                  {d === 'U' ? '▲' : d === 'D' ? '▼' : d === 'L' ? '◄' : d === 'R' ? '►' : '🤏'}
+                  <IconText>{d === 'U' ? '▲' : d === 'D' ? '▼' : d === 'L' ? '◄' : d === 'R' ? '►' : '🤏'}</IconText>
                 </button>
               : <div key={i} style={{ width: 44, height: 44 }} />
             )}
@@ -1080,7 +1081,7 @@ function CollectorPuzzle({ config, color, onComplete }) {
         <div style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 3 }}>
           {seq.map((cmd, i) => (
             <button key={i} onClick={() => removeCmd(i)} style={tag(color)}>
-              {cmd === 'G' ? '🤏' : cmd === 'U' ? '▲' : cmd === 'D' ? '▼' : cmd === 'L' ? '◄' : '►'}
+              <IconText>{cmd === 'G' ? '🤏' : cmd === 'U' ? '▲' : cmd === 'D' ? '▼' : cmd === 'L' ? '◄' : '►'}</IconText>
             </button>
           ))}
         </div>
@@ -1090,13 +1091,13 @@ function CollectorPuzzle({ config, color, onComplete }) {
           style={{ padding: '9px 18px', background: status === 'success' ? '#059669' : color, color: '#fff',
             border: 'none', borderRadius: 9, cursor: 'pointer', fontWeight: 700, fontSize: 13,
             opacity: running || !seq.length ? 0.5 : 1 }}>
-          {status === 'success' ? '✅ All collected!' : '▶ Run'}
+          <IconText>{status === 'success' ? '✅ All collected!' : '▶ Run'}</IconText>
         </button>
         <button onClick={reset} style={{ padding: '9px 14px', background: 'rgba(255,255,255,0.06)', color: '#fff',
-          border: '1px solid rgba(255,255,255,0.12)', borderRadius: 9, cursor: 'pointer', fontSize: 13 }}>🔄 Reset</button>
+          border: '1px solid rgba(255,255,255,0.12)', borderRadius: 9, cursor: 'pointer', fontSize: 13 }}><EmojiIcon e="🔄" style={{ marginRight: '0.35em' }} />Reset</button>
       </div>
-      {status === 'success' && <div style={successBox}>🎉 All {coins.length} items collected!</div>}
-      {status === 'fail' && <div style={failBox}><span>❌ Only {collected.length}/{coins.length} collected — add GRAB 🤏 at each item!</span></div>}
+      {status === 'success' && <div style={successBox}><EmojiIcon e="🎉" style={{ marginRight: '0.35em' }} />All {coins.length} items collected!</div>}
+      {status === 'fail' && <div style={failBox}><span><EmojiIcon e="❌" style={{ marginRight: '0.35em' }} />Only {collected.length}/{coins.length} collected — add GRAB 🤏 at each item!</span></div>}
     </div>
   );
 }
@@ -1162,9 +1163,9 @@ function ResponsePuzzle({ config, color, onComplete }) {
         </button>
       ) : (
         <div style={score === scenarios.length ? successBox : failBox}>
-          {score === scenarios.length
+          <IconText>{score === scenarios.length
             ? '🎉 Perfect responses! Your robot handles every situation!'
-            : `❌ ${score}/${scenarios.length} correct — review the wrong scenarios and try again.`}
+            : `❌ ${score}/${scenarios.length} correct — review the wrong scenarios and try again.`}</IconText>
           {score < scenarios.length && (
             <button onClick={() => { setAnswers({}); setChecked(false); }}
               style={{ marginLeft: 10, padding: '4px 10px', background: 'rgba(255,255,255,0.09)', border: '1px solid rgba(255,255,255,0.18)',
@@ -1268,10 +1269,10 @@ function SortingGame({ config, color, onComplete }) {
           ✓ Check Sorting
         </button>
       ) : score === items.length ? (
-        <div style={successBox}>🎉 Perfect sorting! You got them all right!</div>
+        <div style={successBox}><EmojiIcon e="🎉" style={{ marginRight: '0.35em' }} />Perfect sorting! You got them all right!</div>
       ) : (
         <div style={failBox}>
-          <span>❌ {score}/{items.length} correct</span>
+          <span><EmojiIcon e="❌" style={{ marginRight: '0.35em' }} />{score}/{items.length} correct</span>
           <button onClick={() => { setPlaced({}); setChecked(false); }}
             style={{padding:'6px 12px',background:'rgba(255,255,255,0.1)',border:'1px solid rgba(255,255,255,0.2)',
               color:'#fff',borderRadius:8,cursor:'pointer',fontSize:13}}>Try Again</button>
@@ -1323,7 +1324,7 @@ function QuizGame({ config, color, onComplete }) {
           </div>
           {checked && q.explanation && (
             <div style={{marginTop:8,fontSize:12,color:'rgba(255,255,255,0.5)',fontStyle:'italic'}}>
-              💡 {q.explanation}
+              <EmojiIcon e="💡" style={{ marginRight: '0.35em' }} />{q.explanation}
             </div>
           )}
         </div>
@@ -1336,10 +1337,10 @@ function QuizGame({ config, color, onComplete }) {
           ✓ Check Answers
         </button>
       ) : score === questions.length ? (
-        <div style={successBox}>🎉 Perfect score! You got all {score} questions right!</div>
+        <div style={successBox}><EmojiIcon e="🎉" style={{ marginRight: '0.35em' }} />Perfect score! You got all {score} questions right!</div>
       ) : (
         <div style={failBox}>
-          <span>❌ {score}/{questions.length} correct</span>
+          <span><EmojiIcon e="❌" style={{ marginRight: '0.35em' }} />{score}/{questions.length} correct</span>
           <button onClick={() => { setAnswers({}); setChecked(false); }}
             style={{padding:'6px 12px',background:'rgba(255,255,255,0.1)',border:'1px solid rgba(255,255,255,0.2)',
               color:'#fff',borderRadius:8,cursor:'pointer',fontSize:13}}>Try Again</button>
@@ -1443,7 +1444,7 @@ function MatchingGame({ config, color, onComplete }) {
       </div>
 
       {matched.length === pairs.length && (
-        <div style={successBox}>🎉 All pairs matched! Great job!</div>
+        <div style={successBox}><EmojiIcon e="🎉" style={{ marginRight: '0.35em' }} />All pairs matched! Great job!</div>
       )}
       
       <div style={{marginTop:12,fontSize:12,color:'rgba(255,255,255,0.4)'}}>
@@ -1527,10 +1528,10 @@ function LabellingGame({ config, color, onComplete }) {
           ✓ Check Labels
         </button>
       ) : score === labels.length ? (
-        <div style={successBox}>🎉 All labels correct! You know your stuff!</div>
+        <div style={successBox}><EmojiIcon e="🎉" style={{ marginRight: '0.35em' }} />All labels correct! You know your stuff!</div>
       ) : (
         <div style={failBox}>
-          <span>❌ {score}/{labels.length} correct</span>
+          <span><EmojiIcon e="❌" style={{ marginRight: '0.35em' }} />{score}/{labels.length} correct</span>
           <button onClick={() => { setPlaced({}); setChecked(false); }}
             style={{padding:'6px 12px',background:'rgba(255,255,255,0.1)',border:'1px solid rgba(255,255,255,0.2)',
               color:'#fff',borderRadius:8,cursor:'pointer',fontSize:13}}>Try Again</button>
@@ -1574,7 +1575,7 @@ function SimulationGame({ config, color, onComplete }) {
     return (
       <div>
         <div style={successBox}>
-          🎉 Simulation complete! You made {score} correct choices.
+          <EmojiIcon e="🎉" style={{ marginRight: '0.35em' }} />Simulation complete! You made {score} correct choices.
         </div>
       </div>
     );

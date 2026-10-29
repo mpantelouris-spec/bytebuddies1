@@ -3,6 +3,7 @@
  */
 import React from 'react';
 import { getSecurityBotArena } from '../data/securitybot-arenas.js';
+import { EmojiIcon, IconText } from '../../components/ui/Icon.jsx';
 
 function objectiveFromChallenge(challenge) {
   const gp = challenge?.modeSpec?.gameplayDescription || '';
@@ -99,7 +100,7 @@ export function MissionHud({ challenge, stats = {}, runMode = 'idle', minimal = 
   const accent = challenge.color || '#38bdf8';
   const modeLabel = challenge.isRobotMission
     ? (challenge.missionType || 'Campaign')
-    : `Mode ${modeN || 1}/10${capstone ? ' ★' : ''}`;
+    : `Mode ${modeN || 1}${(modeN || 1) > 10 ? '' : '/10'}${capstone ? ' ★' : ''}`;
   const cpHit = stats.missionCheckpoint || 0;
   const cpTotal = stats.missionCheckpointsTotal || challenge.checkpoints || 0;
   const speed = stats.missionSpeed || 0;
@@ -114,7 +115,7 @@ export function MissionHud({ challenge, stats = {}, runMode = 'idle', minimal = 
     <div className="mission-hud" aria-live="polite">
       {paused && stars && (
         <div className="mission-hud-pause" style={{ borderColor: `${accent}55` }}>
-          <div className="mission-hud-pause-title">⏸ PAUSED — Star targets</div>
+          <div className="mission-hud-pause-title"><EmojiIcon e="⏸" style={{ marginRight: '0.35em' }} />PAUSED — Star targets</div>
           <div className="mission-hud-stars mission-hud-stars-pause">
             <span>⭐ {stars.one}</span>
             <span>⭐⭐ {stars.two}</span>
@@ -125,7 +126,7 @@ export function MissionHud({ challenge, stats = {}, runMode = 'idle', minimal = 
       <div className="mission-hud-bar" style={{ borderColor: `${accent}55` }}>
         <div className="mission-hud-top">
           <span className="mission-hud-env">
-            {challenge.environmentEmoji || '🎮'} {env} · {modeLabel}
+            <IconText>{challenge.environmentEmoji || '🎮'}</IconText> {env} · {modeLabel}
           </span>
           <span className="mission-hud-timer">{mins}:{secs}</span>
         </div>
@@ -139,7 +140,7 @@ export function MissionHud({ challenge, stats = {}, runMode = 'idle', minimal = 
           </div>
         )}
         <div className="mission-hud-stats">
-          {showCp && <span>🚩 {cpHit}/{cpTotal}</span>}
+          {showCp && <span><EmojiIcon e="🚩" style={{ marginRight: '0.35em' }} />{cpHit}/{cpTotal}</span>}
           {progress > 0 && <span>{progress}% route</span>}
           {collected > 0 && <span>{collected} collected</span>}
           {stats.collisions > 0 && <span>{stats.collisions} bumps</span>}

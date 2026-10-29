@@ -4,6 +4,7 @@
  * v2 — bright stage, rich part tiles, delete functionality, robot-click overlay
  */
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { asPrebuiltRobot, isCreatedRobot } from '../services/studio-robot-store.js';
 import { loadXbotFootballer } from './football/FootballPlayerKit.js';
 import * as THREE from 'three';
 import {
@@ -21,7 +22,8 @@ import {
   partitionByStarterIds,
   isStarterChassis,
 } from '../data/primary-robot-studio.js';
-import { createSimWebGLRenderer } from '../services/art-direction.js';
+import { createSimWebGLRenderer, getStudioDeviceProfile } from '../services/art-direction.js';
+import { EmojiIcon, IconText } from '../../components/ui/Icon.jsx';
 
 // ─── Colour palettes ────────────────────────────────────────────────────────
 const PALETTE_CLASSIC = [
@@ -288,7 +290,7 @@ function PartTile({ id, icon, name, desc, active, onClick, bg = '#F5F5F5', accen
       }
     >
       {active && <span className="bb-pt-check">✓</span>}
-      {isCustom && <span className="bb-pt-custom-star">✨</span>}
+      {isCustom && <span className="bb-pt-custom-star"><EmojiIcon e="✨" /></span>}
       {partType && !active && <span className="bb-pt-drag-hint">⠿ drag</span>}
       <div className="bb-pt-icon-wrap" style={{ background: active ? `${accent}22` : '#f0f0f0' }}>
         <span className="bb-pt-icon">{icon}</span>
@@ -391,7 +393,7 @@ function renderChassisThumbUrl(ch) {
   return thumbQueue;
 }
 
-function ChassisThumb({ ch }) {
+export function ChassisThumb({ ch }) {
   const [src, setSrc] = useState(null);
   useEffect(() => {
     let live = true;
@@ -452,7 +454,7 @@ function BodySizePicker({ bodySize, onChange }) {
               display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
             }}>
             <span style={{ fontSize: 16 }}>
-              {s.id === 'S' ? '🤏' : s.id === 'M' ? '👐' : '🤲'}
+              <IconText>{s.id === 'S' ? '🤏' : s.id === 'M' ? '👐' : '🤲'}</IconText>
             </span>
             <span>{s.label}</span>
             <span style={{ fontSize: 9, opacity: 0.7, fontWeight: 400 }}>Spd {s.spd}</span>
@@ -646,12 +648,13 @@ function RobotCanvas({ robotConfig, onRobotClick, onDrop, children }) {
     camera.lookAt(0, 0.4, 0);
 
     // Renderer — high quality settings, never throw if GPU/WebGL is blocked
-    renderer = createSimWebGLRenderer({ antialias: true });
+    const device = getStudioDeviceProfile();
+    renderer = createSimWebGLRenderer({ antialias: !device.lowPower });
     if (!renderer) throw new Error('Error creating WebGL context.');
     renderer.setSize(W, H);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, device.maxPixelRatio || 1.25));
+    renderer.shadowMap.enabled = !device.lowPower;
+    renderer.shadowMap.type = THREE.PCFShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.15;
     renderer.outputColorSpace = THREE.SRGBColorSpace || 'srgb';
@@ -1152,6 +1155,8 @@ function LeftPanel({ robotConfig, setRobotConfig, activeRobotId, setActiveRobotI
         const showExtras = searching || showMoreChassis;
         const extraGroups = searching ? [{ id: 'search', label: 'Matches', items: filtered }] : groupMoreChassis(more);
 
+        // A robot made in Create Studio is not one of these pre-built robots
+        const usingCreated = isCreatedRobot(robotConfig);
         const pickChassis = (ch) => {
           if (ch.id === 'footballbot' && onFootballLaunch) {
             onFootballLaunch();
@@ -1159,7 +1164,7 @@ function LeftPanel({ robotConfig, setRobotConfig, activeRobotId, setActiveRobotI
           }
           setRobotConfig((prev) => {
             const next = {
-              ...prev,
+              ...asPrebuiltRobot(prev),
               chassisId: ch.id,
               name: getPrimaryRobotDisplay(ch.id).name,
               primaryColor: ch.primaryColor || prev.primaryColor,
@@ -1171,6 +1176,10 @@ function LeftPanel({ robotConfig, setRobotConfig, activeRobotId, setActiveRobotI
               socketAttachments: {},
             };
             delete next.chassisBuildKey;
+            // A prebuilt robot is a different robot: drop the custom design (or it keeps
+            // drawing the designed model) and the saved id (or Save would overwrite it)
+            delete next.design;
+            delete next.id;
             return next;
           });
         };
@@ -1179,19 +1188,25 @@ function LeftPanel({ robotConfig, setRobotConfig, activeRobotId, setActiveRobotI
           <ChassisCard
             key={ch.id}
             ch={ch}
-            active={robotConfig.chassisId === ch.id}
+            active={!usingCreated && robotConfig.chassisId === ch.id}
             onClick={() => pickChassis(ch)}
           />
         ));
 
         return (
           <>
+            {usingCreated && (
+              <div className="bb-created-note">
+                <span><b>{robotConfig.name || 'Your robot'}</b> is a robot you built. Pick a robot below to switch to it.</span>
+                <button type="button" onClick={onGoCreate}>Edit in Create</button>
+              </div>
+            )}
             <p className="bb-studio-section-label">Pick a robot</p>
             {!searching && (
               <div className="bb-chassis-grid">
                 {renderCards(starters)}
                 <button type="button" className="bb-chassis-card bb-chassis-card--create" onClick={onGoCreate}>
-                  <span className="bb-chassis-thumb bb-chassis-thumb--create">✨</span>
+                  <span className="bb-chassis-thumb bb-chassis-thumb--create"><EmojiIcon e="✨" /></span>
                   <span className="bb-chassis-name">Create Custom</span>
                 </button>
               </div>
@@ -1526,10 +1541,10 @@ function LeftPanel({ robotConfig, setRobotConfig, activeRobotId, setActiveRobotI
     <div className="bb-studio-left">
       {/* Header */}
       <div className="bb-studio-left-top">
-        <div className="bb-studio-left-label">🔧 Build Your Robot</div>
+        <div className="bb-studio-left-label"><EmojiIcon e="🔧" style={{ marginRight: '0.35em' }} />Build Your Robot</div>
         <input
           className="bb-studio-search"
-          placeholder="🔍  Search parts..."
+          placeholder="Search parts..."
           value={search}
           onChange={e => setSearch(e.target.value)}
         />
@@ -1543,7 +1558,7 @@ function LeftPanel({ robotConfig, setRobotConfig, activeRobotId, setActiveRobotI
             className={`bb-studio-cat-btn ${activeCat === cat.id ? 'active' : ''}`}
             onClick={() => setActiveCat(cat.id)}
           >
-            <span>{cat.icon}</span>
+            <EmojiIcon e={cat.icon} />
             {cat.label}
           </button>
         ))}
@@ -1690,7 +1705,7 @@ function RightPanel({ robotConfig, setRobotConfig, onSimulate, onSaveDesign, rob
   return (
     <div className="bb-studio-right">
       <div className="bb-studio-right-head">
-        <div className="bb-studio-right-title">📊 Robot Stats</div>
+        <div className="bb-studio-right-title"><EmojiIcon e="📊" style={{ marginRight: '0.35em' }} />Robot Stats</div>
       </div>
 
       <div className="bb-studio-right-scroll">
@@ -1706,7 +1721,7 @@ function RightPanel({ robotConfig, setRobotConfig, onSimulate, onSaveDesign, rob
                 fontSize: 11, lineHeight: 1.4,
               }}>
                 <span style={{ color: n.severity === 'error' ? '#ef4444' : '#f97316', fontSize: 13, flexShrink: 0 }}>
-                  {n.severity === 'error' ? '✕' : '⚠'}
+                  <IconText>{n.severity === 'error' ? '✕' : '⚠'}</IconText>
                 </span>
                 <span style={{ color: n.severity === 'error' ? '#fca5a5' : '#fdba74' }}>{n.message}</span>
               </div>
@@ -1754,7 +1769,7 @@ function RightPanel({ robotConfig, setRobotConfig, onSimulate, onSaveDesign, rob
         ].map(s => (
           <div key={s.label} className="bb-studio-stat-row">
             <div className="bb-studio-stat-head">
-              <span>{s.icon} {s.label}</span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><EmojiIcon e={s.icon} color={s.color} />{s.label}</span>
               <span className="bb-studio-stat-val">{s.value}%</span>
             </div>
             <div className="bb-studio-stat-bar">
@@ -1764,7 +1779,7 @@ function RightPanel({ robotConfig, setRobotConfig, onSimulate, onSaveDesign, rob
         ))}
 
         {/* Color Customization */}
-        <div style={{ fontSize: 12, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>🎨 Color Customization</div>
+        <div style={{ fontSize: 12, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}><EmojiIcon e="🎨" style={{ marginRight: '0.35em' }} />Color Customization</div>
 
         <ColorSection
           label="Primary Color (Body)"
@@ -1795,7 +1810,7 @@ function RightPanel({ robotConfig, setRobotConfig, onSimulate, onSaveDesign, rob
         />
 
         {/* Material Sliders */}
-        <div style={{ fontSize: 12, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8, marginTop: 8 }}>✨ Material Properties</div>
+        <div style={{ fontSize: 12, fontWeight: 700, color: '#aaa', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8, marginTop: 8 }}><EmojiIcon e="✨" style={{ marginRight: '0.35em' }} />Material Properties</div>
         {[
           { key: 'materialMetalness', label: '🔩 Metallic', min: 0, max: 1, step: 0.05, def: 0.4, tip: '0 = Matte plastic → 1 = Polished metal' },
           { key: 'materialRoughness', label: '🪨 Roughness', min: 0, max: 1, step: 0.05, def: 0.5, tip: '0 = Glossy mirror → 1 = Rough matte' },
@@ -1816,7 +1831,7 @@ function RightPanel({ robotConfig, setRobotConfig, onSimulate, onSaveDesign, rob
         {/* ── Installed parts with delete buttons ─────────────────────────── */}
         <div className="bb-installed-parts">
           <div className="bb-studio-color-label" style={{ marginBottom: 8 }}>
-            🔩 Installed Parts ({installedParts.length})
+            <EmojiIcon e="🔩" style={{ marginRight: '0.35em' }} />Installed Parts ({installedParts.length})
           </div>
           {installedParts.length === 0 && (
             <div className="bb-installed-empty">No parts added yet. Select parts from the left panel.</div>
@@ -1840,10 +1855,10 @@ function RightPanel({ robotConfig, setRobotConfig, onSimulate, onSaveDesign, rob
       {/* Actions */}
       <div className="bb-studio-actions">
         <button className="bb-studio-act-btn bb-studio-act-btn--simulate" onClick={onSimulate}>
-          📝 Code My Robot →
+          <EmojiIcon e="📝" style={{ marginRight: '0.35em' }} />Code My Robot →
         </button>
         <button type="button" className="bb-studio-act-btn bb-studio-act-btn--save" onClick={onSaveDesign}>
-          💾 Save Design
+          <EmojiIcon e="💾" style={{ marginRight: '0.35em' }} />Save Design
         </button>
         <button type="button" className="bb-studio-act-btn bb-studio-act-btn--code" onClick={onSimulate}>
           &lt;/&gt; Generate Code
@@ -1856,7 +1871,7 @@ function RightPanel({ robotConfig, setRobotConfig, onSimulate, onSaveDesign, rob
             aiId: null, commId: null,
             structParts: [], decoParts: [], legoParts: [],
           }))}>
-          🔄 Clear Parts
+          <EmojiIcon e="🔄" style={{ marginRight: '0.35em' }} />Clear Parts
         </button>
       </div>
     </div>
@@ -2046,7 +2061,7 @@ export default function BuildPage({ robotConfig, setRobotConfig, onSimulate, onR
           <button className="bb-studio-mode-chip" onClick={onSimulate}><b>03</b> CODE <span>↗</span></button>
         </div>
         <div className="bb-studio-quick-actions">
-          <button type="button" onClick={onSaveDesign} title="Save this invention">✦ Save</button>
+          <button type="button" onClick={onSaveDesign} title="Save this invention"><EmojiIcon e="✦" style={{ marginRight: '0.35em' }} />Save</button>
           <button type="button" onClick={onGoCreate} title="Open the modular builder">＋ New invention</button>
         </div>
       </div>
@@ -2083,14 +2098,14 @@ export default function BuildPage({ robotConfig, setRobotConfig, onSimulate, onR
         }}
       >
         <div className="bb-studio-viewport-header">
-          <span className="bb-studio-viewport-title">🤖 {robotConfig.name || 'My Robot'}</span>
+          <span className="bb-studio-viewport-title"><EmojiIcon e="🤖" style={{ marginRight: '0.35em' }} />{robotConfig.name || 'My Robot'}</span>
           <span className="bb-studio-viewport-hint">
-            {draggingPartType
+            <IconText>{draggingPartType
               ? `🎯 Hover a glowing socket to snap ${draggingPartType} here`
-              : 'Drag parts onto glowing sockets · Click robot to code'}
+              : 'Drag parts onto glowing sockets · Click robot to code'}</IconText>
           </span>
-          <button className="bb-studio-vp-btn" onClick={() => setPartsOverlay(true)} title="Manage attached parts">🔩 Parts</button>
-          <button className="bb-studio-vp-btn bb-studio-vp-btn--test" onClick={onSimulate}>📝 Code My Robot</button>
+          <button className="bb-studio-vp-btn" onClick={() => setPartsOverlay(true)} title="Manage attached parts"><EmojiIcon e="🔩" style={{ marginRight: '0.35em' }} />Parts</button>
+          <button className="bb-studio-vp-btn bb-studio-vp-btn--test" onClick={onSimulate}><EmojiIcon e="📝" style={{ marginRight: '0.35em' }} />Code My Robot</button>
           <button className="bb-studio-vp-btn bb-studio-vp-btn--reset"
             onClick={() => setRobotConfig(prev => ({
               ...prev,
@@ -2121,7 +2136,7 @@ export default function BuildPage({ robotConfig, setRobotConfig, onSimulate, onR
             onDetach={handleSocketDetach}
           />
           <span className="bb-studio-canvas-label">{chassis.name} · {chassis.badge}</span>
-          <span className="bb-studio-canvas-hint">🖱 Drag to rotate · Click robot to open Events coding</span>
+          <span className="bb-studio-canvas-hint"><EmojiIcon e="🖱" style={{ marginRight: '0.35em' }} />Drag to rotate · Click robot to open Events coding</span>
         </RobotCanvas>
 
         {/* Click-robot overlay */}
@@ -2129,7 +2144,7 @@ export default function BuildPage({ robotConfig, setRobotConfig, onSimulate, onR
           <div className="bb-parts-overlay">
             <div className="bb-parts-overlay-inner">
               <div className="bb-parts-overlay-head">
-                <span>🔩 Robot Parts</span>
+                <span><EmojiIcon e="🔩" style={{ marginRight: '0.35em' }} />Robot Parts</span>
                 <button className="bb-parts-overlay-close" onClick={() => setPartsOverlay(false)}>✕</button>
               </div>
 
@@ -2150,7 +2165,7 @@ export default function BuildPage({ robotConfig, setRobotConfig, onSimulate, onR
                   <div key={p.id} className="bb-parts-overlay-row">
                     <span className="bb-parts-overlay-icon">{p.icon}</span>
                     <span className="bb-parts-overlay-name">{p.name}</span>
-                    <button className="bb-parts-overlay-del" onClick={p.onRemove}>🗑️ Remove</button>
+                    <button className="bb-parts-overlay-del" onClick={p.onRemove}><EmojiIcon e="🗑️" style={{ marginRight: '0.35em' }} />Remove</button>
                   </div>
                 ));
               })()}

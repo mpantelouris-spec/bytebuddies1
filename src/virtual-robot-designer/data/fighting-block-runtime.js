@@ -2,6 +2,7 @@
  * Fighting game — scratch script compiler + per-tick combat executor.
  */
 import { parseEventScript } from './flappy-starter-script.js';
+import { FIGHT_MOVE_ALIAS } from './fight-worlds.js';
 
 const EVENT_IDS = new Set([
   'when_start', 'when_key', 'when_spacebar', 'when_zone', 'when_collect',
@@ -165,8 +166,10 @@ export class FightingBlockRuntime {
     }
     combat.doAction(stmt.op, stmt.params || {});
     const mode = this.scene?.userData?.combat?.getState?.()?.mode;
-    let pace = ACTION_PACE[stmt.op] ?? 0.15;
-    if (mode === 'training' && ['jab', 'cross', 'hook', 'uppercut', 'attack', 'attack_light'].includes(stmt.op)) {
+    // World moves (Sword slash…) keep the pace of the boxing move they play as
+    const paceOp = FIGHT_MOVE_ALIAS[stmt.op] || stmt.op;
+    let pace = ACTION_PACE[paceOp] ?? 0.15;
+    if (mode === 'training' && ['jab', 'cross', 'hook', 'uppercut', 'attack', 'attack_light'].includes(paceOp)) {
       pace = Math.max(pace, 1.1);
     }
     this.cooldown = pace;

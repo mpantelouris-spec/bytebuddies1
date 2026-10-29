@@ -2,6 +2,7 @@
  * mk-racing-courses.js — CodeRacer premium tracks only (10 brand-new circuits).
  */
 import { BIOME_TRACKS } from '../racing/mk-tracks/MKTrackRegistry.js';
+import { COSMIC_SKYWAY_BONUS_TRACKS } from '../racing/mk-tracks/CosmicSkywayRegistry.js';
 
 function buildZones(track) {
   const z = (num, name, desc) => ({
@@ -21,7 +22,7 @@ function buildZones(track) {
 }
 
 /** Only the 10 premium CodeRacer tracks — legacy MK circuits removed from catalog */
-export const MK_RACING_COURSES = BIOME_TRACKS.map((track) => ({
+export const MK_RACING_COURSES = [...BIOME_TRACKS, ...COSMIC_SKYWAY_BONUS_TRACKS].map((track) => ({
   id: track.courseId,
   name: track.label,
   desc: track.story,

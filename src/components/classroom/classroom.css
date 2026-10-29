@@ -178,3 +178,10 @@ button.cr-stat:hover { transform: translateY(-2px); border-color: var(--tone, va
 [data-theme="light"] .cr-modal-bg { background: rgba(15, 23, 42, .45); }
 [data-theme="light"] .cr-modal { box-shadow: 0 30px 80px rgba(15, 23, 42, .25); }
 [data-theme="light"] .cr-sub, [data-theme="light"] .cr-input, [data-theme="light"] .cr-lib-item { background: var(--bg-input); }
+
+/* Manage classes */
+.cr-manage { display: flex; flex-direction: column; gap: 8px; }
+.cr-manage-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--border-color); border-radius: 12px; background: var(--bg-secondary); flex-wrap: wrap; }
+.cr-manage-row.is-archived { opacity: .75; border-style: dashed; }
+.cr-manage-row .cr-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+.cr-btn--danger:not(.cr-btn--ghost) { border-color: rgba(239,68,68,.45); }

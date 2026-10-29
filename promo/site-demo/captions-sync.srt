@@ -1,0 +1,39 @@
+1
+00:00:00,000 --> 00:00:07,800
+This is ByteBuddies. The whole computing platform, in the browser, for primary schools.
+
+2
+00:00:08,000 --> 00:00:14,800
+Lessons, games, robots and Python. Everything in one place. No kits. No downloads.
+
+3
+00:00:15,000 --> 00:00:22,800
+This is the teacher home. Create a class, or import from Google Classroom in one click.
+
+4
+00:00:23,000 --> 00:00:30,800
+One hundred and fifty two KS2 lessons for Years 3 to 6, mapped to the National Curriculum.
+
+5
+00:00:31,000 --> 00:00:40,800
+Game Builder. Pupils code with blocks. Costumes and sounds are along the top, ready for class.
+
+6
+00:00:41,000 --> 00:00:49,800
+Python. Real code in the browser. Here is a Space Invaders starter they can run and change.
+
+7
+00:00:50,000 --> 00:00:58,800
+Robot Studio. Pick a robot, snap on parts, then code the design you just built.
+
+8
+00:00:59,000 --> 00:01:06,800
+Missions. Story worlds for sequences, loops, variables and data. Pupils pick a world and go.
+
+9
+00:01:07,000 --> 00:01:14,800
+Classroom. Import pupils from Google, set work, and send grades back.
+
+10
+00:01:15,000 --> 00:01:22,800
+Robot Lab for the micro:bit. Blocks, a simulator, USB and Bluetooth.

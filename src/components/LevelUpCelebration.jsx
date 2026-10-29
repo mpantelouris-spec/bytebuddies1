@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { useUser } from '../contexts/UserContext';
+import { EmojiIcon } from './ui/Icon.jsx';
 
 const CONFETTI_COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#06b6d4', '#ef4444', '#fbbf24'];
 
@@ -60,7 +61,7 @@ export default function LevelUpCelebration() {
         textAlign: 'center',
         animation: 'levelUpPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)',
       }}>
-        <div style={{ fontSize: 48, marginBottom: 8 }}>⚡</div>
+        <div style={{ fontSize: 48, marginBottom: 8 }}><EmojiIcon e="⚡" /></div>
         <div>Level Up!</div>
         <div style={{ fontSize: 18, opacity: 0.85, marginTop: 6 }}>You're now Level {user.level}</div>
       </div>

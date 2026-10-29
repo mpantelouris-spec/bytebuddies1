@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { migrateDesign } from '../../config.js';
 import { computeArenaScore, DIFF_CONFIG } from '../../services/robot-runtime.js';
+import { EmojiIcon } from '../../../components/ui/Icon.jsx';
 
 function SystemRow({ icon, label, status, active }) {
   return (
@@ -56,7 +57,7 @@ export default function TestArenaSystems({
         <div className="ta-score-label">SCORE</div>
         {running && (
           <div className="ta-score-timeleft" style={{ color: timeLeft < 30 ? '#ef4444' : diffCfg.color }}>
-            ⏱ {timeLeft.toFixed(0)}s left
+            <EmojiIcon e="⏱" style={{ marginRight: '0.35em' }} />{timeLeft.toFixed(0)}s left
           </div>
         )}
       </div>

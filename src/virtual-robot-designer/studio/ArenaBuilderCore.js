@@ -182,7 +182,10 @@ export function buildChassisRoute(scene, challenge, theme) {
   if (scene.userData.aerialWorldBuilt && scene.userData._chassisCurve) return;
   if (challenge.physics === 'flight_3dof' && scene.userData._chassisCurve) return;
   const capstone = isCapstoneMode(challenge);
-  const dist = capstone ? Math.max(48, challenge.totalDist || 50) : Math.max(28, challenge.totalDist || 32);
+  const tierArena = isPrimaryStudioChassis(challenge.chassisId) && challenge.modeIndex > 10
+    ? getPrimaryStudioArena(challenge.chassisId, challenge.modeIndex) : null;
+  const tierLevel = tierArena?.tierLevel || null;
+  const dist = tierLevel?.dist || (capstone ? Math.max(48, challenge.totalDist || 50) : Math.max(28, challenge.totalDist || 32));
   const finishZ = 4 - dist;
   const cpCount = capstone
     ? (challenge.checkpoints || 9)
@@ -220,7 +223,7 @@ export function buildChassisRoute(scene, challenge, theme) {
   if (nintendoClean) scene.userData.nintendoClean = true;
   buildRouteAlongCurve(scene, curve, theme, {
     capstone,
-    checkpointCount: nintendoClean ? 3 : (kidClarity ? Math.min(cpCount, 3) : cpCount),
+    checkpointCount: tierLevel?.markers || (nintendoClean ? 3 : (kidClarity ? Math.min(cpCount, 3) : cpCount)),
     addCoins: false,
     tileCount: nintendoClean ? 0 : (kidClarity ? (capstone ? 14 : 10) : (capstone ? 36 : 24)),
     nintendoClean,

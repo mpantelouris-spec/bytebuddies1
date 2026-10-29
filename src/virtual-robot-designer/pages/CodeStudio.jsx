@@ -20,6 +20,7 @@ import RobotJourneyBar from '../components/RobotJourneyBar.jsx';
 import { migrateAssembly } from '../services/assembly-service.js';
 import { getBlocklyUnlockReport } from '../services/block-unlocks.js';
 import '../styles/academy-lab.css';
+import { EmojiIcon, IconText } from '../../components/ui/Icon.jsx';
 
 const CodeEditor = React.lazy(() => import('../../components/CodeEditor.jsx'));
 
@@ -162,7 +163,7 @@ export default function CodeStudioPage({ onGoSimulator, onGoDesign }) {
         </div>
         <div className="al-header-actions">
           <button type="button" className="al-btn al-btn--run" onClick={runInSimulator}>
-            ▶ Test in Arena
+            <EmojiIcon e="▶" style={{ marginRight: '0.35em' }} />Test in Arena
           </button>
           {onGoDesign && (
             <button type="button" className="al-btn" onClick={onGoDesign}>
@@ -191,7 +192,7 @@ export default function CodeStudioPage({ onGoSimulator, onGoDesign }) {
 
       <div className="al-code-body">
         <aside className="al-panel">
-          <h2 className="al-panel-title">🔓 Block unlocks</h2>
+          <h2 className="al-panel-title"><EmojiIcon e="🔓" style={{ marginRight: '0.35em' }} />Block unlocks</h2>
           <BlocklyUnlockPanel design={d} onGoDesign={onGoDesign} />
 
           {mode === 'python' && (
@@ -202,12 +203,12 @@ export default function CodeStudioPage({ onGoSimulator, onGoDesign }) {
           )}
 
           <button type="button" className="al-btn" style={{ marginTop: 12, width: '100%' }} onClick={syncFromRobot}>
-            🔄 Sync from robot
+            <EmojiIcon e="🔄" style={{ marginRight: '0.35em' }} />Sync from robot
           </button>
 
           {componentAPI.length > 0 && (
             <div className="al-unlock-group" style={{ marginTop: 12 }}>
-              <h3>📡 Your robot can…</h3>
+              <h3><EmojiIcon e="📡" style={{ marginRight: '0.35em' }} />Your robot can…</h3>
               {componentAPI.slice(0, 4).map((item) => (
                 <div key={item.fn} className="al-unlock-item unlocked">
                   <span className="al-unlock-icon">✓</span>
@@ -272,13 +273,13 @@ export default function CodeStudioPage({ onGoSimulator, onGoDesign }) {
         </section>
 
         <aside className="al-panel al-panel--right">
-          <h2 className="al-panel-title">🤖 Your robot</h2>
+          <h2 className="al-panel-title"><EmojiIcon e="🤖" style={{ marginRight: '0.35em' }} />Your robot</h2>
           <div className="al-preview-mini">
             <InteractiveBuildChamber design={d} compact buildMode={d.assembly?.buildMode || 'advanced'} />
           </div>
 
           <h2 className="al-panel-title" style={{ marginTop: 12 }}>
-            📋 Log
+            <EmojiIcon e="📋" style={{ marginRight: '0.35em' }} />Log
           </h2>
           <div className="al-log">
             {consoleLines.map((line, i) => (
@@ -295,7 +296,7 @@ export default function CodeStudioPage({ onGoSimulator, onGoDesign }) {
             disabled={previewing}
             onClick={simulateRunPreview}
           >
-            {previewing ? '… Running' : '▶ Quick preview'}
+            <IconText>{previewing ? '… Running' : '▶ Quick preview'}</IconText>
           </button>
         </aside>
       </div>

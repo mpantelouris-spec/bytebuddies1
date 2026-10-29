@@ -138,6 +138,18 @@ const ROAD_BUILDERS = {
       ctx.fillRect(Math.random() * SIZE, Math.random() * SIZE, 4, 2);
     }
   },
+  cosmic_metal(ctx) {
+    baseAsphalt(ctx, 28, 30, 38, 0.1);
+    ctx.strokeStyle = 'rgba(8,9,14,0.9)';
+    ctx.lineWidth = 3;
+    for (let y = 0; y < SIZE; y += SIZE / 8) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(SIZE, y); ctx.stroke(); }
+    for (let x = SIZE / 4; x < SIZE; x += SIZE / 4) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, SIZE); ctx.stroke(); }
+    ctx.fillStyle = '#33e6ff';
+    ctx.fillRect(SIZE * 0.04, 0, SIZE * 0.022, SIZE);
+    ctx.fillStyle = '#ff9a2e';
+    ctx.fillRect(SIZE * 0.938, 0, SIZE * 0.022, SIZE);
+    centerStripe(ctx, '#ffd9a0', 5, [26, 22]);
+  },
   stardust_violet(ctx) {
     baseAsphalt(ctx, 74, 24, 136, 0.1);
     centerStripe(ctx, '#dda0ff', 6, [22, 16]);

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { getCodingLabConfig, codingStorageKey, codingModeKey } from '../../../data/learnCodingConfig';
 import BlockCodingLab from './BlockCodingLab';
 import TextCodingLab from './TextCodingLab';
+import { EmojiIcon } from '../../ui/Icon.jsx';
 
 export default function CodingLabPanel({ yr, idx, lesson, color, onComplete, onXP }) {
   const config = getCodingLabConfig(yr, idx);
@@ -75,7 +76,7 @@ export default function CodingLabPanel({ yr, idx, lesson, color, onComplete, onX
       {done && (
         <div style={{ marginTop: 16, padding: '12px 16px', background: 'rgba(16,185,129,0.1)',
           border: '1px solid rgba(16,185,129,0.35)', borderRadius: 10, color: '#6ee7b7', fontWeight: 600, fontSize: 13 }}>
-          ✅ Coding challenge complete · +{config.xp || 25} XP
+          <EmojiIcon e="✅" style={{ marginRight: '0.35em' }} />Coding challenge complete · +{config.xp || 25} XP
         </div>
       )}
     </div>

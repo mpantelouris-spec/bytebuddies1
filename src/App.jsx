@@ -11,9 +11,10 @@ import Dashboard from './components/Dashboard';
 import ExportModal from './components/ExportModal';
 import AuthModal from './components/AuthModal';
 import LevelUpCelebration from './components/LevelUpCelebration';
-import LandingPage from './components/LandingPage';
+import LandingPage, { CONTACT_EMAIL } from './components/LandingPage';
 import TeacherHome from './components/TeacherHome';
 import SparkStudioDashboard from './components/SparkStudioDashboard';
+import { EmojiIcon, IconText } from './components/ui/Icon.jsx';
 
 const WorkspaceEditor = lazyWithRetry(() => import('./components/WorkspaceEditor'));
 const LearnSection = lazyWithRetry(() => import('./components/learn/LearnSection.jsx'));
@@ -59,6 +60,32 @@ function PageLoader() {
   );
 }
 
+function LicenseGate({ status, user, onSignOut }) {
+  const verifying = status === 'checking';
+  const needsHelp = status === 'unverified';
+  return (
+    <main style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: 24, boxSizing: 'border-box', background: 'var(--bg-primary, #0b0b14)', color: 'var(--text-primary, #f8fafc)' }}>
+      <section style={{ width: 'min(520px, 100%)', padding: 'clamp(24px, 5vw, 40px)', borderRadius: 22, border: '1px solid var(--border, #29283d)', background: 'var(--bg-secondary, #171729)', boxShadow: '0 22px 70px rgba(0,0,0,.32)', textAlign: 'center' }}>
+        <div style={{ fontSize: 44, marginBottom: 12 }}><IconText>{verifying ? '🔐' : needsHelp ? '⚠️' : '🏫'}</IconText></div>
+        <h1 style={{ margin: '0 0 10px', fontSize: 25 }}>{verifying ? 'Checking your access…' : needsHelp ? 'We couldn’t verify your access' : 'School access required'}</h1>
+        <p style={{ margin: '0 auto 22px', maxWidth: 430, color: 'var(--text-muted, #a1a1b8)', lineHeight: 1.65 }}>
+          {verifying
+            ? 'ByteBuddies is checking the licence for your account.'
+            : needsHelp
+              ? 'Your account is signed in, but the licence check could not be completed. Please try again or contact ByteBuddies.'
+              : status === 'suspended'
+                ? 'This school licence is currently paused. Contact ByteBuddies if you think this is a mistake.'
+                : `Access for ${user?.email || 'this account'} has not been activated yet. Once your school has agreed its quote, ByteBuddies can switch access on here.`}
+        </p>
+        {!verifying && <div style={{ display: 'flex', justifyContent: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <a href={`mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent('ByteBuddies school access')}&body=${encodeURIComponent(`Please help with ByteBuddies access for ${user?.email || ''}.`)}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '11px 17px', borderRadius: 10, textDecoration: 'none', color: '#fff', background: 'linear-gradient(110deg,#6366f1,#8b5cf6)', fontWeight: 750 }}><EmojiIcon e="✉️" style={{ marginRight: '0.35em' }} />Contact ByteBuddies</a>
+          <button type="button" onClick={onSignOut} style={{ padding: '11px 17px', borderRadius: 10, border: '1px solid var(--border, #29283d)', color: 'var(--text-primary, #f8fafc)', background: 'transparent', fontWeight: 650, cursor: 'pointer' }}>Sign out</button>
+        </div>}
+      </section>
+    </main>
+  );
+}
+
 class ErrorBoundary extends Component {
   constructor(props) { super(props); this.state = { error: null }; }
   static getDerivedStateFromError(e) { return { error: e }; }
@@ -79,7 +106,7 @@ class ErrorBoundary extends Component {
       if (/webgl/i.test(msg)) {
         return (
           <div style={{ padding: 40, color: '#e2e8f0', fontFamily: 'system-ui,sans-serif', background: '#0f0f1a', minHeight: '100vh', textAlign: 'center' }}>
-            <div style={{ fontSize: 48, marginBottom: 16 }}>🤖</div>
+            <div style={{ fontSize: 48, marginBottom: 16 }}><EmojiIcon e="🤖" /></div>
             <h2 style={{ color: '#a5b4fc', marginBottom: 12 }}>Open ByteBuddies in Chrome</h2>
             <p style={{ color: '#94a3b8', maxWidth: 440, margin: '0 auto 24px', lineHeight: 1.6 }}>
               3D graphics could not start in this window. Use Chrome, Safari, or Edge with hardware acceleration on — not a built-in preview pane.
@@ -97,7 +124,7 @@ class ErrorBoundary extends Component {
       if (isChunk) {
         return (
           <div style={{ padding: 40, color: '#e2e8f0', fontFamily: 'system-ui,sans-serif', background: '#0f0f1a', minHeight: '100vh', textAlign: 'center' }}>
-            <div style={{ fontSize: 48, marginBottom: 16 }}>🔄</div>
+            <div style={{ fontSize: 48, marginBottom: 16 }}><EmojiIcon e="🔄" /></div>
             <h2 style={{ color: '#a5b4fc', marginBottom: 12 }}>ByteBuddies just updated</h2>
             <p style={{ color: '#94a3b8', maxWidth: 420, margin: '0 auto 24px', lineHeight: 1.6 }}>
               Your browser had an old version saved. Click reload — Robot Lab will open normally.
@@ -115,7 +142,7 @@ class ErrorBoundary extends Component {
       }
       return (
       <div style={{ padding: 40, color: '#f87171', fontFamily: 'monospace', background: '#0f0f1a', minHeight: '100vh' }}>
-        <h2>⚠️ Runtime Error</h2>
+        <h2><EmojiIcon e="⚠️" style={{ marginRight: '0.35em' }} />Runtime Error</h2>
         <pre style={{ whiteSpace: 'pre-wrap', marginTop: 16, color: '#fca5a5', fontSize: 13 }}>
           {msg}{'\n\n'}{this.state.error?.stack}
         </pre>
@@ -136,7 +163,7 @@ function AppInner() {
   const [showAuth, setShowAuth] = useState(false);
   const [authRole, setAuthRole] = useState(null);
   const [authMode, setAuthMode] = useState('login');
-  const { user, isLoggedIn, login } = useUser();
+  const { user, isLoggedIn, login, logout, licenseStatus } = useUser();
   const learnWithoutLogin = currentPage === 'learn';
 
   const navigate = (page) => {
@@ -228,7 +255,7 @@ function AppInner() {
       case 'workspace':  return <WorkspaceEditor />;
       case 'learn':      return <LearnSection subPath={subPath} />;
       case 'learningHub':return <LearningHub />;
-      case 'community':  return <Community />;
+      case 'community':  return <Community onNavigate={navigate} />;
       case 'classroom':  return user.role === 'teacher'
         ? <TeacherDashboard onNavigate={navigate} subPath={subPath} />
         : <StudentClassroom />;
@@ -259,6 +286,14 @@ function AppInner() {
     );
   }
 
+  // A browser-stored login flag is not a paid-access grant. Protected pages
+  // stay unavailable until Firebase confirms an active account licence.
+  // Local development only: the "Dev guest" button has no Firebase account to licence
+  const devGuest = import.meta.env.DEV && user?.email === 'guest@localhost.dev';
+  if (isLoggedIn && !devGuest && currentPage !== 'admin' && currentPage !== 'learn' && licenseStatus !== 'active') {
+    return <LicenseGate status={licenseStatus} user={user} onSignOut={logout} />;
+  }
+
   const isStandaloneApp = currentPage === 'vrd' || currentPage === 'robot' || currentPage === 'studio' || currentPage === 'academy' || currentPage === 'rainbow-sim';
 
   if (isStandaloneApp) {
@@ -280,12 +315,14 @@ function AppInner() {
     <>
       <LandingPage
         onLogin={() => { setAuthRole(null); setAuthMode('login'); setShowAuth(true); }}
+        onTeacherLogin={() => { setAuthRole('teacher'); setAuthMode('login'); setShowAuth(true); }}
         onSignup={() => { setAuthRole(null); setAuthMode('signup'); setShowAuth(true); }}
         onDevGuest={import.meta.env.DEV ? () => {
           sessionStorage.setItem('bb_post_login_hash', 'learn');
           finishLocalLogin({
             name: 'Local Guest',
-            role: 'student',
+            // dev only: sessionStorage bb_dev_guest_role = 'teacher' to check the teacher views
+            role: sessionStorage.getItem('bb_dev_guest_role') === 'teacher' ? 'teacher' : 'student',
             avatar: 'LG',
             avatarEmoji: '🎓',
             email: 'guest@localhost.dev',
@@ -317,7 +354,7 @@ function AppInner() {
 
   const mobileNav = [
     { id: 'dashboard',  icon: '🏠', label: 'Home' },
-    { id: 'workspace',  icon: '💻', label: 'Code' },
+    { id: 'workspace',  icon: '🐍', label: 'Python' },
     { id: 'learn',      icon: '📚', label: 'Learn' },
     { id: 'studio',     icon: '🤖', label: 'Studio' },
     { id: 'gamebuilder',icon: '🎮', label: 'Games' },
@@ -335,7 +372,7 @@ function AppInner() {
         onAuth={() => setShowAuth(true)}
       />
       <div className="app-main">
-        {(currentPage === 'workspace' || currentPage === 'gamebuilder') && (
+        {currentPage === 'gamebuilder' && (
           <Suspense fallback={null}>
             <Sidebar currentPage={currentPage} />
           </Suspense>
@@ -358,7 +395,7 @@ function AppInner() {
             onClick={() => navigate(btn.id)}
             aria-current={currentPage === btn.id ? 'page' : undefined}
           >
-            <span className="nav-icon" aria-hidden="true">{btn.icon}</span>
+            <span className="nav-icon" aria-hidden="true"><EmojiIcon e={btn.icon} /></span>
             {btn.label}
           </button>
         ))}

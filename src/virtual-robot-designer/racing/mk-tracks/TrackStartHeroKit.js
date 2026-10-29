@@ -56,13 +56,7 @@ export const CUP_START_HEROES = {
     { building: 'crane', side: 1, off: 22, tOff: 0.04, scale: 1.2 },
     { building: 'factory_wall', side: -1, off: 28, tOff: 0.08, scale: 1.0 },
   ],
-  star_station_01: [
-    { scatter: 'dome', side: -1, off: 14, tOff: 0, scale: 2.0 },
-    { scatter: 'satellite', side: 1, off: 12, tOff: 0, scale: 2.2 },
-    { building: 'habitat_dome', side: -1, off: 20, tOff: 0, scale: 1.7 },
-    { building: 'glass_deck', side: 0, off: 0, tOff: 0.04, scale: 1.5 },
-    { scatter: 'dome', side: 1, off: 16, tOff: 0.02, scale: 1.9 },
-  ],
+  star_station_01: [],
   fairy_glen_01: [
     { scatter: 'daisy', side: -1, off: 9, tOff: 0, scale: 2.8 },
     { scatter: 'toadstool', side: 1, off: 10, tOff: 0, scale: 2.6 },

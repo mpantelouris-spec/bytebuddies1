@@ -4,6 +4,7 @@ import {
   connectGoogleClassroom, disconnectGoogleClassroom, getGcSession, listCourses, listStudents,
   openShareToClassroom, appLink,
 } from '../../utils/googleClassroom.js';
+import { EmojiIcon, IconText } from '../ui/Icon.jsx';
 
 /** Explains a Google error in teacher-friendly words, with what to do next. */
 export function GcErrorNote({ error }) {
@@ -12,6 +13,8 @@ export function GcErrorNote({ error }) {
     'api-disabled': 'Share buttons still work right now. To import classes and send grades, the ByteBuddies admin needs to switch on the Google Classroom API (one-time setup).',
     admin: 'In the Google Admin console: Security → Access and data control → API controls → Manage third-party app access → add ByteBuddies as Trusted.',
     popup: 'Look for a blocked pop-up icon in the address bar.',
+    cancelled: 'The Google window was closed before authorization finished. Reconnect and leave it open until it returns to ByteBuddies.',
+    redirect: <>In Google Cloud project <b>connectr-5b7a4</b>, go to <b>APIs &amp; Services → Credentials</b>, open the OAuth web client used by Firebase Authentication, and add this Authorized redirect URI exactly: <code style={{ overflowWrap: 'anywhere' }}>https://connectr-5b7a4.firebaseapp.com/__/auth/handler</code>. Also check Firebase Console → Authentication → Settings → Authorized domains includes <code>connectr-5b7a4.firebaseapp.com</code>.</>,
   }[error.code];
   return (
     <div className="cr-note cr-note--err" style={{ marginTop: 12 }}>
@@ -73,7 +76,7 @@ export default function GooglePanel({ cls, classes, onImport, onLink, onRefreshR
         </div>
         {session ? (
           <div className="cr-row">
-            <button className="cr-btn cr-btn--sm" onClick={load} disabled={busy === 'courses'}>{busy === 'courses' ? 'Loading…' : '🔄 Refresh'}</button>
+            <button className="cr-btn cr-btn--sm" onClick={load} disabled={busy === 'courses'}><IconText>{busy === 'courses' ? 'Loading…' : '🔄 Refresh'}</IconText></button>
             <button className="cr-btn cr-btn--sm cr-btn--ghost" onClick={() => { disconnectGoogleClassroom(); setSession(null); setCourses(null); }}>Disconnect</button>
           </div>
         ) : (
@@ -82,6 +85,14 @@ export default function GooglePanel({ cls, classes, onImport, onLink, onRefreshR
           </button>
         )}
       </div>
+
+      {!session && (
+        <div className="cr-note" style={{ fontSize: 13.5, lineHeight: 1.5 }}>
+          {busy === 'connect'
+            ? <>If Google shows <b>hasn’t verified this app</b>, click <b>Advanced</b>, then <b>Go to ByteBuddies</b>. That screen is Google’s, not a ByteBuddies error — keep the window open until it finishes.</>
+            : <>Press <b>Connect Google Classroom</b> and finish the Google consent screen. If Google reports <b>redirect_uri_mismatch</b>, the OAuth callback needs a one-time Google Cloud Console update; the exact URI will be shown with the error. You can still share work with the buttons below without connecting.</>}
+        </div>
+      )}
 
       <GcErrorNote error={error} />
 
@@ -103,21 +114,21 @@ export default function GooglePanel({ cls, classes, onImport, onLink, onRefreshR
                     <>
                       <span className="cr-chip" style={{ background: '#10b98122', color: '#10b981' }}>✓ Linked to {linked.name}</span>
                       <button className="cr-btn cr-btn--sm" disabled={busy === `r${c.id}`}
-                        onClick={() => run(`r${c.id}`, async () => { const n = await onRefreshRoster(linked, await listStudents(c.id)); toast?.(`Pupil list updated — ${n} pupils`); })}>
-                        {busy === `r${c.id}` ? 'Updating…' : '👥 Update pupils'}
+                        onClick={() => run(`r${c.id}`, async () => { const r = await onRefreshRoster(linked, await listStudents(c.id)); toast?.(`Pupil list updated — ${r?.count ?? r} pupils${r?.note ? ` · ${r.note}` : ''}`); })}>
+                        <IconText>{busy === `r${c.id}` ? 'Updating…' : '👥 Update pupils'}</IconText>
                       </button>
                     </>
                   ) : (
                     <>
                       {cls && !cls.gcCourseId && (
                         <button className="cr-btn cr-btn--sm" disabled={!!busy}
-                          onClick={() => run(`l${c.id}`, async () => { await onLink(cls, c, await listStudents(c.id)); toast?.(`${cls.name} is now linked to ${c.name}`); })}>
-                          🔗 Link to {cls.name}
+                          onClick={() => run(`l${c.id}`, async () => { const note = await onLink(cls, c, await listStudents(c.id)); toast?.(`${cls.name} is now linked to ${c.name}${note ? ` · ${note}` : ''}`); })}>
+                          <EmojiIcon e="🔗" style={{ marginRight: '0.35em' }} />Link to {cls.name}
                         </button>
                       )}
                       <button className="cr-btn cr-btn--sm cr-btn--primary" disabled={!!busy || linkedIds.has(c.id)}
-                        onClick={() => run(`i${c.id}`, async () => { await onImport(c, await listStudents(c.id)); toast?.(`Imported ${c.name}`); })}>
-                        {busy === `i${c.id}` ? 'Importing…' : '⬇ Import class'}
+                        onClick={() => run(`i${c.id}`, async () => { const note = await onImport(c, await listStudents(c.id)); toast?.(`Imported ${c.name}${note ? ` · ${note}` : ''}`); })}>
+                        <IconText>{busy === `i${c.id}` ? 'Importing…' : '⬇ Import class'}</IconText>
                       </button>
                     </>
                   )}
@@ -145,10 +156,10 @@ export default function GooglePanel({ cls, classes, onImport, onLink, onRefreshR
             </button>
           )}
           <button className="cr-btn" onClick={() => openShareToClassroom({ url: appLink('learn'), title: 'ByteBuddies computing lessons', itemtype: 'material' })}>
-            📚 Share the lesson library
+            <EmojiIcon e="📚" style={{ marginRight: '0.35em' }} />Share the lesson library
           </button>
           <button className="cr-btn" onClick={() => openShareToClassroom({ url: appLink('missions'), title: 'ByteBuddies coding missions', itemtype: 'material' })}>
-            🚀 Share missions
+            <EmojiIcon e="🚀" style={{ marginRight: '0.35em' }} />Share missions
           </button>
         </div>
       </div>

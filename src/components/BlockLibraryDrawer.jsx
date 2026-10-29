@@ -4,6 +4,7 @@ import { buildLibraryCategories } from '../data/blockLibraryCategories';
 import { readEnabledExtensionIds } from '../data/extensionsCatalog';
 import { emitAddSidebarBlock, BB_OPEN_EXTENSIONS } from '../utils/blockLibraryEvents';
 import SidebarBlockPreview, { isPaletteBlockEntry } from './SidebarBlockPreview';
+import { EmojiIcon, IconText } from './ui/Icon.jsx';
 
 function darken(hex, amt = 44) {
   const n = parseInt(String(hex).replace('#', ''), 16);
@@ -86,7 +87,7 @@ export default function BlockLibraryDrawer({ open, onClose, currentPage, isStart
                   fontWeight: 600,
                 }}
               >
-                🧩 Extensions gallery
+                <EmojiIcon e="🧩" style={{ marginRight: '0.35em' }} />Extensions gallery
               </button>
             )}
           </div>
@@ -100,9 +101,9 @@ export default function BlockLibraryDrawer({ open, onClose, currentPage, isStart
                 onClick={() => setActiveCategory(activeCategory === cat.name ? null : cat.name)}
                 style={{ borderLeftColor: cat.color }}
               >
-                <span>{cat.icon}</span>
+                <span><EmojiIcon e={cat.icon} /></span>
                 <span style={{ flex: 1, textAlign: 'left' }}>{cat.name}</span>
-                <span style={{ fontSize: 10, opacity: 0.7 }}>{activeCategory === cat.name ? '▼' : '▶'}</span>
+                <span style={{ fontSize: 10, opacity: 0.7 }}><IconText>{activeCategory === cat.name ? '▼' : '▶'}</IconText></span>
               </button>
               {activeCategory === cat.name && (
                 <div className="block-library-drawer-blocks">

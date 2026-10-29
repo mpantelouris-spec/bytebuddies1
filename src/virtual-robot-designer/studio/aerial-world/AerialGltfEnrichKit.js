@@ -17,14 +17,14 @@ import {
 import { buildFloatingRockSpire } from './AerialIslandKit.js';
 
 const BACKDROP_TRACKS = {
-  drone_canyon: '/assets/backgrounds/tracks/cloud_kingdom_loop.png',
-  cloud_race: '/assets/backgrounds/tracks/cloud_kingdom_loop.png',
-  jet_stunt: '/assets/backgrounds/tracks/sunset_coast_reference.png',
-  canyon_flight: '/assets/backgrounds/tracks/sky_garden_reference.png',
-  space_orbit: '/assets/backgrounds/tracks/stardust_galaxy_reference.png',
-  storm_cloud: '/assets/backgrounds/tracks/thunder_ridge_01.png',
-  typhoon: '/assets/backgrounds/tracks/coral_bay_sprint.png',
-  warp_gate: '/assets/backgrounds/tracks/cosmic_ring_rally.png',
+  drone_canyon: '/assets/backgrounds/tracks/cloud_kingdom_loop.png?o=1',
+  cloud_race: '/assets/backgrounds/tracks/cloud_kingdom_loop.png?o=1',
+  jet_stunt: '/assets/backgrounds/tracks/sunset_coast_reference.png?o=1',
+  canyon_flight: '/assets/backgrounds/tracks/sky_garden_reference.png?o=1',
+  space_orbit: '/assets/backgrounds/tracks/stardust_galaxy_reference.png?o=1',
+  storm_cloud: '/assets/backgrounds/tracks/thunder_ridge_01.png?o=1',
+  typhoon: '/assets/backgrounds/tracks/coral_bay_sprint.png?o=1',
+  warp_gate: '/assets/backgrounds/tracks/cosmic_ring_rally.png?o=1',
 };
 
 function loadBackdropTexture(url) {

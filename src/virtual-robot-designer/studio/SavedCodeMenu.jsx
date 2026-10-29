@@ -4,6 +4,7 @@
  */
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { EmojiIcon, IconText } from '../../components/ui/Icon.jsx';
 
 const LS_KEY = 'bb-saved-code-v1';
 const AUTO_KEY = 'bb-code-autosave-v1';
@@ -84,14 +85,14 @@ export default function SavedCodeMenu({ scope, title = 'My program', blocks, onL
   return (
     <>
       <button type="button" className="scratch-tool-btn scratch-save-btn" onClick={save} disabled={disabled} title="Save a copy of this program">
-        {flash || '💾 Save'}
+        <IconText>{flash || '💾 Save'}</IconText>
       </button>
       <button ref={btnRef} type="button" className="scratch-tool-btn" onClick={toggle} disabled={disabled} title="My saved programs" aria-expanded={open}>
         📂{saves.length ? ` ${saves.length}` : ''}
       </button>
       {open && pos && createPortal(
         <div ref={popRef} className="scratch-saves-pop" style={{ top: pos.top, left: pos.left }} role="dialog" aria-label="My saved programs">
-          <div className="scratch-saves-head">📂 My saved programs</div>
+          <div className="scratch-saves-head"><EmojiIcon e="📂" style={{ marginRight: '0.35em' }} />My saved programs</div>
           <div className="scratch-saves-sub">Your code also saves by itself as you work.</div>
           {saves.length === 0 ? (
             <div className="scratch-saves-empty">Nothing saved yet — press 💾 Save to keep a copy.</div>

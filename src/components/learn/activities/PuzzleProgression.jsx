@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import ActivityRenderer from './ActivityRenderer';
+import { EmojiIcon, IconText } from '../../ui/Icon.jsx';
 
 const LEVEL_META = [
   { label: 'Level 1', tier: 'Warm-up', desc: 'Build confidence — a few steps' },
@@ -81,7 +82,7 @@ export default function PuzzleProgression({ puzzles, color, onAllComplete, minLe
                 {done ? 'Done' : LEVEL_META[i]?.label || `Level ${i + 1}`}
               </div>
               <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.75)', marginTop: 3, fontWeight: 700, lineHeight: 1.25 }}>
-                {p.type === 'game' ? (open || done ? p.title : '🔒 Locked') : done ? 'Complete' : open ? LEVEL_META[i]?.tier : 'Locked'}
+                <IconText>{p.type === 'game' ? (open || done ? p.title : '🔒 Locked') : done ? 'Complete' : open ? LEVEL_META[i]?.tier : 'Locked'}</IconText>
               </div>
             </button>
           );
@@ -140,7 +141,7 @@ export default function PuzzleProgression({ puzzles, color, onAllComplete, minLe
           background: 'linear-gradient(135deg, rgba(251,191,36,0.15), rgba(16,185,129,0.1))',
           border: '1px solid rgba(251,191,36,0.35)',
         }}>
-          <div style={{ fontSize: 32, marginBottom: 6 }}>🏆</div>
+          <div style={{ fontSize: 32, marginBottom: 6 }}><EmojiIcon e="🏆" /></div>
           <div style={{ fontWeight: 900, fontSize: 18, color: '#fbbf24' }}>
             {allDone ? 'Puzzle Master!' : 'Level complete!'}
           </div>

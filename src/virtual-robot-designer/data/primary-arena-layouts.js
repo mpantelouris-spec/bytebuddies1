@@ -38,16 +38,23 @@ const recipes = {
   cake_decorating: ['cake','desk','tray'], music_bells: ['bell','stage','tile'],
   garden_seed_tray: ['tray','flower','greenhouse'], marble_mover: ['tray','marble','cube'],
   toy_assembly: ['car','shelf','desk'], maker_finale: ['tower','canvas','cake'],
-  giant_garden: ['flower','stone','tree'], treehouse_kingdom: ['pine','bridge','lantern'],
-  toy_room: ['teddy','tower','car'], sweet_factory: ['cake','tray','lantern'],
-  giant_kitchen: ['desk','tray','cake'], ancient_temple: ['arch','stone','crystal'],
-  robot_factory_climb: ['shelf','beacon','tower'], sky_islands_web: ['island','cloud','flag'],
-  crystal_caverns: ['crystal','beacon','web'], clockwork_castle: ['tower','arch','lantern'],
+  giant_garden: ['web','flower','tree'], treehouse_kingdom: ['web','pine','bridge'],
+  toy_room: ['teddy','shelf','tower'], sweet_factory: ['cake','web','tray'],
+  giant_kitchen: ['sink','button','cake'], ancient_temple: ['arch','web','button'],
+  robot_factory_climb: ['shelf','beacon','tower'], sky_islands_web: ['island','web','flag'],
+  crystal_caverns: ['crystal','web','beacon'], clockwork_castle: ['tower','web','arch'],
   web_garden: ['web','flower','tree'], vine_wall: ['vine','web','tree'],
   temple_steps: ['arch','web','stone'], crystal_web_cave: ['crystal','web','beacon'],
   bamboo_canopy: ['pine','web','vine'], ruins_bridge: ['bridge','web','stone'],
   dewdrop_meadow: ['web','flower','stone'], pipe_crawl: ['tunnel','web','beacon'],
   glow_web_night: ['web','lantern','tree'], spider_summit: ['web','pine','flag'],
+};
+
+const ROUTE_OVERRIDES = {
+  // A balance-beam lesson should read as one clear traverse, not a sweeping car track.
+  balance_gym: [[0,0],[0,.28],[0,.56],[0,.82],[0,1]],
+  // Sports Day follows a recognisable athletics oval with a short finish straight.
+  sports_day: [[0,0],[.62,.04],[.9,.2],[.92,.43],[.62,.59],[0,.61],[-.62,.64],[-.9,.8],[-.55,.94],[0,1]],
 };
 
 // Theme words also cover helper, sport, creative and custom robot chapters.
@@ -81,13 +88,15 @@ export function getArenaBlueprint(arena) {
   const props = recipes[arena.id] || THEMES.find(([re]) => re.test(arena.id))?.[1] || ['tile','beacon','cube'];
   return {
     id: arena.id,
-    route: ROUTES[mode - 1].map(([x,z]) => [x,z]),
+    // Modes 11–50 bring their own route (data/tier-levels/ground-tiers.js)
+    route: (arena.tierLevel?.route || ROUTE_OVERRIDES[arena.id] || ROUTES[mode - 1]).map(([x,z]) => [x,z]),
     props: [...props],
     // Deliberate arrangements: classroom rows, beach arc, galleries, switchbacks.
+    // Tier levels (11–50) place props in their own pattern, not the original's
     placements: Array.from({length: 8}, (_, i) => ({
-      t: .08 + i * .115,
-      side: i % 2 ? 1 : -1,
-      offset: 8 + (mode % 3) + (i % 3) * 2,
+      t: .08 + i * .115 + (arena.tierLevel ? ((arena.mode * 7 + i * 3) % 5) * .008 : 0),
+      side: (arena.tierLevel ? (i + arena.mode) % 2 : i % 2) ? 1 : -1,
+      offset: 8 + ((arena.tierLevel ? arena.mode : mode) % 3) + (i % 3) * 2,
       prop: props[i % props.length],
     })),
   };

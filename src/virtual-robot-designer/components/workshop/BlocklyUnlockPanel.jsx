@@ -3,6 +3,7 @@
  */
 import React from 'react';
 import { getBlocklyUnlockReport } from '../../services/block-unlocks.js';
+import { EmojiIcon, IconText } from '../../../components/ui/Icon.jsx';
 
 export default function BlocklyUnlockPanel({ design, onGoDesign }) {
   const report = getBlocklyUnlockReport(design);
@@ -15,10 +16,10 @@ export default function BlocklyUnlockPanel({ design, onGoDesign }) {
 
       {report.mountedParts.length > 0 && (
         <div className="al-unlock-group">
-          <h3>🤖 On your robot</h3>
+          <h3><EmojiIcon e="🤖" style={{ marginRight: '0.35em' }} />On your robot</h3>
           {report.mountedParts.slice(0, 5).map((p) => (
             <div key={`${p.slot}-${p.label}`} className="al-unlock-item unlocked">
-              <span className="al-unlock-icon">{p.icon}</span>
+              <span className="al-unlock-icon"><EmojiIcon e={p.icon} /></span>
               <div>
                 <strong>{p.label}</strong>
                 <div className="al-unlock-hint">{p.slot}</div>
@@ -34,11 +35,11 @@ export default function BlocklyUnlockPanel({ design, onGoDesign }) {
       {report.groups.map((group) => (
         <div key={group.id} className="al-unlock-group">
           <h3>
-            {group.icon} {group.label}
+            <EmojiIcon e={group.icon} style={{ marginRight: '0.35em' }} />{group.label}
           </h3>
           {group.items.slice(0, 6).map((item) => (
             <div key={item.id} className={`al-unlock-item ${item.unlocked ? 'unlocked' : 'locked'}`}>
-              <span className="al-unlock-icon">{item.unlocked ? '✓' : '🔒'}</span>
+              <span className="al-unlock-icon"><IconText>{item.unlocked ? '✓' : '🔒'}</IconText></span>
               <div>
                 <strong>{item.label}</strong>
                 <div className="al-unlock-hint">{item.hint}</div>

@@ -2350,15 +2350,28 @@
   .bb-studio-canvas-hint { display: none; }
 }
 
-/* ← Home: leave Robot Studio and go back to the main platform */
+/* ← Back: leave Robot Studio / Robot Lab and return to the homepage */
 .bb-studio-exit {
-  display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 13px 0 11px; margin-right: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.35); border-radius: 11px; background: rgba(255, 255, 255, 0.16); color: #fff;
-  font-family: inherit; font-size: 13px; font-weight: 800; line-height: 1; cursor: pointer; white-space: nowrap;
-  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.18); transition: background .12s, transform .12s;
+  display: inline-flex; align-items: center; gap: 6px; height: 40px; padding: 0 14px 0 12px; margin-right: 4px;
+  flex-shrink: 0; border: 0; border-radius: 12px; background: #17243d; color: #fff;
+  font-family: inherit; font-size: 14px; font-weight: 800; line-height: 1; cursor: pointer; white-space: nowrap;
+  box-shadow: 0 3px 0 #0b1425; transition: background .12s, transform .12s;
 }
-.bb-studio-exit span[aria-hidden] { font-size: 17px; }
-.bb-studio-exit:hover { background: rgba(255, 255, 255, 0.28); transform: translateY(-1px); }
-.bb-studio-exit:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(0, 0, 0, 0.18); }
+.bb-studio-exit span[aria-hidden] { font-size: 18px; }
+.bb-studio-exit:hover { background: #243656; transform: translateY(-1px); }
+.bb-studio-exit:active { transform: translateY(2px); box-shadow: 0 1px 0 #0b1425; }
 .bb-studio-exit:focus-visible { outline: 3px solid #fde047; outline-offset: 2px; }
-@media (max-width: 720px) { .bb-studio-exit-label { display: none; } .bb-studio-exit { padding: 0 10px; } }
+.bb-studio-myrobots-section { font-size: 16px; font-weight: 900; color: #334155; margin: 4px 0 12px; }
+.bb-created-note { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; margin-bottom: 10px; border-radius: 12px; background: #f5f3ff; border: 1px solid #ddd6fe; color: #4c1d95; font-size: 12.5px; line-height: 1.4; }
+.bb-created-note button { align-self: flex-start; border: none; background: #7c3aed; color: #fff; font-weight: 800; font-size: 12px; border-radius: 8px; padding: 5px 10px; cursor: pointer; }
+
+/* Brand mascot in the Studio header */
+.bb-studio-logo-mascot {
+  width: 46px;
+  height: 46px;
+  object-fit: contain;
+  flex-shrink: 0;
+  filter: drop-shadow(0 3px 6px rgba(30, 10, 80, 0.35));
+  transition: transform 0.2s ease;
+}
+.bb-studio-logo:hover .bb-studio-logo-mascot { transform: rotate(-8deg) scale(1.06); }

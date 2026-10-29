@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { EmojiIcon } from '../../components/ui/Icon.jsx';
 
 export default function ShareDesignModal({ design, onShare, onClose }) {
   const link = design?.id ? `https://bytebuddies.technology/#vrd?design=${design.id}` : 'https://bytebuddies.technology/#vrd';
@@ -14,10 +15,10 @@ export default function ShareDesignModal({ design, onShare, onClose }) {
   return (
     <div className="vrd-modal-overlay" onClick={onClose}>
       <div className="vrd-modal" onClick={(e) => e.stopPropagation()}>
-        <h2 style={{ margin: '0 0 12px' }}>📱 Share Your Design</h2>
+        <h2 style={{ margin: '0 0 12px' }}><EmojiIcon e="📱" style={{ marginRight: '0.35em' }} />Share Your Design</h2>
         <p style={{ fontSize: 13, color: 'rgba(240,230,255,0.6)' }}>Share with your class — classmates can view, like, and remix!</p>
         <button type="button" className="vrd-btn vrd-btn-primary" style={{ width: '100%', justifyContent: 'center', margin: '16px 0' }} onClick={() => onShare?.()}>
-          🌍 Make Public & Share
+          <EmojiIcon e="🌍" style={{ marginRight: '0.35em' }} />Make Public & Share
         </button>
         <label className="vrd-field-label">Copy link</label>
         <div style={{ display: 'flex', gap: 8 }}>

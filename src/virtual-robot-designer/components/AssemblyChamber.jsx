@@ -5,6 +5,7 @@ import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
 import * as THREE from 'three';
 import RobotModelR3F from './RobotModelR3F.jsx';
 import { migrateDesign } from '../config.js';
+import { IconText } from '../../components/ui/Icon.jsx';
 
 function ChamberRing({ color }) {
   return (
@@ -127,7 +128,7 @@ export default function AssemblyChamber({ design, className = '', assemblyPulse 
       </div>
       <div className="vrd-chamber-controls">
         <button type="button" className="vrd-chamber-ctrl" onClick={() => setAutoSpin((s) => !s)}>
-          {autoSpin ? '⏸ Hold rotation' : '⟳ Auto rotate'}
+          <IconText>{autoSpin ? '⏸ Hold rotation' : '⟳ Auto rotate'}</IconText>
         </button>
         <span className="vrd-chamber-hint">Drag to orbit · Scroll to zoom</span>
       </div>

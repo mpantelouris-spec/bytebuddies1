@@ -22,6 +22,40 @@ const RACE_PARAM_DEFS = {
 
 const HELPER_BLOCK_IDS = new Set(['move_forward_continuous', 'follow_track_on', 'follow_track_off']);
 
+/** Race-only hats: fire when the kart touches a rival car or a bumper post, or sees one coming. */
+const RACE_COLLISION_EVENTS = [
+  { id: 'when_hit_car', label: 'When I hit a car', icon: '🚗' },
+  { id: 'when_hit_object', label: 'When I hit an object', icon: '🚧' },
+  { id: 'when_object_ahead', label: 'When an object is ahead', icon: '👀' },
+  { id: 'when_car_ahead', label: 'When a car is ahead', icon: '🏎️' },
+];
+
+const RACE_EVENTS_CATEGORY = {
+  ...UNIVERSAL_EVENTS_CATEGORY,
+  blocks: [...UNIVERSAL_EVENTS_CATEGORY.blocks, ...RACE_COLLISION_EVENTS],
+};
+
+const RACE_COLLISION_SENSORS = [
+  { id: 'race_car_ahead', label: 'Car ahead?', icon: '🚗', output: 'Boolean' },
+  { id: 'race_object_ahead', label: 'Object ahead?', icon: '🚧', output: 'Boolean' },
+  { id: 'race_distance_ahead', label: 'Distance to car/object ahead', icon: '📏', output: 'Number' },
+  { id: 'race_collisions', label: 'Collisions so far', icon: '💥', output: 'Number' },
+];
+
+/** Lanes: the way to dodge a bumper or a rival kart is to change lane. */
+const RACE_LANE_BLOCKS = [
+  { id: 'lane_left', label: 'Change lane left', icon: '⬅️' },
+  { id: 'lane_right', label: 'Change lane right', icon: '➡️' },
+  { id: 'lane_middle', label: 'Back to middle lane', icon: '⬆️' },
+  { id: 'lane_clear', label: 'Move to a clear lane', icon: '🔀' },
+];
+
+const RACE_LANE_SENSORS = [
+  { id: 'race_left_lane_clear', label: 'Left lane clear?', icon: '⬅️', output: 'Boolean' },
+  { id: 'race_right_lane_clear', label: 'Right lane clear?', icon: '➡️', output: 'Boolean' },
+  { id: 'race_my_lane', label: 'My lane (-1 left, 0 middle, 1 right)', icon: '🛣️', output: 'Number' },
+];
+
 const RACE_LABEL_OVERRIDES = {
   move_forward_continuous: 'Keep driving forward',
   move_forward: 'Move forward',
@@ -82,7 +116,7 @@ export function buildRaceBlockLibrary(baseLibrary, arenaType) {
   const lib = baseLibrary || {};
   const trackBlocks = buildRaceTrackPresetBlocks(arenaType);
   return {
-    Events: UNIVERSAL_EVENTS_CATEGORY,
+    Events: RACE_EVENTS_CATEGORY,
     Track: {
       label: 'Track helpers',
       color: '#a855f7',
@@ -94,7 +128,12 @@ export function buildRaceBlockLibrary(baseLibrary, arenaType) {
       label: 'Racing',
       color: '#ef4444',
       icon: '🏎️',
-      blocks: pickRaceBlocks(lib.Movement?.blocks),
+      // Lane changes sit near the top, just under Move forward: they're how a kart dodges
+      blocks: (() => {
+        const moves = pickRaceBlocks(lib.Movement?.blocks);
+        const at = moves.findIndex((m) => m.id === 'move_forward') + 1;
+        return [...moves.slice(0, at), ...RACE_LANE_BLOCKS, ...moves.slice(at)];
+      })(),
     },
     Helpers: {
       label: 'Helpers',
@@ -119,6 +158,8 @@ export function buildRaceBlockLibrary(baseLibrary, arenaType) {
         { id: 'race_dist_right_rail', label: 'Distance to right rail', icon: '➡️', output: 'Number' },
         { id: 'race_on_track', label: 'On track?', icon: '🛣️', output: 'Boolean' },
         { id: 'race_current_lap', label: 'Current lap', icon: '🏁', output: 'Number' },
+        ...RACE_COLLISION_SENSORS,
+        ...RACE_LANE_SENSORS,
       ],
     },
     Logic: lib.Logic ? { ...lib.Logic, blocks: pickRaceBlocks(lib.Logic.blocks) } : undefined,

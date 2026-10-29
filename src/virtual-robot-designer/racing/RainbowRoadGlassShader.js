@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import { sampleTrackFrame, stabilizeNormal } from './GameWorldBuilder.js';
 
-/** Procedural glass tile grid — saturated MK rainbow bands (color pop, not white wash). */
+/** Flowing rainbow lanes — seven saturated stripes along the road with moving light streaks. */
 export function createRainbowGlassTrackMaterial() {
   return new THREE.ShaderMaterial({
     uniforms: {
@@ -50,47 +50,37 @@ export function createRainbowGlassTrackMaterial() {
       }
 
       void main() {
-        vec2 gridUv = vUv * tileRepeat;
-        vec2 tileId = floor(gridUv);
-        vec2 tileUv = fract(gridUv);
-
-        float lineW = 0.055;
-        float edgeX = min(tileUv.x, 1.0 - tileUv.x);
-        float edgeY = min(tileUv.y, 1.0 - tileUv.y);
-        float gridLine = 1.0 - smoothstep(0.0, lineW, edgeX) * smoothstep(0.0, lineW, edgeY);
-
-        // Rainbow across track WIDTH — smooth blend between saturated bands
+        // Seven crisp rainbow lanes running along the road
         float bandPos = vUv.x * 7.0;
         float band = floor(bandPos);
-        vec3 rainbow = mix(mkBand(band), mkBand(band + 1.0), fract(bandPos));
+        float f = fract(bandPos);
+        vec3 col = mkBand(band);
 
-        // Tile face: full saturated colour in centre, only slightly darker at edges
-        float tileFace = smoothstep(0.04, 0.22, tileUv.x) * smoothstep(0.96, 0.78, tileUv.x)
-                       * smoothstep(0.04, 0.22, tileUv.y) * smoothstep(0.96, 0.78, tileUv.y);
-        vec3 col = mix(rainbow * 0.82, rainbow, tileFace);
+        // Soft dark groove between lanes so each stripe reads clearly
+        float groove = 1.0 - smoothstep(0.0, 0.07, min(f, 1.0 - f));
+        col = mix(col, col * 0.45, groove * 0.7);
 
-        // Grid seams: brighten IN the lane hue (not white) so colours stay vivid
-        vec3 seamCol = saturate(rainbow * 1.25, 1.4);
-        col = mix(col, seamCol, gridLine * 0.85);
+        // Lanes are a touch brighter in the middle — gives a rounded, glossy look
+        col *= 0.88 + 0.16 * (1.0 - abs(f - 0.5) * 2.0);
 
-        // Rare sparkle — tinted to lane colour, not white
-        float sparkleSeed = fract(sin(dot(tileId, vec2(12.9898, 78.233))) * 43758.5453);
-        float twinkle = step(0.95, sparkleSeed) * (0.5 + 0.5 * sin(time * 7.0 + sparkleSeed * 40.0));
-        col = mix(col, saturate(rainbow * 1.35, 1.5), twinkle * 0.35);
+        // Light streaks flowing along the track
+        float flow = sin((vUv.y * 0.18 - time * 0.9) * 6.2831);
+        col += smoothstep(0.9, 1.0, flow) * 0.28;
 
-        // Subtle glass sheen — keeps hue
+        // Glass sheen at grazing angles, keeping the lane hue
         vec3 n = normalize(vNormal);
         vec3 v = normalize(vViewDir);
         float fresnel = pow(1.0 - max(dot(n, v), 0.0), 3.0);
-        col = mix(col, saturate(rainbow * 1.15, 1.3), fresnel * 0.18);
+        col = mix(col, saturate(col * 1.2, 1.3), fresnel * 0.2);
 
-        col = saturate(col, 1.42);
+        // Bright white edge lines
+        float edge = min(vUv.x, 1.0 - vUv.x);
+        col = mix(col, vec3(1.0), 1.0 - smoothstep(0.012, 0.03, edge));
 
-        float alpha = opacity * (0.94 + gridLine * 0.06);
-        gl_FragColor = vec4(col, alpha);
+        gl_FragColor = vec4(saturate(col, 1.25), opacity);
       }
     `,
-    transparent: true,
+    transparent: false,
     side: THREE.DoubleSide,
     depthWrite: true,
     fog: false,
@@ -136,7 +126,7 @@ export function buildRainbowGlassRibbon(curve, {
   const mat = createRainbowGlassTrackMaterial();
   const tilesAcross = (halfWidth * 2) / tileWidth;
   mat.uniforms.tileRepeat.value.set(tilesAcross, 1);
-  mat.uniforms.opacity.value = 0.97;
+  mat.uniforms.opacity.value = 1.0;
 
   const pos = [];
   const idx = [];

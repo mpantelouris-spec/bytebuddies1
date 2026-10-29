@@ -22,6 +22,7 @@ import { analyzeRobot, getCourseMetaForProfile } from '../services/robot-profile
 import AdaptiveWorldsPanel from '../components/AdaptiveWorldsPanel.jsx';
 import { getAdaptiveWorldForDesign } from '../services/world-selector.js';
 import '../styles/test-arena.css';
+import { EmojiIcon, IconText } from '../../components/ui/Icon.jsx';
 
 export default function SimulatorPage({ onGoDesign, onGoCode }) {
   const design = useRobotStore((s) => s.design);
@@ -229,10 +230,10 @@ export default function SimulatorPage({ onGoDesign, onGoCode }) {
       <main className="ta-arena">
         <div className="ta-arena-hud">
           <span className="ta-arena-pill" style={{ borderColor: course.color }}>
-            {course.icon} {course.label}
+            <EmojiIcon e={course.icon} style={{ marginRight: '0.35em' }} />{course.label}
           </span>
           <span className={`ta-arena-pill ${running && !paused ? 'ta-arena-pill--live' : ''}`}>
-            {running ? (paused ? '⏸ Paused' : '● LIVE') : '○ Ready'}
+            <IconText>{running ? (paused ? '⏸ Paused' : '● LIVE') : '○ Ready'}</IconText>
           </span>
         </div>
         <TestArenaOverlay
@@ -287,7 +288,7 @@ export default function SimulatorPage({ onGoDesign, onGoCode }) {
       {cinemaMode && (
         <div className="ta-cinema-dock">
           <button type="button" className="ta-run-btn" onClick={running ? stopSim : runSimulation}>
-            {running ? '⏹ Stop' : '▶ Run!'}
+            <IconText>{running ? '⏹ Stop' : '▶ Run!'}</IconText>
           </button>
         </div>
       )}

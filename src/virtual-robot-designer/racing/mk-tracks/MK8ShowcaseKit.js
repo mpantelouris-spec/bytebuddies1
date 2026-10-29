@@ -1050,7 +1050,7 @@ function scheduleTreeSwap(scene, root, trackId, prof) {
         return;
       }
       if (prof.hide && prof.hide.test(o.name || '')) { seen.add(o); o.visible = false; return; }
-      if (/^theme-gate-/.test(o.name || '') && !o.isMesh) {
+      if ((/^theme-gate-/.test(o.name || '') || o.name === 'balloon-star-arch') && !o.isMesh) {
         seen.add(o);
         o.visible = false;
         root.add(buildStartGantry(scene, o));
@@ -1165,22 +1165,28 @@ function starShape(outer, inner) {
 }
 
 function bannerTexture() {
+  // Rainbow pennant: seven bright stripes, a gold star and a pointed tail
   return canvasTexture(128, 256, (ctx, w, h) => {
-    ctx.fillStyle = '#f6efe0';
+    const lanes = ['#ff3b3b', '#ff9a2e', '#ffe44a', '#4cff7a', '#3ad6ff', '#4d6bff', '#b04dff'];
+    ctx.fillStyle = '#1b1240';
     ctx.fillRect(0, 0, w, h);
-    ctx.strokeStyle = '#b8862e';
-    ctx.lineWidth = 8;
-    ctx.strokeRect(6, 6, w - 12, h - 30);
-    // checker panel
-    const s = 16;
-    for (let y = 30; y < 160; y += s) {
-      for (let x = 22; x < w - 22; x += s) {
-        if (((x - 22) / s + (y - 30) / s) % 2 === 0) { ctx.fillStyle = '#d9cdb4'; ctx.fillRect(x, y, s, s); }
-      }
-    }
-    ctx.fillStyle = '#b8862e';
+    const sw = (w - 16) / lanes.length;
+    lanes.forEach((c, i) => { ctx.fillStyle = c; ctx.fillRect(8 + i * sw, 8, sw + 0.5, h - 56); });
+    ctx.fillStyle = '#ffd35a';
     ctx.beginPath();
-    ctx.moveTo(0, h - 40); ctx.lineTo(w / 2, h); ctx.lineTo(w, h - 40); ctx.closePath();
+    for (let k = 0; k < 10; k++) {
+      const r = k % 2 ? 13 : 30;
+      const a = -Math.PI / 2 + (k * Math.PI) / 5;
+      ctx.lineTo(w / 2 + Math.cos(a) * r, 92 + Math.sin(a) * r);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(6, 6, w - 12, h - 52);
+    ctx.fillStyle = '#ffd35a';
+    ctx.beginPath();
+    ctx.moveTo(6, h - 46); ctx.lineTo(w / 2, h); ctx.lineTo(w - 6, h - 46); ctx.closePath();
     ctx.fill();
   });
 }
@@ -1632,7 +1638,7 @@ function applyNightShowcase(scene, curve, trackId, prof) {
 function rainbowRoadMaterial() {
   return new THREE.ShaderMaterial({
     uniforms: { time: { value: 0 } },
-    transparent: true,
+    transparent: false,
     depthWrite: true,
     side: THREE.DoubleSide,
     vertexShader: /* glsl */`
@@ -1654,43 +1660,40 @@ function rainbowRoadMaterial() {
         return v * mix(vec3(1.0), k, s);
       }
       void main() {
-        // 6 glass tiles across, ~1.4 m long along the lap
-        vec2 g = vec2(vUv.x * 6.0, vUv.y * 1.45);
-        vec2 cell = floor(g);
-        vec2 f = fract(g);
-        float rnd = h(cell);
-        // rainbow bands across the road that slowly flow forward
-        float hue = fract(cell.x * 0.16 - vUv.y * 0.01 + (rnd - 0.5) * 0.035 + time * 0.05);
-        vec3 tile = hsv(hue, 0.92, 1.0);
-        vec2 c = f - 0.5;
-        float pillow = 1.0 - dot(c, c) * 1.6;
-        vec2 edge = min(f, 1.0 - f);
-        float e = min(edge.x, edge.y);
-        float grout = 1.0 - smoothstep(0.018, 0.04, e);          // dark joins
-        float rim = smoothstep(0.03, 0.05, e) * (1.0 - smoothstep(0.05, 0.14, e)); // bright bevel
-        vec3 glass = tile * (0.45 + pillow * 0.55);
-        glass += mix(tile, vec3(1.0), 0.55) * rim * 0.9;
-        vec3 col = mix(glass, vec3(0.04, 0.02, 0.10), grout);
+        // Seven smooth rainbow lanes running along the road
+        float bandPos = vUv.x * 7.0;
+        float band = floor(bandPos);
+        float f = fract(bandPos);
+        vec3 col = hsv(band / 6.0 * 0.8, 0.9, 1.0);
+        // lanes are brighter in the middle, like rounded glass
+        col *= 0.84 + 0.18 * (1.0 - abs(f - 0.5) * 2.0);
+        // light pulses flowing forward along the lap
+        float flow = sin((vUv.y * 0.12 - time * 0.8) * 6.2831);
+        col += mix(col, vec3(1.0), 0.5) * smoothstep(0.88, 1.0, flow) * 0.35;
+        // dark grooves between lanes so every stripe stays crisp
+        float groove = 1.0 - smoothstep(0.0, 0.08, min(f, 1.0 - f));
+        col = mix(col, col * 0.35, groove * 0.75);
         // twinkling stardust
         vec2 sg = vec2(vUv.x * 30.0, vUv.y * 5.5);
         vec2 sp = floor(sg);
         vec2 sf = fract(sg) - 0.5;
         float star = smoothstep(0.12, 0.0, length(sf * vec2(1.0, 1.6)));
-        float spark = step(0.975, h(sp)) * star * (0.5 + 0.5 * sin(time * 4.0 + h(sp + 3.0) * 30.0));
-        col += vec3(1.0) * spark * 1.4;
+        float spark = step(0.98, h(sp)) * star * (0.5 + 0.5 * sin(time * 4.0 + h(sp + 3.0) * 30.0));
+        col += vec3(1.0) * spark * 1.2;
         // bright white rails painted along both edges
         float border = 1.0 - smoothstep(0.0, 0.035, min(vUv.x, 1.0 - vUv.x));
         col = mix(col, vec3(1.0, 0.96, 1.0) * 1.6, border);
-        col *= 1.18; // a touch over 1 so the bloom pass makes the glass glow
-        float alpha = mix(0.9, 1.0, max(grout, border));
-        gl_FragColor = vec4(col, alpha);
+        col *= 1.12; // a touch over 1 so the bloom pass makes the lanes glow
+        gl_FragColor = vec4(col, 1.0);
         #include <colorspace_fragment>
       }`,
     toneMapped: false,
   });
 }
 
-const RAINBOW_CLUTTER = /^(balloon-star-arch|rally-center-dashes|golden-star-hoop|gem-stars|asteroid-field)$/;
+// race-start-gantry: the rainbow arch is Rainbow Road's start gate, so the red START gantry
+// (and the checker strip it paints) would make a second start line
+const RAINBOW_CLUTTER = /^(balloon-star-arch|rally-center-dashes|golden-star-hoop|gem-stars|asteroid-field|race-start-gantry|race-start-grid)$/;
 
 function restyleRainbowRoad(scene, root, curve, roadHw) {
   const road = scene.getObjectByName('rainbow-glass-ribbon');

@@ -130,12 +130,15 @@ export function buildCodeRacerCollectibles(scene, curve, { coinCount = 42, starE
 
 export function tickCodeRacerCollectibles(scene, time) {
   updateCollectibleAnimations(scene, time);
-  scene.traverse((obj) => {
-    if (obj.name === 'start-mascot') {
-      const arm = obj.getObjectByName('mascot-wave-arm');
-      if (arm) arm.rotation.z = Math.sin(time * 3.2) * 0.45 - 0.2;
-      obj.position.y += Math.sin(time * 2) * 0.002;
-    }
+  // Look the mascots up once, not by walking the whole race world every frame
+  if (!scene.userData._mascots) {
+    const list = [];
+    scene.traverse((obj) => { if (obj.name === 'start-mascot') list.push({ obj, arm: obj.getObjectByName('mascot-wave-arm') }); });
+    scene.userData._mascots = list;
+  }
+  scene.userData._mascots.forEach(({ obj, arm }) => {
+    if (arm) arm.rotation.z = Math.sin(time * 3.2) * 0.45 - 0.2;
+    obj.position.y += Math.sin(time * 2) * 0.002;
   });
 }
 

@@ -362,12 +362,15 @@ function buildXbotFootballer({ teamColor = 'green', shellColor = null, jerseyNum
   g.add(model);
   g.userData.xbot = true;
   g.userData.setAnimState = (state) => {
-    // Slow jogs use the walk cycle; proper runs use the run cycle
+    // Blend into a walk at low speeds so players don't snap straight into a sprint.
     const want = state === 'run' || state === 'dribble' ? (runSpeed < 0.35 ? 'walk' : 'run') : (ANIM[state] || 'idle');
     play(want);
   };
   g.userData.animate = (t, dt) => {
-    if (actions.run) actions.run.timeScale = THREE.MathUtils.clamp(0.7 + runSpeed * 0.6, 0.7, 1.5);
+    // The old 0.6 multiplier pinned almost every real movement speed at 1.5x,
+    // making the mocap sprint look frantic. Keep the source run cadence close
+    // to natural speed, with only a small response to faster movement.
+    if (actions.run) actions.run.timeScale = THREE.MathUtils.clamp(0.78 + runSpeed * 0.075, 0.78, 1.22);
     mixer.update(Math.min(dt || 1 / 60, 0.1));
   };
   g.userData.footballRig = { setRunSpeed: (s) => { runSpeed = s || 0; } };

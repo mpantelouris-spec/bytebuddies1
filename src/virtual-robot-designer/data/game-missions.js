@@ -148,7 +148,7 @@ export const GAME_MISSIONS = [
     medals: {
       bronze: { label: 'Finish the race', check: (s) => !!s.raceWon },
       silver: { label: 'Collect 10 stars', target: 10, check: (s) => (s.raceStarsCollected || 0) >= 10 },
-      gold: { label: 'Finish in under 90 seconds', target: 90, check: (s) => !!s.raceWon && (s.raceTotalTime || Infinity) < 90 },
+      gold: { label: 'Finish in under 100 seconds', target: 100, check: (s) => !!s.raceWon && (s.raceTotalTime || Infinity) < 100 },
     },
     objectives: [
       { id: 'finish',      icon: '🏁', label: 'Complete all 3 laps',     target: 1, get: (s) => s.raceWon ? 1 : 0 },
@@ -157,7 +157,7 @@ export const GAME_MISSIONS = [
       { id: 'stars',       icon: '⭐', label: 'Collect 5 stars',          target: 5, get: (s) => Math.min(s.raceStarsCollected ?? 0, 5) },
     ],
     zones: [
-      z(1, 'intro', 'Starting Grid', 'The rainbow ribbon stretches into space. Your car sits on the grid — three laps, eight checkpoint gates per lap, boost pads on straights. One wrong turn and you fall into the void.', 'Study the spiral, bridge, and hairpins before you code.', [], []),
+      z(1, 'intro', 'Starting Grid', 'The rainbow ribbon stretches into space. Your car sits on the grid — three laps, eight checkpoint gates per lap, boost pads on straights. One wrong turn and you fall into the void.', 'Study the two hairpin pockets and the long straights before you code.', [], []),
       z(2, 'first_system', 'Ignition Sequence', 'Race cars don\'t just go — they launch. Build your start routine: speed, then drive.', 'WHEN START → SET SPEED 70% → MOVE FORWARD off the grid. Feel the wheels grip!', ['movement', 'speed_control'], ['robot_when_start', 'robot_set_speed', 'robot_move_forward']),
       z(3, 'interaction', 'Checkpoint Gates', 'Each glowing green arch is a checkpoint. Drive through them in order — miss one and the lap doesn\'t count!', 'MOVE through the first gate arch, then TURN toward the next. Gates flash when you pass.', ['movement', 'checkpoints'], ['robot_move_forward', 'robot_turn_left', 'robot_turn_right']),
       z(4, 'expansion', 'Racing Line', 'The yellow line marks the ideal path. Follow it through corners for the fastest lap.', 'TURN to follow the painted line — slow before corners, accelerate on exit.', ['movement', 'turning', 'checkpoints'], ['robot_turn_left', 'robot_turn_right', 'robot_move_forward']),

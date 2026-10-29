@@ -1,4 +1,5 @@
 import React, { useState, useRef, useCallback } from 'react';
+import { EmojiIcon } from './ui/Icon.jsx';
 
 const DEFAULT_HTML = `<!DOCTYPE html>
 <html>
@@ -109,10 +110,10 @@ export default function HtmlEditor({ starterCode = DEFAULT_HTML, editorHeight = 
       <div style={s.toolbar}>
         <div style={s.tabs}>
           <button style={s.tab(activeTab === 'html')} onClick={() => setActiveTab('html')}>
-            📝 HTML Editor
+            <EmojiIcon e="📝" style={{ marginRight: '0.35em' }} />HTML Editor
           </button>
           <button style={s.tab(activeTab === 'preview')} onClick={() => { setActiveTab('preview'); runPreview(); }}>
-            🌐 Preview
+            <EmojiIcon e="🌐" style={{ marginRight: '0.35em' }} />Preview
           </button>
           <button style={s.tab(activeTab === 'split')} onClick={() => { setActiveTab('split'); runPreview(); }}>
             ⬛ Split
@@ -121,7 +122,7 @@ export default function HtmlEditor({ starterCode = DEFAULT_HTML, editorHeight = 
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={s.hint}>Ctrl+Enter to preview</span>
           <button style={s.runBtn} onClick={() => { runPreview(); if (activeTab === 'html') setActiveTab('split'); }}>
-            ▶ Run Preview
+            <EmojiIcon e="▶" style={{ marginRight: '0.35em' }} />Run Preview
           </button>
         </div>
       </div>

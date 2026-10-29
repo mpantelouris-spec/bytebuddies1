@@ -13,6 +13,7 @@ import { getSlotLabel } from '../../utils/build-slots.js';
 import PartDragGhost from './PartDragGhost.jsx';
 import { useUiStore } from '../../store/uiStore.js';
 import { migrateDesign } from '../../config.js';
+import { EmojiIcon } from '../../../components/ui/Icon.jsx';
 
 function dragPart(e, payload) {
   e.dataTransfer.setData('application/vrd-part', JSON.stringify({ type: 'part', ...payload }));
@@ -112,14 +113,14 @@ export default function ModularPartsPanel({
             className={asm.visualMode !== 'lego' ? 'active' : ''}
             onClick={() => onSetVisualMode?.('realistic')}
           >
-            🔩 Realistic
+            <EmojiIcon e="🔩" style={{ marginRight: '0.35em' }} />Realistic
           </button>
           <button
             type="button"
             className={asm.visualMode === 'lego' ? 'active' : ''}
             onClick={() => onSetVisualMode?.('lego')}
           >
-            🧱 Toy Look
+            <EmojiIcon e="🧱" style={{ marginRight: '0.35em' }} />Toy Look
           </button>
         </div>
         <input
@@ -145,7 +146,7 @@ export default function ModularPartsPanel({
               onClick={() => onSelectSlot?.(slotId)}
               title={SNAP_SLOTS[slotId]?.label}
             >
-              <span className="bb-slot-chip-icon">{SNAP_SLOTS[slotId]?.icon}</span>
+              <span className="bb-slot-chip-icon"><EmojiIcon e={SNAP_SLOTS[slotId]?.icon} /></span>
               <span className="bb-slot-chip-label">{SNAP_SLOTS[slotId]?.label?.split(' ')[0]}</span>
               {filled && (
                 <span
@@ -213,7 +214,7 @@ export default function ModularPartsPanel({
               setSearch('');
             }}
           >
-            <span>{s.icon}</span>
+            <span><EmojiIcon e={s.icon} /></span>
             <span>{s.label}</span>
           </button>
         ))}
@@ -245,7 +246,7 @@ export default function ModularPartsPanel({
                   material: 'industrial',
                 })}
               >
-                <span className="bb-chassis-icon">{c.icon}</span>
+                <span className="bb-chassis-icon"><EmojiIcon e={c.icon} /></span>
                 <span>{c.label}</span>
               </button>
             ))}
@@ -290,7 +291,7 @@ export default function ModularPartsPanel({
           className="bb-blocks-mode-btn"
           onClick={() => onSetBuildMode?.('blocks')}
         >
-          🧱 LEGO Block Mode
+          <EmojiIcon e="🧱" style={{ marginRight: '0.35em' }} />LEGO Block Mode
         </button>
       </footer>
 

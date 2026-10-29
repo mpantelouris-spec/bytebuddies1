@@ -222,6 +222,13 @@ export function integratePlatformerSprite(sprite, state, dt, stageW, stageH, pla
   sprite.x += (state.vx || 0) * clampDt;
   sprite.x = Math.max(0, Math.min(stageW - sprite.w, sprite.x));
 
+  // No gravity and not moving vertically: nothing can land, so leave y alone. Snapping here
+  // pulled sprites that move with motion blocks back onto the floor whenever they were near it.
+  if (g <= 0 && !state.vy) {
+    state.grounded = sprite.y + sprite.h >= stageH - GROUND_EPS;
+    return;
+  }
+
   const proposedY = sprite.y + (state.vy || 0) * clampDt;
   const proposedBottom = proposedY + sprite.h;
 

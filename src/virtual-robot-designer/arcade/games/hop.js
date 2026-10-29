@@ -3,6 +3,7 @@
  * logs over rivers and dodge trains to reach the finish. Teaches timing,
  * sensors and "wait until" thinking.
  */
+import { createArcadeExpansion } from '../expanded-levels.js';
 
 export const HCOLS = 15, HCELL = 32;
 const WRAP = HCOLS + 6;
@@ -49,6 +50,7 @@ const LEVELS = [
     lanes: [grass(), road(2, 6), grass([5, 6]), river(1.3, 5, 3), river(-1.5, 6, 4, 2), grass([9]), rail(15, 70, 10), grass(), road(-2.4, 7, 2), road(2.6, 8, 1, 3), grass([7]), goal()],
     palette: ['hop_forward', 'hop_left', 'hop_right', 'hop_back', 'wait', 'forever', 'if', 'else', 'repeat_until'] },
 ];
+LEVELS.push(...createArcadeExpansion({ id: 'hopbot', title: 'Hop Bot', emoji: '🐸', color: '#22c55e', levels: LEVELS }));
 
 /** Left edge (in columns) of every mover in a lane at time t, including wrapped copies. */
 export function moverXs(lane, t) {

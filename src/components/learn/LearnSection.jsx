@@ -17,6 +17,7 @@ import { useUser } from '../../contexts/UserContext';
 import { getTeaching } from '../../data/teaching/index.js';
 import PupilLearn from './PupilLearn.jsx';
 import { readWork, recordWork } from '../../utils/workLog.js';
+import { EmojiIcon, IconText } from '../ui/Icon.jsx';
 
 // Safe fallbacks - handle undefined imports gracefully
 const SAFE_COURSE_ORDER = COURSE_ORDER && Array.isArray(COURSE_ORDER) ? COURSE_ORDER : ['y3', 'y4', 'y5', 'y6'];
@@ -78,7 +79,7 @@ class LearnErrorBoundary extends Component {
       return (
         <div style={{ padding: 40, textAlign: 'center', color: '#fff', background: '#1a1a2e', minHeight: '100vh' }}>
           <h2 style={{ color: '#ef4444' }}>Something went wrong</h2>
-          <p style={{ color: 'rgba(255,255,255,0.6)' }}>{this.state.error?.message || 'Unknown error'}</p>
+          <p style={{ color: 'rgba(var(--ls-ink),0.6)' }}>{this.state.error?.message || 'Unknown error'}</p>
           <pre style={{ textAlign: 'left', background: '#000', padding: 16, borderRadius: 8, overflow: 'auto', maxHeight: 300, fontSize: 11, color: '#fca5a5' }}>
             {this.state.error?.stack}
           </pre>
@@ -149,11 +150,12 @@ function getTermForLesson(yr, idx) {
 }
 
 // ─── DESIGN TOKENS ──────────────────────────────────────────────────────────
-const BG = '#060611';
-const CARD_BG = 'rgba(255,255,255,0.04)';
-const CARD_BORDER = 'rgba(255,255,255,0.1)';
-const TEXT = '#f8fafc';
-const TEXT_DIM = 'rgba(255,255,255,0.6)';
+// Theme-aware: the --ls-* colours are defined for dark and light mode in index.css
+const BG = 'var(--ls-bg)';
+const CARD_BG = 'var(--ls-card)';
+const CARD_BORDER = 'var(--ls-border)';
+const TEXT = 'var(--ls-text)';
+const TEXT_DIM = 'var(--ls-dim)';
 
 // ─── GLOBAL ANIMATIONS ──────────────────────────────────────────────────────
 function GlobalStyles() {
@@ -167,7 +169,7 @@ function GlobalStyles() {
       @keyframes fade-up { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
       @keyframes twinkle { 0%,100%{opacity:0.2} 50%{opacity:1} }
       .bb-scroll::-webkit-scrollbar{width:8px}
-      .bb-scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.15);border-radius:8px}
+      .bb-scroll::-webkit-scrollbar-thumb{background:rgba(var(--ls-ink),0.15);border-radius:8px}
     `}</style>
   );
 }
@@ -182,7 +184,7 @@ function Stars({ count = 60 }) {
     <div style={{ position:'absolute', inset:0, overflow:'hidden', pointerEvents:'none', zIndex:0 }}>
       {stars.map((s, i) => (
         <div key={i} style={{ position:'absolute', top:`${s.top}%`, left:`${s.left}%`,
-          width:s.size, height:s.size, borderRadius:'50%', background:'#fff',
+          width:s.size, height:s.size, borderRadius:'50%', background:'var(--ls-star)',
           animation:`twinkle ${s.dur}s ease-in-out ${s.delay}s infinite` }} />
       ))}
     </div>
@@ -192,7 +194,7 @@ function Stars({ count = 60 }) {
 // ─── MICRO COMPONENTS ─────────────────────────────────────────────────────────
 function ProgressBar({ pct, color, height = 8, style = {} }) {
   return (
-    <div style={{ background:'rgba(255,255,255,0.1)', borderRadius:99, height, overflow:'hidden', ...style }}>
+    <div style={{ background:'rgba(var(--ls-ink),0.1)', borderRadius:99, height, overflow:'hidden', ...style }}>
       <div style={{ width:`${pct}%`, height:'100%', background:color, borderRadius:99,
         transition:'width 0.6s ease', boxShadow:`0 0 8px ${color}88` }} />
     </div>
@@ -212,7 +214,7 @@ function ModeToggle({ role, onChange }) {
   const { user, isLoggedIn } = useUser();
   if (isLoggedIn && (user?.role === 'student' || user?.role === 'parent')) return null;
   return (
-    <div style={{ display:'inline-flex', padding:4, borderRadius:14, background:'rgba(255,255,255,0.06)',
+    <div style={{ display:'inline-flex', padding:4, borderRadius:14, background:'rgba(var(--ls-ink),0.06)',
       border:`1px solid ${CARD_BORDER}`, gap:4 }}>
       {[['pupil', 'I’m a pupil'], ['teacher', 'I’m a teacher']].map(([id, label]) => (
         <button key={id} type="button" onClick={() => onChange(id)}
@@ -252,7 +254,7 @@ function CharBubble({ characterId, text, style = {} }) {
       <div style={{ fontSize:30, flexShrink:0, lineHeight:1, animation:'float 3s ease-in-out infinite' }}>{ch.emoji}</div>
       <div>
         <div style={{ fontSize:11, fontWeight:800, color:ch.color, marginBottom:4 }}>{ch.name}</div>
-        <div style={{ fontSize:14, color:'#e2e8f0', lineHeight:1.55 }}>{text}</div>
+        <div style={{ fontSize:14, color:'var(--ls-text2)', lineHeight:1.55 }}>{text}</div>
       </div>
     </div>
   );
@@ -263,16 +265,16 @@ function CompanionActivitySection({ activity, color }) {
   if (!activity) return null;
   
   return (
-    <div style={{ marginTop: 20, background: 'rgba(255,255,255,0.03)', border: `1px solid ${color}33`, borderRadius: 18, overflow: 'hidden' }}>
+    <div style={{ marginTop: 20, background: 'rgba(var(--ls-ink),0.03)', border: `1px solid ${color}33`, borderRadius: 18, overflow: 'hidden' }}>
       <button
         onClick={() => setExpanded(!expanded)}
         style={{
           width: '100%', padding: '16px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          background: 'transparent', border: 'none', cursor: 'pointer', color: '#e2e8f0'
+          background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--ls-text2)'
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span style={{ fontSize: 24 }}>🎓</span>
+          <span style={{ fontSize: 24 }}><EmojiIcon e="🎓" /></span>
           <div style={{ textAlign: 'left' }}>
             <div style={{ fontSize: 12, fontWeight: 800, color, letterSpacing: 1 }}>TEACHER COMPANION ACTIVITY</div>
             <div style={{ fontSize: 15, fontWeight: 700 }}>{activity.name}</div>
@@ -292,17 +294,17 @@ function CompanionActivitySection({ activity, color }) {
           
           {activity.learningConnection && (
             <div style={{ background: `${color}15`, border: `1px solid ${color}33`, borderRadius: 12, padding: '12px 14px', marginBottom: 14 }}>
-              <div style={{ fontSize: 11, fontWeight: 800, color, marginBottom: 4 }}>💡 LEARNING CONNECTION</div>
-              <div style={{ fontSize: 13, color: '#e2e8f0', lineHeight: 1.6 }}>{activity.learningConnection}</div>
+              <div style={{ fontSize: 11, fontWeight: 800, color, marginBottom: 4 }}><EmojiIcon e="💡" style={{ marginRight: '0.35em' }} />LEARNING CONNECTION</div>
+              <div style={{ fontSize: 13, color: 'var(--ls-text2)', lineHeight: 1.6 }}>{activity.learningConnection}</div>
             </div>
           )}
           
           {activity.materials && activity.materials.length > 0 && (
             <div style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: 12, fontWeight: 800, color: '#94a3b8', marginBottom: 8 }}>📦 MATERIALS NEEDED</div>
+              <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--ls-dim2)', marginBottom: 8 }}><EmojiIcon e="📦" style={{ marginRight: '0.35em' }} />MATERIALS NEEDED</div>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 {activity.materials.map((m, i) => (
-                  <span key={i} style={{ fontSize: 12, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '4px 10px', color: '#d1d5db' }}>{m}</span>
+                  <span key={i} style={{ fontSize: 12, background: 'rgba(var(--ls-ink),0.06)', border: '1px solid rgba(var(--ls-ink),0.1)', borderRadius: 8, padding: '4px 10px', color: '#d1d5db' }}>{m}</span>
                 ))}
               </div>
             </div>
@@ -310,11 +312,11 @@ function CompanionActivitySection({ activity, color }) {
           
           {activity.steps && activity.steps.length > 0 && (
             <div style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: 12, fontWeight: 800, color: '#94a3b8', marginBottom: 10 }}>📝 ACTIVITY STEPS</div>
+              <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--ls-dim2)', marginBottom: 10 }}><EmojiIcon e="📝" style={{ marginRight: '0.35em' }} />ACTIVITY STEPS</div>
               {activity.steps.map((step, i) => (
                 <div key={i} style={{ display: 'flex', gap: 12, marginBottom: 10 }}>
                   <div style={{ width: 26, height: 26, borderRadius: '50%', background: color, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 12, flexShrink: 0 }}>{i + 1}</div>
-                  <div style={{ fontSize: 13, color: '#e2e8f0', lineHeight: 1.5, paddingTop: 3 }}>{step}</div>
+                  <div style={{ fontSize: 13, color: 'var(--ls-text2)', lineHeight: 1.5, paddingTop: 3 }}>{step}</div>
                 </div>
               ))}
             </div>
@@ -322,7 +324,7 @@ function CompanionActivitySection({ activity, color }) {
           
           {activity.mascotTieIn && (
             <div style={{ background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.3)', borderRadius: 12, padding: '10px 14px', marginBottom: 14 }}>
-              <div style={{ fontSize: 11, fontWeight: 800, color: '#fbbf24', marginBottom: 4 }}>🤖 MASCOT TIE-IN</div>
+              <div style={{ fontSize: 11, fontWeight: 800, color: '#fbbf24', marginBottom: 4 }}><EmojiIcon e="🤖" style={{ marginRight: '0.35em' }} />MASCOT TIE-IN</div>
               <div style={{ fontSize: 13, color: '#fde68a', lineHeight: 1.5 }}>{activity.mascotTieIn}</div>
             </div>
           )}
@@ -337,7 +339,7 @@ function CompanionActivitySection({ activity, color }) {
               )}
               {activity.differentiation.extension && (
                 <div style={{ background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.3)', borderRadius: 10, padding: '10px 12px' }}>
-                  <div style={{ fontSize: 11, fontWeight: 800, color: '#a855f7', marginBottom: 4 }}>🚀 EXTENSION</div>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: '#a855f7', marginBottom: 4 }}><EmojiIcon e="🚀" style={{ marginRight: '0.35em' }} />EXTENSION</div>
                   <div style={{ fontSize: 12, color: '#c4b5fd', lineHeight: 1.5 }}>{activity.differentiation.extension}</div>
                 </div>
               )}
@@ -346,7 +348,7 @@ function CompanionActivitySection({ activity, color }) {
           
           {activity.safetyNotes && (
             <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 10, padding: '10px 12px', marginTop: 10 }}>
-              <div style={{ fontSize: 11, fontWeight: 800, color: '#ef4444', marginBottom: 4 }}>⚠️ SAFETY NOTES</div>
+              <div style={{ fontSize: 11, fontWeight: 800, color: '#ef4444', marginBottom: 4 }}><EmojiIcon e="⚠️" style={{ marginRight: '0.35em' }} />SAFETY NOTES</div>
               <div style={{ fontSize: 12, color: '#fca5a5', lineHeight: 1.5 }}>{activity.safetyNotes}</div>
             </div>
           )}
@@ -429,7 +431,7 @@ function WorldMap({ onSelectYear, onContinue, role, onRoleChange }) {
               onClick={() => { setKs2MaxYear(y); setMaxYear(y); }}
               style={{ padding:'8px 14px', borderRadius:12, fontWeight:800, fontSize:13, cursor:'pointer',
                 border:`1.5px solid ${maxYear === y ? '#818cf8' : CARD_BORDER}`,
-                background: maxYear === y ? 'rgba(99,102,241,0.25)' : 'rgba(255,255,255,0.04)',
+                background: maxYear === y ? 'rgba(99,102,241,0.25)' : 'rgba(var(--ls-ink),0.04)',
                 color: maxYear === y ? '#c7d2fe' : TEXT_DIM }}>
               Year {y}
             </button>
@@ -479,12 +481,12 @@ function WorldMap({ onSelectYear, onContinue, role, onRoleChange }) {
                 <div style={{ fontSize:13, fontWeight:800, color:col, marginBottom:4 }}>{c.lessons?.[0]?.title ? `Week 1: ${c.lessons[0].title}` : c.storyTitle}</div>
                 <div style={{ fontSize:13, color:TEXT_DIM, lineHeight:1.5, marginBottom:14 }}>{YEAR_WORLDS[yr]?.blurb || c.tagline}</div>
                 <div style={{ display:'flex', justifyContent:'space-between', fontSize:12, color:TEXT_DIM, marginBottom:6 }}>
-                  <span>{prog.done}/{prog.total} lessons · {c.lessons?.length || prog.total} in path</span>
+                  <span>{prog.done}/{prog.total} lessons · {c.lessons?.length || prog.total} in this year</span>
                   <span style={{ fontWeight:800, color:col }}>{prog.pct}%</span>
                 </div>
                 <ProgressBar pct={prog.pct} color={col} />
                 <div style={{ marginTop:16, display:'inline-block', padding:'8px 18px', borderRadius:12,
-                  background: locked ? 'rgba(255,255,255,0.12)' : col, color:'#fff', fontWeight:800, fontSize:13 }}>
+                  background: locked ? 'rgba(var(--ls-ink),0.12)' : col, color: locked ? 'var(--ls-dim)' : '#fff', fontWeight:800, fontSize:13 }}>
                   {locked ? 'Unlocks in Year ' + c.year : prog.done === 0 ? 'Start' : prog.done === prog.total ? 'Complete' : 'Continue'}
                 </div>
                 </div>
@@ -561,7 +563,7 @@ function YearView({ yr, onBack, onSelectLesson, role, onRoleChange }) {
                 const done = isLessonDone(yr, idx);
                 const isCurrent = idx === currentIdx && !done;
                 const indent = ord % 2 === 0 ? -64 : 64;
-                const nodeColor = done ? '#10b981' : isCurrent ? term.color : 'rgba(255,255,255,0.3)';
+                const nodeColor = done ? '#10b981' : isCurrent ? term.color : 'rgba(var(--ls-ink),0.3)';
                 return (
                   <div key={idx} style={{ position:'relative', display:'flex', justifyContent:'center', marginBottom:14 }}>
                     {/* connecting dashed line */}
@@ -572,15 +574,15 @@ function YearView({ yr, onBack, onSelectLesson, role, onRoleChange }) {
                       <button onClick={() => onSelectLesson(idx)}
                         title={lesson.title}
                         style={{ width:78, height:78, borderRadius:'50%', cursor:'pointer', position:'relative',
-                          border:`3px solid ${nodeColor}`, color:'#fff',
-                          background: done ? 'linear-gradient(135deg,#065f46,#10b981)' : isCurrent ? `linear-gradient(135deg, ${term.color}, ${term.color}88)` : 'rgba(255,255,255,0.05)',
+                          border:`3px solid ${nodeColor}`, color: done || isCurrent ? '#fff' : 'var(--ls-text)',
+                          background: done ? 'linear-gradient(135deg,#065f46,#10b981)' : isCurrent ? `linear-gradient(135deg, ${term.color}, ${term.color}88)` : 'rgba(var(--ls-ink),0.05)',
                           display:'flex', alignItems:'center', justifyContent:'center',
                           animation: isCurrent ? 'pulse-glow 2s infinite' : 'none', transition:'transform .15s' }}
                         onMouseEnter={e => e.currentTarget.style.transform='scale(1.08)'}
                         onMouseLeave={e => e.currentTarget.style.transform='scale(1)'}>
                         <HeaderMark kind={themeMarkKind(lessonThemeId(lesson))} color="#fff" size={34} />
                         <span style={{ position:'absolute', bottom:-6, right:-6, width:26, height:26, borderRadius:'50%',
-                          background: done ? '#10b981' : isCurrent ? term.color : '#1e293b', color:'#fff',
+                          background: done ? '#10b981' : isCurrent ? term.color : 'var(--ls-node)', color:'#fff',
                           fontSize:13, fontWeight:900, display:'flex', alignItems:'center', justifyContent:'center',
                           border:`2px solid ${BG}` }}>
                           {done ? '✓' : isCurrent ? '►' : idx + 1}
@@ -616,7 +618,7 @@ function StepBar({ step, color, labels = STEP_LABELS_PUPIL }) {
       {labels.map((lab, i) => (
         <div key={i} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:4, minWidth:28 }}>
           <div style={{ width: i === step ? 14 : 9, height: i === step ? 14 : 9, borderRadius:'50%',
-            background: i < step ? '#10b981' : i === step ? color : 'rgba(255,255,255,0.18)',
+            background: i < step ? '#10b981' : i === step ? color : 'rgba(var(--ls-ink),0.18)',
             boxShadow: i === step ? `0 0 12px ${color}` : 'none', transition:'all .3s' }} />
           {i === step && <div style={{ fontSize:9, color, fontWeight:800 }}>{lab}</div>}
         </div>
@@ -704,7 +706,7 @@ function BibleActivitiesPanel({ activities, color, completed, onComplete, hideMa
           </button>
           {open.has(ai) && (
             <div style={{ padding:'0 18px 16px' }}>
-              <ol style={{ margin:0, padding:'0 0 8px 20px', color:'#e2e8f0', fontSize:14, lineHeight:1.55 }}>
+              <ol style={{ margin:0, padding:'0 0 8px 20px', color:'var(--ls-text2)', fontSize:14, lineHeight:1.55 }}>
                 {(act.steps || []).map((step, si) => (
                   <li key={si} style={{ marginBottom:8 }}>{step}</li>
                 ))}
@@ -727,9 +729,9 @@ function CodeDebugBanner({ lesson, color }) {
     <div style={{ marginBottom: 18, background: `linear-gradient(135deg, ${color}14, transparent)`,
       border: `1px solid ${color}44`, borderRadius: 16, padding: '14px 18px' }}>
       <div style={{ fontSize: 11, fontWeight: 800, color, letterSpacing: 1, marginBottom: 6 }}>
-        {lesson.codingLab ? '🚩 CODING / DEBUG' : '📝 MICRO-DEBUG'}
+        <IconText>{lesson.codingLab ? '🚩 CODING / DEBUG' : '📝 MICRO-DEBUG'}</IconText>
       </div>
-      <div style={{ fontSize: 14, color: '#e2e8f0', lineHeight: 1.55 }}>{lesson.codeDebug}</div>
+      <div style={{ fontSize: 14, color: 'var(--ls-text2)', lineHeight: 1.55 }}>{lesson.codeDebug}</div>
       {lesson.reflection && (
         <div style={{ fontSize: 12, color: TEXT_DIM, marginTop: 10, lineHeight: 1.5 }}>
           <span style={{ fontWeight: 800, color: '#c4b5fd' }}>Reflect: </span>{lesson.reflection}
@@ -775,7 +777,7 @@ function TeachingCards({ lesson, color, character, onDone, onBack }) {
         borderRadius:24, padding:'32px 26px', flex:1, display:'flex', flexDirection:'column' }}>
         <div style={{ fontSize:64, textAlign:'center', marginBottom:16, animation:'float 3.5s ease-in-out infinite' }}>{card.emoji}</div>
         <div style={{ fontSize:24, fontWeight:900, textAlign:'center', marginBottom:14, color }}>{card.title}</div>
-        <div style={{ fontSize:16, lineHeight:1.65, color:'#e2e8f0', textAlign:'center', marginBottom:18 }}>{card.content}</div>
+        <div style={{ fontSize:16, lineHeight:1.65, color:'var(--ls-text2)', textAlign:'center', marginBottom:18 }}>{card.content}</div>
 
         {card.type === 'check' ? (
           <div style={{ textAlign:'center' }}>
@@ -792,7 +794,7 @@ function TeachingCards({ lesson, color, character, onDone, onBack }) {
         ) : card.type === 'transition' && card.characterQuote ? (
           <CharBubble characterId={character} text={card.characterQuote} />
         ) : card.example ? (
-          <div style={{ background:'rgba(255,255,255,0.05)', border:`1px solid ${CARD_BORDER}`,
+          <div style={{ background:'rgba(var(--ls-ink),0.05)', border:`1px solid ${CARD_BORDER}`,
             borderRadius:14, padding:'12px 16px', fontSize:13, color:TEXT_DIM }}>
             <span style={{ fontWeight:800, color }}>Example: </span>{card.example}
           </div>
@@ -845,11 +847,11 @@ function QuizStep({ lesson, color, onScore, onBack, workKey }) {
                 style={{ display:'flex', gap:10, alignItems:'center', width:'100%', textAlign:'left', padding:'11px 14px',
                   marginBottom:7, borderRadius:12, fontSize:14, cursor: submitted ? 'default' : 'pointer',
                   border:`1.5px solid ${correct ? '#10b981' : wrong ? '#ef4444' : chosen ? color : CARD_BORDER}`,
-                  background: correct ? 'rgba(16,185,129,0.14)' : wrong ? 'rgba(239,68,68,0.14)' : chosen ? `${color}22` : 'rgba(255,255,255,0.03)',
+                  background: correct ? 'rgba(16,185,129,0.14)' : wrong ? 'rgba(239,68,68,0.14)' : chosen ? `${color}22` : 'rgba(var(--ls-ink),0.03)',
                   color: correct ? '#6ee7b7' : wrong ? '#fca5a5' : '#e2e8f0' }}>
                 <span style={{ width:24, height:24, borderRadius:'50%', flexShrink:0, fontWeight:900, fontSize:12,
                   display:'flex', alignItems:'center', justifyContent:'center',
-                  background: correct ? '#10b981' : wrong ? '#ef4444' : 'rgba(255,255,255,0.1)', color:'#fff' }}>
+                  background: correct ? '#10b981' : wrong ? '#ef4444' : 'rgba(var(--ls-ink),0.1)', color: correct || wrong ? '#fff' : 'var(--ls-text2)' }}>
                   {correct ? '✓' : wrong ? '✗' : letters[oi]}
                 </span>
                 {opt}
@@ -993,7 +995,7 @@ function LessonPlayer({ yr, idx, onBack, onComplete, onNextLesson, onMap, role, 
 
   if (!lesson) {
     return (
-      <div style={{ padding: 40, textAlign: 'center', color: 'rgba(255,255,255,0.5)', background: BG, height: '100%' }}>
+      <div style={{ padding: 40, textAlign: 'center', color: 'rgba(var(--ls-ink),0.5)', background: BG, height: '100%' }}>
         <p>Lesson not found.</p>
         <button onClick={onBack} style={{ marginTop: 20, padding: '10px 20px', background: '#6366f1', border: 'none', borderRadius: 8, color: '#fff', cursor: 'pointer' }}>
           ← Go Back
@@ -1090,7 +1092,7 @@ function LessonPlayer({ yr, idx, onBack, onComplete, onNextLesson, onMap, role, 
             label={`Year ${c.year} · Week ${lesson.week || idx + 1} · ${term?.name || 'Term'}`}
             title={lesson.title}
           />
-          <p style={{ color: '#e2e8f0', fontSize: 16, lineHeight: 1.6, margin: '0 0 10px' }}>{hook}</p>
+          <p style={{ color: 'var(--ls-text2)', fontSize: 16, lineHeight: 1.6, margin: '0 0 10px' }}>{hook}</p>
           {words.length > 0 && (
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
               {words.map((w) => <Chip key={w} label={w} color={color} />)}

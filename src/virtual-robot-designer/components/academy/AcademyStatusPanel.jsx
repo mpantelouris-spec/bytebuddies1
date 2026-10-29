@@ -6,6 +6,7 @@ import { getWorkshopPart } from '../../data/assembly-parts.js';
 import { analyzeRobot } from '../../services/robot-profile.js';
 import AnimatedNumber from '../AnimatedNumber.jsx';
 import { statBarColor } from '../../hooks/useRobotStats.js';
+import { EmojiIcon, IconText } from '../../../components/ui/Icon.jsx';
 
 function StatBar({ label, value, color, icon }) {
   const pct = Math.max(0, Math.min(100, value));
@@ -71,7 +72,7 @@ export default function AcademyStatusPanel({
           animate={{ scale: 1 }}
           transition={{ type: 'spring', stiffness: 400, damping: 18 }}
         >
-          {placedCount ? '✅ Modules active' : '◻ Empty canvas'}
+          <IconText>{placedCount ? '✅ Modules active' : '◻ Empty canvas'}</IconText>
         </motion.span>
       </div>
 
@@ -81,7 +82,7 @@ export default function AcademyStatusPanel({
         whileHover={{ scale: 1.02 }}
         transition={{ type: 'spring', stiffness: 300, damping: 22 }}
       >
-        <span className="bb-archetype-icon" aria-hidden>{archetype.icon}</span>
+        <span className="bb-archetype-icon" aria-hidden><EmojiIcon e={archetype.icon} /></span>
         <div>
           <strong>{archetype.label}</strong>
           <p className="bb-archetype-missions">
@@ -94,7 +95,7 @@ export default function AcademyStatusPanel({
       </motion.div>
 
       <div className="bb-status-hero-card">
-        <div className="bb-status-thumb" aria-hidden>{archetype.icon}</div>
+        <div className="bb-status-thumb" aria-hidden><EmojiIcon e={archetype.icon} /></div>
         <div>
           <strong>{d.name || 'My Invention'}</strong>
           <p>{placedCount} modules · {sensorsOn.length} sensors active</p>
@@ -132,19 +133,19 @@ export default function AcademyStatusPanel({
           whileHover={{ scale: 1.03 }}
           whileTap={{ scale: 0.97 }}
         >
-          ▶ Test in Simulator
+          <EmojiIcon e="▶" style={{ marginRight: '0.35em' }} />Test in Simulator
         </motion.button>
         <button type="button" className="bb-action-btn bb-action-btn--warn" onClick={onCalibrate}>
-          ⚙️ Calibrate Robot
+          <EmojiIcon e="⚙️" style={{ marginRight: '0.35em' }} />Calibrate Robot
         </button>
         <button type="button" className="bb-action-btn bb-action-btn--danger" onClick={onReset}>
           ↻ Reset Robot
         </button>
         <button type="button" className="bb-action-btn bb-action-btn--ghost" onClick={onSave} aria-label="Save design">
-          💾 Save Design
+          <EmojiIcon e="💾" style={{ marginRight: '0.35em' }} />Save Design
         </button>
         <button type="button" className="bb-action-btn bb-action-btn--ghost" onClick={onLoad} aria-label="Load saved design">
-          📂 Load Design
+          <EmojiIcon e="📂" style={{ marginRight: '0.35em' }} />Load Design
         </button>
       </div>
     </aside>

@@ -5,6 +5,14 @@ import { extensionBlocklyForShort } from './extensionBlockMaps';
 /** Prefer Scratch-style Blockly blocks (with number fields) over bb_lib_* stubs. */
 /** Game short type → Scratch Blockly type (with inputs). */
 export const SHORT_TO_SCRATCH_BLOCKLY = {
+  'pen-down': 'bb_pen_down', 'pen-up': 'bb_pen_up', 'pen-clear': 'bb_pen_clear', 'pen-erase': 'bb_pen_clear',
+  'pen-stamp': 'bb_pen_stamp', 'pen-color': 'bb_pen_color', 'pen-set-color': 'bb_pen_color',
+  'pen-change-color': 'bb_pen_change_color', 'pen-size': 'bb_pen_size', 'pen-set-size': 'bb_pen_size',
+  'pen-change-size': 'bb_pen_change_size',
+  'game-win': 'bb_game_win', 'game-over': 'bb_game_over', 'game-lose-life': 'bb_game_lose_life',
+  'game-score-add': 'bb_game_score_add', 'game-score-set': 'bb_game_score_set', 'game-set-lives': 'bb_game_set_lives',
+  'game-next-level': 'bb_game_next_level', 'game-goto-level': 'bb_game_goto_level', 'event-level': 'bb_game_when_level',
+  'game-level-reporter': 'bb_game_level', 'game-score-reporter': 'bb_game_score', 'game-lives-reporter': 'bb_game_lives',
   'sprite-say': 'looks_sayforsecs',
   'looks-say': 'looks_say',
   'sprite-think': 'looks_thinkforsecs',
@@ -359,7 +367,8 @@ export const BB_FULLY_IMPLEMENTED = new Set([
   'bb_physics_bounce',
 
   // Game blocks
-  'bb_game_score_add', 'bb_game_score_set', 'bb_game_set_lives',
+  'bb_game_score_add', 'bb_game_score_set', 'bb_game_set_lives', 'bb_game_win', 'bb_game_over', 'bb_game_lose_life',
+  'bb_game_next_level', 'bb_game_goto_level', 'bb_game_when_level', 'bb_game_level', 'bb_game_score', 'bb_game_lives',
 
   // Robot blocks
   'bb_robot_generic', 'bb_robot_show_text', 'bb_robot_show_number', 'bb_robot_show_icon',

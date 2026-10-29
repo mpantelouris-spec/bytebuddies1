@@ -12,6 +12,7 @@
 import React, { useState } from 'react';
 import { getAdaptiveWorldForDesign, getExpansionTips } from '../services/world-selector.js';
 import '../styles/adaptive-worlds.css';
+import { EmojiIcon, IconText } from '../../components/ui/Icon.jsx';
 
 /* ── Mini sub-components ─────────────────────────────────────────────── */
 
@@ -38,7 +39,7 @@ function EnvironmentCard({ env, isActive, onSelect }) {
       title={env.unlocked ? env.desc : 'Add the right parts to unlock this world'}
       aria-pressed={isActive}
     >
-      <span className="aw-env-icon">{env.unlocked ? env.icon : '🔒'}</span>
+      <span className="aw-env-icon"><IconText>{env.unlocked ? env.icon : '🔒'}</IconText></span>
       <div className="aw-env-body">
         <span className="aw-env-label">{env.label}</span>
         <span className="aw-env-desc">{env.unlocked ? env.desc : 'Locked — add parts!'}</span>
@@ -57,7 +58,7 @@ function MissionCard({ mission, isActive, onSelect }) {
       onClick={() => onSelect(mission.id)}
       aria-pressed={isActive}
     >
-      <span className="aw-mission-icon">{mission.icon}</span>
+      <span className="aw-mission-icon"><EmojiIcon e={mission.icon} /></span>
       <div className="aw-mission-body">
         <span className="aw-mission-label">{mission.label}</span>
         <span className="aw-mission-desc">{mission.desc}</span>
@@ -70,7 +71,7 @@ function MissionCard({ mission, isActive, onSelect }) {
 function CodingBlockChip({ block }) {
   return (
     <div className="aw-block-chip" style={{ '--block-color': block.color }} title={block.label}>
-      <span className="aw-block-chip-icon">{block.icon}</span>
+      <span className="aw-block-chip-icon"><EmojiIcon e={block.icon} /></span>
       <span className="aw-block-chip-label">{block.label}</span>
     </div>
   );
@@ -79,7 +80,7 @@ function CodingBlockChip({ block }) {
 function SpecialFeatureRow({ feat }) {
   return (
     <div className="aw-feature-row">
-      <span className="aw-feature-icon">{feat.icon}</span>
+      <span className="aw-feature-icon"><EmojiIcon e={feat.icon} /></span>
       <div>
         <strong>{feat.label}</strong>
         <span>{feat.desc}</span>
@@ -91,7 +92,7 @@ function SpecialFeatureRow({ feat }) {
 function ExpansionTip({ tip }) {
   return (
     <div className="aw-tip">
-      <span>{tip.icon}</span>
+      <span><EmojiIcon e={tip.icon} /></span>
       <p>{tip.text}</p>
     </div>
   );
@@ -103,7 +104,7 @@ function Section({ label, icon, defaultOpen = true, children, count }) {
   return (
     <div className="aw-section">
       <button type="button" className="aw-section-head" onClick={() => setOpen((o) => !o)}>
-        <span className="aw-section-icon">{icon}</span>
+        <span className="aw-section-icon"><EmojiIcon e={icon} /></span>
         <span className="aw-section-label">{label}</span>
         {count != null && <span className="aw-section-count">{count}</span>}
         <span className="aw-section-chevron">{open ? '▾' : '▸'}</span>
@@ -158,7 +159,7 @@ export default function AdaptiveWorldsPanel({
           className={`aw-run-btn ${running ? 'aw-run-btn--stop' : ''}`}
           onClick={running ? onStop : () => onRunMission?.(activeEnvId, activeMsnId)}
         >
-          {running ? '⏹ Stop Mission' : '▶ Launch Mission!'}
+          <IconText>{running ? '⏹ Stop Mission' : '▶ Launch Mission!'}</IconText>
         </button>
       </div>
 
@@ -176,7 +177,7 @@ export default function AdaptiveWorldsPanel({
               disabled={running}
               title={running ? 'Stop mission to change difficulty' : `Set difficulty to ${d.label}`}
             >
-              {d.icon} {d.label}
+              <EmojiIcon e={d.icon} style={{ marginRight: '0.35em' }} />{d.label}
             </button>
           ))}
         </div>
@@ -219,7 +220,7 @@ export default function AdaptiveWorldsPanel({
         {Object.values(codingBlocksByCategory).map((cat) => (
           <div key={cat.id} className="aw-block-category">
             <div className="aw-block-cat-head" style={{ color: cat.color }}>
-              <span>{cat.icon}</span>
+              <span><EmojiIcon e={cat.icon} /></span>
               <span>{cat.label}</span>
             </div>
             <div className="aw-block-chips">
@@ -241,7 +242,7 @@ export default function AdaptiveWorldsPanel({
       {/* Expansion tips */}
       {tips.length > 0 && (
         <div className="aw-tips">
-          <p className="aw-tips-head">🔓 Unlock more worlds:</p>
+          <p className="aw-tips-head"><EmojiIcon e="🔓" style={{ marginRight: '0.35em' }} />Unlock more worlds:</p>
           {tips.map((t) => <ExpansionTip key={t.text} tip={t} />)}
         </div>
       )}

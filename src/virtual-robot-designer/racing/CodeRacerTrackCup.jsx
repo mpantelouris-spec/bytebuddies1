@@ -4,6 +4,7 @@
 import React from 'react';
 import { BIOME_TRACKS } from './mk-tracks/BiomeTrackRegistry.js';
 import { MK_RACING_COURSE_BY_ID } from '../data/mk-racing-courses.js';
+import { EmojiIcon } from '../../components/ui/Icon.jsx';
 
 export function CodeRacerTrackCup({ arenaType, onSelect, disabled, variant = 'dock' }) {
   return (
@@ -12,7 +13,7 @@ export function CodeRacerTrackCup({ arenaType, onSelect, disabled, variant = 'do
       role="navigation"
       aria-label="CodeRacer track cup"
     >
-      <span className="bb-track-cup-label">🏎️ Cup tracks</span>
+      <span className="bb-track-cup-label"><EmojiIcon e="🏎️" style={{ marginRight: '0.35em' }} />Cup tracks</span>
       <div className="bb-track-cup-scroll">
         {BIOME_TRACKS.map((t) => {
           const course = MK_RACING_COURSE_BY_ID[t.arenaType] || MK_RACING_COURSE_BY_ID[t.courseId];

@@ -1,3 +1,4 @@
+import { cachedNodes, cachedChild } from './AnimNodeCache.js';
 /**
  * TrackHeroPlacements.js — Hero landmarks per track spec.
  */
@@ -175,10 +176,11 @@ export function placeHeroLandmarks(world, curve, hw, arenaType, finishT) {
   world.add(hero);
 }
 
+const HERO_ANIM = new Set(['hero-windmill', 'prop-windmill', 'hero-gear-arch']);
 export function animateHeroLandmarks(world, time) {
-  world.traverse((obj) => {
+  cachedNodes(world, 'hero', (o) => HERO_ANIM.has(o.name)).forEach((obj) => {
     if (obj.name === 'hero-windmill' || obj.name === 'prop-windmill') {
-      const blades = obj.getObjectByName('windmill-blades');
+      const blades = cachedChild(obj, 'windmill-blades');
       if (blades) blades.rotation.z = time * 0.6;
     }
     if (obj.name === 'hero-gear-arch') {

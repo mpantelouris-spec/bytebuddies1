@@ -2,11 +2,8 @@ import Blockly from 'blockly';
 import 'blockly/blocks';
 import * as BlocklyJS from 'blockly/javascript';
 import { getCategoryColorForBlockLabel } from '../data/blockLibraryCategories';
-import {
-  COSTUME_BLOCKLY_DROPDOWN,
-  BACKDROP_BLOCKLY_DROPDOWN,
-} from '../data/stageLookOptions';
-import { SOUND_BLOCKLY_DROPDOWN } from '../data/soundOptions';
+import { BACKDROP_BLOCKLY_DROPDOWN } from '../data/stageLookOptions';
+import { liveCostumeMenu, liveSoundMenu, liveSpriteMenu, liveBackdropMenu } from '../data/liveAssetDropdowns';
 import {
   CLONE_TARGET_BLOCKLY_DROPDOWN,
   STOP_OPTION_BLOCKLY_DROPDOWN,
@@ -58,6 +55,7 @@ const REPORTER_SLOT_FIELDS = {
   operator_and: ['OPERAND1', 'OPERAND2'],
   operator_or: ['OPERAND1', 'OPERAND2'],
   operator_not: ['OPERAND'],
+  bb_game_goto_level: ['LEVEL'],
 };
 const BOOLEAN_SLOT_TYPES = new Set(['operator_and', 'operator_or', 'operator_not']);
 
@@ -122,6 +120,9 @@ function addReporterSlots(type, slotFields, check) {
       delete block.appendStatementInput;
     }
     block.setInputsInline(true);
+    // Blocks loaded from saved XML get their reporters plugged in after init, without a
+    // change event — hide the placeholder fields once loading has finished.
+    setTimeout(() => syncReporterSlotFields(block), 0);
   };
   def.onchange = function onchangeWithReporterSlots(e) {
     if (origOnchange) origOnchange.call(this, e);
@@ -220,11 +221,10 @@ export const defineBytebuddiesBlocks = () => {
       init: function() {
         this.appendDummyInput()
             .appendField("go to")
-            .appendField(new Blockly.FieldDropdown([
+            .appendField(new Blockly.FieldDropdown(() => liveSpriteMenu([
               ["random position", "random"],
               ["mouse-pointer", "mouse"],
-              ["Sprite1", "Sprite1"]
-            ]), "TARGET");
+            ])), "TARGET");
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
         this.setColour('#4C97FF');
@@ -254,11 +254,10 @@ export const defineBytebuddiesBlocks = () => {
             .appendField("glide")
             .appendField(new Blockly.FieldNumber(1, 0, Infinity), "SECS")
             .appendField("secs to")
-            .appendField(new Blockly.FieldDropdown([
+            .appendField(new Blockly.FieldDropdown(() => liveSpriteMenu([
               ["random position", "random"],
               ["mouse-pointer", "mouse"],
-              ["Sprite1", "Sprite1"]
-            ]), "TARGET");
+            ])), "TARGET");
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
         this.setColour('#4C97FF');
@@ -301,10 +300,9 @@ export const defineBytebuddiesBlocks = () => {
       init: function() {
         this.appendDummyInput()
             .appendField("point towards")
-            .appendField(new Blockly.FieldDropdown([
+            .appendField(new Blockly.FieldDropdown(() => liveSpriteMenu([
               ["mouse-pointer", "mouse"],
-              ["Sprite1", "Sprite1"]
-            ]), "TARGET");
+            ])), "TARGET");
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
         this.setColour('#4C97FF');
@@ -683,7 +681,7 @@ export const defineBytebuddiesBlocks = () => {
       init: function() {
         this.appendDummyInput()
             .appendField("switch costume to")
-            .appendField(new Blockly.FieldDropdown(COSTUME_BLOCKLY_DROPDOWN), "COSTUME");
+            .appendField(new Blockly.FieldDropdown(liveCostumeMenu), "COSTUME");
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
         this.setColour('#9B59B6');
@@ -708,7 +706,7 @@ export const defineBytebuddiesBlocks = () => {
       init: function() {
         this.appendDummyInput()
             .appendField("switch backdrop to")
-            .appendField(new Blockly.FieldDropdown(BACKDROP_BLOCKLY_DROPDOWN), "BACKDROP");
+            .appendField(new Blockly.FieldDropdown(liveBackdropMenu), "BACKDROP");
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
         this.setColour('#9B59B6');
@@ -924,7 +922,7 @@ export const defineBytebuddiesBlocks = () => {
       init: function() {
         this.appendDummyInput()
             .appendField("play sound")
-            .appendField(new Blockly.FieldDropdown(SOUND_BLOCKLY_DROPDOWN), "SOUND")
+            .appendField(new Blockly.FieldDropdown(liveSoundMenu), "SOUND")
             .appendField("until done");
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
@@ -938,7 +936,7 @@ export const defineBytebuddiesBlocks = () => {
       init: function() {
         this.appendDummyInput()
             .appendField("start sound")
-            .appendField(new Blockly.FieldDropdown(SOUND_BLOCKLY_DROPDOWN), "SOUND");
+            .appendField(new Blockly.FieldDropdown(liveSoundMenu), "SOUND");
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
         this.setColour('#CF63CF');
@@ -1102,7 +1100,7 @@ export const defineBytebuddiesBlocks = () => {
       init: function() {
         this.appendDummyInput()
             .appendField("when backdrop switches to")
-            .appendField(new Blockly.FieldDropdown(BACKDROP_BLOCKLY_DROPDOWN), "BACKDROP");
+            .appendField(new Blockly.FieldDropdown(liveBackdropMenu), "BACKDROP");
         this.setPreviousStatement(false, null);
         this.setNextStatement(true, null);
         this.setColour('#FFBF00');
@@ -1311,7 +1309,7 @@ export const defineBytebuddiesBlocks = () => {
       init: function() {
         this.appendDummyInput()
             .appendField("create clone of")
-            .appendField(new Blockly.FieldDropdown(CLONE_TARGET_BLOCKLY_DROPDOWN), "CLONE_OPTION");
+            .appendField(new Blockly.FieldDropdown(() => liveSpriteMenu(CLONE_TARGET_BLOCKLY_DROPDOWN.slice(0, 1))), "CLONE_OPTION");
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
         this.setColour('#FF7043');
@@ -1362,7 +1360,7 @@ export const defineBytebuddiesBlocks = () => {
       init: function() {
         this.appendDummyInput()
             .appendField('touching')
-            .appendField(new Blockly.FieldDropdown(SENSING_TOUCH_OPTIONS), 'OBJECT')
+            .appendField(new Blockly.FieldDropdown(() => liveSpriteMenu(SENSING_TOUCH_OPTIONS.slice(0, 2))), 'OBJECT')
             .appendField('?');
         this.setOutput(true, 'Boolean');
         this.setColour(SENSING_COLOUR);
@@ -1400,7 +1398,7 @@ export const defineBytebuddiesBlocks = () => {
       init: function() {
         this.appendDummyInput()
             .appendField('distance to')
-            .appendField(new Blockly.FieldDropdown(SENSING_DISTANCE_OPTIONS), 'OBJECT');
+            .appendField(new Blockly.FieldDropdown(() => liveSpriteMenu(SENSING_DISTANCE_OPTIONS.slice(0, 1))), 'OBJECT');
         this.setOutput(true, 'Number');
         this.setColour(SENSING_COLOUR);
         this.setTooltip('Distance in pixels to the target');
@@ -1551,11 +1549,7 @@ export const defineBytebuddiesBlocks = () => {
               ['size', 'size'],
             ]), 'PROPERTY')
             .appendField('of')
-            .appendField(new Blockly.FieldDropdown([
-              ['Stage', 'Stage'],
-              ['Sprite1', 'Sprite1'],
-              ['Sprite2', 'Sprite2'],
-            ]), 'OBJECT')
+            .appendField(new Blockly.FieldDropdown(() => liveSpriteMenu([['Stage', 'Stage']])), 'OBJECT')
             .appendField(')');
         this.setOutput(true, null);
         this.setColour(SENSING_COLOUR);
@@ -2092,7 +2086,7 @@ export const defineBytebuddiesBlocks = () => {
       init: function() {
         this.appendDummyInput()
           .appendField('switch costume to')
-          .appendField(new Blockly.FieldDropdown(COSTUME_BLOCKLY_DROPDOWN), 'COSTUME');
+          .appendField(new Blockly.FieldDropdown(liveCostumeMenu), 'COSTUME');
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
         this.setColour('#9b59b6');
@@ -2362,6 +2356,51 @@ export const defineBytebuddiesBlocks = () => {
         this.setTooltip('Set lives');
       },
     };
+
+    // Win / game over / lose a life (the engine had these; now they are real blocks)
+    const gameBlock = (label, tip) => ({
+      init: function () {
+        this.appendDummyInput().appendField(label);
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour('#eab308');
+        this.setTooltip(tip);
+      },
+    });
+    Blockly.Blocks['bb_game_win'] = gameBlock('🎉 you win!', 'Show "You Win!" and finish the level');
+    Blockly.Blocks['bb_game_over'] = gameBlock('💀 game over', 'End the game');
+    Blockly.Blocks['bb_game_lose_life'] = gameBlock('💔 lose a life', 'Take away one life');
+
+    // Levels: each level has its own backdrop and sprite layout (Levels bar under the stage)
+    Blockly.Blocks['bb_game_next_level'] = gameBlock('⏭ next level', 'Go to the next level (after the last level you win)');
+    Blockly.Blocks['bb_game_goto_level'] = {
+      init: function () {
+        this.appendDummyInput().appendField('🗺 go to level').appendField(new Blockly.FieldNumber(1, 1, 12, 1), 'LEVEL');
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour('#eab308');
+        this.setTooltip('Jump to a level: its backdrop and sprite positions load');
+      },
+    };
+    Blockly.Blocks['bb_game_when_level'] = {
+      init: function () {
+        this.appendDummyInput().appendField('when level').appendField(new Blockly.FieldNumber(1, 1, 12, 1), 'LEVEL').appendField('starts');
+        this.setNextStatement(true, null);
+        this.setColour('#eab308');
+        this.setTooltip('Runs when the game reaches this level');
+      },
+    };
+    const gameReporter = (label, tip) => ({
+      init: function () {
+        this.appendDummyInput().appendField(label);
+        this.setOutput(true, 'Number');
+        this.setColour('#eab308');
+        this.setTooltip(tip);
+      },
+    });
+    Blockly.Blocks['bb_game_level'] = gameReporter('level', 'The level the game is on');
+    Blockly.Blocks['bb_game_score'] = gameReporter('score', 'The score');
+    Blockly.Blocks['bb_game_lives'] = gameReporter('lives', 'Lives left');
 
     Blockly.Blocks['bb_motion_move'] = {
       init: function() {
@@ -2783,7 +2822,7 @@ export const defineBytebuddiesBlocks = () => {
         this.appendDummyInput()
             .appendField("[Music] Play drum")
             .appendField(new Blockly.FieldDropdown([
-              ["Snare Drum", "0"], ["Kick Drum", "1"], ["Tom", "2"], ["Cymbal", "3"]
+              ["Snare Drum", "0"], ["Kick Drum", "1"], ["Tom", "2"], ["Cymbal", "3"], ["Hi-hat", "4"], ["Clap", "5"]
             ]), "DRUM")
             .appendField("for")
             .appendField(new Blockly.FieldNumber(0.5, 0.1, 10, 0.1), "BEATS")
@@ -3300,6 +3339,17 @@ export const defineBytebuddiesBlocks = () => {
     Blockly.Blocks['body-x-position'] = Blockly.Blocks['bb_body_x_position'];
     Blockly.Blocks['body-y-position'] = Blockly.Blocks['bb_body_y_position'];
     Blockly.Blocks['body-is-detected'] = Blockly.Blocks['bb_body_is_detected'];
+    Blockly.Blocks['bb_hand_gesture'] = {
+      init: function() {
+        this.appendDummyInput().appendField('[Hand] Say gesture name');
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour('#f472b6');
+        this.setTooltip('Say which hand gesture the camera sees');
+      }
+    };
+    Blockly.Blocks['bb_hand_detect'] = Blockly.Blocks['bb_hand_detected'];
+    Blockly.Blocks['bb_body_people_count'] = Blockly.Blocks['bb_body_get_count'];
     Blockly.Blocks['hand-analyze'] = Blockly.Blocks['bb_hand_analyze'];
     Blockly.Blocks['hand-detected'] = Blockly.Blocks['bb_hand_detected'];
     Blockly.Blocks['hand-position-x'] = Blockly.Blocks['bb_hand_position_x'];
@@ -3505,8 +3555,9 @@ export const defineBytebuddiesBlocks = () => {
         this.appendValueInput('FACE')
             .setCheck('Number')
             .appendField('is face');
-        this.appendField('happy?');
+        this.appendDummyInput().appendField('happy?');
         this.setOutput(true, 'Boolean');
+        this.setInputsInline(true);
         this.setColour('#fbbf24');
         this.setTooltip('Check if face is happy');
       }
@@ -3753,14 +3804,15 @@ export const defineBytebuddiesBlocks = () => {
         this.appendValueInput('TEXT')
             .setCheck('String')
             .appendField('speak');
-        this.appendField('with voice');
-        this.appendField(new Blockly.FieldDropdown([
+        this.appendDummyInput().appendField('with voice');
+        this.appendDummyInput().appendField(new Blockly.FieldDropdown([
           ['default', 'default'],
           ['female', 'female'],
           ['male', 'male']
         ]), 'VOICE');
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
+        this.setInputsInline(true);
         this.setColour('#a78bfa');
         this.setTooltip('Speak text aloud');
       }
@@ -3827,16 +3879,16 @@ export const defineBytebuddiesBlocks = () => {
         this.appendValueInput('TEXT')
             .setCheck('String')
             .appendField('translate');
-        this.appendField('from');
-        this.appendField(new Blockly.FieldDropdown([
+        this.appendDummyInput().appendField('from');
+        this.appendDummyInput().appendField(new Blockly.FieldDropdown([
           ['English', 'en'],
           ['Spanish', 'es'],
           ['French', 'fr'],
           ['German', 'de'],
           ['Chinese', 'zh']
         ]), 'FROM');
-        this.appendField('to');
-        this.appendField(new Blockly.FieldDropdown([
+        this.appendDummyInput().appendField('to');
+        this.appendDummyInput().appendField(new Blockly.FieldDropdown([
           ['English', 'en'],
           ['Spanish', 'es'],
           ['French', 'fr'],
@@ -3845,6 +3897,7 @@ export const defineBytebuddiesBlocks = () => {
         ]), 'TO');
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
+        this.setInputsInline(true);
         this.setColour('#22d3ee');
         this.setTooltip('Translate text between languages');
       }
@@ -4184,6 +4237,30 @@ export const defineBytebuddiesBlocks = () => {
       'bb_weather_city', 'bb_weather_temp', 'bb_weather_cond',
     ].forEach((id) => {
       if (!Blockly.Blocks[id] && Blockly.Blocks.bb_lib_stack) Blockly.Blocks[id] = Blockly.Blocks.bb_lib_stack;
+    });
+
+    // =============== PEN (real blocks with settings, replacing the generic stubs) ===============
+    const PEN_COLOUR = '#0fbd8c';
+    const penBlock = (label, add) => ({
+      init: function init() {
+        const row = this.appendDummyInput().appendField('✏️').appendField(label);
+        if (add) add(row);
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour(PEN_COLOUR);
+      },
+    });
+    const colourField = (def) => (Blockly.FieldColour ? new Blockly.FieldColour(def) : new Blockly.FieldTextInput(def));
+    Object.assign(Blockly.Blocks, {
+      bb_pen_down: penBlock('pen down'),
+      bb_pen_up: penBlock('pen up'),
+      bb_pen_clear: penBlock('erase all'),
+      bb_pen_erase: penBlock('erase all'),
+      bb_pen_stamp: penBlock('stamp'),
+      bb_pen_color: penBlock('set pen colour to', (r) => r.appendField(colourField('#22c55e'), 'COLOR')),
+      bb_pen_change_color: penBlock('change pen colour by', (r) => r.appendField(new Blockly.FieldNumber(10), 'AMOUNT')),
+      bb_pen_size: penBlock('set pen size to', (r) => r.appendField(new Blockly.FieldNumber(3, 1, 100), 'SIZE')),
+      bb_pen_change_size: penBlock('change pen size by', (r) => r.appendField(new Blockly.FieldNumber(1), 'AMOUNT')),
     });
 
     // =============== CODE GENERATORS ===============

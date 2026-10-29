@@ -216,6 +216,21 @@ export const BLOCK_CODE_EXPLAIN = {
   race_dist_right_rail: 'Distance to the right track rail.',
   race_on_track: 'Checks if you are still on the track.',
   race_current_lap: 'Reads which lap you are on.',
+  race_car_ahead: 'Checks if another car is in front of you.',
+  race_object_ahead: 'Checks if a bumper or object is in front of you.',
+  race_distance_ahead: 'How far away the nearest car or object ahead is.',
+  race_collisions: 'Counts how many times you have crashed this race.',
+  when_hit_car: 'Runs when you bump into another car.',
+  when_hit_object: 'Runs when you bump into a bumper or object.',
+  when_object_ahead: 'Runs when a bumper comes up in your lane: change lane to dodge it!',
+  when_car_ahead: 'Runs when a rival kart is in front of you: change lane to overtake.',
+  lane_left: 'Slides your kart one lane to the left.',
+  lane_right: 'Slides your kart one lane to the right.',
+  lane_middle: 'Slides your kart back to the middle lane.',
+  lane_clear: 'Looks left and right, then slides into whichever lane is clear.',
+  race_left_lane_clear: 'Checks there is nothing in the lane to your left.',
+  race_right_lane_clear: 'Checks there is nothing in the lane to your right.',
+  race_my_lane: 'Which lane you are in: -1 left, 0 middle, 1 right.',
   // Universal events
   when_key: 'Runs when a chosen key is pressed (arrows or space).',
   when_zone: 'Runs when your robot enters a mission zone.',
@@ -263,7 +278,7 @@ export function filterBlockLibraryForPalette(blockLibrary, paletteRobotGroup, pa
   })).filter((c) => c.blocks.length > 0);
 
   const eventsCat = cats.find((c) => c.key === 'Events');
-  if (!eventsCat || eventsCat.blocks.length !== UNIVERSAL_EVENTS_CATEGORY.blocks.length) {
+  if (!eventsCat || eventsCat.blocks.length < UNIVERSAL_EVENTS_CATEGORY.blocks.length) {
     const merged = cats.filter((c) => c.key !== 'Events');
     merged.unshift({ key: 'Events', ...UNIVERSAL_EVENTS_CATEGORY });
     return merged;
@@ -1137,18 +1152,21 @@ function resolveFullExpertScript(course, logic, robotType, opts) {
   }
 
   if (isFlappy) {
+    // An autopilot that reads the bird's sensors: big flaps when far below the
+    // gap, small hops when just below it, nothing when above. Beats every level.
     return enrichExpertScript(cloneScript([
-      mk('when_spacebar', 'When spacebar clicked'),
-      mk('forever', 'Forever (auto-fly loop)'),
-      mk('flap', 'Flap!'),
-      mk('wait', 'Wait', { seconds: 0.12 }),
-      mk('flap', 'Flap again'),
-      mk('wait', 'Wait', { seconds: 0.18 }),
-      mk('flap', 'Flap (rhythm)'),
-      mk('wait', 'Wait', { seconds: 0.15 }),
-      mk('flap', 'Flap through gap'),
-      mk('wait', 'Wait', { seconds: 0.2 }),
-      mk('flap', 'Flap hold'),
+      mk('when_start', 'When START clicked'),
+      mk('forever', 'Forever (autopilot loop)'),
+      mk('if_then', 'If far below the gap', { a: 'below_gap', op: 'gt', b: 'num', n: 1.5 }),
+      mk('set_flap_strength', 'Set flap strength', { strength: 6 }),
+      mk('flap', 'Big flap!'),
+      mk('else', 'Else'),
+      mk('if_then', 'If a little below the gap', { a: 'below_gap', op: 'gt', b: 'num', n: 0 }),
+      mk('set_flap_strength', 'Set flap strength', { strength: 3 }),
+      mk('flap', 'Small hop'),
+      mk('end', 'End if'),
+      mk('end', 'End if'),
+      mk('end', 'End loop'),
     ]), course, logic, robotType, opts);
   }
 
@@ -1458,6 +1476,51 @@ function describeStarterScript(script = [], eventBlock = 'when_start') {
 /**
  * Build hint bundle for the code panel — derived from each course + robot.
  */
+/**
+ * Flappy hints: the bird is flown by code that reads its sensors — each level
+ * of help is a complete program that works, and each one flies further.
+ */
+function FLAPPY_HINT_TIERS() {
+  const loop = (inner) => [
+    mk('forever', 'Forever (autopilot loop)'),
+    ...inner,
+    mk('end', 'End loop'),
+  ];
+  const belowGapFlap = [
+    mk('if_then', 'If bird height < gap centre', { a: 'bird_height', op: 'lt', b: 'gap_center', n: 10 }),
+    mk('flap', 'Flap!'),
+    mk('end', 'End if'),
+  ];
+  return {
+    eventBlock: 'when_start',
+    simple: [mk('when_start', 'When START clicked'), ...loop(belowGapFlap)],
+    advanced: [
+      mk('when_start', 'When START clicked'),
+      mk('set_flap_strength', 'Set flap strength (small hops)', { strength: 3 }),
+      ...loop(belowGapFlap),
+    ],
+    expert: [
+      mk('when_start', 'When START clicked'),
+      ...loop([
+        mk('if_then', 'If far below the gap', { a: 'below_gap', op: 'gt', b: 'num', n: 1.5 }),
+        mk('set_flap_strength', 'Set flap strength', { strength: 6 }),
+        mk('flap', 'Big flap!'),
+        mk('else', 'Else'),
+        mk('if_then', 'If a little below the gap', { a: 'below_gap', op: 'gt', b: 'num', n: 0 }),
+        mk('set_flap_strength', 'Set flap strength', { strength: 3 }),
+        mk('flap', 'Small hop'),
+        mk('end', 'End if'),
+        mk('end', 'End if'),
+      ]),
+    ],
+  };
+}
+const FLAPPY_HINT_NOTES = {
+  simple: 'The bird checks its height every moment: below the middle of the gap? Flap!',
+  advanced: 'Big flaps overshoot the gap. A smaller flap strength keeps the bird close to the middle.',
+  expert: 'Use "how far below gap": a big flap when far below, a small hop when just below, nothing when above.',
+};
+
 export function resolveCourseCodeHints(course, options = {}) {
   if (!course) return null;
 
@@ -1491,6 +1554,7 @@ export function resolveCourseCodeHints(course, options = {}) {
   };
 
   const tiers = resolveScriptTiers(courseMerged, logic, robotType, scriptOpts);
+  if (isFlappy) Object.assign(tiers, FLAPPY_HINT_TIERS());
   const eventBlock = tiers.eventBlock || 'when_start';
   const eventLabel = eventBlock === 'when_spacebar' ? 'When spacebar clicked' : 'When START clicked';
 
@@ -1534,9 +1598,9 @@ export function resolveCourseCodeHints(course, options = {}) {
     racingSections,
     racingManual: cupManual,
     expertBlockCount: expertSteps.length + 1,
-    simpleNote: buildTierNote('simple', courseMerged, logic, gameType),
-    advancedNote: buildTierNote('advanced', courseMerged, logic, gameType),
-    expertNote: buildTierNote('expert', courseMerged, logic, gameType),
+    simpleNote: isFlappy ? FLAPPY_HINT_NOTES.simple : buildTierNote('simple', courseMerged, logic, gameType),
+    advancedNote: isFlappy ? FLAPPY_HINT_NOTES.advanced : buildTierNote('advanced', courseMerged, logic, gameType),
+    expertNote: isFlappy ? FLAPPY_HINT_NOTES.expert : buildTierNote('expert', courseMerged, logic, gameType),
     hasAdvanced: advancedSteps.length > 0 && expertSteps.length > advancedSteps.length,
     hasExpert: expertSteps.length >= 3,
     tierScripts: {

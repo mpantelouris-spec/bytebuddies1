@@ -14,6 +14,9 @@ import {
   THUNDER_RIDGE_SPLINE,
 } from './CodeRacerSplines.js';
 import { BIOME_CAMERA_STANDARD } from './BiomeAAAVisualSpec.js';
+import { COSMIC_SKYWAY_BONUS_TRACKS, COSMIC_SKYWAY_ARENA_IDS, isCosmicSkywayArena } from './CosmicSkywayRegistry.js';
+
+export { isCosmicSkywayArena, COSMIC_SKYWAY_BONUS_TRACKS, COSMIC_SKYWAY_ARENA_IDS };
 
 const CAM = BIOME_CAMERA_STANDARD;
 
@@ -90,9 +93,10 @@ export const BIOME_TRACKS = [
     story: '🔥 Lava Foundry — Molten rivers, gear arch, steam vents, crane hooks.',
     biome: 'lava_foundry', underground: true,
   }),
-  track('star_station_01', 'Star Station Ring', '🛸', '#AA44FF', 4, 'Hard', 'star_station', 'stardust_violet', STAR_STATION_SPLINE, {
-    laps: 2, targetTime: 165, checkpointTs: [0.2, 0.4, 0.6, 0.8],
-    story: '🛸 Star Station — Habitat domes, glass floor, Earth below, airlock arch. Orbital ring.',
+  track('star_station_01', 'Cosmic Skyway', '🛸', '#AA44FF', 4, 'Hard', 'star_station', 'cosmic_metal', STAR_STATION_SPLINE, {
+    laps: 2, targetTime: 185, checkpointTs: [0.2, 0.4, 0.6, 0.8],
+    trackShape: 'figure-8',
+    story: '🛸 Cosmic Skyway — Twisting neon highway that flies over itself, past a purple wormhole, asteroid belt and a blue planet below.',
     biome: 'star_station', isCosmicBiome: true, underground: true,
   }),
   track('fairy_glen_01', 'Fairy Glen Gardens', '🧚', '#7CFC00', 4, 'Hard', 'fairy_glen', 'garden_green', FAIRY_GLEN_SPLINE, {
@@ -108,7 +112,9 @@ export const BIOME_TRACKS = [
 ];
 
 export function getBiomeTrack(arenaType) {
-  return BIOME_TRACKS.find((t) => t.arenaType === arenaType || t.id === arenaType);
+  return BIOME_TRACKS.find((t) => t.arenaType === arenaType || t.id === arenaType)
+    || COSMIC_SKYWAY_BONUS_TRACKS.find((t) => t.arenaType === arenaType || t.id === arenaType)
+    || null;
 }
 
 export function getBiomeTrackByMode(modeIndex) {
@@ -116,4 +122,7 @@ export function getBiomeTrackByMode(modeIndex) {
   return BIOME_TRACKS[idx];
 }
 
-export const BIOME_ARENA_TYPES = new Set(BIOME_TRACKS.map((t) => t.arenaType));
+export const BIOME_ARENA_TYPES = new Set([
+  ...BIOME_TRACKS.map((t) => t.arenaType),
+  ...COSMIC_SKYWAY_ARENA_IDS,
+]);

@@ -3,6 +3,7 @@ import {
   executeSpriteMotion,
   evaluateMotionReporter,
   ifOnEdgeBounce,
+  tickMoveSteps,
   startGlide,
   updateGlide,
   canvasToLogical,
@@ -161,12 +162,46 @@ describe('spriteMotion (PictoBlox coords)', () => {
   });
 
   test('if on edge bounce at left reflects direction', () => {
-    const sprite = makeSprite({ direction: 90, w: 48, h: 48 });
+    const sprite = makeSprite({ direction: -90, w: 48, h: 48 });
     // Place partially off the left edge (applyLogicalPosition would clamp inside bounds)
     sprite.x = -8;
     sprite.y = STAGE_HALF_H - 24;
     expect(ifOnEdgeBounce(sprite)).toBe(true);
-    expect(sprite.direction).toBe(-90);
+    expect(sprite.direction).toBe(90);
+  });
+
+  test('if on edge bounce leaves a sprite already heading away from the edge alone (Scratch)', () => {
+    const sprite = makeSprite({ direction: 90, w: 48, h: 48 });
+    sprite.x = -8;
+    sprite.y = STAGE_HALF_H - 24;
+    ifOnEdgeBounce(sprite);
+    expect(sprite.direction).toBe(90);
+  });
+
+  test('move steps in a game loop (fastMove) finishes within one frame', () => {
+    const sprite = makeSprite({ direction: 90, w: 20, h: 20 });
+    const x0 = canvasToLogical(sprite).x;
+    executeSpriteMotion({ type: 'sprite-move', params: { steps: 12 } }, sprite, { fastMove: true });
+    tickMoveSteps(sprite, 1 / 60);
+    expect(canvasToLogical(sprite).x).toBeCloseTo(x0 + 12, 1);
+  });
+
+  test('move steps outside a game loop still eases at the normal speed', () => {
+    const sprite = makeSprite({ direction: 90, w: 20, h: 20 });
+    const x0 = canvasToLogical(sprite).x;
+    executeSpriteMotion({ type: 'sprite-move', params: { steps: 12 } }, sprite, {});
+    tickMoveSteps(sprite, 1 / 60);
+    expect(canvasToLogical(sprite).x).toBeLessThan(x0 + 3);
+  });
+
+  test('a sprite bouncing out of a corner does not flip back on the next check', () => {
+    const sprite = makeSprite({ direction: 135, w: 26, h: 26 });
+    sprite.x = STAGE_W - 26;
+    sprite.y = 360 - 26;
+    ifOnEdgeBounce(sprite);
+    expect(sprite.direction).toBe(-45);
+    ifOnEdgeBounce(sprite); // per-frame edge check right after the bounce block
+    expect(sprite.direction).toBe(-45);
   });
 
   test('if on edge bounce when touching right edge', () => {
@@ -215,7 +250,7 @@ describe('spriteMotion (PictoBlox coords)', () => {
 
     expect(getRenderRotation(leftRight)).toBe(0);
     expect(getRenderScaleX(leftRight)).toBe(1);
-    expect(getRenderRotation(allAround)).toBeCloseTo(Math.PI / 2, 5);
+    expect(getRenderRotation(allAround)).toBeCloseTo(0, 5);
 
     // Facing left-ish (100°): left-right mirrors; all around rotates to heading
     leftRight.direction = 100;
@@ -223,7 +258,7 @@ describe('spriteMotion (PictoBlox coords)', () => {
     expect(isLeftRightFacingLeft(100)).toBe(true);
     expect(getRenderRotation(leftRight)).toBe(0);
     expect(getRenderScaleX(leftRight)).toBe(-1);
-    expect(getRenderRotation(allAround)).toBeCloseTo((100 * Math.PI) / 180, 5);
+    expect(getRenderRotation(allAround)).toBeCloseTo((10 * Math.PI) / 180, 5);
   });
 
   test('blocks in workspace do not apply rotation style until script runs', () => {
@@ -235,7 +270,7 @@ describe('spriteMotion (PictoBlox coords)', () => {
     expect(sprite.rotationStyle).toBeUndefined();
     // Default is all around (Scratch default) — the block hasn't run yet
     expect(getRotationStyle(sprite)).toBe('all around');
-    expect(getRenderRotation(sprite)).toBeCloseTo(Math.PI / 2, 5);
+    expect(getRenderRotation(sprite)).toBeCloseTo(0, 5);
   });
 
   test('syncPlayRotationStyle clears explicit style; falls back to all around default', () => {
@@ -249,8 +284,8 @@ describe('spriteMotion (PictoBlox coords)', () => {
     syncPlayRotationStyle(sprite);
     expect(sprite.rotationStyle).toBeUndefined();
     expect(sprite._rotationStyleFromScript).toBe(false);
-    // Default is all around, so direction=90 → rotation = π/2
-    expect(getRenderRotation(sprite)).toBeCloseTo(Math.PI / 2, 5);
+    // Default is all around; direction=90 is the costume's own facing, so no turn
+    expect(getRenderRotation(sprite)).toBeCloseTo(0, 5);
   });
 
   test('getRotationStyle defaults to all around; setRotationStyle can override', () => {
@@ -263,7 +298,7 @@ describe('spriteMotion (PictoBlox coords)', () => {
     expect(getRotationStyle(sprite)).toBe('all around');
     setRotationStyle(sprite, 'allaround');
     expect(getRotationStyle(sprite)).toBe('all around');
-    expect(getRenderRotation(sprite)).toBeCloseTo(Math.PI / 2, 5);
+    expect(getRenderRotation(sprite)).toBeCloseTo(0, 5);
   });
 
   test('applyRotationStyleFromBlocks reads sprite block list', () => {
@@ -282,13 +317,13 @@ describe('spriteMotion (PictoBlox coords)', () => {
   test('sprites rotate by default (all around); set rotation style can lock to no rotation', () => {
     const sprite = makeSprite({ direction: 90, svgKey: 'Star', costumeFacing: 0 });
     // Default is all around — sprite rotates to face direction
-    expect(getRenderRotation(sprite)).toBeCloseTo(Math.PI / 2, 5);
+    expect(getRenderRotation(sprite)).toBeCloseTo(0, 5);
     executeSpriteMotion(
       { type: 'motion_setrotationstyle', params: { STYLE: 'allaround' } },
       sprite,
       { instant: true },
     );
-    expect(getRenderRotation(sprite)).toBeCloseTo(Math.PI / 2, 5);
+    expect(getRenderRotation(sprite)).toBeCloseTo(0, 5);
     executeSpriteMotion(
       { type: 'motion_setrotationstyle', params: { STYLE: 'none' } },
       sprite,
@@ -297,18 +332,18 @@ describe('spriteMotion (PictoBlox coords)', () => {
     expect(getRenderRotation(sprite)).toBe(0);
   });
 
-  test('all around rotates costume to match direction (0=up, 90=right)', () => {
+  test('all around turns the costume from its right-facing start (Scratch: 90 = no turn)', () => {
     const sprite = makeSprite({ direction: 90, svgKey: 'Star', costumeFacing: 0 });
     executeSpriteMotion(
       { type: 'motion_setrotationstyle', params: { STYLE: 'allaround' } },
       sprite,
       { instant: true },
     );
-    expect(getRenderRotation(sprite)).toBeCloseTo(Math.PI / 2, 5);
-    sprite.direction = 0;
     expect(getRenderRotation(sprite)).toBeCloseTo(0, 5);
+    sprite.direction = 0;
+    expect(getRenderRotation(sprite)).toBeCloseTo(-Math.PI / 2, 5);
     sprite.direction = 180;
-    expect(getRenderRotation(sprite)).toBeCloseTo(Math.PI, 5);
+    expect(getRenderRotation(sprite)).toBeCloseTo(Math.PI / 2, 5);
   });
 
   test('all around rotates by direction only (no costume offset)', () => {
@@ -318,9 +353,9 @@ describe('spriteMotion (PictoBlox coords)', () => {
       sprite,
       { instant: true },
     );
-    expect(getRenderRotation(sprite)).toBeCloseTo(Math.PI / 2, 5);
-    sprite.direction = 0;
     expect(getRenderRotation(sprite)).toBeCloseTo(0, 5);
+    sprite.direction = 0;
+    expect(getRenderRotation(sprite)).toBeCloseTo(-Math.PI / 2, 5);
   });
 
   test('left-right boundary: 90 and 270 do not flip', () => {
@@ -339,14 +374,14 @@ describe('spriteMotion (PictoBlox coords)', () => {
     expect(getRenderScaleX(sprite)).toBe(-1);
   });
 
-  test('Star by name only (no svgKey) still rotates at dir 90', () => {
+  test('Star by name only (no svgKey) is upright at dir 90', () => {
     const sprite = makeSprite({ direction: 90, name: 'Star' });
     executeSpriteMotion(
       { type: 'motion_setrotationstyle', params: { STYLE: 'allaround' } },
       sprite,
       { instant: true },
     );
-    expect(getRenderRotation(sprite)).toBeCloseTo(Math.PI / 2, 5);
+    expect(getRenderRotation(sprite)).toBeCloseTo(0, 5);
   });
 
   test('reporters return logical x, y, direction', () => {

@@ -8,11 +8,17 @@ const deliver = (p, station, extra = {}) => T(p, 'deliver', { station, ...extra 
 const check = (p, extra = {}) => T(p, 'check', extra);
 
 export const MISSION_TASKS = {
-  // ─── Spider Bot: open worlds, no road — collect glowing Byte Crystals ─
-  ...Object.fromEntries([
-    'giant_garden', 'treehouse_kingdom', 'toy_room', 'sweet_factory', 'giant_kitchen',
-    'ancient_temple', 'robot_factory_climb', 'sky_islands_web', 'crystal_caverns', 'clockwork_castle',
-  ].map((id) => [id, T('crystal', 'collect', { s: 0.55, o: { color: 0x5ee0ff } })])),
+  // ─── Spider Bot: crawl the path and do one clear job at each marker ─
+  giant_garden: T('ladybird', 'collect', { s: 1.1 }),
+  treehouse_kingdom: T('eggNest', 'collect', { s: 0.9 }),
+  toy_room: T('teddy', 'collect', { s: 0.85 }),
+  sweet_factory: T('cupcake', 'collect', { s: 0.9 }),
+  giant_kitchen: check('alarmButton', { s: 0.9, station: { p: 'sink', s: 0.7 } }),
+  ancient_temple: check('alarmButton', { s: 0.95 }),
+  robot_factory_climb: deliver('toyBlocks', { p: 'workbench', s: 0.75 }, { s: 0.7 }),
+  sky_islands_web: check('lantern', { s: 0.9 }),
+  crystal_caverns: T('crystal', 'collect', { s: 0.6, o: { color: 0x7ad9ff } }),
+  clockwork_castle: T('gear', 'collect', { s: 0.85 }),
 
   // ─── Crawler ──────────────────────────────────────────────────────
   jungle_trail: T('treasureChest', 'check', { s: 0.7 }),

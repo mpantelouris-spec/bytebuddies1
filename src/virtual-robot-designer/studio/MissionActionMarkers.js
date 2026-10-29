@@ -111,7 +111,8 @@ export function installMissionActionMarkers(scene, challenge) {
   let cps = scene.userData.chassisCheckpoints || [];
   if (!action || !cps.length) return null;
   // A handful of well-spaced stations reads better than a crowd of them
-  const want = Math.min(cps.length, (challenge?.modeIndex || 1) <= 5 ? 3 : 4);
+  const tierMarkers = (challenge?.modeIndex || 1) > 10 ? cps.length : 0; // tier levels set their own count
+  const want = tierMarkers || Math.min(cps.length, (challenge?.modeIndex || 1) <= 5 ? 3 : 4);
   if (cps.length > want) {
     cps = Array.from({ length: want }, (_, i) => cps[Math.round((i + 0.5) * (cps.length / want) - 0.5)]);
     cps.forEach((c, i) => { c.index = i; c.passed = false; });

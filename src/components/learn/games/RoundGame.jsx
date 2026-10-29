@@ -6,6 +6,7 @@
  */
 import React, { useState, useRef, useEffect } from 'react';
 import LabBuddy from '../CodingLab/LabBuddy.jsx';
+import { EmojiIcon, IconText } from '../../ui/Icon.jsx';
 
 const PASS = 0.5;
 
@@ -37,7 +38,7 @@ function Confetti() {
         <span key={i} style={{
           position: 'absolute', left: `${(i * 37) % 100}%`, top: -20, fontSize: 18 + (i % 3) * 6,
           animation: `bb-confetti ${1.6 + (i % 5) * 0.25}s ease-in ${(i % 7) * 0.08}s forwards`,
-        }}>{['🎉', '⭐', '✨', '🟡', '🟣', '🔷'][i % 6]}</span>
+        }}><IconText>{['🎉', '⭐', '✨', '🟡', '🟣', '🔷'][i % 6]}</IconText></span>
       ))}
     </div>
   );
@@ -120,11 +121,11 @@ export default function RoundGame({ title, how, rounds, renderRound, color = '#1
           <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
             <span style={chip('#eef2ff', '#4338ca')}>{Math.min(i + 1, total)} / {total}</span>
             <span style={chip('#ecfdf5', '#047857')}>⭐ {score}</span>
-            {streak >= 2 && <span style={{ ...chip('#fff7ed', '#c2410c'), animation: 'bb-pop .3s' }}>🔥 {streak} in a row</span>}
+            {streak >= 2 && <span style={{ ...chip('#fff7ed', '#c2410c'), animation: 'bb-pop .3s' }}><EmojiIcon e="🔥" style={{ marginRight: '0.35em' }} />{streak} in a row</span>}
           </div>
         )}
         <button type="button" onClick={toggleSound} aria-label={sound ? 'Turn sound off' : 'Turn sound on'}
-          style={{ border: 'none', background: '#f1f5f9', borderRadius: 10, width: 36, height: 36, cursor: 'pointer', fontSize: 16 }}>{sound ? '🔊' : '🔇'}</button>
+          style={{ border: 'none', background: '#f1f5f9', borderRadius: 10, width: 36, height: 36, cursor: 'pointer', fontSize: 16 }}><IconText>{sound ? '🔊' : '🔇'}</IconText></button>
       </div>
 
       {/* Progress bar */}
@@ -146,7 +147,7 @@ export default function RoundGame({ title, how, rounds, renderRound, color = '#1
           background: fb.ok ? '#ebfbee' : '#fff4e6', border: `2px solid ${fb.ok ? '#40c057' : '#ff922b'}`, animation: 'bb-pop .25s',
         }}>
           <div style={{ flex: 1, minWidth: 200 }}>
-            <div style={{ fontWeight: 900, fontSize: 18, color: fb.ok ? '#2b8a3e' : '#c2410c' }}>{fb.ok ? '✅' : '💡'} {fb.word}</div>
+            <div style={{ fontWeight: 900, fontSize: 18, color: fb.ok ? '#2b8a3e' : '#c2410c' }}><IconText>{fb.ok ? '✅' : '💡'}</IconText> {fb.word}</div>
             {fb.why && <div style={{ fontSize: 16, marginTop: 2 }}>{fb.why}</div>}
           </div>
           {(!fb.ok || fb.why) && (
@@ -170,7 +171,7 @@ export default function RoundGame({ title, how, rounds, renderRound, color = '#1
             {score} out of {total} correct{best >= 3 ? ` · best streak 🔥 ${best}` : ''}
           </div>
           {stars === 0 && <div style={{ fontSize: 16, color: '#c2410c', marginBottom: 12 }}>Get at least {Math.ceil(total * PASS)} right to unlock the next level.</div>}
-          <button type="button" className="bb-tap" onClick={restart} style={bigBtn(stars === 0 ? color : '#64748b')}>🔁 Play again</button>
+          <button type="button" className="bb-tap" onClick={restart} style={bigBtn(stars === 0 ? color : '#64748b')}><EmojiIcon e="🔁" style={{ marginRight: '0.35em' }} />Play again</button>
         </div>
       )}
     </div>

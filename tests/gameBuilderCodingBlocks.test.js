@@ -238,6 +238,11 @@ describe('Looks blocks', () => {
     expect(a.sizePercent).toBe(200);
     changeSizeBy(a, -50);
     expect(a.sizePercent).toBe(150);
+    a.costumes = [
+      { name: 'costume1', color: '#4a9eff' },
+      { name: 'costume2', color: '#ef4444' },
+    ];
+    a.currentCostumeIndex = 0;
     const i0 = a.currentCostumeIndex;
     nextCostume(a);
     expect(a.currentCostumeIndex).not.toBe(i0);

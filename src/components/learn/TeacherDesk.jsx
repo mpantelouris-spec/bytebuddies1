@@ -157,7 +157,7 @@ export function TeacherHome({ onSelectYear, onOpenLesson, onOpenPlan, onPupil })
           Scheme of work
         </h1>
         <p style={{ color: MUTED, fontSize: 17, lineHeight: 1.55, maxWidth: 640, margin: '0 0 28px' }}>
-          152 weeks, Years 3–6. The grid is the plan. Open a week to teach the lesson (WALT, input, tasks, plenary). Answers stay on the plan. You can add your own notes, slides and tasks on any week — they stay on this device.
+          38 lessons per year group, 152 across Years 3–6. The grid is the plan. Open a week to teach the lesson (WALT, input, tasks, plenary). Answers stay on the plan. You can add your own notes, slides and tasks on any week — they stay on this device.
         </p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14, marginBottom: 28 }}>
           {COURSE_ORDER.map((yr) => {
@@ -171,7 +171,7 @@ export function TeacherHome({ onSelectYear, onOpenLesson, onOpenPlan, onPupil })
                 <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: 800, color: TEAL }}>YEAR {c.year}</div>
                 <div style={{ fontSize: 22, fontWeight: 700, margin: '4px 0 8px' }}>{c.ages}</div>
                 <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: MUTED, lineHeight: 1.45 }}>
-                  38 weeks · {c.tagline}
+                  38 lessons · {c.tagline}
                 </div>
                 <div style={{ marginTop: 12, fontFamily: 'Inter, sans-serif', fontSize: 12, color: MUTED }}>
                   Marked taught: {taught}/38

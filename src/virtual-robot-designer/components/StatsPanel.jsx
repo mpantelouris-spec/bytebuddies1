@@ -6,6 +6,7 @@
 
 import React, { useMemo } from 'react';
 import '../styles/stats-panel.css';
+import { EmojiIcon } from '../../components/ui/Icon.jsx';
 
 // Calculate robot stats from configuration
 function calculateStats(config) {
@@ -90,7 +91,7 @@ export default function StatsPanel({ robotConfig, onNameChange }) {
 
   return (
     <div className="stats-panel">
-      <h3 className="stats-title">📊 Robot Stats</h3>
+      <h3 className="stats-title"><EmojiIcon e="📊" style={{ marginRight: '0.35em' }} />Robot Stats</h3>
 
       {/* ─────────────────────────────────────────────────────────────── */}
       {/* ROBOT NAME */}
@@ -110,7 +111,7 @@ export default function StatsPanel({ robotConfig, onNameChange }) {
       {/* PERFORMANCE STATS */}
       {/* ─────────────────────────────────────────────────────────────── */}
       <div className="stats-section">
-        <h4>⚡ Performance</h4>
+        <h4><EmojiIcon e="⚡" style={{ marginRight: '0.35em' }} />Performance</h4>
         <StatBar label="🏃 Speed" value={stats.speed} />
         <StatBar label="🔋 Power" value={stats.power} />
         <StatBar label="💪 Durability" value={stats.durability} />
@@ -120,19 +121,19 @@ export default function StatsPanel({ robotConfig, onNameChange }) {
       {/* SPECS */}
       {/* ─────────────────────────────────────────────────────────────── */}
       <div className="specs-section">
-        <h4>📏 Specs</h4>
+        <h4><EmojiIcon e="📏" style={{ marginRight: '0.35em' }} />Specs</h4>
         <div className="spec-item">
-          <span className="spec-label">⚖️ Weight</span>
+          <span className="spec-label"><EmojiIcon e="⚖️" style={{ marginRight: '0.35em' }} />Weight</span>
           <span className="spec-value">{stats.weight} kg</span>
         </div>
         <div className="spec-item">
-          <span className="spec-label">🚗 Chassis</span>
+          <span className="spec-label"><EmojiIcon e="🚗" style={{ marginRight: '0.35em' }} />Chassis</span>
           <span className="spec-value">
             {robotConfig.chassis.type.charAt(0).toUpperCase() + robotConfig.chassis.type.slice(1)}
           </span>
         </div>
         <div className="spec-item">
-          <span className="spec-label">⚙️ Movement</span>
+          <span className="spec-label"><EmojiIcon e="⚙️" style={{ marginRight: '0.35em' }} />Movement</span>
           <span className="spec-value">
             {robotConfig.movement.count}× {robotConfig.movement.type}
           </span>
@@ -143,7 +144,7 @@ export default function StatsPanel({ robotConfig, onNameChange }) {
       {/* COMPONENTS */}
       {/* ─────────────────────────────────────────────────────────────── */}
       <div className="components-section">
-        <h4>🔧 Components</h4>
+        <h4><EmojiIcon e="🔧" style={{ marginRight: '0.35em' }} />Components</h4>
         <div className="components-list">
           <div className="component-item">
             <span className="component-badge">✓</span>
@@ -156,14 +157,14 @@ export default function StatsPanel({ robotConfig, onNameChange }) {
           
           {robotConfig.sensors.length > 0 && (
             <div className="component-item">
-              <span className="component-badge">📡</span>
+              <span className="component-badge"><EmojiIcon e="📡" /></span>
               <span>{robotConfig.sensors.length} sensor{robotConfig.sensors.length !== 1 ? 's' : ''}</span>
             </div>
           )}
           
           {robotConfig.tools.length > 0 && (
             <div className="component-item">
-              <span className="component-badge">🔧</span>
+              <span className="component-badge"><EmojiIcon e="🔧" /></span>
               <span>{robotConfig.tools.length} tool{robotConfig.tools.length !== 1 ? 's' : ''}</span>
             </div>
           )}
@@ -175,13 +176,13 @@ export default function StatsPanel({ robotConfig, onNameChange }) {
       {/* ─────────────────────────────────────────────────────────────── */}
       <div className="action-buttons">
         <button className="action-btn btn-primary">
-          ▶️ Simulate
+          <EmojiIcon e="▶️" style={{ marginRight: '0.35em' }} />Simulate
         </button>
         <button className="action-btn btn-secondary">
-          💾 Save Design
+          <EmojiIcon e="💾" style={{ marginRight: '0.35em' }} />Save Design
         </button>
         <button className="action-btn btn-secondary">
-          📝 Code Robot
+          <EmojiIcon e="📝" style={{ marginRight: '0.35em' }} />Code Robot
         </button>
       </div>
 

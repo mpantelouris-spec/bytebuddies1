@@ -5,9 +5,10 @@ import {
 } from '../src/virtual-robot-designer/data/primary-robot-studio.js';
 
 describe('pre-built studio robots', () => {
-  test('first screen is eight family starters, not the full catalogue', () => {
+  test('first screen is the family starters, not the full catalogue', () => {
     expect(STARTER_CHASSIS_IDS).toEqual([
       'rover', 'droid', 'drone', 'spider', 'submarine', 'robotarm', 'footballbot', 'striker', 'birdbot', 'legobot',
+      'snakebot', 'pacbot', 'brickbot', 'hopbot', 'raiderbot', 'jumpbot', 'racedrone', 'jetplane', 'blockbot',
     ]);
     const all = Object.keys(CHASSIS_FAMILY);
     expect(all.length).toBeGreaterThan(STARTER_CHASSIS_IDS.length + 10);

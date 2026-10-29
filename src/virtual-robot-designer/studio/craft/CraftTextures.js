@@ -199,6 +199,7 @@ const ITEM_DRAW = {
   diamond: (x) => { x.fillStyle = '#5decf5'; x.fillRect(5, 3, 6, 2); x.fillRect(3, 5, 10, 3); x.fillRect(5, 8, 6, 3); x.fillRect(7, 11, 2, 2); x.fillStyle = '#d6fcff'; x.fillRect(5, 5, 2, 2); },
   iron_ingot: (x) => { x.fillStyle = '#d8d8d8'; x.fillRect(3, 6, 10, 5); x.fillStyle = '#a0a0a0'; x.fillRect(3, 10, 10, 1); x.fillStyle = '#f4f4f4'; x.fillRect(4, 7, 6, 1); },
   raw_iron: (x) => { x.fillStyle = '#c49a7c'; x.fillRect(4, 5, 8, 7); x.fillStyle = '#e6c4ab'; x.fillRect(5, 6, 3, 2); },
+  sapling: (x) => { x.fillStyle = '#6b5130'; x.fillRect(7, 9, 2, 6); x.fillStyle = '#3f7f2f'; x.fillRect(4, 4, 8, 6); x.fillStyle = '#4a8f38'; x.fillRect(5, 2, 6, 3); x.fillRect(3, 6, 3, 2); x.fillRect(10, 6, 3, 2); },
   gold_ingot: (x) => { x.fillStyle = '#fcee4b'; x.fillRect(3, 6, 10, 5); x.fillStyle = '#c9a41c'; x.fillRect(3, 10, 10, 1); },
 };
 const pickaxe = (head) => (x) => {

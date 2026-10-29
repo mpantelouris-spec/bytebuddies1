@@ -17,7 +17,7 @@ export const ZONE_RAINBOW_ROAD = {
     trackType: 'circuit',
     laps: 3,
     trackWidth: 7.5,
-    targetTime: 90,
+    targetTime: 100,
     checkpointCount: 8,
     checkpointTs: [0.10, 0.22, 0.34, 0.46, 0.58, 0.70, 0.82, 0.94],
     boostTs: [0.04, 0.16, 0.28, 0.40, 0.52, 0.64, 0.76, 0.88],
@@ -57,7 +57,7 @@ export const ZONE_RAINBOW_ROAD = {
   medals: {
     bronze: { label: 'Finish the race', check: (s) => !!s.raceWon },
     silver: { label: 'Collect 10 stars', target: 10, check: (s) => (s.raceStarsCollected || 0) >= 10 },
-    gold: { label: 'Finish in under 90s', target: 90, check: (s) => !!s.raceWon && (s.raceTotalTime || Infinity) < 90 },
+    gold: { label: 'Finish in under 100s', target: 100, check: (s) => !!s.raceWon && (s.raceTotalTime || Infinity) < 100 },
   },
 
   objectives: [

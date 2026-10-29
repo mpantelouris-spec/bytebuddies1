@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { EmojiIcon, IconText } from './ui/Icon.jsx';
 
 const loadSkulpt = () => new Promise((resolve, reject) => {
   if (window.Sk) return resolve();
@@ -55,12 +56,12 @@ export default function PythonRunner({ starterCode = 'print("Hello, World!")', e
   return (
     <div style={{borderRadius:12,overflow:'hidden',border:'1px solid var(--border-color)',background:'#0d1117',fontFamily:'system-ui'}}>
       <div style={{display:'flex',alignItems:'center',gap:8,padding:'7px 12px',background:'#161b22',borderBottom:'1px solid rgba(255,255,255,0.08)'}}>
-        <span style={{fontSize:11,fontWeight:800,color:'#a78bfa',textTransform:'uppercase',letterSpacing:1}}>🐍 Python</span>
+        <span style={{fontSize:11,fontWeight:800,color:'#a78bfa',textTransform:'uppercase',letterSpacing:1}}><EmojiIcon e="🐍" style={{ marginRight: '0.35em' }} />Python</span>
         <span style={{fontSize:11,color:'#374151'}}>— edit and run</span>
         <button onClick={run} disabled={running} style={{marginLeft:'auto',padding:'4px 16px',borderRadius:8,
           border:'none',cursor:running?'default':'pointer',
           background:running?'#1f2937':'#16a34a',color:'#fff',fontWeight:700,fontSize:12}}>
-          {running ? '⏳ Running...' : '▶ Run'}
+          <IconText>{running ? '⏳ Running...' : '▶ Run'}</IconText>
         </button>
       </div>
       <textarea value={code} onChange={e=>setCode(e.target.value)} spellCheck={false}
@@ -89,7 +90,7 @@ export default function PythonRunner({ starterCode = 'print("Hello, World!")', e
           fontFamily:"'JetBrains Mono','Consolas',monospace",fontSize:13,lineHeight:1.6}}>
           {output.length===0&&!error&&<span style={{color:'#374151',fontSize:12}}>Run your code to see output here</span>}
           {output.map((line,i)=><div key={i} style={{color:'#7ee787',whiteSpace:'pre'}}>{line}</div>)}
-          {error&&<div style={{color:'#f87171',fontSize:12,whiteSpace:'pre-wrap'}}>❌ {error}</div>}
+          {error&&<div style={{color:'#f87171',fontSize:12,whiteSpace:'pre-wrap'}}><EmojiIcon e="❌" style={{ marginRight: '0.35em' }} />{error}</div>}
         </div>
       </div>
     </div>

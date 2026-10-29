@@ -16,6 +16,7 @@ import {
   pickMicrobitDirHandle,
   getStoredMicrobitDirHandle,
 } from '@flash/msdBrowserFlash.js';
+import { EmojiIcon } from './ui/Icon.jsx';
 
 export default function MicrobitDualFlashPanel({
   buildHex,
@@ -290,7 +291,7 @@ export default function MicrobitDualFlashPanel({
             )}
             {onConnectUsb && (
               <button type="button" className="bb-dual-flash__pill-connect" onClick={onConnectUsb} disabled={flashing}>
-                🔌 USB connect
+                <EmojiIcon e="🔌" style={{ marginRight: '0.35em' }} />USB connect
               </button>
             )}
           </div>
@@ -305,7 +306,7 @@ export default function MicrobitDualFlashPanel({
           <section className="bb-dual-flash__section">
             <h4 className="bb-dual-flash__section-title">USB (wired)</h4>
             <p className="bb-dual-flash__section-desc">
-              Flash blocks, then <strong>🔌 USB connect</strong> and ▶ Run. Heart on LED = USB MicroPython.
+              Flash blocks, then <strong><EmojiIcon e="🔌" style={{ marginRight: '0.35em' }} />USB connect</strong> and ▶ Run. Heart on LED = USB MicroPython.
             </p>
             <div className="bb-dual-flash__btn-row">
               <button
@@ -331,7 +332,7 @@ export default function MicrobitDualFlashPanel({
               <li><strong>1. Flash wireless</strong> — MakeCode Cutebot bridge (flash once)</li>
               <li>LED shows <strong>B</strong> when ready (sad face = wrong/old firmware)</li>
               <li>Unplug USB, press reset, <strong>2. Connect Bluetooth</strong></li>
-              <li>Build blocks → <strong>▶ Run</strong> (no reflash for each program)</li>
+              <li>Build blocks → <strong><EmojiIcon e="▶" style={{ marginRight: '0.35em' }} />Run</strong> (no reflash for each program)</li>
             </ol>
             <p className="bb-dual-flash__section-desc">
               Uses prebuilt MakeCode firmware — not MicroPython embed (that caused the sad face).

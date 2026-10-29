@@ -5,6 +5,7 @@ import {
   EXTENSION_FILTERS,
   EXTENSION_DOC_HUB,
 } from '../data/extensionsCatalog';
+import { IconText } from './ui/Icon.jsx';
 
 /**
  * PictoBlox-style “Choose an extension” browser — row list (readable on all themes).
@@ -229,7 +230,7 @@ export default function ExtensionsModal({ open, onClose, enabledIds, onToggleExt
                     background: `linear-gradient(145deg, ${accent}44, var(--bg-tertiary))`,
                   }}
                 >
-                  {ex.icon || '🧩'}
+                  <IconText>{ex.icon || '🧩'}</IconText>
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>

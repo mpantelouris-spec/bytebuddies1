@@ -21,7 +21,9 @@ function extractStarLine(challenge = {}) {
 
 export function spawnMissionBanner(scene, challenge = {}, arenaType = '') {
   if (scene.userData.combatMode || scene.userData.flappyMode) return;
-  const capstone = challenge?.modeIndex === 10 && challenge?.isChassisMode;
+  const capstone = challenge?.isExpandedMode
+    ? challenge?.difficulty === 'Advanced' && challenge?.modeIndex === 10
+    : challenge?.modeIndex === 10 && challenge?.isChassisMode;
   const title = capstone
     ? `${challenge.shortName || challenge.name || 'Capstone'} ★`
     : (challenge.shortName || challenge.name || challenge.environmentName || 'Robot Mission');

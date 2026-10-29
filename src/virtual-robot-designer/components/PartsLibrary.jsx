@@ -6,6 +6,7 @@
 
 import React from 'react';
 import '../styles/parts-library.css';
+import { EmojiIcon } from '../../components/ui/Icon.jsx';
 
 const CHASSIS_TYPES = [
   { id: 'rover', icon: '🚗', name: 'Rover', desc: 'Balanced all-rounder' },
@@ -91,13 +92,13 @@ export default function PartsLibrary({ robotConfig, updateConfig, onReset }) {
 
   return (
     <div className="parts-library">
-      <h3 className="parts-title">🛠️ Build Your Robot</h3>
+      <h3 className="parts-title"><EmojiIcon e="🛠️" style={{ marginRight: '0.35em' }} />Build Your Robot</h3>
 
       {/* ─────────────────────────────────────────────────────────────── */}
       {/* CHASSIS SELECTION */}
       {/* ─────────────────────────────────────────────────────────────── */}
       <div className="parts-section">
-        <h4 className="section-title">🚗 Body Type</h4>
+        <h4 className="section-title"><EmojiIcon e="🚗" style={{ marginRight: '0.35em' }} />Body Type</h4>
         <div className="parts-grid">
           {CHASSIS_TYPES.map(chassis => (
             <button
@@ -106,7 +107,7 @@ export default function PartsLibrary({ robotConfig, updateConfig, onReset }) {
               onClick={() => handleChassisChange(chassis.id)}
               title={chassis.desc}
             >
-              <span className="part-icon">{chassis.icon}</span>
+              <span className="part-icon"><EmojiIcon e={chassis.icon} /></span>
               <span className="part-name">{chassis.name}</span>
             </button>
           ))}
@@ -117,7 +118,7 @@ export default function PartsLibrary({ robotConfig, updateConfig, onReset }) {
       {/* COLOR PICKER */}
       {/* ─────────────────────────────────────────────────────────────── */}
       <div className="parts-section">
-        <h4 className="section-title">🎨 Paint</h4>
+        <h4 className="section-title"><EmojiIcon e="🎨" style={{ marginRight: '0.35em' }} />Paint</h4>
         <div className="color-grid">
           {COLORS.map(color => (
             <button
@@ -142,7 +143,7 @@ export default function PartsLibrary({ robotConfig, updateConfig, onReset }) {
       {/* MOVEMENT */}
       {/* ─────────────────────────────────────────────────────────────── */}
       <div className="parts-section">
-        <h4 className="section-title">⚙️ Movement</h4>
+        <h4 className="section-title"><EmojiIcon e="⚙️" style={{ marginRight: '0.35em' }} />Movement</h4>
         <div className="movement-buttons">
           {MOVEMENT_TYPES.map(move => (
             <button
@@ -150,7 +151,7 @@ export default function PartsLibrary({ robotConfig, updateConfig, onReset }) {
               className={`movement-button ${robotConfig.movement.type === move.id ? 'active' : ''}`}
               onClick={() => handleMovementChange(move.id)}
             >
-              <span>{move.icon}</span>
+              <span><EmojiIcon e={move.icon} /></span>
               <span>{move.name}</span>
             </button>
           ))}
@@ -181,7 +182,7 @@ export default function PartsLibrary({ robotConfig, updateConfig, onReset }) {
       {/* SENSORS */}
       {/* ─────────────────────────────────────────────────────────────── */}
       <div className="parts-section">
-        <h4 className="section-title">📡 Sensors</h4>
+        <h4 className="section-title"><EmojiIcon e="📡" style={{ marginRight: '0.35em' }} />Sensors</h4>
         <div className="add-buttons">
           {SENSORS.map(sensor => (
             <button
@@ -215,7 +216,7 @@ export default function PartsLibrary({ robotConfig, updateConfig, onReset }) {
       {/* TOOLS */}
       {/* ─────────────────────────────────────────────────────────────── */}
       <div className="parts-section">
-        <h4 className="section-title">🔧 Tools</h4>
+        <h4 className="section-title"><EmojiIcon e="🔧" style={{ marginRight: '0.35em' }} />Tools</h4>
         <div className="add-buttons">
           {TOOLS.map(tool => (
             <button
@@ -249,7 +250,7 @@ export default function PartsLibrary({ robotConfig, updateConfig, onReset }) {
       {/* RESET BUTTON */}
       {/* ─────────────────────────────────────────────────────────────── */}
       <button className="reset-button" onClick={onReset}>
-        🗑️ Clear All
+        <EmojiIcon e="🗑️" style={{ marginRight: '0.35em' }} />Clear All
       </button>
     </div>
   );

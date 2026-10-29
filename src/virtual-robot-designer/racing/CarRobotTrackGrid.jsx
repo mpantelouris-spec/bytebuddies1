@@ -3,6 +3,7 @@
  */
 import React from 'react';
 import { CAR_KID_TRACK_TILES } from '../data/car-racing-tracks.js';
+import ArenaPreviewImage from '../studio/ArenaPreviewImage.jsx';
 
 export function CarRobotTrackGrid({
   courses = [],
@@ -29,10 +30,14 @@ export function CarRobotTrackGrid({
     if (byArena) onSelectCourse?.(byArena);
   };
 
+  const tileCourse = (tile) => courses.find((c) => (c.modeIndex ?? 0) === tile.mode)
+    || courses.find((c) => c.arenaType === tile.arenaId || c.environmentId === tile.arenaId);
+
   const courseModes = new Set(courses.map((c) => c.modeIndex).filter(Boolean));
-  const tiles = courseModes.size
-    ? CAR_KID_TRACK_TILES.filter((t) => courseModes.has(t.mode))
-    : CAR_KID_TRACK_TILES;
+  // The grid is the 10 main tracks; races 11–50 are listed (by difficulty) under it, so showing
+  // tiles 11+ here as well would list the same races twice under different names.
+  const base = CAR_KID_TRACK_TILES.filter((t) => t.mode <= 10);
+  const tiles = courseModes.size ? base.filter((t) => courseModes.has(t.mode)) : base;
 
   return (
     <div className="bb-car-track-grid" role="navigation" aria-label="Car robot racing tracks">
@@ -56,7 +61,9 @@ export function CarRobotTrackGrid({
               title={tile.story || tile.label}
               onClick={() => pickCourse(tile.mode)}
             >
-              <span className="bb-car-track-tile-bg" style={{ background: tile.gradient }} aria-hidden />
+              <span className="bb-car-track-tile-bg" style={{ background: tile.gradient }} aria-hidden>
+                {tileCourse(tile) && <ArenaPreviewImage course={tileCourse(tile)} title={tile.label} />}
+              </span>
               <span className="bb-car-track-tile-emoji">{tile.emoji}</span>
               <span className="bb-car-track-tile-label">{tile.label}</span>
               <span className="bb-car-track-tile-mode">Mode {tile.mode}</span>

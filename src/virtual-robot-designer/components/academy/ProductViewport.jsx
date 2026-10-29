@@ -16,6 +16,7 @@ import { getVisibleSockets } from '../../utils/build-slots.js';
 import { VIEWPORT } from '../../constants/sizes.js';
 import SnapParticles from '../common/SnapParticles.jsx';
 import { useUiStore } from '../../store/uiStore.js';
+import { EmojiIcon } from '../../../components/ui/Icon.jsx';
 
 /** Studio 3-point + rim lighting for hero robot */
 function HeroLighting() {
@@ -201,7 +202,7 @@ export default function ProductViewport({
           <button type="button" className="rd-tool-btn" onClick={onRotateRight || rotateRight}>Rotate ↷</button>
           <button type="button" className="rd-tool-btn" onClick={onZoomIn || zoomIn}>+ Zoom</button>
           <button type="button" className="rd-tool-btn" onClick={onZoomOut || zoomOut}>− Zoom</button>
-          <button type="button" className="rd-tool-btn rd-tool-btn--paint" onClick={onPaint}>🎨 Paint</button>
+          <button type="button" className="rd-tool-btn rd-tool-btn--paint" onClick={onPaint}><EmojiIcon e="🎨" style={{ marginRight: '0.35em' }} />Paint</button>
         </div>
         <div className="rd-viewport-actions">
           <button type="button" className="rd-act-btn rd-act-btn--muted" onClick={onClear}>✕ Clear</button>

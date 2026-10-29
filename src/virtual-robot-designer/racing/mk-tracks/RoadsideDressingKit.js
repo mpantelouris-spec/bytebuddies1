@@ -11,7 +11,7 @@
 import * as THREE from 'three';
 import { trackThemeFor } from './TrackThemes.js';
 import { applyRoadSurface, applyRoadMarkings, placeCornerChevrons } from './RoadSurfaceKit.js';
-import { applyThemeScenery, hideOldDecoration, hasThemeScenery } from './ThemeSceneryKit.js';
+import { applyThemeScenery, keepOldDecorationHidden, hasThemeScenery } from './ThemeSceneryKit.js';
 
 const VERGE_WIDTH = 3.2;       // metres of verge beyond the kerb
 const KERB_GAP = 0.35;         // verge tucks under the kerb so no gap shows
@@ -251,11 +251,25 @@ export function applyRoadsideDressing(world, curve, hw, arenaType, { startT = 0,
   // Replace the old primitive decoration with the world's Kenney scenery
   if (hasThemeScenery(style.id)) {
     if (scene) scene.userData.themeScenery = style.id;
-    // Old props keep streaming in for a few seconds; keep them hidden
-    [0, 1200, 3500, 8000].forEach((ms) => setTimeout(() => hideOldDecoration(world), ms));
+    // Old props keep streaming in for a few seconds, so hide them every frame and cover the stage until the new scenery lands
+    const stopHiding = keepOldDecorationHidden(world);
+    const announce = (delta) => {
+      if (typeof window === 'undefined') return;
+      window.__bbTrackLoadingCount = Math.max(0, (window.__bbTrackLoadingCount || 0) + delta);
+      window.dispatchEvent(new CustomEvent('bb-track-loading', { detail: { loading: window.__bbTrackLoadingCount > 0 } }));
+    };
+    let finished = false;
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      announce(-1);
+      setTimeout(stopHiding, 8000);
+    };
+    announce(1);
+    setTimeout(finish, 12000);
     applyThemeScenery(world, curve, hw, style, { fenceOffset: hw + KERB_GAP + VERGE_WIDTH, startT })
-      .then((r) => r && console.log('[ThemeScenery]', style.id, r.userData.count, 'props'))
-      .catch((err) => console.warn('[ThemeScenery] failed', style.id, err));
+      .then((r) => { if (r) console.log('[ThemeScenery]', style.id, r.userData.count, 'props'); finish(); })
+      .catch((err) => { console.warn('[ThemeScenery] failed', style.id, err); finish(); });
   }
   return root;
 }

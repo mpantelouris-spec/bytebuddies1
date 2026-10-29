@@ -202,6 +202,7 @@ const HATS = new Set([...Object.keys(HAT_TO_EVENT), 'when_key', 'when_timer', 'w
 const SENSOR_KEYS = {
   bird_height: 'birdHeight',
   gap_center: 'gapCenterHeight',
+  below_gap: 'belowGap',
   pipe_dist: 'distanceToPipe',
   gap_size: 'gapSize',
   score: 'score',
@@ -217,6 +218,7 @@ const SHOW_BLOCKS = {
   gap_center_height: ['gapCenterHeight', 'Gap centre'],
   num_gap_center: ['gapCenterHeight', 'Gap centre'],
   gap_size: ['gapSize', 'Gap size'],
+  below_gap: ['belowGap', 'Below gap by'],
   time_alive: ['timeAlive', 'Time alive'],
   is_falling: ['isFalling', 'Falling'],
   is_falling_bool: ['isFalling', 'Falling'],

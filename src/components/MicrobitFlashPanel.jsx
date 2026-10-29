@@ -13,6 +13,7 @@ import {
   handleFlashError,
   checkBrowserSupport
 } from '../utils/microbitFlashSystem';
+import { EmojiIcon, IconText } from './ui/Icon.jsx';
 
 export default function MicrobitFlashPanel({ userCode, onLog }) {
   // ─── State Management ─────────────────────────────────────────────────────
@@ -263,7 +264,7 @@ export default function MicrobitFlashPanel({ userCode, onLog }) {
       {/* Browser Support Warning */}
       {(!browserSupport.webusb || !browserSupport.bluetooth) && (
         <div style={styles.warning}>
-          ⚠️ Limited browser support detected. Use Chrome, Edge, or Opera for full functionality.
+          <EmojiIcon e="⚠️" style={{ marginRight: '0.35em' }} />Limited browser support detected. Use Chrome, Edge, or Opera for full functionality.
         </div>
       )}
 
@@ -271,7 +272,7 @@ export default function MicrobitFlashPanel({ userCode, onLog }) {
       <div style={styles.section}>
         <div style={styles.sectionHeader}>
           <div>
-            <h3 style={styles.sectionTitle}>🔌 Flash via USB (Wired)</h3>
+            <h3 style={styles.sectionTitle}><EmojiIcon e="🔌" style={{ marginRight: '0.35em' }} />Flash via USB (Wired)</h3>
             <p style={styles.sectionDescription}>
               Complete firmware replacement. Stops any running program and flashes your code.
             </p>
@@ -287,7 +288,7 @@ export default function MicrobitFlashPanel({ userCode, onLog }) {
             ...(usbState === 'flashing' ? styles.buttonDisabled : {}),
           }}
         >
-          {usbState === 'idle' && '⚡ Flash via USB'}
+          <IconText>{usbState === 'idle' && '⚡ Flash via USB'}</IconText>
           {usbState === 'flashing' && `⚡ Flashing ${usbProgress}%`}
           {usbState === 'success' && '✅ Flash Complete'}
           {usbState === 'error' && '❌ Flash Failed'}
@@ -320,7 +321,7 @@ export default function MicrobitFlashPanel({ userCode, onLog }) {
       <div style={styles.section}>
         <div style={styles.sectionHeader}>
           <div>
-            <h3 style={styles.sectionTitle}>📡 Connect via Bluetooth (Wireless)</h3>
+            <h3 style={styles.sectionTitle}><EmojiIcon e="📡" style={{ marginRight: '0.35em' }} />Connect via Bluetooth (Wireless)</h3>
             <p style={styles.sectionDescription}>
               Live command execution. Requires Bluetooth firmware (flash via USB first).
             </p>
@@ -333,20 +334,20 @@ export default function MicrobitFlashPanel({ userCode, onLog }) {
             disabled={!browserSupport.bluetooth}
             style={{ ...styles.button, ...styles.bleButton }}
           >
-            📡 Connect Bluetooth
+            <EmojiIcon e="📡" style={{ marginRight: '0.35em' }} />Connect Bluetooth
           </button>
         )}
 
         {bleState === 'connecting' && (
           <button disabled style={{ ...styles.button, ...styles.buttonDisabled }}>
-            📡 Connecting...
+            <EmojiIcon e="📡" style={{ marginRight: '0.35em' }} />Connecting...
           </button>
         )}
 
         {bleState === 'connected' && (
           <div>
             <div style={styles.connectedStatus}>
-              ✅ Connected to: <strong>{bleDeviceName}</strong>
+              <EmojiIcon e="✅" style={{ marginRight: '0.35em' }} />Connected to: <strong>{bleDeviceName}</strong>
             </div>
             
             <div style={styles.buttonRow}>
@@ -355,21 +356,21 @@ export default function MicrobitFlashPanel({ userCode, onLog }) {
                 disabled={isRunning}
                 style={{ ...styles.button, ...styles.runButton }}
               >
-                {isRunning ? '⏳ Running...' : '▶️ Run'}
+                <IconText>{isRunning ? '⏳ Running...' : '▶️ Run'}</IconText>
               </button>
               
               <button
                 onClick={handleBluetoothStop}
                 style={{ ...styles.button, ...styles.stopButton }}
               >
-                ⏹️ Stop
+                <EmojiIcon e="⏹️" style={{ marginRight: '0.35em' }} />Stop
               </button>
               
               <button
                 onClick={handleBluetoothDisconnect}
                 style={{ ...styles.button, ...styles.disconnectButton }}
               >
-                🔌 Disconnect
+                <EmojiIcon e="🔌" style={{ marginRight: '0.35em' }} />Disconnect
               </button>
             </div>
           </div>
@@ -381,7 +382,7 @@ export default function MicrobitFlashPanel({ userCode, onLog }) {
               onClick={handleBluetoothConnect}
               style={{ ...styles.button, ...styles.bleButton }}
             >
-              📡 Retry Connection
+              <EmojiIcon e="📡" style={{ marginRight: '0.35em' }} />Retry Connection
             </button>
           </div>
         )}
@@ -393,7 +394,7 @@ export default function MicrobitFlashPanel({ userCode, onLog }) {
         )}
 
         <div style={styles.warningBox}>
-          <strong>⚠️ IMPORTANT:</strong>
+          <strong><EmojiIcon e="⚠️" style={{ marginRight: '0.35em' }} />IMPORTANT:</strong>
           <ul style={styles.infoList}>
             <li>Bluetooth is for CONTROL ONLY, not firmware flashing</li>
             <li>You must flash Bluetooth firmware via USB first</li>

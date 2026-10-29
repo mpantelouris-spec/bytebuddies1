@@ -1,3 +1,4 @@
+import { cachedNodes, cachedChild } from './AnimNodeCache.js';
 /**
  * TrackWorldBuilder.js — Builds rich themed worlds from TrackWorldRecipes.
  */
@@ -10,8 +11,11 @@ import { installCandyCarnivalHeroKit } from './CandyCarnivalHeroKit.js';
 import { getTrackWorldRecipe } from './TrackWorldRecipes.js';
 import { snapPropToRoad } from './TrackGroundSnap.js';
 import { trackHasBundledAssets } from './TrackAssetManifest.js';
+import { isSlimTrackWorld } from './TrackPerformanceKit.js';
 import { isCupTrack, blocksLaunchDriveLane } from './CodeRacerTrackStandards.js';
 import { pbrMat } from './BiomeAAAKit.js';
+import { installCosmicSkyway, animateCosmicSkyway, alignCosmicSkywayToStart } from './CosmicSkywayKit.js';
+import { getCosmicSkywayVariant, isCosmicSkywayArena } from './CosmicSkywayRegistry.js';
 import {
   buildPalmTree, buildBeachHut, buildTikiTorch, buildBeachUmbrella,
   buildFerrisWheel, buildCircusTent, buildMetroPillar, buildCastleTower,
@@ -405,6 +409,11 @@ function addGroundDisc(world, arenaType, recipe, bounds) {
     return;
   }
 
+  if (recipe?.vista === 'cosmic' || (recipe?.vista === 'earth' && isCosmicSkywayArena(arenaType))) {
+    addThemedAtmosphere(world, arenaType, bounds);
+    return;
+  }
+
   if (recipe?.vista === 'earth') {
     const deck = new THREE.Mesh(
       new THREE.CircleGeometry(52, 36),
@@ -431,7 +440,7 @@ function addGroundDisc(world, arenaType, recipe, bounds) {
   const boundsRadius = Math.max(bounds?.spanX ?? 0, bounds?.spanZ ?? 0) * 0.58 + 10;
   const radius = Math.max(minRadius, boundsRadius);
   const ground = new THREE.Mesh(
-    new THREE.CircleGeometry(radius, 44),
+    new THREE.CircleGeometry(radius, isSlimTrackWorld(world.parent) ? 16 : 44),
     pbrMat(groundColor, { roughness: 0.9 }),
   );
   ground.rotation.x = -Math.PI / 2;
@@ -520,25 +529,8 @@ function addThemedAtmosphere(world, arenaType, bounds) {
     world.add(aurora);
   }
 
-  if (arenaType === 'star_station_01') {
-    const count = 200;
-    const positions = new Float32Array(count * 3);
-    for (let i = 0; i < count; i++) {
-      const theta = Math.random() * Math.PI * 2;
-      const phi = Math.random() * Math.PI * 0.55;
-      const r = 70;
-      positions[i * 3] = bounds.cx + Math.cos(theta) * Math.sin(phi) * r;
-      positions[i * 3 + 1] = 8 + Math.cos(phi) * r * 0.55;
-      positions[i * 3 + 2] = bounds.cz + Math.sin(theta) * Math.sin(phi) * r;
-    }
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    const stars = new THREE.Points(
-      geo,
-      new THREE.PointsMaterial({ color: 0xffffff, size: 0.45, transparent: true, opacity: 0.9, depthWrite: false }),
-    );
-    stars.name = 'star-station-starfield';
-    world.add(stars);
+  if (isCosmicSkywayArena(arenaType) && !isSlimTrackWorld(world.parent)) {
+    installCosmicSkyway(world, bounds, getCosmicSkywayVariant(arenaType), arenaType);
   }
 
   if (arenaType === 'thunder_ridge_01') {
@@ -599,6 +591,9 @@ export function buildTrackWorld(world, curve, hw, bounds, arenaType, perf, scene
   }
   if (finishT != null && recipe.vista && !useBackdrop) {
     alignVistaToStart(world, curve, finishT, hw, recipe);
+  }
+  if (isCosmicSkywayArena(arenaType)) {
+    alignCosmicSkywayToStart(world, curve, finishT ?? 0);
   }
 
   world.userData.trackRecipe = arenaType;
@@ -666,24 +661,27 @@ export function populateTrackScenery(world, curve, hw, bounds, arenaType, perf, 
   return propCount;
 }
 
+const WORLD_ANIM = new Set(['prop-ferris-wheel', 'prop-gear', 'prop-seagull', 'prop-butterfly', 'lava-river', 'ocean-plane', 'prop-tiki-torch', 'frost-aurora', 'storm-cloud-bank']);
+const isWorldAnim = (o) => WORLD_ANIM.has(o.name) || !!o.name?.includes('windmill') || !!o.userData?.drift;
 export function animateTrackWorld(world, time) {
-  world.traverse((obj) => {
+  animateCosmicSkyway(world, time);
+  cachedNodes(world, 'world', isWorldAnim).forEach((obj) => {
     if (obj.name === 'prop-ferris-wheel') {
-      const spin = obj.getObjectByName('ferris-wheel-spin');
+      const spin = cachedChild(obj, 'ferris-wheel-spin');
       if (spin) spin.rotation.z = time * 0.35;
       else obj.rotation.y = time * 0.1;
     }
     if (obj.name === 'prop-gear') obj.rotation.z = time * 0.5;
     if (obj.name?.includes('windmill')) {
-      const blades = obj.getObjectByName('windmill-blades');
+      const blades = cachedChild(obj, 'windmill-blades');
       if (blades) blades.rotation.z = time * 0.6;
       else obj.rotation.y = time * 0.04;
     }
     if (obj.name === 'prop-seagull' && obj.userData.animated) {
       const ph = obj.userData.bobPhase ?? 0;
       obj.position.y += Math.sin(time * 2 + ph) * 0.02;
-      const wl = obj.getObjectByName('wing-l');
-      const wr = obj.getObjectByName('wing-r');
+      const wl = cachedChild(obj, 'wing-l');
+      const wr = cachedChild(obj, 'wing-r');
       if (wl) wl.rotation.z = Math.sin(time * 8 + ph) * 0.4;
       if (wr) wr.rotation.z = -Math.sin(time * 8 + ph) * 0.4;
     }
@@ -711,7 +709,7 @@ export function animateTrackWorld(world, time) {
       obj.children.forEach((c) => {
         if (c.isMesh) c.position.x += Math.sin(time * 0.15 + c.id) * 0.02;
       });
-      const flash = obj.getObjectByName('thunder-flash-light');
+      const flash = cachedChild(obj, 'thunder-flash-light');
       if (flash) {
         const cycle = time % 8;
         flash.intensity = cycle < 0.12 ? 18 : 0;

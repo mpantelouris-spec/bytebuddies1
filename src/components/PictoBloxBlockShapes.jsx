@@ -1,5 +1,6 @@
 import React from 'react';
 import { PICTO_THEME } from './pictobloxTheme';
+import { EmojiIcon } from './ui/Icon.jsx';
 
 /** Scratch/PictoBlox-style puzzle proportions */
 const NW = 20;
@@ -65,7 +66,7 @@ export function PictoHatWhenClicked({ width = 220, bodyH = 34, archH = 11 }) {
         }}
       >
         <span>when</span>
-        <span style={{ fontSize: 15, lineHeight: 1 }} title="flag">🏁</span>
+        <span style={{ fontSize: 15, lineHeight: 1 }} title="flag"><EmojiIcon e="🏁" /></span>
         <span>clicked</span>
       </div>
       <div

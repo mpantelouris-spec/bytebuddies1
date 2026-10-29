@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { EmojiIcon } from './ui/Icon.jsx';
 
 const BLOCK_LIBRARY = {
   space: [
@@ -28,7 +29,7 @@ export default function MissionBlockEditor({ campaignId, blocks, onBlocksChange,
   return (
     <div style={{ marginBottom: 24 }}>
       <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>
-        🧱 Build Your Sequence with Blocks
+        <EmojiIcon e="🧱" style={{ marginRight: '0.35em' }} />Build Your Sequence with Blocks
       </div>
 
       <div style={{ background: '#0d0d1a', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, padding: 16, minHeight: 220 }}>
@@ -49,7 +50,7 @@ export default function MissionBlockEditor({ campaignId, blocks, onBlocksChange,
             alignItems: 'center',
             gap: 10,
           }}>
-            <span style={{ fontSize: 20 }}>{block.icon}</span>
+            <span style={{ fontSize: 20 }}><EmojiIcon e={block.icon} /></span>
             <span style={{ flex: 1, color: '#fff', fontWeight: 600, fontSize: 14 }}>{block.label}</span>
             <button onClick={() => removeBlock(block.uid)} style={{
               background: 'rgba(239,68,68,0.2)',
@@ -109,7 +110,7 @@ export default function MissionBlockEditor({ campaignId, blocks, onBlocksChange,
                   gap: 10,
                   cursor: 'pointer',
                 }}>
-                  <span style={{ fontSize: 18 }}>{block.icon}</span>
+                  <span style={{ fontSize: 18 }}><EmojiIcon e={block.icon} /></span>
                   <span style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: 13 }}>{block.label}</span>
                 </button>
               ))}

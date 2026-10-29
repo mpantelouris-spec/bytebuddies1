@@ -6,6 +6,7 @@
  * hitstop, knockback physics, and camera "juice".
  */
 import { getFightingStats, FIGHTING_ROBOT_TYPES } from '../data/fighting-robot-types.js';
+import { FIGHT_MOVE_ALIAS, FIGHT_MOVE_LABEL } from '../data/fight-worlds.js';
 import {
   DISTANCE, STAMINA, GUARD, IMPACT, ROUNDS, FIGHT_HEALTH,
   resolvePunch, resolveGenericAttack, getDistanceBand, getComboMultiplier,
@@ -884,6 +885,10 @@ export function createCombatEngine({
 
   function doAction(actionId, params = {}, source = 'player') {
     if (state.over || state.betweenRounds) return;
+    // Fighting-world moves (Sword slash, Fire spell…) play as the boxing move they're built on
+    const worldMove = FIGHT_MOVE_LABEL[actionId];
+    if (FIGHT_MOVE_ALIAS[actionId]) actionId = FIGHT_MOVE_ALIAS[actionId];
+    if (worldMove && source === 'player') setFeedback(`${worldMove}!`, 'move');
     if (source === 'player') recordPlayerAction(memory, actionId);
 
     const mkPassive = ['block', 'crouch', 'advance_step', 'retreat_step', 'jump', 'back_dash',

@@ -11,36 +11,90 @@ export function ensurePenState(sprite) {
   return sprite._pen;
 }
 
+/**
+ * The pen trail is a list of points; `{ gap: true }` marks where the pen was lifted
+ * (so pen up really leaves a gap) and `{ stamp }` entries are copies of the sprite.
+ */
 export function recordPenPoint(sprite) {
   const pen = sprite?._pen;
   if (!pen?.down) return;
   const cx = (sprite.x || 0) + (sprite.w || 0) / 2;
   const cy = (sprite.y || 0) + (sprite.h || 0) / 2;
   const last = pen.trail[pen.trail.length - 1];
-  if (last && Math.hypot(last.x - cx, last.y - cy) < 0.8) return;
+  if (last && !last.gap && !last.stamp && last.color === pen.color && last.size === pen.size
+    && Math.hypot(last.x - cx, last.y - cy) < 0.8) return;
   pen.trail.push({ x: cx, y: cy, color: pen.color, size: pen.size });
+}
+
+const stampImages = new Map();
+function stampImage(src) {
+  if (!src || typeof Image === 'undefined') return null;
+  let img = stampImages.get(src);
+  if (!img) { img = new Image(); img.src = src; stampImages.set(src, img); }
+  return img.complete && img.naturalWidth ? img : null;
 }
 
 export function drawPenTrails(ctx, sprites) {
   if (!ctx) return;
   for (const sprite of sprites || []) {
     const trail = sprite._pen?.trail;
-    if (!trail || trail.length < 2) continue;
+    if (!trail || !trail.length) continue;
     ctx.save();
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-    for (let i = 1; i < trail.length; i += 1) {
-      const a = trail[i - 1];
-      const b = trail[i];
-      ctx.strokeStyle = b.color || '#22c55e';
-      ctx.lineWidth = Math.max(1, b.size || 3);
-      ctx.beginPath();
-      ctx.moveTo(a.x, a.y);
-      ctx.lineTo(b.x, b.y);
-      ctx.stroke();
+    let prev = null;
+    for (const pt of trail) {
+      if (pt.gap) { prev = null; continue; }
+      if (pt.stamp) {
+        const img = stampImage(pt.stamp.src);
+        if (img) {
+          ctx.save();
+          ctx.translate(pt.stamp.x + pt.stamp.w / 2, pt.stamp.y + pt.stamp.h / 2);
+          ctx.rotate(((pt.stamp.rot ?? 90) - 90) * Math.PI / 180);
+          ctx.drawImage(img, -pt.stamp.w / 2, -pt.stamp.h / 2, pt.stamp.w, pt.stamp.h);
+          ctx.restore();
+        }
+        continue;
+      }
+      if (prev) {
+        ctx.strokeStyle = pt.color || '#22c55e';
+        ctx.lineWidth = Math.max(1, pt.size || 3);
+        ctx.beginPath();
+        ctx.moveTo(prev.x, prev.y);
+        ctx.lineTo(pt.x, pt.y);
+        ctx.stroke();
+      } else {
+        // A single dot where the pen first touches down
+        ctx.fillStyle = pt.color || '#22c55e';
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, Math.max(0.5, (pt.size || 3) / 2), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      prev = pt;
     }
     ctx.restore();
   }
+}
+
+/** Shift a colour round the rainbow: 100 = once all the way round (like Scratch). */
+function shiftHue(hex, amount) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || ''));
+  const n = m ? parseInt(m[1], 16) : 0x22c55e;
+  let r = ((n >> 16) & 255) / 255; let g = ((n >> 8) & 255) / 255; let b = (n & 255) / 255;
+  const max = Math.max(r, g, b); const min = Math.min(r, g, b); const l = (max + min) / 2;
+  let h = 0; let s = 0;
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    h = max === r ? (g - b) / d + (g < b ? 6 : 0) : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    h /= 6;
+  }
+  if (s < 0.05) { s = 0.8; } // grey/black/white pens still change colour visibly
+  h = (((h + amount / 100) % 1) + 1) % 1;
+  const q = l < 0.5 ? l * (1 + s) : l + s - l * s; const p2 = 2 * l - q;
+  const f = (t) => { t = ((t % 1) + 1) % 1; return t < 1 / 6 ? p2 + (q - p2) * 6 * t : t < 1 / 2 ? q : t < 2 / 3 ? p2 + (q - p2) * (2 / 3 - t) * 6 : p2; };
+  const to = (v) => Math.round(Math.min(1, Math.max(0, v)) * 255).toString(16).padStart(2, '0');
+  return `#${to(f(h + 1 / 3))}${to(f(h))}${to(f(h - 1 / 3))}`;
 }
 
 function say(sprite, text) {
@@ -71,6 +125,7 @@ const ALIAS = {
   'pen-erase': 'pen-clear',
   'pen-set-color': 'pen-color',
   'pen-set-size': 'pen-size',
+  'pen-stamp': 'pen-stamp',
 };
 
 function canonical(type) {
@@ -104,6 +159,10 @@ export function readExtensionReporter(type, params = {}, sprite) {
       return sprite?._ext?.[t] ?? '';
     case 'speech-heard':
       return sprite?._ext?.['speech-heard'] ?? '';
+    case 'hand-gesture':
+      return sprite?._ext?.['hand-gesture'] ?? 'open hand';
+    case 'log-count':
+      return sprite?._ext?.['log-count'] ?? 0;
     case 'translate-result':
     case 'ocr-text':
     case 'ac-label':
@@ -149,44 +208,67 @@ export function executeExtensionGameBlock(block, sprite, ctx = {}) {
   };
 
   switch (type) {
+    // Pen blocks draw quietly: no speech bubbles over the artwork
     case 'pen-down': {
       const pen = ensurePenState(sprite);
+      if (!pen.down && pen.trail.length) pen.trail.push({ gap: true });
       pen.down = true;
       recordPenPoint(sprite);
       runExtensionGame('pen|down', sprite);
-      say(sprite, 'Pen down');
       return true;
     }
     case 'pen-up': {
       const pen = ensurePenState(sprite);
+      if (pen.down) { recordPenPoint(sprite); pen.trail.push({ gap: true }); }
       pen.down = false;
       runExtensionGame('pen|up', sprite);
-      say(sprite, 'Pen up');
       return true;
     }
     case 'pen-clear': {
-      const pen = ensurePenState(sprite);
-      pen.trail = [];
+      // Erase all clears every sprite's drawing, like Scratch
+      (ctx.sprites || [sprite]).forEach((sp) => { if (sp?._pen) sp._pen.trail = []; });
+      ensurePenState(sprite).trail = [];
+      recordPenPoint(sprite);
       runExtensionGame('pen|clear', sprite);
-      say(sprite, 'Pen cleared');
       return true;
     }
     case 'pen-color': {
       const pen = ensurePenState(sprite);
+      recordPenPoint(sprite);
       pen.color = txt(p.color || p.COLOR, '#22c55e');
+      recordPenPoint(sprite);
       runExtensionGame(`pen|color|${pen.color}`, sprite);
-      say(sprite, `Pen ${pen.color}`);
+      return true;
+    }
+    case 'pen-change-color': {
+      const pen = ensurePenState(sprite);
+      recordPenPoint(sprite);
+      pen.color = shiftHue(pen.color, num(p.amount ?? p.AMOUNT, 10));
+      recordPenPoint(sprite);
       return true;
     }
     case 'pen-size': {
       const pen = ensurePenState(sprite);
-      pen.size = num(p.size || p.SIZE, 3);
-      say(sprite, `Pen size ${pen.size}`);
+      recordPenPoint(sprite);
+      pen.size = Math.max(1, Math.min(100, num(p.size ?? p.SIZE, 3)));
+      recordPenPoint(sprite);
       return true;
     }
-    case 'pen-stamp':
-      say(sprite, 'Stamp');
+    case 'pen-change-size': {
+      const pen = ensurePenState(sprite);
+      recordPenPoint(sprite);
+      pen.size = Math.max(1, Math.min(100, pen.size + num(p.amount ?? p.AMOUNT, 1)));
+      recordPenPoint(sprite);
       return true;
+    }
+    case 'pen-stamp': {
+      const pen = ensurePenState(sprite);
+      if (sprite.customImage) {
+        pen.trail.push({ stamp: { src: sprite.customImage, x: sprite.x || 0, y: sprite.y || 0, w: sprite.w || 48, h: sprite.h || 48, rot: sprite.rotation ?? 90 } });
+        if (pen.down) recordPenPoint(sprite);
+      }
+      return true;
+    }
     case 'tts-speak': {
       const text = txt(p.text || p.TEXT || p.message, 'Hello from ByteBuddies');
       speak(text);
@@ -267,6 +349,36 @@ export function executeExtensionGameBlock(block, sprite, ctx = {}) {
       stampExt(sprite, 'nlp-sentiment-val', 0.8);
       stampExt(sprite, 'nlp-positive', true);
       say(sprite, 'Positive');
+      return true;
+    case 'video-play':
+      runExtensionGame('vplay|play|demo', sprite);
+      say(sprite, '▶ Playing clip');
+      return true;
+    case 'video-pause':
+      runExtensionGame('vplay|pause', sprite);
+      say(sprite, '⏸ Paused');
+      return true;
+    case 'video-seek':
+      runExtensionGame('vplay|seek|' + num(p.sec, 0), sprite);
+      say(sprite, `⏩ ${num(p.sec, 0)} s`);
+      return true;
+    case 'log-add': {
+      runExtensionGame('log|add|sample', sprite);
+      const n = (sprite?._ext?.['log-count'] ?? 0) + 1; stampExt(sprite, 'log-count', n);
+      say(sprite, `Row ${n} logged`);
+      return true;
+    }
+    case 'log-clear':
+      runExtensionGame('log|clear', sprite);
+      stampExt(sprite, 'log-count', 0);
+      say(sprite, 'Log cleared');
+      return true;
+    case 'log-count':
+      say(sprite, `Rows: ${sprite?._ext?.['log-count'] ?? 0}`);
+      return true;
+    case 'hand-gesture':
+      stampExt(sprite, 'hand-gesture', sprite?._ext?.['hand-gesture'] || 'open hand');
+      say(sprite, `Gesture: ${sprite._ext['hand-gesture']}`);
       return true;
     case 'weather-city':
       runExtensionGame('weather|fetch|' + txt(p.city, 'London'), sprite);

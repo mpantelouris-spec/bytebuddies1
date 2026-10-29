@@ -92,6 +92,7 @@ function computeDiags(design) {
    MAIN EXPORTED COMPONENT
    ═══════════════════════════════════════════════════════════ */
 export default function AICoreDiagnostics({ design, stats }) {
+  const [expanded, setExpanded] = useState(false);
   const [animVals, setAnimVals] = useState({
     speed: 0, power: 0, ai: 0, sensors: 0, integrity: 0,
   });
@@ -108,6 +109,7 @@ export default function AICoreDiagnostics({ design, stats }) {
   }, [diags.speed, diags.power, diags.ai, diags.sensors, diags.integrity]);
 
   useEffect(() => {
+    if (!expanded) return undefined;
     const interval = setInterval(() => {
       setAnimVals(prev => {
         const t = targetRef.current;
@@ -133,7 +135,7 @@ export default function AICoreDiagnostics({ design, stats }) {
       setTick(t => t + 1);
     }, 180);
     return () => clearInterval(interval);
-  }, []);
+  }, [expanded]);
 
   const sysStatus = [
     { label: 'AI PROCESSOR',    status: diags.ai > 60       ? 'online'  : 'standby' },
@@ -152,18 +154,19 @@ export default function AICoreDiagnostics({ design, stats }) {
 
   return (
     <div className="holo-aicore-panel anim-right">
-      {/* Header */}
+      {/* Keep the builder focused; diagnostics can be opened when learners want them. */}
       <div className="holo-panel">
         <span className="holo-corner-tl" />
         <span className="holo-corner-br" />
-        <div className="holo-panel-inner aicore-header">
-          <div>
-            <span className="aicore-status-dot" />
-            <span className="aicore-title">AI CORE</span>
-          </div>
-          <div className="aicore-subtitle">DIAGNOSTIC SYSTEM v4.2</div>
-        </div>
+        <button type="button" aria-expanded={expanded} onClick={() => setExpanded((value) => !value)}
+          style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '11px 13px', background: 'transparent', border: 0, color: '#e2e8f0', textAlign: 'left', cursor: 'pointer' }}>
+          <span><span className="aicore-status-dot" /><span className="aicore-title">AI CORE</span>
+            <span className="aicore-subtitle" style={{ display: 'block', marginTop: 4 }}>{diags.partCount} modules · robot stats</span></span>
+          <span aria-hidden="true" style={{ color: '#00d4ff', fontSize: 12 }}>{expanded ? 'Hide ▲' : 'Details ▼'}</span>
+        </button>
       </div>
+
+      {expanded && <>
 
       {/* Main stats bars */}
       <div className="holo-panel">
@@ -258,6 +261,7 @@ export default function AICoreDiagnostics({ design, stats }) {
           </div>
         </div>
       </div>
+      </>}
     </div>
   );
 }

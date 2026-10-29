@@ -5,6 +5,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { GAME_GENRES, ZONE_PHASES, getUnlockedSystems } from '../data/game-missions.js';
 import { DesignerProgress } from '../services/game-designer-progress.js';
+import { EmojiIcon, IconText } from '../../components/ui/Icon.jsx';
 
 const STUDIO_MODES = [
   { id: 'edit',    icon: '✏️', label: 'Edit',    tip: 'Build & wire up game systems' },
@@ -60,11 +61,11 @@ export function MissionStudioPanel({
         <div className="bb-studio-head-top">
           {genre && (
             <span className="bb-studio-genre" style={{ '--genre-col': genre.color }}>
-              {genre.icon} {genre.label}
+              <EmojiIcon e={genre.icon} style={{ marginRight: '0.35em' }} />{genre.label}
             </span>
           )}
           <button type="button" className="bb-studio-collapse" onClick={() => setExpanded((e) => !e)}>
-            {expanded ? '◀' : '▶'}
+            <IconText>{expanded ? '◀' : '▶'}</IconText>
           </button>
         </div>
         {expanded && (
@@ -87,7 +88,7 @@ export function MissionStudioPanel({
                 onClick={() => onModeChange?.(m.id)}
                 title={m.tip}
               >
-                <span>{m.icon}</span>
+                <span><EmojiIcon e={m.icon} /></span>
                 <span>{m.label}</span>
               </button>
             ))}
@@ -96,7 +97,7 @@ export function MissionStudioPanel({
           {/* Designer XP bar */}
           <div className="bb-studio-designer-xp">
             <div className="bb-studio-xp-head">
-              <span>🎨 Game Designer Lv.{designerData.complexityUnlocked || 1}</span>
+              <span><EmojiIcon e="🎨" style={{ marginRight: '0.35em' }} />Game Designer Lv.{designerData.complexityUnlocked || 1}</span>
               <span>{designerData.designerXp || 0} XP</span>
             </div>
             <div className="bb-studio-xp-track">
@@ -106,8 +107,8 @@ export function MissionStudioPanel({
               />
             </div>
             <div className="bb-studio-xp-meta">
-              <span>⚙️ {designerData.systemsBuilt?.length || 0} systems</span>
-              <span>✨ {designerData.creativityScore || 0} creativity</span>
+              <span><EmojiIcon e="⚙️" style={{ marginRight: '0.35em' }} />{designerData.systemsBuilt?.length || 0} systems</span>
+              <span><EmojiIcon e="✨" style={{ marginRight: '0.35em' }} />{designerData.creativityScore || 0} creativity</span>
             </div>
           </div>
 
@@ -128,7 +129,7 @@ export function MissionStudioPanel({
                     className={`bb-studio-zone-dot${done ? ' done' : ''}${active ? ' active' : ''}${isCreate ? ' remix' : ''}`}
                     title={z.name || `Zone ${z.num}`}
                   >
-                    {isCreate ? '🎨' : (done ? '✓' : z.num)}
+                    <IconText>{isCreate ? '🎨' : (done ? '✓' : z.num)}</IconText>
                   </div>
                 );
               })}
@@ -136,16 +137,16 @@ export function MissionStudioPanel({
             {zoneDef && (
               <div className="bb-studio-zone-detail" style={{ '--zone-col': genre?.color || '#7c3aed' }}>
                 <div className="bb-studio-zone-phase">
-                  {zoneDef.phaseMeta?.icon || '📍'} {zoneDef.phaseMeta?.label || `Zone ${currentZoneNum}`}
+                  <IconText>{zoneDef.phaseMeta?.icon || '📍'}</IconText> {zoneDef.phaseMeta?.label || `Zone ${currentZoneNum}`}
                 </div>
                 <div className="bb-studio-zone-name">{zoneDef.name}</div>
                 <p className="bb-studio-zone-mechanic">{zoneDef.mechanic || story?.mechanic}</p>
                 {zoneDef.codingRequired === false && (
-                  <span className="bb-studio-no-code">👀 Explore first — coding starts next!</span>
+                  <span className="bb-studio-no-code"><EmojiIcon e="👀" style={{ marginRight: '0.35em' }} />Explore first — coding starts next!</span>
                 )}
                 {isSandbox && (
                   <div className="bb-studio-remix-banner">
-                    🎨 REMIX MODE — Redesign rules, layout & mechanics!
+                    <EmojiIcon e="🎨" style={{ marginRight: '0.35em' }} />REMIX MODE — Redesign rules, layout & mechanics!
                   </div>
                 )}
               </div>
@@ -176,25 +177,25 @@ export function MissionStudioPanel({
           {/* Live stats */}
           <div className="bb-studio-stats">
             <div className="bb-studio-stat">
-              <span>🔋</span>
+              <span><EmojiIcon e="🔋" /></span>
               <span>{Math.round(stats.battery)}%</span>
             </div>
             <div className="bb-studio-stat">
-              <span>🧩</span>
+              <span><EmojiIcon e="🧩" /></span>
               <span>{blockCount} blocks</span>
             </div>
             <div className="bb-studio-stat">
-              <span>💎</span>
+              <span><EmojiIcon e="💎" /></span>
               <span>{stats.collected || 0}</span>
             </div>
             <div className="bb-studio-stat">
-              <span>📍</span>
+              <span><EmojiIcon e="📍" /></span>
               <span>{stats.dist?.toFixed?.(0) || 0}m</span>
             </div>
           </div>
 
           {story?.tip && (
-            <div className="bb-studio-tip">💡 {story.tip}</div>
+            <div className="bb-studio-tip"><EmojiIcon e="💡" style={{ marginRight: '0.35em' }} />{story.tip}</div>
           )}
 
           {onEndMission && (
@@ -218,7 +219,7 @@ export function MissionZoneIntro({ mission, zoneNum, onDismiss }) {
     <div className="bb-zone-intro">
       <div className="bb-zone-intro-card">
         <span className="bb-zone-intro-genre" style={{ '--genre-col': genre?.color }}>
-          {genre?.icon} {genre?.label} Mission
+          <EmojiIcon e={genre?.icon} style={{ marginRight: '0.35em' }} />{genre?.label} Mission
         </span>
         <h2>{mission.name}</h2>
         <p className="bb-zone-intro-story">{zone.story}</p>
@@ -226,7 +227,7 @@ export function MissionZoneIntro({ mission, zoneNum, onDismiss }) {
         <div className="bb-zone-intro-meta">
           <span>⏱ ~{mission.estMinutes} min</span>
           <span>🎮 10 zones + remix</span>
-          <span>⚙️ {mission.systemsBuilt?.length || 0} systems to build</span>
+          <span><EmojiIcon e="⚙️" style={{ marginRight: '0.35em' }} />{mission.systemsBuilt?.length || 0} systems to build</span>
         </div>
         <button type="button" className="bb-zone-intro-go" onClick={onDismiss}>
           Enter the World →
@@ -241,7 +242,7 @@ export function MissionRemixBanner({ mission, onEnterRemix }) {
   return (
     <div className="bb-remix-banner">
       <div className="bb-remix-inner">
-        <span className="bb-remix-icon">🎨</span>
+        <span className="bb-remix-icon"><EmojiIcon e="🎨" /></span>
         <div>
           <strong>Zone 10 — Create Your Game!</strong>
           <p>Remix {mission?.name}: change rules, add obstacles, redesign mechanics.</p>

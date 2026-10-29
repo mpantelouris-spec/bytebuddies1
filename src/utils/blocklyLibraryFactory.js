@@ -67,6 +67,7 @@ export function createBlockFromLibraryLabel(ws, blockLabel, options = {}) {
     typeToCreate = blocklyTypeFromShort(short);
   }
   if (!typeToCreate) typeToCreate = 'bb_generic_stack';
+  if (!Blockly.Blocks[typeToCreate]) typeToCreate = Blockly.Blocks.bb_lib_stack ? 'bb_lib_stack' : 'bb_generic_stack';
   if (!Blockly.Blocks[typeToCreate]) return null;
 
   let block;

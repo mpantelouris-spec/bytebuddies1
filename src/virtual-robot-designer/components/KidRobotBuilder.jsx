@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { TEMPLATE_OPTIONS } from '../config.js';
+import { EmojiIcon } from '../../components/ui/Icon.jsx';
 
 const COLORS = [
   { c: '#FF006E', name: 'Pink' },
@@ -54,7 +55,7 @@ export default function KidRobotBuilder({
   return (
     <div className="vrd-kid-builder">
       <div className="vrd-kid-intro">
-        <span className="vrd-kid-intro-icon">🤖</span>
+        <span className="vrd-kid-intro-icon"><EmojiIcon e="🤖" /></span>
         <div>
           <strong>Build your robot!</strong>
           <p>Tap the buttons — watch it appear in the chamber →</p>
@@ -66,7 +67,7 @@ export default function KidRobotBuilder({
         <div className="vrd-kid-robot-grid">
           {TEMPLATE_OPTIONS.map((t) => (
             <BigBtn key={t.id} active={d.template === t.id} onClick={() => onPickTemplate(t.id)} className="vrd-kid-robot">
-              <span className="vrd-kid-robot-icon">{t.icon}</span>
+              <span className="vrd-kid-robot-icon"><EmojiIcon e={t.icon} /></span>
               <span>{t.label}</span>
             </BigBtn>
           ))}
@@ -95,7 +96,7 @@ export default function KidRobotBuilder({
         <div className="vrd-kid-row">
           {MOVES.map((m) => (
             <BigBtn key={m.id} active={d.wheels.type === m.id} onClick={() => onMove(m.id)}>
-              <span>{m.icon}</span> {m.label}
+              <span><EmojiIcon e={m.icon} /></span> {m.label}
             </BigBtn>
           ))}
         </div>
@@ -106,7 +107,7 @@ export default function KidRobotBuilder({
         <div className="vrd-kid-row vrd-kid-row--wrap">
           {EXTRAS.map((ex) => (
             <BigBtn key={ex.key} active={isExtraOn(ex)} onClick={() => onExtra(ex)}>
-              <span>{ex.icon}</span> {ex.label}
+              <span><EmojiIcon e={ex.icon} /></span> {ex.label}
             </BigBtn>
           ))}
         </div>

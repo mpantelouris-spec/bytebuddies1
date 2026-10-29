@@ -331,7 +331,7 @@ export const EXTENSIONS = [
     icon: '✏️',
     accent: '#a3e635',
     docsUrl: EXTENSION_DOC_HUB,
-    blocks: ['[Pen] Down', '[Pen] Up', '[Pen] Clear', '[Pen] Set color', 'move steps'],
+    blocks: ['[Pen] Down', '[Pen] Up', '[Pen] Clear', '[Pen] Set color', '[Pen] Change color by', '[Pen] Set size', '[Pen] Change size by', '[Pen] Stamp', 'move steps'],
   },
   {
     id: 'music',

@@ -1,5 +1,7 @@
 import React from 'react';
 import { useUser } from '../../../contexts/UserContext';
+import { IconText } from '../../../components/ui/Icon.jsx';
+import ProfileAvatar from '../../../components/ui/ProfileAvatar.jsx';
 
 const NAV = [
   { id: 'design', label: 'Design', active: true },
@@ -28,7 +30,7 @@ export default function AcademyHeader({
     <header className={`bb-academy-header ${className}`.trim()}>
       <div className="bb-academy-header-left">
         <button type="button" className="bb-academy-logo" onClick={onBack}>
-          <span className="bb-academy-logo-mark">🤖</span>
+          <img className="bb-academy-logo-mascot" src="/images/bytebuddies-mascot-head.webp" alt="" draggable="false" style={{ width: 42, height: 42, objectFit: 'contain', flexShrink: 0, filter: 'drop-shadow(0 3px 6px rgba(30,10,80,0.3))' }} />
           <span className="bb-academy-logo-text">
             <strong>ByteBuddies</strong>
             <small>Robotics Academy</small>
@@ -51,7 +53,7 @@ export default function AcademyHeader({
 
       <div className="bb-academy-header-right">
         <div className="bb-academy-user">
-          <span className="bb-academy-avatar" aria-hidden>{user.avatarEmoji || '🧑‍💻'}</span>
+          <ProfileAvatar value={user.avatarEmoji} name={user.name} size={36} />
           <div className="bb-academy-user-meta">
             <span className="bb-academy-level">Level {user.level}</span>
             <div className="bb-academy-xp-bar">

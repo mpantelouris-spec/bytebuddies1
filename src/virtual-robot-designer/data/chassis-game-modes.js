@@ -10,6 +10,7 @@ import { applyModeCatalog } from './chassis-mode-catalog.js';
 import { getGameModeSpec } from './game-mode-specifications.js';
 import { normalizeRobotBuildConfig } from '../services/studio-robot-builder.js';
 import { applyPrimaryStudioMeta, isPrimaryStudioChassis, kidSafeText } from './primary-robot-studio.js';
+import { EXPANDED_CHASSIS_MODES, EXPANDED_CHASSIS_MODE_IDS_BY_ROBOT, EXPANDED_ROBOT_IDS } from './chassis-mode-expansion.js';
 
 export const CHASSIS_MODE_MAP = {
   "rover": [
@@ -21,7 +22,8 @@ export const CHASSIS_MODE_MAP = {
     "rover_kart_meteor_mine_madness",
     "rover_kart_pinwheel_plaza_sprint",
     "rover_kart_glacial_gorge_gp",
-    "rover_kart_safari_stampede_cup"
+    "rover_kart_safari_stampede_cup",
+    "rover_kart_candy_rainbow_run"
   ],
   "scout": [
     "scout_kart_neon_nitro_nights",
@@ -490,7 +492,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
       "three": "Perfect mastery run"
     },
     "rewardBadge": "rover_master",
-    "unlocksNext": null,
+    "unlocksNext": "rover_kart_candy_rainbow_run",
     "catalogName": "Neon Nitro Nights",
     "environmentId": "sunset_cove_01",
     "environmentName": "Sunny Shores",
@@ -1107,24 +1109,24 @@ export const CHASSIS_GAME_MODE_BY_ID = {
     },
     "rewardBadge": "rover_master",
     "unlocksNext": null,
-    "catalogName": "Safari Stampede Cup",
+    "catalogName": "Rainbow Road",
     "environmentId": "rainbow_road",
     "environmentName": "Rainbow Road",
     "environmentEmoji": "🌈",
     "physics": "racing_spline",
     "camera": "race_chase",
     "genre": "racing",
-    "winCondition": "Complete 2 lap(s) around Magick Forest Spirals",
+    "winCondition": "Complete 3 laps of Rainbow Road and pass every gate",
     "codeHint": "Integrate speed control, obstacle dodging, and cornering logic.",
     "gameObjectives": [
-      "Complete 2 lap(s)",
+      "Complete 3 laps",
       "Pass all checkpoints",
-      "Finish under 195s"
+      "Finish under 100s"
     ],
     "campusMode": {
       "modeNumber": 19,
-      "name": "Safari Stampede Cup",
-      "shortName": "Safari Stampede Cup",
+      "name": "Rainbow Road",
+      "shortName": "Rainbow Road",
       "section": "rainbow_road",
       "camera": "race_chase",
       "laps": 3,
@@ -1146,6 +1148,82 @@ export const CHASSIS_GAME_MODE_BY_ID = {
     "zones": 3,
     "linkedRaceCourse": "street_grand_prix",
     "raceTrackLabel": "Rainbow Road",
+    "mkTier": "Hard",
+    "mkDifficulty": 4
+  },
+  "rover_kart_candy_rainbow_run": {
+    "id": "rover_kart_candy_rainbow_run",
+    "chassisId": "rover",
+    "cat": "racing",
+    "icon": "🍭",
+    "name": "Candy Rainbow Run",
+    "desc": "Race the figure-8 midway circuit through the ferris wheel, candy tents and rainbow arches.",
+    "shortName": "Candy Rainbow Run",
+    "tagline": "Candy Rainbow Run — a sweet figure-8 finale through the carnival.",
+    "arenaType": "candy_carnival_01",
+    "color": "#FF69B4",
+    "obstacles": 12,
+    "totalDist": 37,
+    "estMinutes": 12,
+    "checkpoints": 8,
+    "exclusive": "rover",
+    "rec": [
+      "rover"
+    ],
+    "isChassisMode": true,
+    "modeIndex": 10,
+    "difficulty": "Expert",
+    "modeType": "Mission",
+    "programmingConcepts": [
+      "optimization",
+      "sequential blocks"
+    ],
+    "starRequirements": {
+      "one": "Finish the mission",
+      "two": "Beat the time target",
+      "three": "Perfect mastery run"
+    },
+    "rewardBadge": "rover_candy_champion",
+    "unlocksNext": null,
+    "catalogName": "Candy Rainbow Run",
+    "environmentId": "candy_carnival_01",
+    "environmentName": "Candy Carnival",
+    "environmentEmoji": "🎡",
+    "physics": "racing_spline",
+    "camera": "race_chase",
+    "genre": "racing",
+    "winCondition": "Complete 3 laps of the Candy Rainbow Run and pass every gate",
+    "codeHint": "Integrate speed control, obstacle dodging, and cornering logic.",
+    "gameObjectives": [
+      "Complete 3 laps",
+      "Pass all checkpoints",
+      "Finish under 100s"
+    ],
+    "campusMode": {
+      "modeNumber": 19,
+      "name": "Candy Rainbow Run",
+      "shortName": "Candy Rainbow Run",
+      "section": "candy_carnival",
+      "camera": "race_chase",
+      "laps": 3,
+      "aiRivals": 3,
+      "desc": "3-lap figure-8 finale through the carnival — beat 3 AI Rovers.",
+      "winCondition": "Finish 1st place across 3 laps.",
+      "codeHint": "Integrate speed control, obstacle dodging, and cornering logic.",
+      "codeTelemetry": "full autonomous racing AI",
+      "props": [],
+      "objectives": [
+        "Complete 3 laps",
+        "Pass all checkpoint gates",
+        "Stay on the rainbow ribbon"
+      ],
+      "starOne": "Finish the race",
+      "starTwo": "Top 2 finish",
+      "starThree": "1st place victory"
+    },
+    "zones": 3,
+    "linkedRaceCourse": "candy_carnival_01",
+    "raceTrackLabel": "Candy Rainbow Run",
     "mkTier": "Hard",
     "mkDifficulty": 4
   },
@@ -1711,7 +1789,7 @@ export const CHASSIS_GAME_MODE_BY_ID = {
     },
     "rewardBadge": "scout_master",
     "unlocksNext": null,
-    "catalogName": "Safari Stampede Cup",
+    "catalogName": "Rainbow Road",
     "environmentId": "rainbow_road",
     "environmentName": "Rainbow Road",
     "environmentEmoji": "🌈",
@@ -1723,17 +1801,17 @@ export const CHASSIS_GAME_MODE_BY_ID = {
     "mkTier": "Hard",
     "mkDifficulty": 4,
     "gameObjectives": [
-      "Complete 2 lap(s)",
+      "Complete 3 laps",
       "Pass all checkpoints",
-      "Finish under 195s"
+      "Finish under 100s"
     ],
-    "winCondition": "Complete 2 lap(s) around Magick Forest Spirals",
+    "winCondition": "Complete 3 laps of Rainbow Road and pass every gate",
     "campusMode": {
       "camera": "race_chase",
       "section": "rainbow_road",
       "props": [],
-      "name": "Safari Stampede Cup",
-      "shortName": "Safari Stampede Cup",
+      "name": "Rainbow Road",
+      "shortName": "Rainbow Road",
       "objectives": [
         "Complete 3 laps",
         "Pass all checkpoint gates",
@@ -4237,11 +4315,11 @@ export const CHASSIS_GAME_MODE_BY_ID = {
     "chassisId": "spider",
     "cat": "chassis_mode",
     "icon": "🕷️",
-    "name": "Web Climbing Ascent",
-    "desc": "Climb the vertical mesh wall to the rooftop exit.",
-    "shortName": "Web Climbing",
-    "tagline": "Climb the vertical mesh wall to the rooftop exit.",
-    "arenaType": "spider_rescue",
+    "name": "The Giant Garden",
+    "desc": "Pick up every ladybird on the flower path, then crawl to the Queen Spider web.",
+    "shortName": "Giant Garden",
+    "tagline": "Pick up every ladybird on the flower path, then crawl to the Queen Spider web.",
+    "arenaType": "sandbox",
     "color": "#10b981",
     "obstacles": 4,
     "totalDist": 13,
@@ -4260,16 +4338,16 @@ export const CHASSIS_GAME_MODE_BY_ID = {
       "variables"
     ],
     "starRequirements": {
-      "one": "Complete the objective",
-      "two": "Hit all checkpoints",
-      "three": "Clean run — no penalties"
+      "one": "Pick up every ladybird",
+      "two": "Hit all web checkpoints",
+      "three": "Crawl to the Queen Spider web"
     },
     "rewardBadge": "spider_mode_1",
     "unlocksNext": "spider_multi_leg_stability_test",
-    "catalogName": "Web Climbing Ascent",
-    "environmentId": "spider_climber",
-    "environmentName": "Vertical Web & Ruins",
-    "environmentEmoji": "🕷️",
+    "catalogName": "The Giant Garden",
+    "environmentId": "giant_garden",
+    "environmentName": "The Giant Garden",
+    "environmentEmoji": "🌻",
     "physics": "walker_climb",
     "camera": "climber_follow",
     "genre": "adventure"
@@ -4279,11 +4357,11 @@ export const CHASSIS_GAME_MODE_BY_ID = {
     "chassisId": "spider",
     "cat": "chassis_mode",
     "icon": "🕷️",
-    "name": "Multi-Leg Stability Test",
-    "desc": "Cross stepping stones without a leg touching void.",
-    "shortName": "Multi-Leg Stability",
-    "tagline": "Cross stepping stones without a leg touching void.",
-    "arenaType": "spider_pipeline",
+    "name": "Treehouse Kingdom",
+    "desc": "Pick up the baby birds along the web bridges, then crawl to the Crown House.",
+    "shortName": "Treehouse Kingdom",
+    "tagline": "Pick up the baby birds along the web bridges, then crawl to the Crown House.",
+    "arenaType": "sandbox",
     "color": "#10b981",
     "obstacles": 5,
     "totalDist": 16,
@@ -4302,16 +4380,16 @@ export const CHASSIS_GAME_MODE_BY_ID = {
       "loops"
     ],
     "starRequirements": {
-      "one": "Complete the objective",
-      "two": "Hit all checkpoints",
-      "three": "Clean run — no penalties"
+      "one": "Pick up the baby birds",
+      "two": "Hit all web checkpoints",
+      "three": "Crawl to the Crown House"
     },
     "rewardBadge": "spider_mode_2",
     "unlocksNext": "spider_ceiling_crawl_infiltration",
-    "catalogName": "Multi-Leg Stability Test",
-    "environmentId": "spider_climber",
-    "environmentName": "Vertical Web & Ruins",
-    "environmentEmoji": "🕷️",
+    "catalogName": "Treehouse Kingdom",
+    "environmentId": "treehouse_kingdom",
+    "environmentName": "Treehouse Kingdom",
+    "environmentEmoji": "🌳",
     "physics": "walker_climb",
     "camera": "climber_follow",
     "genre": "adventure"
@@ -4321,11 +4399,11 @@ export const CHASSIS_GAME_MODE_BY_ID = {
     "chassisId": "spider",
     "cat": "chassis_mode",
     "icon": "🕷️",
-    "name": "Ceiling Crawl Infiltration",
-    "desc": "Traverse upside-down along ceiling rails.",
-    "shortName": "Ceiling Crawl",
-    "tagline": "Traverse upside-down along ceiling rails.",
-    "arenaType": "pipeline_crawl",
+    "name": "The Toy Room",
+    "desc": "Pick up the lost toys on the shelves, then crawl to Bookshelf Mountain.",
+    "shortName": "Toy Room",
+    "tagline": "Pick up the lost toys on the shelves, then crawl to Bookshelf Mountain.",
+    "arenaType": "sandbox",
     "color": "#10b981",
     "obstacles": 6,
     "totalDist": 19,
@@ -4344,16 +4422,16 @@ export const CHASSIS_GAME_MODE_BY_ID = {
       "if/else"
     ],
     "starRequirements": {
-      "one": "Finish the mission",
-      "two": "Hit all checkpoints",
-      "three": "Clean run — no penalties"
+      "one": "Pick up the lost toys",
+      "two": "Hit all shelf checkpoints",
+      "three": "Crawl to Bookshelf Mountain"
     },
     "rewardBadge": "spider_mode_3",
     "unlocksNext": "spider_web_trap_deploy",
-    "catalogName": "Ceiling Crawl Infiltration",
-    "environmentId": "spider_climber",
-    "environmentName": "Vertical Web & Ruins",
-    "environmentEmoji": "🕷️",
+    "catalogName": "The Toy Room",
+    "environmentId": "toy_room",
+    "environmentName": "The Toy Room",
+    "environmentEmoji": "🧸",
     "physics": "walker_climb",
     "camera": "climber_follow",
     "genre": "adventure"
@@ -4363,11 +4441,11 @@ export const CHASSIS_GAME_MODE_BY_ID = {
     "chassisId": "spider",
     "cat": "chassis_mode",
     "icon": "🕷️",
-    "name": "Web Trap Deploy",
-    "desc": "Spin barriers to trap moving targets in the ruins.",
-    "shortName": "Web Trap",
-    "tagline": "Spin barriers to trap moving targets in the ruins.",
-    "arenaType": "temple_climb",
+    "name": "The Sweet Factory",
+    "desc": "Collect every cupcake on the candy belt, then crawl to Gobstopper Tower.",
+    "shortName": "Sweet Factory",
+    "tagline": "Collect every cupcake on the candy belt, then crawl to Gobstopper Tower.",
+    "arenaType": "sandbox",
     "color": "#10b981",
     "obstacles": 7,
     "totalDist": 22,
@@ -4386,16 +4464,16 @@ export const CHASSIS_GAME_MODE_BY_ID = {
       "sensors"
     ],
     "starRequirements": {
-      "one": "Finish the mission",
-      "two": "Hit all checkpoints",
-      "three": "Clean run — no penalties"
+      "one": "Collect every cupcake",
+      "two": "Hit all belt checkpoints",
+      "three": "Crawl to Gobstopper Tower"
     },
     "rewardBadge": "spider_mode_4",
     "unlocksNext": "spider_creepy_crawly_slalom",
-    "catalogName": "Web Trap Deploy",
-    "environmentId": "spider_climber",
-    "environmentName": "Vertical Web & Ruins",
-    "environmentEmoji": "🕷️",
+    "catalogName": "The Sweet Factory",
+    "environmentId": "sweet_factory",
+    "environmentName": "The Sweet Factory",
+    "environmentEmoji": "🍭",
     "physics": "walker_climb",
     "camera": "climber_follow",
     "genre": "adventure"
@@ -4405,11 +4483,11 @@ export const CHASSIS_GAME_MODE_BY_ID = {
     "chassisId": "spider",
     "cat": "chassis_mode",
     "icon": "🕷️",
-    "name": "Creepy Crawly Slalom",
-    "desc": "Weave through tight pillars in the temple climb.",
-    "shortName": "Creepy Crawly",
-    "tagline": "Weave through tight pillars in the temple climb.",
-    "arenaType": "collapsed_building",
+    "name": "The Giant Kitchen",
+    "desc": "Press the tap buttons to stop the leaks, then crawl to the cookie jar.",
+    "shortName": "Giant Kitchen",
+    "tagline": "Press the tap buttons to stop the leaks, then crawl to the cookie jar.",
+    "arenaType": "sandbox",
     "color": "#10b981",
     "obstacles": 8,
     "totalDist": 25,
@@ -4428,16 +4506,16 @@ export const CHASSIS_GAME_MODE_BY_ID = {
       "events"
     ],
     "starRequirements": {
-      "one": "Finish the mission",
-      "two": "Hit all checkpoints",
-      "three": "Clean run — no penalties"
+      "one": "Press the tap buttons",
+      "two": "Hit all kitchen checkpoints",
+      "three": "Crawl to the cookie jar"
     },
     "rewardBadge": "spider_mode_5",
     "unlocksNext": "spider_high_step_hazard_jump",
-    "catalogName": "Creepy Crawly Slalom",
-    "environmentId": "spider_climber",
-    "environmentName": "Vertical Web & Ruins",
-    "environmentEmoji": "🕷️",
+    "catalogName": "The Giant Kitchen",
+    "environmentId": "giant_kitchen",
+    "environmentName": "The Giant Kitchen",
+    "environmentEmoji": "🍪",
     "physics": "walker_climb",
     "camera": "climber_follow",
     "genre": "adventure"
@@ -4447,11 +4525,11 @@ export const CHASSIS_GAME_MODE_BY_ID = {
     "chassisId": "spider",
     "cat": "chassis_mode",
     "icon": "🕷️",
-    "name": "High-Step Hazard Jump",
-    "desc": "Step over pipe obstacles with leg lift blocks.",
-    "shortName": "High-Step Hazard",
-    "tagline": "Step over pipe obstacles with leg lift blocks.",
-    "arenaType": "crystal_caverns",
+    "name": "The Ancient Temple",
+    "desc": "Press the temple buttons in order, then crawl to the Sun Idol.",
+    "shortName": "Ancient Temple",
+    "tagline": "Press the temple buttons in order, then crawl to the Sun Idol.",
+    "arenaType": "sandbox",
     "color": "#10b981",
     "obstacles": 9,
     "totalDist": 28,
@@ -4470,16 +4548,16 @@ export const CHASSIS_GAME_MODE_BY_ID = {
       "functions"
     ],
     "starRequirements": {
-      "one": "Finish the mission",
-      "two": "Beat the time target",
-      "three": "Clean run — no penalties"
+      "one": "Press the temple buttons",
+      "two": "Hit all ruin checkpoints",
+      "three": "Crawl to the Sun Idol"
     },
     "rewardBadge": "spider_mode_6",
     "unlocksNext": "spider_vibration_sensor_detect",
-    "catalogName": "High-Step Hazard Jump",
-    "environmentId": "spider_climber",
-    "environmentName": "Vertical Web & Ruins",
-    "environmentEmoji": "🕷️",
+    "catalogName": "The Ancient Temple",
+    "environmentId": "ancient_temple",
+    "environmentName": "The Ancient Temple",
+    "environmentEmoji": "🗿",
     "physics": "walker_climb",
     "camera": "climber_follow",
     "genre": "adventure"
@@ -4489,11 +4567,11 @@ export const CHASSIS_GAME_MODE_BY_ID = {
     "chassisId": "spider",
     "cat": "chassis_mode",
     "icon": "🕷️",
-    "name": "Vibration Sensor Detect",
-    "desc": "Locate hidden movement using floor vibration data.",
-    "shortName": "Vibration Sensor",
-    "tagline": "Locate hidden movement using floor vibration data.",
-    "arenaType": "jump_world",
+    "name": "The Robot Factory",
+    "desc": "Carry the broken robot parts to the repair pads.",
+    "shortName": "Robot Factory",
+    "tagline": "Carry the broken robot parts to the repair pads.",
+    "arenaType": "sandbox",
     "color": "#10b981",
     "obstacles": 10,
     "totalDist": 31,
@@ -4512,16 +4590,16 @@ export const CHASSIS_GAME_MODE_BY_ID = {
       "state machines"
     ],
     "starRequirements": {
-      "one": "Finish the mission",
-      "two": "Beat the time target",
-      "three": "Clean run — no penalties"
+      "one": "Carry the robot parts",
+      "two": "Drop them at every repair pad",
+      "three": "Finish at the Master Assembler"
     },
     "rewardBadge": "spider_mode_7",
     "unlocksNext": "spider_arachnid_speed_dash",
-    "catalogName": "Vibration Sensor Detect",
-    "environmentId": "spider_climber",
-    "environmentName": "Vertical Web & Ruins",
-    "environmentEmoji": "🕷️",
+    "catalogName": "The Robot Factory",
+    "environmentId": "robot_factory_climb",
+    "environmentName": "The Robot Factory",
+    "environmentEmoji": "🤖",
     "physics": "walker_climb",
     "camera": "climber_follow",
     "genre": "adventure"
@@ -4531,11 +4609,11 @@ export const CHASSIS_GAME_MODE_BY_ID = {
     "chassisId": "spider",
     "cat": "chassis_mode",
     "icon": "🕷️",
-    "name": "Arachnid Speed Dash",
-    "desc": "Skitter sideways at top speed through the pipeline.",
-    "shortName": "Arachnid Speed",
-    "tagline": "Skitter sideways at top speed through the pipeline.",
-    "arenaType": "deep_cave",
+    "name": "Sky Islands",
+    "desc": "Light up every island lantern as you crawl the web bridges.",
+    "shortName": "Sky Islands",
+    "tagline": "Light up every island lantern as you crawl the web bridges.",
+    "arenaType": "sandbox",
     "color": "#10b981",
     "obstacles": 11,
     "totalDist": 34,
@@ -4554,16 +4632,16 @@ export const CHASSIS_GAME_MODE_BY_ID = {
       "timing"
     ],
     "starRequirements": {
-      "one": "Finish the mission",
-      "two": "Beat the time target",
-      "three": "Clean run — no penalties"
+      "one": "Light up every lantern",
+      "two": "Hit all island checkpoints",
+      "three": "Crawl to the Wind Engine"
     },
     "rewardBadge": "spider_mode_8",
     "unlocksNext": "spider_inverse_kinematics_gait",
-    "catalogName": "Arachnid Speed Dash",
-    "environmentId": "spider_climber",
-    "environmentName": "Vertical Web & Ruins",
-    "environmentEmoji": "🕷️",
+    "catalogName": "Sky Islands",
+    "environmentId": "sky_islands_web",
+    "environmentName": "Sky Islands",
+    "environmentEmoji": "☁️",
     "physics": "walker_climb",
     "camera": "climber_follow",
     "genre": "adventure"
@@ -4573,11 +4651,11 @@ export const CHASSIS_GAME_MODE_BY_ID = {
     "chassisId": "spider",
     "cat": "chassis_mode",
     "icon": "🕷️",
-    "name": "Inverse Kinematics Gait",
-    "desc": "Adjust leg heights for extreme slope angles.",
-    "shortName": "Inverse Kinematics",
-    "tagline": "Adjust leg heights for extreme slope angles.",
-    "arenaType": "colosseum",
+    "name": "Crystal Caverns",
+    "desc": "Collect the glowing crystals, then crawl to the Heart Crystal.",
+    "shortName": "Crystal Caverns",
+    "tagline": "Collect the glowing crystals, then crawl to the Heart Crystal.",
+    "arenaType": "sandbox",
     "color": "#10b981",
     "obstacles": 12,
     "totalDist": 37,
@@ -4596,16 +4674,16 @@ export const CHASSIS_GAME_MODE_BY_ID = {
       "optimization"
     ],
     "starRequirements": {
-      "one": "Finish the mission",
-      "two": "Beat the time target",
-      "three": "Perfect mastery run"
+      "one": "Collect the glowing crystals",
+      "two": "Hit all cave checkpoints",
+      "three": "Crawl to the Heart Crystal"
     },
     "rewardBadge": "spider_mode_9",
     "unlocksNext": "spider_spider_queen_showdown",
-    "catalogName": "Inverse Kinematics Gait",
-    "environmentId": "spider_climber",
-    "environmentName": "Vertical Web & Ruins",
-    "environmentEmoji": "🕷️",
+    "catalogName": "Crystal Caverns",
+    "environmentId": "crystal_caverns",
+    "environmentName": "Crystal Caverns",
+    "environmentEmoji": "💎",
     "physics": "walker_climb",
     "camera": "climber_follow",
     "genre": "adventure"
@@ -4615,11 +4693,11 @@ export const CHASSIS_GAME_MODE_BY_ID = {
     "chassisId": "spider",
     "cat": "chassis_mode",
     "icon": "🕷️",
-    "name": "Spider Queen Showdown",
-    "desc": "Scale the colossal tower and defeat the boss gate.",
-    "shortName": "Spider Queen",
-    "tagline": "Scale the colossal tower and defeat the boss gate.",
-    "arenaType": "temple_climb",
+    "name": "The Clockwork Castle",
+    "desc": "Collect every gear, then crawl to the Great Clock Tower.",
+    "shortName": "Clockwork Castle",
+    "tagline": "Collect every gear, then crawl to the Great Clock Tower.",
+    "arenaType": "sandbox",
     "color": "#10b981",
     "obstacles": 14,
     "totalDist": 40,
@@ -4638,16 +4716,16 @@ export const CHASSIS_GAME_MODE_BY_ID = {
       "sequential blocks"
     ],
     "starRequirements": {
-      "one": "Finish the mission",
-      "two": "Beat the time target",
-      "three": "Perfect mastery run"
+      "one": "Collect every gear",
+      "two": "Hit all clock checkpoints",
+      "three": "Crawl to the Great Clock Tower"
     },
     "rewardBadge": "spider_master",
     "unlocksNext": null,
-    "catalogName": "Spider Queen Showdown",
-    "environmentId": "spider_climber",
-    "environmentName": "Vertical Web & Ruins",
-    "environmentEmoji": "🕷️",
+    "catalogName": "The Clockwork Castle",
+    "environmentId": "clockwork_castle",
+    "environmentName": "The Clockwork Castle",
+    "environmentEmoji": "⚙️",
     "physics": "walker_climb",
     "camera": "climber_follow",
     "genre": "adventure"
@@ -16224,6 +16302,22 @@ export const CHASSIS_GAME_MODE_BY_ID = {
   }
 };
 
+// Modes 11–50: copy each robot's game setup (engine, arena, links) from its
+// first original mode, then add the tier level's own name, goal and difficulty.
+// (Opponents, goals and time come from the linked course and the tier level, not mode 1.)
+const ENGINE_KEYS = [
+  'cat', 'icon', 'color', 'arenaType', 'genre', 'environmentId', 'environmentName', 'environmentEmoji',
+  'physics', 'camera', 'linkedFootballCourse', 'linkedFightCourse', 'linkedRaceCourse',
+];
+for (const chassisId of EXPANDED_ROBOT_IDS) {
+  const extraIds = EXPANDED_CHASSIS_MODE_IDS_BY_ROBOT[chassisId] || [];
+  if (!CHASSIS_MODE_MAP[chassisId]) CHASSIS_MODE_MAP[chassisId] = [];
+  const first = CHASSIS_GAME_MODE_BY_ID[CHASSIS_MODE_MAP[chassisId][0]] || {};
+  const engine = Object.fromEntries(ENGINE_KEYS.filter((k) => first[k] !== undefined).map((k) => [k, first[k]]));
+  CHASSIS_MODE_MAP[chassisId].push(...extraIds);
+  for (const id of extraIds) CHASSIS_GAME_MODE_BY_ID[id] = { ...engine, ...EXPANDED_CHASSIS_MODES[id] };
+}
+
 export const ALL_CHASSIS_GAME_MODES = Object.values(CHASSIS_GAME_MODE_BY_ID);
 
 /** All chassis IDs with dedicated mode sets */
@@ -16240,7 +16334,10 @@ export function resolveChassisModeCourse(mode, allCourses = []) {
   // robots take their arena name, goal and scene from the Arena Bible.
   const studioChassis = isPrimaryStudioChassis(mode.chassisId) && !isCarChassis(mode.chassisId);
   const attach = (resolved) => {
-    const named = studioChassis ? applyPrimaryStudioMeta(resolved) : resolved;
+    const studioNamed = studioChassis ? applyPrimaryStudioMeta(resolved) : resolved;
+    // Keep the chosen Arena Bible environment while restoring the expansion's
+    // tier name, objective and difficulty after the arena supplies its visuals.
+    const named = studioNamed;
     const spec = getGameModeSpec(mode.id);
     return {
       ...named,
@@ -16353,7 +16450,7 @@ export function resolveChassisModeCourse(mode, allCourses = []) {
   return attach(resolved);
 }
 
-/** Get exactly 10 game modes for a chassis — strict filter */
+/** Get this robot's original missions plus its expanded difficulty tiers. */
 export function getCoursesForChassis(chassisId, allCourses = []) {
   const key = resolveChassisKey(chassisId);
   const ids = CHASSIS_MODE_MAP[key] ?? CHASSIS_MODE_MAP.custom;

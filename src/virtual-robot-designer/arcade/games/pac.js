@@ -2,6 +2,7 @@
  * Pac-Bot — a maze-chase game. Eat every energy dot, dodge the Glitch Bugs,
  * grab a power battery to gobble them. Teaches wall-following and If/Else.
  */
+import { createArcadeExpansion } from '../expanded-levels.js';
 
 export const COLS = 19, ROWS = 15, CELL = 32;
 const W = COLS * CELL, H = ROWS * CELL;
@@ -114,6 +115,7 @@ const LEVELS = [
     bugs: [{ at: [17, 13], step: 0.5, chase: 0.3 }, { at: [9, 7], step: 0.54, chase: 0.25 }, { at: [17, 1], step: 0.58, chase: 0.2 }],
     palette: ['move', 'turn_left', 'turn_right', 'turn_around', 'forever', 'if', 'else', 'repeat', 'repeat_until'] },
 ];
+LEVELS.push(...createArcadeExpansion({ id: 'pacbot', title: 'Pac-Bot', emoji: '🟡', color: '#facc15', levels: LEVELS }, { pathCells, perfectMaze, noDeadEnds, ring }));
 
 const POWER_TIME = 7;
 const BUG_COLORS = ['#ef4444', '#a855f7', '#f97316'];
@@ -305,3 +307,4 @@ export const pac = {
   },
   progress(w) { return { current: w.eaten, target: w.need, label: 'dots gobbled', pct: Math.round((w.eaten / w.need) * 100) }; },
 };
+export { pathCells, perfectMaze, noDeadEnds, ring };

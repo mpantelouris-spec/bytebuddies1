@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useUser } from '../contexts/UserContext';
+import { EmojiIcon, IconText } from './ui/Icon.jsx';
+import ProfileAvatar from './ui/ProfileAvatar.jsx';
 
 /* ─── Socratic system prompt ─── */
 const buildSystemPrompt = (language, moduleContext, code) => `You are CodeMentor, a Socratic coding tutor for UK primary school children aged 7-11 on the ByteBuddies platform.
@@ -182,12 +184,12 @@ export default function AIAssistant({ code, language, moduleContext }) {
   return (
     <div className="panel" style={{ width: 320, minWidth: 280, display: 'flex', flexDirection: 'column' }}>
       <div className="panel-header">
-        <span>🤖 CodeMentor AI</span>
+        <span><EmojiIcon e="🤖" style={{ marginRight: '0.35em' }} />CodeMentor AI</span>
         <span
           className={`tag ${hasApiKey ? 'tag-success' : 'tag-warning'}`}
           style={{ marginLeft: 'auto', fontSize: 9 }}
         >
-          {hasApiKey ? '✨ Claude AI' : 'Basic Mode'}
+          <IconText>{hasApiKey ? '✨ Claude AI' : 'Basic Mode'}</IconText>
         </span>
       </div>
 
@@ -216,21 +218,19 @@ export default function AIAssistant({ code, language, moduleContext }) {
         {messages.map((msg, i) => (
           <div key={i} className={`chat-message chat-message-${msg.role === 'ai' ? 'ai' : 'user'}`}>
             {msg.role === 'ai' && (
-              <div className="avatar avatar-sm" style={{ background: 'var(--gradient-success)', fontSize: 12 }}>🤖</div>
+              <div className="avatar avatar-sm" style={{ background: 'var(--gradient-success)', fontSize: 12 }}><EmojiIcon e="🤖" /></div>
             )}
             <div className={`chat-bubble chat-bubble-${msg.role === 'ai' ? 'ai' : 'user'}`}>
               <MessageContent content={msg.content} />
             </div>
             {msg.role === 'user' && (
-              <div className="avatar avatar-sm" style={{ fontSize: 12 }}>
-                {user?.avatarEmoji || user?.avatar || 'You'}
-              </div>
+              <ProfileAvatar value={user?.avatarEmoji} name={user?.name} size={28} />
             )}
           </div>
         ))}
         {isTyping && (
           <div className="chat-message chat-message-ai">
-            <div className="avatar avatar-sm" style={{ background: 'var(--gradient-success)', fontSize: 12 }}>🤖</div>
+            <div className="avatar avatar-sm" style={{ background: 'var(--gradient-success)', fontSize: 12 }}><EmojiIcon e="🤖" /></div>
             <div className="chat-bubble chat-bubble-ai">
               <span className="animate-pulse">Thinking... 🤔</span>
             </div>

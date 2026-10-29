@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback, useImperativeHandle, forwardRef } from 'react';
+import { EmojiIcon } from '../../components/ui/Icon.jsx';
 
 const SIM_ROBOTS = [
   { id: 'rover',    label: 'Rover',     icon: '🚗', color: '#6366f1', desc: 'Wheeled explorer robot' },
@@ -1738,7 +1739,7 @@ const VirtualRobot = forwardRef(function VirtualRobot({ simRobotType, simTrack, 
       }}>
         {/* Headlights row — always visible */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span style={{ fontSize: 11, color: '#64748b', fontWeight: 700, width: 78 }}>💡 Headlights</span>
+          <span style={{ fontSize: 11, color: '#64748b', fontWeight: 700, width: 78 }}><EmojiIcon e="💡" style={{ marginRight: '0.35em' }} />Headlights</span>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             {['L','R'].map((side, i) => {
               const c = i === 0 ? out.headlightL : out.headlightR;
@@ -1763,7 +1764,7 @@ const VirtualRobot = forwardRef(function VirtualRobot({ simRobotType, simTrack, 
         {/* NeoPixel strip */}
         {out.neopixels.some(Boolean) && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 11, color: '#64748b', fontWeight: 700, width: 78 }}>🌈 NeoPixels</span>
+            <span style={{ fontSize: 11, color: '#64748b', fontWeight: 700, width: 78 }}><EmojiIcon e="🌈" style={{ marginRight: '0.35em' }} />NeoPixels</span>
             <div style={{ display: 'flex', gap: 4 }}>
               {out.neopixels.map((c, i) => {
                 const col = rgbStr(c) || '#1e293b';

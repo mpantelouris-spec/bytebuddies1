@@ -13,6 +13,7 @@ export function isFootballCourseId(courseId) {
 
 /** Always return a full football course object — prevents boxing arena hijacking football. */
 export function resolveFootballLabCourse(course, robotConfig = {}) {
+  if (course?.customArena) return course; // Arena Maker arenas: play them with any robot
   const chassis = robotConfig?.chassisId || '';
   const pick = (id) => FOOTBALL_COURSES.find((c) => c.id === id) || FOOTBALL_COURSES[0];
 

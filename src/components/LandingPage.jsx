@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import { isSlowConnection } from '../utils/network.js';
+import { EmojiIcon } from './ui/Icon.jsx';
 
 const pill = { display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: 100, padding: '5px 14px', fontSize: 12, color: '#a5b4fc' };
 const card = { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16, padding: '28px 24px' };
@@ -6,8 +8,9 @@ const sectionLabel = { fontSize: 12, fontWeight: 700, letterSpacing: 3, color: '
 const gradText = { background: 'linear-gradient(90deg, #818cf8, #c084fc)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' };
 
 export const CONTACT_EMAIL = 'bytebuddies.technology@gmail.com';
-const DEMO_VIDEO = '/media/bytebuddies-tour.mp4?v=neural-voice';
-const DEMO_POSTER = '/media/bytebuddies-tour-poster.jpg';
+// Slow connections get the 480p copy (4 MB) instead of 1080p (26 MB)
+const DEMO_VIDEO = isSlowConnection() ? '/media/bytebuddies-tour-480p.mp4?v=2026-10' : '/media/bytebuddies-tour.mp4?v=2026-10';
+const DEMO_POSTER = '/media/bytebuddies-tour-poster.jpg?v=2026-10';
 const fieldStyle = { width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '11px 14px', fontSize: 14, color: '#fff', marginBottom: 12, boxSizing: 'border-box', outline: 'none' };
 
 const RESPONSIVE_CSS = `
@@ -15,45 +18,95 @@ const RESPONSIVE_CSS = `
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 16px 48px;
+    min-height: 72px;
+    padding: 0 clamp(16px, 4vw, 48px);
     border-bottom: 1px solid rgba(255,255,255,0.06);
     position: sticky;
     top: 0;
     background: rgba(8,8,18,0.92);
     backdrop-filter: blur(16px);
     z-index: 100;
-    gap: 16px;
+    gap: clamp(12px, 2vw, 28px);
   }
   .lp-nav-links {
     display: flex;
-    gap: 32px;
+    align-items: center;
+    gap: 2px;
+    padding: 4px;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+    background: rgba(255,255,255,0.035);
     font-size: 14px;
-    color: #64748b;
+    color: #a8b0c2;
   }
   .lp-nav-links a {
-    color: #64748b;
+    padding: 9px 12px;
+    border-radius: 8px;
+    color: #a8b0c2;
     text-decoration: none;
-    transition: color 0.2s;
+    transition: color 0.15s, background 0.15s;
     white-space: nowrap;
+    font-weight: 600;
   }
-  .lp-nav-links a:hover { color: #a5b4fc; }
+  .lp-nav-links a:hover { color: #fff; background: rgba(255,255,255,0.08); }
   .lp-nav-actions {
     display: flex;
-    gap: 10px;
+    align-items: center;
+    gap: 8px;
     flex-shrink: 0;
+  }
+  .lp-nav-actions button {
+    min-height: 40px;
+    border-radius: 9px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: transform 0.15s, background 0.15s, border-color 0.15s;
+  }
+  .lp-nav-actions button:hover { transform: translateY(-1px); }
+  .lp-nav-login {
+    padding: 0 16px;
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.16);
+    color: #d4d9e5;
+    font-size: 13px;
+    font-weight: 650;
+  }
+  .lp-nav-login:hover { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.28); }
+  .lp-nav-signup {
+    padding: 0 18px;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    border: 1px solid rgba(196,181,253,0.35);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 750;
+    box-shadow: 0 5px 18px rgba(99,102,241,0.24);
+  }
+  .lp-nav-signup:hover { box-shadow: 0 7px 22px rgba(99,102,241,0.34); }
+  .lp-nav-actions .lp-nav-dev {
+    min-height: 34px;
+    padding: 0 10px;
+    background: rgba(16,185,129,0.08);
+    border: 1px solid rgba(16,185,129,0.22);
+    color: #6ee7b7;
+    font-size: 11px;
+    font-weight: 700;
   }
   .lp-hamburger {
     display: none;
     background: none;
     border: 1px solid rgba(255,255,255,0.15);
-    border-radius: 8px;
-    color: #94a3b8;
+    border-radius: 10px;
+    color: #e2e8f0;
     cursor: pointer;
-    padding: 8px 12px;
+    width: 42px;
+    height: 42px;
+    padding: 0;
     font-size: 18px;
     line-height: 1;
     flex-shrink: 0;
+    transition: background 0.15s, border-color 0.15s;
   }
+  .lp-hamburger:hover { background: rgba(255,255,255,0.07); border-color: rgba(255,255,255,0.28); }
   .lp-mobile-menu {
     display: none;
     flex-direction: column;
@@ -100,18 +153,18 @@ const RESPONSIVE_CSS = `
   }
 
   @media (max-width: 900px) {
-    .lp-nav { padding: 14px 24px; }
-    .lp-nav-links { gap: 20px; font-size: 13px; }
+    .lp-nav { gap: 12px; }
+    .lp-nav-links { font-size: 12px; }
+    .lp-nav-links a { padding: 8px 9px; }
+    .lp-nav-actions { gap: 6px; }
     .lp-section-pad { padding: 64px 20px; }
     .lp-trust-bar { gap: 28px; }
     .lp-two-col { gap: 36px; }
     .lp-footer { padding: 28px 24px; }
   }
 
-  @media (max-width: 640px) {
-    .lp-nav { padding: 12px 16px; }
+  @media (max-width: 880px) {
     .lp-nav-links { display: none; }
-    .lp-nav-actions { display: none; }
     .lp-hamburger { display: flex; align-items: center; justify-content: center; }
     .lp-section-pad { padding: 48px 16px; }
     .lp-trust-bar { gap: 20px; padding: 16px; }
@@ -119,13 +172,16 @@ const RESPONSIVE_CSS = `
     .lp-footer { padding: 24px 16px; flex-direction: column; text-align: center; }
   }
 
+  @media (max-width: 560px) {
+    .lp-nav-actions { display: none; }
+  }
   @media (max-width: 420px) {
     .lp-section-pad { padding: 36px 14px; }
     .lp-trust-bar { padding: 14px; }
   }
 `;
 
-export default function LandingPage({ onLogin, onSignup, onDevGuest }) {
+export default function LandingPage({ onLogin, onTeacherLogin, onSignup, onDevGuest }) {
   const [xp, setXp] = useState(340);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [enquiry, setEnquiry] = useState({ type: 'Book a demo', school: '', name: '', email: '', pupils: '', country: '', message: '' });
@@ -195,25 +251,27 @@ export default function LandingPage({ onLogin, onSignup, onDevGuest }) {
         <div className="lp-nav-actions">
           {onDevGuest && (
             <button type="button" onClick={onDevGuest} title="Local dev only — no Firebase"
-              style={{ padding: '9px 14px', background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.35)', borderRadius: 8, color: '#6ee7b7', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>
+              className="lp-nav-dev">
               Dev guest
             </button>
           )}
-          <button onClick={onLogin} style={{ padding: '9px 20px', background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, color: '#94a3b8', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>Log In</button>
-          <button onClick={onSignup} style={{ padding: '9px 22px', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', border: 'none', borderRadius: 8, color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 700, boxShadow: '0 0 20px rgba(99,102,241,0.4)' }}>Start Free</button>
+          <button className="lp-nav-login" onClick={onTeacherLogin || onLogin}>Teacher sign in</button>
+          <button className="lp-nav-login" onClick={onLogin}>Log In</button>
+          <button className="lp-nav-signup" onClick={onSignup}>Start Free</button>
         </div>
 
-        <button className="lp-hamburger" onClick={() => setMobileMenuOpen(o => !o)} aria-label="Menu">
+        <button className="lp-hamburger" onClick={() => setMobileMenuOpen(o => !o)} aria-label="Menu" aria-expanded={mobileMenuOpen} aria-controls="lp-mobile-menu">
           {mobileMenuOpen ? '✕' : '☰'}
         </button>
       </nav>
 
       {/* MOBILE MENU */}
-      <div className={`lp-mobile-menu${mobileMenuOpen ? ' open' : ''}`}>
+      <div id="lp-mobile-menu" className={`lp-mobile-menu${mobileMenuOpen ? ' open' : ''}`}>
         {navLinks.map(([l, id]) => (
           <a key={l} href={`#${id}`} onClick={() => setMobileMenuOpen(false)}>{l}</a>
         ))}
         <div className="lp-mobile-menu-actions">
+          <button onClick={() => { setMobileMenuOpen(false); (onTeacherLogin || onLogin)(); }} style={{ flex: 1, padding: '11px', background: 'transparent', border: '1px solid rgba(16,185,129,0.35)', borderRadius: 8, color: '#6ee7b7', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>Teacher sign in</button>
           <button onClick={() => { setMobileMenuOpen(false); onLogin(); }} style={{ flex: 1, padding: '11px', background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, color: '#94a3b8', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>Log In</button>
           <button onClick={() => { setMobileMenuOpen(false); onSignup(); }} style={{ flex: 1, padding: '11px', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', border: 'none', borderRadius: 8, color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 700 }}>Start Free</button>
         </div>
@@ -245,10 +303,10 @@ export default function LandingPage({ onLogin, onSignup, onDevGuest }) {
             Claim Your Free First Lesson
           </button>
           <button onClick={() => { window.location.hash = 'learn/y3/w01'; }} style={{ padding: 'clamp(14px,3vw,18px) clamp(18px,3vw,32px)', background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.4)', borderRadius: 14, color: '#6ee7b7', cursor: 'pointer', fontSize: 'clamp(14px,2vw,16px)', fontWeight: 700 }}>
-            📚 Open Year 3 Week 1 (no login)
+            <EmojiIcon e="📚" style={{ marginRight: '0.35em' }} />Open Year 3 Week 1 (no login)
           </button>
           <button onClick={() => document.getElementById('demo-video')?.scrollIntoView({ behavior: 'smooth' })} style={{ padding: 'clamp(14px,3vw,18px) clamp(18px,3vw,32px)', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 14, color: '#cbd5e1', cursor: 'pointer', fontSize: 'clamp(14px,2vw,16px)', fontWeight: 600 }}>
-            ▶ Watch the Demo
+            <EmojiIcon e="▶" style={{ marginRight: '0.35em' }} />Watch the Demo
           </button>
         </div>
 
@@ -266,7 +324,7 @@ export default function LandingPage({ onLogin, onSignup, onDevGuest }) {
           <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 1.4, color: '#6ee7b7', marginBottom: 6 }}>NEW · GLOBAL PRIMARY COMPUTING · DETAILED EDITION</div>
           <div style={{ fontSize: 22, fontWeight: 900, marginBottom: 8 }}>152 classroom-ready lessons · Years 3–6</div>
           <p style={{ fontSize: 15, color: '#cbd5e1', lineHeight: 1.6, margin: '0 0 14px' }}>
-            Week 1 is live: <b>Welcome to ByteBuddies — safe, smart computing</b>. Teach notes, vocabulary, Device charter, three activities with support and stretch, plus a 4-question quiz with reasons — not a generic world map.
+            There are 38 lessons in each year group (Years 3–6), 152 across the full KS2 path. Week 1 is live: <b>Welcome to ByteBuddies — safe, smart computing</b>, with teacher notes, vocabulary, activities, and a quiz.
           </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
             {['Device charter', 'Password vs PIN', 'Dot the robot', 'Quiz with why'].map((t) => (
@@ -284,13 +342,13 @@ export default function LandingPage({ onLogin, onSignup, onDevGuest }) {
         <div style={{ maxWidth: 960, margin: '0 auto' }}>
           <div style={sectionLabel}>See It In Action</div>
           <h2 style={{ fontSize: 'clamp(22px, 4vw, 44px)', fontWeight: 900, marginBottom: 12, letterSpacing: '-0.5px' }}>
-            A 5-minute tour of ByteBuddies
+            A 2½-minute tour of ByteBuddies
           </h2>
           <p style={{ color: '#64748b', fontSize: 'clamp(13px,2vw,16px)', lineHeight: 1.7, maxWidth: 620, margin: '0 auto 28px' }}>
-            See everything pupils and teachers get: KS2 lessons, missions, 3D Robot Studio, game design, classroom tools, marking, Google Classroom and lesson plans, with a full voiceover.
+            See everything pupils, teachers and parents get: KS2 lessons, story missions, Game Builder, 3D Robot Studio, Robot Lab, Classroom, Google Classroom, the staff planner and the parent view, with a full voiceover.
           </p>
           <div style={{ borderRadius: 20, overflow: 'hidden', border: '1px solid rgba(99,102,241,0.35)', boxShadow: '0 20px 80px rgba(99,102,241,0.25)', background: '#000', aspectRatio: '16 / 9' }}>
-            <video src={DEMO_VIDEO} poster={DEMO_POSTER} controls playsInline preload="metadata" aria-label="Narrated tour of ByteBuddies for pupils and teachers" style={{ width: '100%', height: '100%', display: 'block', objectFit: 'cover' }}>
+            <video src={DEMO_VIDEO} poster={DEMO_POSTER} controls playsInline preload="none" aria-label="Narrated tour of ByteBuddies for pupils and teachers" style={{ width: '100%', height: '100%', display: 'block', objectFit: 'contain', background: '#000' }}>
               Your browser cannot play this video.
             </video>
           </div>
@@ -330,7 +388,7 @@ export default function LandingPage({ onLogin, onSignup, onDevGuest }) {
             { icon: '😟', color: '#8b5cf6', title: 'Parents are left guessing', body: "You know coding matters. You've tried YouTube tutorials and free apps. They lose interest in 20 minutes. You're left wondering: is there something out there that actually works?" },
           ].map(p => (
             <div key={p.title} style={{ ...card, textAlign: 'left', borderTop: `3px solid ${p.color}20`, background: 'rgba(255,255,255,0.025)' }}>
-              <div style={{ fontSize: 32, marginBottom: 14 }}>{p.icon}</div>
+              <div style={{ fontSize: 32, marginBottom: 14 }}><EmojiIcon e={p.icon} /></div>
               <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 10, color: '#e2e8f0' }}>{p.title}</div>
               <div style={{ fontSize: 14, color: '#64748b', lineHeight: 1.75 }}>{p.body}</div>
             </div>
@@ -357,7 +415,7 @@ export default function LandingPage({ onLogin, onSignup, onDevGuest }) {
               { icon: '🛡️', color: '#10b981', title: 'Safe and structured', body: 'Every lesson has a goal. Every project has a mentor path. Kids always know what to do next, and parents always know what kids are learning.' },
             ].map(s => (
               <div key={s.title} style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${s.color}25`, borderRadius: 16, padding: '28px 22px', textAlign: 'left' }}>
-                <div style={{ width: 48, height: 48, background: `${s.color}18`, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, marginBottom: 16 }}>{s.icon}</div>
+                <div style={{ width: 48, height: 48, background: `${s.color}18`, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, marginBottom: 16 }}><EmojiIcon e={s.icon} /></div>
                 <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 10, color: '#e2e8f0' }}>{s.title}</div>
                 <div style={{ fontSize: 13, color: '#64748b', lineHeight: 1.75 }}>{s.body}</div>
               </div>
@@ -418,7 +476,7 @@ export default function LandingPage({ onLogin, onSignup, onDevGuest }) {
                 { icon: '🏆', title: 'Live Leaderboards', desc: 'Friendly competition with classmates drives motivation without pressure. Updated in real time.' },
               ].map(f => (
                 <div key={f.title} style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-                  <div style={{ width: 40, height: 40, background: 'rgba(99,102,241,0.15)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>{f.icon}</div>
+                  <div style={{ width: 40, height: 40, background: 'rgba(99,102,241,0.15)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}><EmojiIcon e={f.icon} /></div>
                   <div>
                     <div style={{ fontWeight: 700, fontSize: 14, color: '#e2e8f0', marginBottom: 3 }}>{f.title}</div>
                     <div style={{ fontSize: 13, color: '#475569', lineHeight: 1.6 }}>{f.desc}</div>
@@ -437,7 +495,7 @@ export default function LandingPage({ onLogin, onSignup, onDevGuest }) {
                 <div style={{ fontSize: 11, color: '#6366f1', fontWeight: 600 }}>Level 7 — Game Dev Specialist</div>
               </div>
               <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, padding: '4px 10px' }}>
-                <span style={{ fontSize: 14 }}>🔥</span>
+                <span style={{ fontSize: 14 }}><EmojiIcon e="🔥" /></span>
                 <span style={{ fontWeight: 800, fontSize: 14, color: '#ef4444' }}>14</span>
                 <span style={{ fontSize: 11, color: '#64748b' }}>day streak</span>
               </div>
@@ -512,7 +570,7 @@ export default function LandingPage({ onLogin, onSignup, onDevGuest }) {
               { icon: '🔌', color: '#8b5cf6', title: 'Real hardware when you have it', body: 'The same skills flash straight to micro:bit, Arduino and mBot. Kits are optional, never required.' },
             ].map(f => (
               <div key={f.title} style={{ ...card, textAlign: 'left', background: 'rgba(255,255,255,0.025)', borderTop: `3px solid ${f.color}` }}>
-                <div style={{ fontSize: 30, marginBottom: 12 }}>{f.icon}</div>
+                <div style={{ fontSize: 30, marginBottom: 12 }}><EmojiIcon e={f.icon} /></div>
                 <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 8, color: '#e2e8f0' }}>{f.title}</div>
                 <div style={{ fontSize: 14, color: '#64748b', lineHeight: 1.7 }}>{f.body}</div>
               </div>
@@ -604,7 +662,7 @@ export default function LandingPage({ onLogin, onSignup, onDevGuest }) {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 24 }}>
             {[
-              { step: '01', title: 'Create your account', desc: 'Sign up free as a student, parent, or teacher. No credit card. No commitment. Under 30 seconds.' },
+              { step: '01', title: 'Arrange school access', desc: 'Agree a school quote with us. We activate your teacher account with the pupil places included, and you add pupils from your classroom.' },
               { step: '02', title: 'Pick what to build', desc: 'Choose from Game Builder, Robot Lab, Block Coding, AI Projects, or a guided Challenge.' },
               { step: '03', title: 'Start creating', desc: 'Write code, build projects, see results instantly. Every lesson has a clear goal and a reward at the end.' },
               { step: '04', title: 'Level up and share', desc: 'Earn XP and badges, publish your project, compete on the leaderboard, and keep building.' },
@@ -742,7 +800,8 @@ export default function LandingPage({ onLogin, onSignup, onDevGuest }) {
         </div>
         <div style={{ fontSize: 13, color: '#334155' }}>© 2026 ByteBuddies · Built for the next generation of creators</div>
         <div style={{ display: 'flex', gap: 24, fontSize: 13, color: '#334155' }}>
-          {['Privacy', 'Terms'].map(l => <span key={l} style={{ cursor: 'pointer' }}>{l}</span>)}
+          <a href="/privacy.html" style={{ color: 'inherit', textDecoration: 'none' }}>Privacy &amp; Google data</a>
+          <a href="/terms.html" style={{ color: 'inherit', textDecoration: 'none' }}>Terms</a>
           <a href={`mailto:${CONTACT_EMAIL}`} style={{ color: '#334155', textDecoration: 'none' }}>Contact</a>
         </div>
       </div>

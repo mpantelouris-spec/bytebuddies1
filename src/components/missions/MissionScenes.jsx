@@ -237,7 +237,7 @@ function Dive({ lines, done }) {
       <OceanBg depth={depth / 200} />
       <g>{[0, 50, 100, 150, 200].map((d) => <g key={d}><line x1="360" x2="390" y1={30 + d} y2={30 + d} stroke="#bae6fd" opacity="0.5" /><text x="350" y={34 + d} textAnchor="end" fontSize="10" fill="#bae6fd">{d}m</text></g>)}</g>
       <g style={{ transition: 'transform .6s ease-in-out', transform: `translateY(${30 + Math.min(200, depth)}px)` }}><Sub x={200} y={0} lights={depth > 40} /></g>
-      {warn && <g transform="translate(70 40)"><g className="ms-c" style={{ animation: 'ms-pulse .8s infinite' }}><rect x="-50" y="-14" width="100" height="26" rx="8" fill="#dc2626" /><text y="4" textAnchor="middle" fontSize="11" fontWeight="900" fill="#fff">⚠ PRESSURE</text></g></g>}
+      {warn && <g transform="translate(70 40)"><g className="ms-c" style={{ animation: 'ms-pulse .8s infinite' }}><rect x="-50" y="-14" width="100" height="26" rx="8" fill="#dc2626" /><text y="4" textAnchor="middle" fontSize="11" fontWeight="900" fill="#fff">⚠PRESSURE</text></g></g>}
       <Hud items={[['Depth', `${depth}m`]]} x={10} y={H - 34} color="#7dd3fc" />
       {done && <Banner text="🤿 Dive complete!" />}
     </>
@@ -507,7 +507,234 @@ function Diagnostic({ lines, done }) {
   );
 }
 
-const SCENES = { launch: Launch, orbit: Orbit, asteroids: Asteroids, beacon: Beacon, landing: Landing, dive: Dive, maze: Maze, shark: Shark, grid: Grid, ascent: Ascent, blueprint: Blueprint, roads: Roads, power: Power, growth: Growth, opening: Opening, nodes: Nodes, lock: Lock, signals: Signals, layers: Layers, diagnostic: Diagnostic };
+// ── Jungle Expedition ───────────────────────────────────────────────────────
+function JungleBg() {
+  return (
+    <>
+      <defs><linearGradient id="ms-jungle" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#065f46" /><stop offset="1" stopColor="#022c22" /></linearGradient></defs>
+      <rect width={W} height={H} fill="url(#ms-jungle)" />
+      {[[20, 70], [90, 50], [170, 80], [250, 40], [330, 65], [390, 55]].map(([x, h], i) => (
+        <g key={i} opacity="0.55"><rect x={x - 4} y={H - 40 - h} width="8" height={h + 40} fill="#3f2d16" /><circle cx={x} cy={H - 50 - h} r={26 + (i % 3) * 6} fill={['#15803d', '#166534', '#14532d'][i % 3]} /></g>
+      ))}
+      {[40, 140, 230, 320].map((x, i) => <path key={i} d={`M${x} 0 q 8 40 -4 70 t 6 60`} stroke="#4d7c0f" strokeWidth="3" fill="none" opacity="0.7" />)}
+      <rect y={H - 22} width={W} height="22" fill="#14532d" />
+    </>
+  );
+}
+function Pack({ lines, done }) {
+  const items = pick(lines, /packed/i).map((l) => l.replace(/^.*packed:?\s*/i, '')).slice(0, 8);
+  const total = lastNum(lines, /(\d+)\s*$/);
+  return (
+    <>
+      <JungleBg />
+      <g transform="translate(70 120)">
+        <rect x="-38" y="-30" width="76" height="92" rx="18" fill="#b45309" stroke="#78350f" strokeWidth="4" />
+        <rect x="-26" y="-48" width="52" height="26" rx="10" fill="none" stroke="#78350f" strokeWidth="6" />
+        <rect x="-24" y="10" width="48" height="30" rx="8" fill="#d97706" />
+      </g>
+      {items.map((it, i) => (
+        <g key={i} className="ms-c" style={{ animation: 'ms-pop .4s both' }} transform={`translate(${150 + (i % 2) * 120} ${40 + Math.floor(i / 2) * 44})`}>
+          <rect x="0" y="-16" width="112" height="30" rx="10" fill="#ecfccb" stroke="#65a30d" strokeWidth="2" />
+          <text x="56" y="4" textAnchor="middle" fontSize="13" fontWeight="800" fill="#365314" fontFamily="Nunito">✓ {it.slice(0, 13)}</text>
+        </g>
+      ))}
+      <Hud items={[['Packed', items.length], ['Total', total]]} x={W - 120} y={H - 70} color="#bef264" />
+      {done && <Banner text="🎒 Pack ready — set sail!" />}
+    </>
+  );
+}
+function Spotter({ lines, done }) {
+  const n = lastNum(lines, /spotted\D*(\d+)/i);
+  const list = (lines.slice().reverse().find((l) => /notebook/i.test(l)) || '').match(/['"]([^'"]+)['"]/g) || [];
+  const faces = { parrot: '🦜', monkey: '🐒', toucan: '🐦', jaguar: '🐆', frog: '🐸', snake: '🐍', sloth: '🦥', butterfly: '🦋', tiger: '🐅', elephant: '🐘' };
+  return (
+    <>
+      <JungleBg />
+      {list.slice(0, 7).map((raw, i) => {
+        const name = raw.slice(1, -1); const key = Object.keys(faces).find((k) => name.toLowerCase().includes(k));
+        return (
+          <g key={i} className="ms-c" style={{ animation: `ms-pop .4s ${i * 0.08}s both` }} transform={`translate(${50 + (i % 4) * 100} ${70 + Math.floor(i / 4) * 90})`}>
+            <circle r="30" fill="rgba(255,255,255,0.15)" stroke="#bef264" strokeWidth="2" />
+            <text y="10" textAnchor="middle" fontSize="28">{key ? faces[key] : '🐾'}</text>
+            <text y="48" textAnchor="middle" fontSize="11" fontWeight="800" fill="#ecfccb" fontFamily="Nunito">{name.slice(0, 12)}</text>
+          </g>
+        );
+      })}
+      <Hud items={[['Spotted', n]]} color="#bef264" />
+      {done && <Banner text="🦜 Notebook full!" />}
+    </>
+  );
+}
+function MapCode({ lines, done }) {
+  const said = (lines.find((l) => /map says/i.test(l)) || '').replace(/^.*map says:?\s*/i, '');
+  const found = lines.find((l) => /treasure is/i.test(l));
+  return (
+    <>
+      <JungleBg />
+      <g transform="translate(200 120)">
+        <rect x="-150" y="-70" width="300" height="140" rx="14" fill="#fef3c7" stroke="#92400e" strokeWidth="4" />
+        <path d="M-120 30 q 40 -50 90 -10 t 80 -20" stroke="#b45309" strokeWidth="3" strokeDasharray="6 6" fill="none" />
+        <text x="95" y="0" fontSize="26" fontWeight="900" fill="#dc2626">✕</text>
+        {said && <text x="0" y="-40" textAnchor="middle" fontSize="13" fontFamily="monospace" fill="#78350f">{said.slice(0, 32)}</text>}
+        {found && <text x="0" y="56" textAnchor="middle" fontSize="13" fontWeight="900" fill="#166534" fontFamily="Nunito" className="ms-c" style={{ animation: 'ms-pop .5s both' }}>{found.slice(0, 40)}</text>}
+      </g>
+      {done && <Banner text="🗺️ Code cracked!" />}
+    </>
+  );
+}
+function River({ lines, done }) {
+  const hs = pick(lines, /stone height/i).map((l) => num(l.replace(/^[^:]*:/, '')) || 0);
+  const best = lastNum(lines, /highest\D*(\d+)/i);
+  return (
+    <>
+      <JungleBg />
+      <rect y="170" width={W} height="68" fill="#0e7490" opacity="0.85" />
+      {[0, 1, 2, 3].map((i) => <path key={i} d={`M${i * 110} 200 q 25 -8 50 0 t 50 0`} stroke="#67e8f9" strokeWidth="2" fill="none" opacity="0.6" />)}
+      {hs.slice(0, 7).map((h, i) => (
+        <g key={i} className="ms-c" style={{ animation: 'ms-pop .35s both' }}>
+          <rect x={30 + i * 56} y={200 - h * 9} width="40" height={h * 9 + 10} rx="10" fill={best != null && h === best ? '#facc15' : '#a8a29e'} stroke="#57534e" strokeWidth="2" />
+          <text x={50 + i * 56} y={194 - h * 9} textAnchor="middle" fontSize="12" fontWeight="900" fill="#fff" fontFamily="Nunito">{h}</text>
+        </g>
+      ))}
+      <Hud items={[['Highest', best]]} color="#fde047" />
+      {done && <Banner text="🪨 Safe stone found!" />}
+    </>
+  );
+}
+function Log({ lines, done }) {
+  const entries = pick(lines, /we found/i).slice(0, 5);
+  return (
+    <>
+      <JungleBg />
+      <g transform="translate(200 128)">
+        <rect x="-160" y="-100" width="320" height="200" rx="12" fill="#fffbeb" stroke="#92400e" strokeWidth="4" />
+        <line x1="0" y1="-96" x2="0" y2="96" stroke="#d6d3d1" strokeWidth="2" />
+        {entries.map((e, i) => (
+          <text key={i} x="-150" y={-70 + i * 30} fontSize="12" fill="#3f3f46" fontFamily="Nunito" fontWeight="700" className="ms-c" style={{ animation: 'ms-pop .4s both' }}>{e.slice(0, 44)}</text>
+        ))}
+      </g>
+      {done && <Banner text="📓 Log sent to the museum!" />}
+    </>
+  );
+}
+
+// ── Dino Park Rescue ────────────────────────────────────────────────────────
+function DinoBg() {
+  return (
+    <>
+      <defs><linearGradient id="ms-dino" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#7dd3fc" /><stop offset="1" stopColor="#ccfbf1" /></linearGradient></defs>
+      <rect width={W} height={H} fill="url(#ms-dino)" />
+      <path d="M260 120 L300 50 L340 120 Z" fill="#78716c" /><path d="M292 62 q 8 -18 16 0" fill="#f97316" />
+      <path d={`M0 ${H - 60} Q 120 ${H - 90} 220 ${H - 64} T 400 ${H - 70} V ${H} H 0 Z`} fill="#4ade80" />
+      <rect y={H - 26} width={W} height="26" fill="#16a34a" />
+      {[30, 360].map((x, i) => <g key={i}><rect x={x - 3} y={H - 110} width="6" height="70" fill="#78350f" /><path d={`M${x} ${H - 112} l -26 10 M${x} ${H - 112} l 26 10 M${x} ${H - 112} l -18 -16 M${x} ${H - 112} l 18 -16`} stroke="#15803d" strokeWidth="7" strokeLinecap="round" /></g>)}
+    </>
+  );
+}
+function Dino({ x, y, color = '#22c55e', scale = 1, flip = false }) {
+  return (
+    <g transform={`translate(${x} ${y}) scale(${flip ? -scale : scale} ${scale})`}>
+      <path d="M-30 0 q 0 -26 30 -26 q 22 0 28 -20 q 4 -10 14 -8 q 10 2 8 14 q -4 16 -18 26 q 4 14 -6 22 l -50 0 q -14 -2 -6 -8 Z" fill={color} stroke="#14532d" strokeWidth="2" />
+      <circle cx="46" cy="-44" r="2.6" fill="#0f172a" />
+      <rect x="-18" y="6" width="8" height="14" rx="3" fill={color} stroke="#14532d" strokeWidth="2" /><rect x="8" y="6" width="8" height="14" rx="3" fill={color} stroke="#14532d" strokeWidth="2" />
+    </g>
+  );
+}
+function Gate({ lines, done, failed }) {
+  const open = lines.some((l) => /gate open/i.test(l));
+  return (
+    <>
+      <DinoBg />
+      <rect x="120" y="70" width="14" height="130" fill="#57534e" /><rect x="266" y="70" width="14" height="130" fill="#57534e" />
+      <g style={{ transition: 'transform .8s', transform: open ? 'translateX(-60px)' : 'none' }}><rect x="134" y="90" width="66" height="104" fill="#a16207" stroke="#713f12" strokeWidth="3" /></g>
+      <g style={{ transition: 'transform .8s', transform: open ? 'translateX(60px)' : 'none' }}><rect x="200" y="90" width="66" height="104" fill="#a16207" stroke="#713f12" strokeWidth="3" /></g>
+      <text x="200" y="64" textAnchor="middle" fontSize="15" fontWeight="900" fill="#14532d" fontFamily="Nunito">DINO PARK</text>
+      <Dino x={done ? 200 : 330} y={204} color="#84cc16" scale={0.8} flip={!done} />
+      {failed && <text x="200" y="40" textAnchor="middle" fontSize="13" fontWeight="900" fill="#b91c1c" fontFamily="Nunito">⚠ Gate program crashed — read the error</text>}
+      {done && <Banner text="🚧 Gate fixed — dinos safe!" />}
+    </>
+  );
+}
+function Feeding({ lines, done }) {
+  const fed = ['stego', 'tricera', 'bronto'].map((d) => lines.some((l) => new RegExp(`fed\\s+${d}`, 'i').test(l)));
+  return (
+    <>
+      <DinoBg />
+      {['Stego', 'Tricera', 'Bronto'].map((n, i) => (
+        <g key={n}>
+          <Dino x={80 + i * 120} y={200} color={['#f59e0b', '#38bdf8', '#a78bfa'][i]} scale={0.9} />
+          <text x={80 + i * 120} y={124} textAnchor="middle" fontSize="20">{fed[i] ? '😋' : '😠'}</text>
+          {fed[i] && <text x={60 + i * 120} y={222} fontSize="16" className="ms-c" style={{ animation: 'ms-pop .4s both' }}>🥬</text>}
+          <text x={80 + i * 120} y={248} textAnchor="middle" fontSize="11" fontWeight="900" fill="#14532d" fontFamily="Nunito">{n}</text>
+        </g>
+      ))}
+      <Hud items={[['Fed', `${fed.filter(Boolean).length}/3`]]} color="#14532d" />
+      {done && <Banner text="🥬 Everyone is fed!" />}
+    </>
+  );
+}
+function Hatch({ lines, done }) {
+  const st = [1, 2, 3, 4, 5].map((n) => (lines.some((l) => new RegExp(`egg ${n} is hatching`, 'i').test(l)) ? 'hatch' : lines.some((l) => new RegExp(`egg ${n} needs`, 'i').test(l)) ? 'warm' : ''));
+  return (
+    <>
+      <DinoBg />
+      <rect x="30" y="170" width="340" height="30" rx="10" fill="#fde68a" stroke="#b45309" strokeWidth="3" />
+      {st.map((s, i) => (
+        <g key={i} transform={`translate(${70 + i * 65} 160)`}>
+          {s === 'hatch' ? (
+            <g className="ms-c" style={{ animation: 'ms-pop .5s both' }}><path d="M-16 0 l 6 -8 l 6 8 l 6 -8 l 6 8 l 6 -8 l 6 8 v 10 h -36 Z" fill="#fef3c7" stroke="#a16207" strokeWidth="2" /><text y="-12" textAnchor="middle" fontSize="22">🦖</text></g>
+          ) : (
+            <ellipse cy="-14" rx="16" ry="22" fill={s === 'warm' ? '#fef3c7' : '#fff7ed'} stroke="#a16207" strokeWidth="2" />
+          )}
+          <text y="34" textAnchor="middle" fontSize="11" fontWeight="900" fill="#78350f" fontFamily="Nunito">Egg {i + 1}</text>
+        </g>
+      ))}
+      {done && <Banner text="🥚 Baby dinos hatched!" />}
+    </>
+  );
+}
+function Radio({ lines, done }) {
+  const zones = ['North', 'Lake', 'Volcano'];
+  const called = zones.map((z) => lines.some((l) => new RegExp(`the\\W+${z}\\W+zone`, 'i').test(l)));
+  return (
+    <>
+      <DinoBg />
+      <g transform="translate(60 150)"><rect x="-22" y="-30" width="44" height="60" rx="8" fill="#334155" /><circle cy="-6" r="10" fill="#94a3b8" /><line x1="12" y1="-30" x2="20" y2="-60" stroke="#334155" strokeWidth="4" /></g>
+      {zones.map((z, i) => (
+        <g key={z} transform={`translate(${190 + i * 80} ${90 + (i % 2) * 60})`}>
+          <circle r="26" fill={called[i] ? '#22c55e' : 'rgba(255,255,255,0.5)'} stroke="#14532d" strokeWidth="2" />
+          <text y="6" textAnchor="middle" fontSize="18">{called[i] ? '🧑‍🌾' : '❔'}</text>
+          <text y="44" textAnchor="middle" fontSize="11" fontWeight="900" fill="#14532d" fontFamily="Nunito">{z}</text>
+          {called[i] && <circle r="4" fill="none" stroke="#22c55e" strokeWidth="3" style={{ animation: 'ms-wave 1.4s infinite' }} />}
+        </g>
+      ))}
+      {done && <Banner text="📻 Rangers on their way!" />}
+    </>
+  );
+}
+function Report({ lines, done }) {
+  const totals = [...lines.join('\n').matchAll(/running total\D*(\d+)/gi)].map((m) => +m[1]);
+  const final = lastNum(lines, /total dinos\D*(\d+)/i);
+  return (
+    <>
+      <DinoBg />
+      <g transform="translate(200 128)">
+        <rect x="-110" y="-96" width="220" height="190" rx="12" fill="#f8fafc" stroke="#334155" strokeWidth="4" />
+        <rect x="-36" y="-108" width="72" height="22" rx="6" fill="#64748b" />
+        {totals.slice(0, 5).map((t, i) => (
+          <g key={i} className="ms-c" style={{ animation: 'ms-pop .35s both' }}>
+            <rect x="-90" y={-70 + i * 28} width={Math.min(170, t * 7)} height="18" rx="5" fill="#14b8a6" />
+            <text x="-84" y={-56 + i * 28} fontSize="11" fontWeight="900" fill="#fff" fontFamily="Nunito">{t}</text>
+          </g>
+        ))}
+        {final != null && <text y="80" textAnchor="middle" fontSize="15" fontWeight="900" fill="#0f172a" fontFamily="Nunito">Total dinos: {final}</text>}
+      </g>
+      {done && <Banner text="📋 Report correct!" />}
+    </>
+  );
+}
+
+const SCENES = { launch: Launch, orbit: Orbit, asteroids: Asteroids, beacon: Beacon, landing: Landing, dive: Dive, maze: Maze, shark: Shark, grid: Grid, ascent: Ascent, blueprint: Blueprint, roads: Roads, power: Power, growth: Growth, opening: Opening, nodes: Nodes, lock: Lock, signals: Signals, layers: Layers, diagnostic: Diagnostic, pack: Pack, spotter: Spotter, mapcode: MapCode, river: River, log: Log, gate: Gate, feeding: Feeding, hatch: Hatch, radio: Radio, report: Report };
 
 export default function MissionScene({ scene, lines = [], done = false, failed = false, runKey = 0 }) {
   const S = SCENES[scene] || Launch;
@@ -520,5 +747,6 @@ export default function MissionScene({ scene, lines = [], done = false, failed =
   );
 }
 
-export const CAMPAIGN_BG = { space: SpaceBg, ocean: OceanBg, city: CityBg, cyber: CyberBg };
+export const CAMPAIGN_BG = { space: SpaceBg, ocean: OceanBg, city: CityBg, cyber: CyberBg, jungle: JungleBg, dino: DinoBg };
+export { Dino };
 export { Rocket, Sub, Stars };

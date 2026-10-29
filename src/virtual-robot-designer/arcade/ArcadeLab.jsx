@@ -7,8 +7,13 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   blockDef, makeBlock, starter, parse, execute, countBlocks, starsFor,
-  loadProgress, saveStars, loadProgram, saveProgram,
+  loadProgress, saveStars, loadProgram, saveProgram, CONTROL_BLOCKS,
 } from './engine.js';
+import { arcadeBlocksToPython, arcadePythonToBlocks, arcadePythonHelp } from './arcadePython.js';
+import { arcadeLevelFacts } from './arcadeObjective.js';
+import PythonCodePane from '../studio/PythonCodePane.jsx';
+import CodingObjectiveCard from '../studio/CodingObjectiveCard.jsx';
+import { getCodingObjective } from '../studio/codingObjective.js';
 import { ARCADE_GAMES } from './games/index.js';
 import { createArcadeView } from './scene3d.js';
 import { GameLevelSelect, GameVictoryScreen, GameFailureScreen } from '../studio/LiveLabGameUI.jsx';
@@ -17,6 +22,7 @@ import SavedCodeMenu from '../studio/SavedCodeMenu.jsx';
 import '../studio/LiveLabPage.css';
 import '../studio/LiveLabGame.css';
 import './arcade.css';
+import { EmojiIcon, IconText } from '../../components/ui/Icon.jsx';
 
 const SPEEDS = [1, 2, 4];
 const DIFFICULTY = ['Tutorial', 'Easy', 'Easy', 'Medium', 'Medium', 'Medium', 'Hard', 'Hard', 'Hard', 'Expert'];
@@ -27,6 +33,7 @@ const WORLD = {
   arenaquest: { name: 'Arena Quest', type: 'Adventure', skills: ['Loops', 'Turns', 'Sensors', 'Wall following', 'Jumping', 'Keys & doors', 'Pushing', 'Waiting', 'Portals', 'Capstone'] },
   raiderbot: { name: 'Space Raiders', type: 'Space shooter', skills: ['Loops', 'Sensors', 'Tracking', 'If / else', 'Dodging', 'Priorities', 'Persistence', 'Speed', 'Priorities', 'Capstone'] },
   hopbot: { name: 'Hop Crossing', type: 'Crossing', skills: ['Loops', 'Waiting', 'Sensors', 'If / else', 'Timing', 'Timing', 'Danger', 'Edges', 'Escaping', 'Capstone'] },
+  jumpbot: { name: 'Retro Robot Run', type: 'Platform adventure', skills: ['Sequence', 'Loops', 'Jumping', 'Sensors', 'If / else', 'Enemies', 'Keys & doors', 'Planning', 'Hazards', 'Capstone'] },
 };
 const CATS = [
   { key: 'All', label: 'All Blocks', icon: '🧩', color: '#64748b' },
@@ -37,9 +44,15 @@ const CATS = [
   { key: 'Logic', label: 'Logic', icon: '🧠', color: '#8b5cf6' },
 ];
 
-function levelStarter(game, idx) {
+/** The pupil's saved program for a level — empty to start with, so they write it themselves.
+ *  A saved program that is just the starter blocks levels used to give (unchanged) also opens empty. */
+function openProgram(game, idx) {
+  const saved = loadProgram(game.id, idx);
+  if (!saved?.length) return [];
   const L = game.levels[idx];
-  return L.starter ? starter(game, L.starter) : [];
+  const sig = (list) => JSON.stringify(list.map((b) => [b.type, b.indent || 0, b.params || {}]));
+  if (L.starter && sig(saved) === sig(starter(game, L.starter))) return [];
+  return saved;
 }
 
 function levelCourse(game, i, robotName) {
@@ -53,11 +66,15 @@ function levelCourse(game, i, robotName) {
     environmentName: L.title,
     environmentEmoji: L.arena?.emoji || game.emoji,
     desc: L.goal,
-    tryThis: L.goal,
-    skillLearned: W.skills[i] || 'Problem solving',
-    difficulty: L.arena?.custom ? 'My arena' : (DIFFICULTY[i] || 'Bonus'),
+    tryThis: L.modeIndex > 10 && L.hint ? `${L.hint}${L.fact ? ` Did you know? ${L.fact}` : ''}` : L.goal,
+    skillLearned: L.skill || W.skills[i] || 'Problem solving',
+    par: L.par,
+    arcade: { palette: L.palette, need: L.need, conditions: game.conditions, ...arcadeLevelFacts(game, i) },
+    difficulty: L.arena?.custom ? 'My arena' : (L.difficulty || DIFFICULTY[i] || 'Bonus'),
+    modeSpec: L.modeSpec || null,
     color: game.color,
-    genre: 'action',
+    genre: game.id === 'jumpbot' ? 'platformer' : 'action',
+    thumbnailKind: game.id === 'jumpbot' ? 'jumpbot' : undefined,
     studioGradient: `linear-gradient(135deg, ${game.color}, #1e1b4b)`,
     displayRobotName: robotName,
   };
@@ -83,14 +100,13 @@ export default function ArcadeLab({ robotConfig, onBack, gameOverride = null, st
     return i < 0 ? 0 : i;
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [level, setLevel] = useState(firstOpen);
-  const [blocks, setBlocks] = useState(() => loadProgram(game.id, firstOpen) || levelStarter(game, firstOpen));
+  const [blocks, setBlocks] = useState(() => openProgram(game, firstOpen));
   const [mode, setMode] = useState('idle'); // idle | running | paused | step
   const [result, setResult] = useState(null);
   const [activeId, setActiveId] = useState(null);
   const [speed, setSpeed] = useState(1);
   const [cat, setCat] = useState('All');
   const [search, setSearch] = useState('');
-  const [hintsOpen, setHintsOpen] = useState(false);
   const [showModes, setShowModes] = useState(false);
   const [missionOpen, setMissionOpen] = useState(false);
   const [camMode, setCamMode] = useState('wide');
@@ -98,6 +114,12 @@ export default function ArcadeLab({ robotConfig, onBack, gameOverride = null, st
   const [dragIdx, setDragIdx] = useState(null);
   const [dragOver, setDragOver] = useState(null);
   const [no3d, setNo3d] = useState(false);
+  // Blocks or Python — the Python program becomes the same indented blocks the arcade runs
+  const modeKey = `bb-arcade-${game.id}:code-mode`;
+  const [codeMode, setCodeModeState] = useState(() => { try { return localStorage.getItem(modeKey) === 'python' ? 'python' : 'blocks'; } catch { return 'blocks'; } });
+  const usePython = codeMode === 'python';
+  const setCodeMode = (m) => { setCodeModeState(m); try { localStorage.setItem(modeKey, m); } catch { /* ignore */ } };
+  const [pyProgram, setPyProgram] = useState({ blocks: [], code: '' });
 
   const hostRef = useRef(null);
   const viewRef = useRef(null);
@@ -135,6 +157,7 @@ export default function ArcadeLab({ robotConfig, onBack, gameOverride = null, st
   }, [buildView]);
   useEffect(() => { viewRef.current?.setCamera?.(camMode); }, [camMode]);
   useEffect(() => { saveProgram(game.id, level, blocks); }, [blocks, game.id, level]);
+  const program = usePython ? pyProgram.blocks : blocks;
 
   const resetWorld = useCallback(() => {
     // Keep the same 3D scene; just put the game back to the start.
@@ -152,7 +175,7 @@ export default function ArcadeLab({ robotConfig, onBack, gameOverride = null, st
     setMode('idle');
     setActiveId(null);
     if (res.win) {
-      const stars = starsFor(blocks, L.par);
+      const stars = starsFor(program, L.par);
       setProgress(saveStars(game.id, level, stars));
       const xp = 40 + level * 15 + stars * 10;
       try {
@@ -161,7 +184,7 @@ export default function ArcadeLab({ robotConfig, onBack, gameOverride = null, st
       } catch { /* ignore */ }
       setResult({ ...res, stars, xp });
     } else setResult(res);
-  }, [blocks, L.par, game.id, level, robotName, course.id]);
+  }, [program, L.par, game.id, level, robotName, course.id]);
 
   /* ─── Main loop ─── */
   useEffect(() => {
@@ -221,7 +244,7 @@ export default function ArcadeLab({ robotConfig, onBack, gameOverride = null, st
     setResult(null);
     resetWorld();
     const sense = (cond) => game.sense(worldRef.current, cond);
-    genRef.current = execute(parse(blocks), sense);
+    genRef.current = execute(parse(program), sense);
     stepRef.current = false;
     setMode(asStep ? 'step' : 'running');
   };
@@ -235,8 +258,7 @@ export default function ArcadeLab({ robotConfig, onBack, gameOverride = null, st
 
   const pickLevel = (i) => {
     setLevel(i);
-    setBlocks(loadProgram(game.id, i) || levelStarter(game, i));
-    setHintsOpen(false);
+    setBlocks(openProgram(game, i));
   };
 
   /* ─── Editing ─── */
@@ -291,7 +313,24 @@ export default function ArcadeLab({ robotConfig, onBack, gameOverride = null, st
 
   const isRunning = mode === 'running' || mode === 'step';
   const isPaused = mode === 'paused';
-  const n = countBlocks(blocks);
+  const n = countBlocks(program);
+  const pyAllowed = L.palette || [...Object.keys(game.blocks), ...Object.keys(CONTROL_BLOCKS)];
+  const pyEngine = useMemo(() => {
+    const help = arcadePythonHelp(game, pyAllowed);
+    return {
+      toPython: (b) => arcadeBlocksToPython(b, game),
+      toBlocks: (code) => arcadePythonToBlocks(code, game, pyAllowed),
+      groups: [
+        { label: 'Robot', icon: game.emoji, color: game.color, items: help.cmds.map((c) => ({ code: c.code, title: c.label })) },
+        ...(help.checks.length ? [{ label: 'Checks (use in if / while not)', icon: '👁', color: '#10b981', items: help.checks.map((c) => ({ code: c.code, title: c.label })) }] : []),
+      ],
+      extras: help.extras,
+    };
+  }, [game, level]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Coding objective: the arcade's blocks read like the lab's (If → if_then)
+  const objLibrary = useMemo(() => ({ Arcade: { blocks: pyAllowed.map((t) => ({ id: t === 'if' ? 'if_then' : t, label: blockDef(game, t)?.label || t })) } }), [game, level]); // eslint-disable-line react-hooks/exhaustive-deps
+  const codingObjective = useMemo(() => getCodingObjective(course, { library: objLibrary, kind: 'arcade', pythonExtras: pyEngine.extras }), [course, objLibrary, pyEngine]);
+  const objBlocks = useMemo(() => program.filter((b) => b.type !== 'else').map((b) => ({ id: b.type === 'if' ? 'if_then' : b.type, paramValues: b.params })), [program]);
   // Lay the script out as Scratch-style C-blocks: each Forever / Repeat / If wraps its
   // inside blocks with a coloured arm and closes with a foot.
   const rows = useMemo(() => {
@@ -323,32 +362,34 @@ export default function ArcadeLab({ robotConfig, onBack, gameOverride = null, st
       {/* ══ LEFT: code panel (same as the other robots) ══ */}
       <div className="scratch-panel">
         <div className="scratch-panel-banner">
-          <span className="scratch-panel-banner-icon">⚡</span>
+          <span className="scratch-panel-banner-icon"><EmojiIcon e="⚡" /></span>
           <div>
             <div className="scratch-panel-banner-title">Event Blocks</div>
             <div className="scratch-panel-banner-sub">Click a block below to add code</div>
           </div>
+          <div className="py-mode-toggle" role="tablist" aria-label="Code with blocks or Python">
+            <button type="button" role="tab" aria-selected={!usePython} className={!usePython ? 'is-on' : ''} disabled={mode !== 'idle'} onClick={() => setCodeMode('blocks')}><EmojiIcon e="🧩" /> Blocks</button>
+            <button type="button" role="tab" aria-selected={usePython} className={usePython ? 'is-on' : ''} disabled={mode !== 'idle'} onClick={() => setCodeMode('python')}><EmojiIcon e="🐍" /> Python</button>
+          </div>
         </div>
-        <div className={`course-code-hints${hintsOpen ? ' is-open' : ''}`}>
-          <button type="button" className="course-code-hints-toggle" onClick={() => setHintsOpen((v) => !v)} aria-expanded={hintsOpen}>
-            <span className="course-code-hints-toggle-icon">💡</span>
-            <span className="course-code-hints-toggle-title">{hintsOpen ? `Code hints — ${L.title}` : 'Need help? Tap for code hints'}</span>
-            <span className="course-code-hints-toggle-caret">{hintsOpen ? '▾' : '▸'}</span>
-          </button>
-          {hintsOpen && (
-            <div className="course-code-hints-body">
-              <p className="course-code-hints-goal"><strong>Goal:</strong> {L.goal}</p>
-              <p className="course-code-hints-tip">{L.hint}</p>
-              <p className="course-code-hints-robot">🤖 Blocks pushed in with ⇥ go <b>inside</b> the Forever, Repeat or If above. Use {L.par} block{L.par === 1 ? '' : 's'} or fewer for 3 stars.</p>
-            </div>
-          )}
-        </div>
+        <CodingObjectiveCard objective={codingObjective} blocks={objBlocks} python={pyProgram.code} usePython={usePython} isRunning={isRunning} />
+        {usePython ? (
+          <PythonCodePane
+            key={`${game.id}:${level}`}
+            engine={pyEngine}
+            blocksScript={blocks}
+            saveKey={`bb-arcade-${game.id}:python:${level}`}
+            activeBlockUid={activeId || ''}
+            isRunning={mode !== 'idle'}
+            onProgram={(b, code) => setPyProgram({ blocks: b || [], code: code || '' })}
+          />
+        ) : (
         <div className="scratch-panel-body">
           <nav className="scratch-cat-rail">
             {railCats.map((c) => (
               <button key={c.key} type="button" className={`scratch-cat-btn${cat === c.key && !search ? ' active' : ''}`} style={{ '--cat-c': c.color }}
                 onClick={() => { setCat(c.key); setSearch(''); }} title={c.label}>
-                <span className="scratch-cat-icon">{c.icon}</span>
+                <span className="scratch-cat-icon"><EmojiIcon e={c.icon} /></span>
                 <span className="scratch-cat-label">{c.label}</span>
               </button>
             ))}
@@ -356,20 +397,20 @@ export default function ArcadeLab({ robotConfig, onBack, gameOverride = null, st
 
           <div className="scratch-palette">
             <div className="scratch-search-wrap">
-              <span className="scratch-search-icon">🔍</span>
+              <span className="scratch-search-icon"><EmojiIcon e="🔍" /></span>
               <input type="text" className="scratch-search" placeholder="Search blocks…" value={search} onChange={(e) => setSearch(e.target.value)} />
               {search && <button type="button" className="scratch-search-clear" onClick={() => setSearch('')}>×</button>}
             </div>
             {!search && (
               <div className="scratch-pal-header" style={{ '--cat-c': catMeta.color }}>
-                <span>{catMeta.icon}</span><span>{catMeta.label}</span>
+                <span><EmojiIcon e={catMeta.icon} /></span><span>{catMeta.label}</span>
               </div>
             )}
             <div className="scratch-pal-blocks">
               {shown.map((it) => (
                 <button key={it.key} type="button" className="scratch-pal-block" style={{ '--cat-c': it.color }} onClick={() => add(it.type, it.params)} disabled={mode !== 'idle'}>
                   <span className="scratch-pal-block-row">
-                    <span className="scratch-blk-icon">{it.icon}</span>
+                    <span className="scratch-blk-icon"><EmojiIcon e={it.icon} /></span>
                     <span className="scratch-blk-text">{it.label}</span>
                   </span>
                   <span className="scratch-blk-tag">{game.title}</span>
@@ -380,22 +421,22 @@ export default function ArcadeLab({ robotConfig, onBack, gameOverride = null, st
 
           <div className="scratch-workspace">
             <div className="scratch-ws-toolbar">
-              <button className="scratch-tool-btn" onClick={() => setBlocks(levelStarter(game, level))} disabled={mode !== 'idle'} title="Start this level again">↺</button>
-              {blocks.length > 0 && <button className="scratch-tool-btn scratch-clear-btn" onClick={() => setBlocks([])} disabled={mode !== 'idle'} title="Clear all">🗑️</button>}
+              <button className="scratch-tool-btn" onClick={() => setBlocks([])} disabled={mode !== 'idle'} title="Start this level again">↺</button>
+              {blocks.length > 0 && <button className="scratch-tool-btn scratch-clear-btn" onClick={() => setBlocks([])} disabled={mode !== 'idle'} title="Clear all"><EmojiIcon e="🗑️" /></button>}
               <SavedCodeMenu scope={`arcade:${game.id}:${L.arena?.id || level}`} title={L.title} blocks={blocks} disabled={mode !== 'idle'}
                 onLoad={(saved) => setBlocks(saved.filter((b) => blockDef(game, b.type)).map((b) => ({ ...b, id: makeBlock(game, b.type).id })))} />
               <div className="scratch-ws-spacer" />
               <span className="scratch-block-count">{n} block{n !== 1 ? 's' : ''} · par {L.par}</span>
-              <button className="scratch-mission-btn" onClick={() => mode === 'idle' && setShowModes(true)} title="Choose mission">🎮 Mission</button>
+              <button className="scratch-mission-btn" onClick={() => mode === 'idle' && setShowModes(true)} title="Choose mission"><EmojiIcon e="🎮" style={{ marginRight: '0.35em' }} />Mission</button>
             </div>
             <div className="scratch-ws-canvas" onDragOver={(e) => e.preventDefault()} onDrop={() => dropAt(blocks.length)}>
               <div className="scratch-anchor-block">
-                <span className="scratch-blk-icon">▶️</span>
+                <span className="scratch-blk-icon"><EmojiIcon e="▶️" /></span>
                 <span className="scratch-blk-text">When START clicked</span>
               </div>
               {blocks.length === 0 ? (
                 <div className="scratch-ws-empty">
-                  <div className="scratch-ws-empty-arrow">⬇</div>
+                  <div className="scratch-ws-empty-arrow"><EmojiIcon e="⬇" /></div>
                   <div className="scratch-ws-empty-txt">Click a block on the left to add it here</div>
                 </div>
               ) : (
@@ -428,7 +469,7 @@ export default function ArcadeLab({ robotConfig, onBack, gameOverride = null, st
                       >
                         <div className="scratch-script-grip">⠿</div>
                         <div className="scratch-script-body">
-                          <span className="scratch-blk-icon">{def.icon}</span>
+                          <span className="scratch-blk-icon"><EmojiIcon e={def.icon} /></span>
                           <span className="scratch-blk-text">{def.label}</span>
                           {(def.params || []).map((p) => {
                             const v = b.params?.[p.key];
@@ -468,12 +509,13 @@ export default function ArcadeLab({ robotConfig, onBack, gameOverride = null, st
                   onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add('active'); }}
                   onDragLeave={(e) => e.currentTarget.classList.remove('active')}
                   onDrop={(e) => { e.preventDefault(); e.stopPropagation(); e.currentTarget.classList.remove('active'); if (dragIdx !== null) remove(dragIdx); setDragIdx(null); }}>
-                  🗑️ Drop here to delete
+                  <EmojiIcon e="🗑️" style={{ marginRight: '0.35em' }} />Drop here to delete
                 </div>
               )}
             </div>
           </div>
         </div>
+        )}
       </div>
 
       {/* ══ RIGHT: 3D arena ══ */}
@@ -493,7 +535,7 @@ export default function ArcadeLab({ robotConfig, onBack, gameOverride = null, st
             <div style={{ flex: 1, minWidth: 0 }}>
               <div className="bb-arcade-banner-kicker">{W.name} · {L.arena?.custom ? 'My arena' : `Mode ${level + 1}/${game.levels.length}`}</div>
               <div className="bb-arcade-banner-title">{L.title}</div>
-              <div className="bb-arcade-banner-sub">{W.type} · {L.arena?.custom ? 'Made by you' : (DIFFICULTY[level] || 'Bonus')} · {'★'.repeat(progress[level] || 0)}{'☆'.repeat(3 - (progress[level] || 0))}</div>
+              <div className="bb-arcade-banner-sub">{W.type} · {L.arena?.custom ? 'Made by you' : (L.difficulty || DIFFICULTY[level] || 'Bonus')} · {'★'.repeat(progress[level] || 0)}{'☆'.repeat(3 - (progress[level] || 0))}</div>
             </div>
           </div>
         )}
@@ -520,8 +562,8 @@ export default function ArcadeLab({ robotConfig, onBack, gameOverride = null, st
           {!isRunning && (
             <>
               <ul className="mcp-v2-subobjectives">
-                <li className="mcp-v2-subobj"><span className="mcp-v2-subobj-icon">🧠</span><span className="mcp-v2-subobj-text">Learn: {W.skills[level] || 'Problem solving'}</span></li>
-                <li className={`mcp-v2-subobj${progress[level] >= 3 ? ' done' : ''}`}><span className="mcp-v2-subobj-icon">{progress[level] >= 3 ? '✅' : '🏅'}</span><span className="mcp-v2-subobj-text">3 stars: {L.par} block{L.par === 1 ? '' : 's'} or fewer</span></li>
+                <li className="mcp-v2-subobj"><span className="mcp-v2-subobj-icon"><EmojiIcon e="🧠" /></span><span className="mcp-v2-subobj-text">Learn: {W.skills[level] || 'Problem solving'}</span></li>
+                <li className={`mcp-v2-subobj${progress[level] >= 3 ? ' done' : ''}`}><span className="mcp-v2-subobj-icon"><IconText>{progress[level] >= 3 ? '✅' : '🏅'}</IconText></span><span className="mcp-v2-subobj-text">3 stars: {L.par} block{L.par === 1 ? '' : 's'} or fewer</span></li>
               </ul>
               <div className="mcp-v2-actions">
                 <button type="button" className="mcp-v2-btn" onClick={stop}><span>↺</span> Restart</button>
@@ -534,10 +576,10 @@ export default function ArcadeLab({ robotConfig, onBack, gameOverride = null, st
                 <div className="mcp-story-label">HOW TO PLAY</div>
                 <p className="mcp-story-text">{game.blurb}</p>
               </div>
-              <div className="mcp-tip">💡 {L.hint}</div>
+              <div className="mcp-tip"><EmojiIcon e="💡" style={{ marginRight: '0.35em' }} />{L.hint}</div>
               <div className="mcp-stats-row">
                 <div className="mcp-stat-chip"><span>⭐</span><span style={{ color: '#fbbf24' }}>{totalStars}/30</span></div>
-                <div className="mcp-stat-chip"><span>🧩</span><span>{n} blocks</span></div>
+                <div className="mcp-stat-chip"><span><EmojiIcon e="🧩" /></span><span>{n} blocks</span></div>
               </div>
             </div>
           )}
@@ -548,7 +590,7 @@ export default function ArcadeLab({ robotConfig, onBack, gameOverride = null, st
             <React.Fragment key={s.lbl}>
               {i > 0 && <div className="bb-fhud-sep" />}
               <div className="bb-fhud-stat">
-                <span className="bb-fhud-icon">{s.icon}</span>
+                <span className="bb-fhud-icon"><EmojiIcon e={s.icon} /></span>
                 <span className="bb-fhud-val" style={{ color: s.color }}>{s.val}</span>
                 <span className="bb-fhud-lbl">{s.lbl}</span>
               </div>
@@ -557,17 +599,17 @@ export default function ArcadeLab({ robotConfig, onBack, gameOverride = null, st
         </div>
 
         <div className="bb-vp-run-controls" style={showModes ? { display: 'none' } : undefined}>
-          <button type="button" className="bb-vp-modes-btn" onClick={() => mode === 'idle' && setShowModes(true)} disabled={mode !== 'idle'} title="Pick a game mode">🎮 Game modes</button>
-          {mode === 'idle' && <button type="button" className="bb-vp-run-btn" onClick={() => start(false)} disabled={!blocks.length}>▶ Simulate</button>}
-          {isRunning && <button type="button" className="bb-vp-run-btn bb-vp-pause-btn" onClick={pause}>⏸</button>}
-          {isPaused && <button type="button" className="bb-vp-run-btn" onClick={pause}>▶</button>}
+          <button type="button" className="bb-vp-modes-btn" onClick={() => mode === 'idle' && setShowModes(true)} disabled={mode !== 'idle'} title="Pick a game mode"><EmojiIcon e="🎮" style={{ marginRight: '0.35em' }} />Game modes</button>
+          {mode === 'idle' && <button type="button" className="bb-vp-run-btn" onClick={() => start(false)} disabled={!program.length}><EmojiIcon e="▶" style={{ marginRight: '0.35em' }} />Simulate</button>}
+          {isRunning && <button type="button" className="bb-vp-run-btn bb-vp-pause-btn" onClick={pause}><EmojiIcon e="⏸" /></button>}
+          {isPaused && <button type="button" className="bb-vp-run-btn" onClick={pause}><EmojiIcon e="▶" /></button>}
           {(isRunning || isPaused) && <button type="button" className="bb-vp-stop-btn" onClick={stop}>■ Stop</button>}
-          {(mode === 'idle' || isPaused) && <button type="button" className="bb-vp-step-btn" onClick={step} title="Step one block">⏭</button>}
+          {(mode === 'idle' || isPaused) && <button type="button" className="bb-vp-step-btn" onClick={step} title="Step one block"><EmojiIcon e="⏭" /></button>}
           <button type="button" className="bb-vp-icon-btn" onClick={() => setSpeed((s) => SPEEDS[(SPEEDS.indexOf(s) + 1) % SPEEDS.length])} title="Speed">{speed}×</button>
           <button type="button" className="bb-vp-icon-btn" title="Camera" onClick={() => setCamMode((c) => (c === 'wide' ? 'follow' : c === 'follow' ? 'top' : 'wide'))}>
-            {camMode === 'wide' ? '🎥' : camMode === 'follow' ? '🤖' : '🗺️'}
+            <IconText>{camMode === 'wide' ? '🎥' : camMode === 'follow' ? '🤖' : '🗺️'}</IconText>
           </button>
-          <button type="button" className="bb-vp-icon-btn" onClick={onBack} title="Back to Build">🔧</button>
+          <button type="button" className="bb-vp-icon-btn" onClick={onBack} title="Back to Build"><EmojiIcon e="🔧" /></button>
         </div>
 
         {result?.win && (

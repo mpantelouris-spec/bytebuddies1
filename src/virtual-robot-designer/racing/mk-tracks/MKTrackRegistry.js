@@ -5,7 +5,7 @@
 import { MARIO_CIRCUIT_RAINBOW } from '../MarioKartTrackBuilder.js';
 import { CLASSIC_RAINBOW_TRACK } from './MKTrackVisualSpec.js';
 import { buildProfessionalCircuitWaypoints } from '../ProfessionalRainbowTrack.js';
-import { BIOME_TRACKS, BIOME_ARENA_TYPES } from './BiomeTrackRegistry.js';
+import { BIOME_TRACKS, BIOME_ARENA_TYPES, COSMIC_SKYWAY_BONUS_TRACKS } from './BiomeTrackRegistry.js';
 import { mergeTrackStandard, buildTrackSegmentsFromSections } from './CodeRacerTrackStandards.js';
 import { KART_THEME_TRACKS } from '../../data/kart-theme-tracks.js';
 
@@ -374,10 +374,12 @@ export const MK_ARENA_TYPES = new Set([
 export const MK_TRACK_BY_ARENA = Object.fromEntries([
   ...MK_TRACKS.map((t) => [t.arenaType, t]),
   ...BIOME_TRACKS.map((t) => [t.arenaType, t]),
+  ...COSMIC_SKYWAY_BONUS_TRACKS.map((t) => [t.arenaType, t]),
 ]);
 export const MK_TRACK_BY_COURSE = Object.fromEntries([
   ...MK_TRACKS.map((t) => [t.courseId, t]),
   ...BIOME_TRACKS.map((t) => [t.courseId, t]),
+  ...COSMIC_SKYWAY_BONUS_TRACKS.map((t) => [t.courseId, t]),
 ]);
 
 export function getMKTrack(arenaOrCourseId) {
@@ -414,6 +416,7 @@ export function buildMKZoneConfig(track) {
       laps: track.laps,
       trackWidth: track.trackWidth,
       targetTime: track.targetTime,
+      strictTargetTime: track.strictTargetTime ?? null, // Rover tier races: beat the clock to win
       checkpointCount: cpCount,
       checkpointTs: track.checkpointTs,
       boostTs: std?.boostTs || track.checkpointTs.map((t) => Math.max(0.03, t - 0.05)),
@@ -427,7 +430,7 @@ export function buildMKZoneConfig(track) {
       driftEnabled: track.difficulty >= 3,
       track3D: use3D,
       useLateralFall: isRainbow || use3D,
-      raceCountdown: isRainbow ? 0.6 : (isBiome ? 0 : 1.5),
+      raceCountdown: 0, // the Live Lab already shows a 3-2-1 before the run starts
       splinePoints: track.spline,
       trackSegments,
       raceControlMode,
@@ -502,7 +505,7 @@ export const CAR_MODE_TRACK_LABELS = {
   dry_dry_desert: 'Desert Dunes',
   fairy_glen_01: 'Forest Trail',
   frost_peak_01: 'Ice Valley',
-  star_station_01: 'Space Station',
+  star_station_01: 'Cosmic Skyway',
   lava_foundry_01: 'Volcano Run',
   jungle_ruins_01: 'Jungle Ruins',
   thunder_ridge_01: 'Final Challenge',

@@ -1,3 +1,4 @@
+import { cachedNodes, cachedChild } from './AnimNodeCache.js';
 /**
  * TrackPropScatter.js — Instanced scenery every 8–12m along track sides.
  */
@@ -59,10 +60,9 @@ const SCATTER_CONFIG = {
     vista: () => buildLavaRiver(16, 32),
   },
   star_station_01: {
-    step: 0.1,
-    offset: 13,
-    props: ['dome', 'dome'],
-    vista: () => buildEarthSphere(45),
+    step: 0.14,
+    offset: 16,
+    props: ['satellite', 'dome'],
   },
   fairy_glen_01: {
     step: 0.085,
@@ -147,12 +147,13 @@ export function scatterTrackProps(world, curve, hw, bounds, arenaType, finishT, 
   }
 }
 
+const SCATTER_ANIM = new Set(['prop-ferris-wheel', 'prop-gear', 'prop-windmill', 'lava-river', 'ocean-plane', 'prop-tiki-torch']);
 export function animateScatteredProps(world, time) {
-  world.traverse((obj) => {
+  cachedNodes(world, 'scatter', (o) => SCATTER_ANIM.has(o.name)).forEach((obj) => {
     if (obj.name === 'prop-ferris-wheel') obj.rotation.y = time * 0.08;
     if (obj.name === 'prop-gear') obj.rotation.z = time * 0.5;
     if (obj.name === 'prop-windmill') {
-      const blades = obj.getObjectByName('windmill-blades');
+      const blades = cachedChild(obj, 'windmill-blades');
       if (blades) blades.rotation.z = time * 0.6;
     }
     if (obj.name === 'lava-river' && obj.children[0]?.material) {

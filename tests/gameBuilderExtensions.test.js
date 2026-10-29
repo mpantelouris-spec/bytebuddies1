@@ -18,7 +18,8 @@ describe('Game Builder extension blocks', () => {
     executeExtensionGameBlock({ type: 'pen-color', params: { color: '#ff0000' } }, s);
     expect(s._pen.color).toBe('#ff0000');
     executeExtensionGameBlock({ type: 'pen-clear' }, s);
-    expect(s._pen.trail.length).toBe(0);
+    // Drawing is erased; the pen stays down, so only a start point for the next line is kept
+    expect(s._pen.trail.length).toBeLessThanOrEqual(1);
     executeExtensionGameBlock({ type: 'pen-up' }, s);
     expect(s._pen.down).toBe(false);
   });

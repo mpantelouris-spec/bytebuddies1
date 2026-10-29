@@ -1,21 +1,12 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { useUser } from './UserContext';
 
 const ProjectContext = createContext();
 
 const sampleProjects = [
   {
-    id: '1',
-    name: 'Space Invaders',
-    type: 'game',
-    language: 'python',
-    created: '2025-12-01',
-    modified: '2026-01-15',
-    blocks: true,
-    code: `# Space Invaders Game\nimport random\n\nclass Player:\n    def __init__(self):\n        self.x = 400\n        self.y = 550\n        self.speed = 5\n        self.score = 0\n    \n    def move_left(self):\n        self.x = max(0, self.x - self.speed)\n    \n    def move_right(self):\n        self.x = min(800, self.x + self.speed)\n    \n    def shoot(self):\n        return Bullet(self.x, self.y)\n\nclass Enemy:\n    def __init__(self, x, y):\n        self.x = x\n        self.y = y\n        self.alive = True\n    \n    def move_down(self):\n        self.y += 2\n\nclass Bullet:\n    def __init__(self, x, y):\n        self.x = x\n        self.y = y\n    \n    def update(self):\n        self.y -= 8\n\n# Game loop\nplayer = Player()\nenemies = [Enemy(x*80+50, y*60+30) for y in range(3) for x in range(8)]\nprint("Space Invaders loaded! Score:", player.score)\n`,
-    starred: true,
-  },
-  {
     id: '2',
+    isExample: true,
     name: 'My Portfolio',
     type: 'website',
     language: 'html',
@@ -27,6 +18,7 @@ const sampleProjects = [
   },
   {
     id: '3',
+    isExample: true,
     name: 'Chatbot AI',
     type: 'app',
     language: 'javascript',
@@ -38,14 +30,42 @@ const sampleProjects = [
   },
 ];
 
+/** Each pupil's own projects (e.g. Python files) are kept on this device under their account. */
+const storeKey = (user) => `bb-projects-v1:${user?.uid || user?.id || user?.email || 'guest'}`;
+function loadProjects(key) {
+  try {
+    const saved = JSON.parse(localStorage.getItem(key) || 'null');
+    if (Array.isArray(saved)) return saved.filter((p) => p && p.name !== 'Space Invaders');
+  } catch { /* ignore */ }
+  return sampleProjects;
+}
+
 export function ProjectProvider({ children }) {
-  const [projects, setProjects] = useState(sampleProjects);
-  const [activeProject, setActiveProject] = useState(sampleProjects[0]);
+  const { user } = useUser() || {};
+  const key = storeKey(user);
+  const [projects, setProjects] = useState(() => loadProjects(key));
+  const [activeProject, setActiveProject] = useState(() => loadProjects(key)[0] || null);
+  const [loadedKey, setLoadedKey] = useState(key);
+
+  // Switching account: load that pupil's projects
+  useEffect(() => {
+    if (key === loadedKey) return;
+    const next = loadProjects(key);
+    setProjects(next);
+    setActiveProject(next[0] || null);
+    setLoadedKey(key);
+  }, [key, loadedKey]);
+
+  useEffect(() => {
+    if (key !== loadedKey) return;
+    try { localStorage.setItem(key, JSON.stringify(projects)); } catch { /* storage full or blocked */ }
+  }, [projects, key, loadedKey]);
   const [viewMode, setViewMode] = useState('blocks'); // 'blocks' | 'code' | 'split'
 
   const createProject = useCallback((project) => {
     const newProject = {
       ...project,
+      isExample: false,
       id: Date.now().toString(),
       created: new Date().toISOString().split('T')[0],
       modified: new Date().toISOString().split('T')[0],
@@ -56,21 +76,19 @@ export function ProjectProvider({ children }) {
   }, []);
 
   const updateProject = useCallback((id, updates) => {
-    setProjects(prev => prev.map(p => p.id === id ? { ...p, ...updates, modified: new Date().toISOString().split('T')[0] } : p));
-    setActiveProject(prev => prev?.id === id ? { ...prev, ...updates } : prev);
+    setProjects(prev => prev.map(p => p.id === id ? { ...p, ...updates, isExample: false, modified: new Date().toISOString().split('T')[0] } : p));
+    setActiveProject(prev => prev?.id === id ? { ...prev, ...updates, isExample: false } : prev);
   }, []);
 
   const deleteProject = useCallback((id) => {
     setProjects(prev => prev.filter(p => p.id !== id));
-    if (activeProject?.id === id) {
-      setActiveProject(null);
-    }
-  }, [activeProject]);
+    setActiveProject(prev => (prev?.id === id ? null : prev));
+  }, []);
 
   const duplicateProject = useCallback((id) => {
     const project = projects.find(p => p.id === id);
     if (project) {
-      createProject({ ...project, name: `${project.name} (Copy)` });
+      createProject({ ...project, isExample: false, name: `${project.name} (Copy)` });
     }
   }, [projects, createProject]);
 

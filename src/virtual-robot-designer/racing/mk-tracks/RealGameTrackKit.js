@@ -2,7 +2,7 @@
  * RealGameTrackKit.js — Master orchestrator for 3D Mario Kart–quality worlds.
  */
 import { getBiomeAAASpec } from './BiomeAAAVisualSpec.js';
-import { getBiomeTrack } from './BiomeTrackRegistry.js';
+import { getBiomeTrack, isCosmicSkywayArena } from './BiomeTrackRegistry.js';
 import { scatterAAAGuardrails } from './BiomeAAAKit.js';
 import { installTrackEnvironment } from './TrackEnvironmentKit.js';
 import { installTrackSky, animateTrackSky } from './TrackSkyKit.js';
@@ -15,7 +15,7 @@ import { buildTrackWorld, animateTrackWorld } from './TrackWorldBuilder.js';
 import { enrichTrackWorldGltf } from './TrackGltfScatter.js';
 import { probeTrackBundledAssets } from './TrackAssetManifest.js';
 import { resnapMarkedProps } from './TrackGroundSnap.js';
-import { initScenePerfBudget, scaledCount } from './TrackPerformanceKit.js';
+import { initScenePerfBudget, scaledCount, isSlimTrackWorld } from './TrackPerformanceKit.js';
 import {
   installMK8PlayDressing,
   installMK8HeroLandmarks,
@@ -41,28 +41,50 @@ export function buildRealGameWorld(scene, curve, world, bounds, arenaType, finis
   world.userData.trackPerfBudget = perf;
   scene.userData.trackRoadSegments = perf.roadSegments;
 
-  const cup = isCupTrack(arenaType);
-  scene.userData.useReferenceBackdrop = false;
+  const cup = isCupTrack(arenaType);  scene.userData.useReferenceBackdrop = false;
   scene.userData.trackLoading = false;
   scene.userData.sceneryPopulated = false;
   world.userData.sceneryPopulated = false;
 
+  const slim = isSlimTrackWorld(scene);
   installTrackSky(scene, bounds, arenaType);
-  try {
-    installTrackEnvironment(scene, arenaType, renderer);
-  } catch (err) {
-    console.warn('[RealGameWorld] environment failed', arenaType, err);
+  if (!slim) {
+    try {
+      installTrackEnvironment(scene, arenaType, renderer);
+    } catch (err) {
+      console.warn('[RealGameWorld] environment failed', arenaType, err);
+    }
   }
+  // Cosmic Skyway ships its own full scenery kit; the generic station props clutter the view.
+  const cosmic = isCosmicSkywayArena(arenaType);
   buildTrackWorld(world, curve, hw, bounds, arenaType, perf, scene, finishT);
   scene.userData.trackBounds = bounds;
+  if (slim) {
+    world.userData.awaitGltfScenery = false;
+    world.userData.deferGltfEnrich = true;
+    world.userData.sceneryPopulated = true;
+    scene.userData.sceneryPopulated = true;
+    installTrackPlayLayer(world, curve, hw, arenaType, finishT);
+    buildCodeRacerCollectibles(scene, curve, {
+      coinCount: scaledCount(10, 0.5),
+      finishT,
+      halfWidth: hw,
+    });
+    scene.userData.biomeAAA = true;
+    scene.userData.raceVisual = { bloom: 0, threshold: 0.9, radius: 0.2 };
+    console.log('[RealGameWorld]', arenaType, { mode: 'slim-first-paint', tier: perf.tier });
+    return;
+  }
   installMK8PlayDressing(world, curve, hw, arenaType, { qualityTier: perf.tier });
-  if (cup) {
+  if (cup && !cosmic) {
     installCupReferenceQuality(scene, world, curve, hw, bounds, arenaType, finishT);
   }
 
-  scatterTrackProps(world, curve, hw, bounds, arenaType, finishT, perf, scene);
-  placeHeroLandmarks(world, curve, hw, arenaType, finishT);
-  installMK8HeroLandmarks(world, curve, hw, bounds, arenaType, finishT);
+  if (!cosmic) {
+    scatterTrackProps(world, curve, hw, bounds, arenaType, finishT, perf, scene);
+    placeHeroLandmarks(world, curve, hw, arenaType, finishT);
+    installMK8HeroLandmarks(world, curve, hw, bounds, arenaType, finishT);
+  }
 
   const startGltfEnrich = () => {
     enrichTrackWorldGltf(world, curve, hw, arenaType, perf, scene, finishT)
@@ -75,7 +97,9 @@ export function buildRealGameWorld(scene, curve, world, bounds, arenaType, finis
       });
   };
 
-  if (cup) {
+  if (cosmic) {
+    world.userData.awaitGltfScenery = false;
+  } else if (cup) {
     world.userData.deferGltfEnrich = true;
     world.userData.awaitGltfScenery = false;
     const later = typeof requestIdleCallback === 'function'

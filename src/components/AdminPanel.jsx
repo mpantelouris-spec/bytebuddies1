@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useUser } from '../contexts/UserContext';
-import { getAllUsers } from '../firebase';
+import { getAllUsers, listAccountLicenses, saveAccountLicense, saveAccountLicenses } from '../firebase';
+import { EmojiIcon } from './ui/Icon.jsx';
+import ProfileAvatar from './ui/ProfileAvatar.jsx';
 
 const ADMIN_EMAILS = ['mpantelouris@britishschool.sch.ae', 'fudoh@britishschool.sch.ae'];
 
@@ -41,7 +43,7 @@ function Section({ title, icon, children, action }) {
     <div style={card}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span>{icon}</span> {title}
+          <EmojiIcon e={icon} style={{ marginRight: 6 }} />{title}
         </h2>
         {action}
       </div>
@@ -65,6 +67,15 @@ export default function AdminPanel() {
   const [classes, setClasses] = useState([]);
   const [assignments, setAssignments] = useState([]);
   const [allUsers, setAllUsers] = useState([]);
+  const [licenses, setLicenses] = useState([]);
+  const [licenseEmails, setLicenseEmails] = useState('');
+  const [licenseOrganization, setLicenseOrganization] = useState('');
+  const [licenseStudentLimit, setLicenseStudentLimit] = useState('30');
+  const [licenseExpiry, setLicenseExpiry] = useState('');
+  const [licenseNotes, setLicenseNotes] = useState('');
+  const [licenseError, setLicenseError] = useState('');
+  const [licenseNotice, setLicenseNotice] = useState('');
+  const [savingLicense, setSavingLicense] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
@@ -91,19 +102,26 @@ export default function AdminPanel() {
       }));
       setAllUsers(Array.from(map.values()));
     });
+    listAccountLicenses()
+      .then(setLicenses)
+      .catch((error) => {
+        console.error('[Admin] Could not load licences:', error);
+        setLicenseError('Licence storage is not available yet. Ask the site administrator to finish the Firebase access rules setup.');
+      });
   }, [refreshKey]);
 
   // Guard: only allow admin
   if (!ADMIN_EMAILS.includes(user?.email) && user?.role !== 'admin') {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', gap: 16 }}>
-        <div style={{ fontSize: 64 }}>🔒</div>
+        <div style={{ fontSize: 64 }}><EmojiIcon e="🔒" /></div>
         <h2 style={{ margin: 0, color: 'var(--text-primary)' }}>Access Denied</h2>
         <p style={{ color: 'var(--text-muted)', margin: 0 }}>This page is restricted to ByteBuddies administrators.</p>
       </div>
     );
   }
 
+  const licenseByEmail = new Map(licenses.map((l) => [String(l.email || l.id || '').trim().toLowerCase(), l]));
   const lsKeys = Object.keys(localStorage).filter(k => k.startsWith('cv-') || k.startsWith('bb-'));
   const totalStudents = classes.reduce((s, c) => s + (c.students?.length || 0), 0);
   const overdueAssignments = assignments.filter(a => a.dueDate && new Date(a.dueDate) < new Date()).length;
@@ -119,6 +137,7 @@ export default function AdminPanel() {
   const tabs = [
     { id: 'overview', label: 'Overview', icon: '📊' },
     { id: 'users', label: 'Users', icon: '👥' },
+    { id: 'licenses', label: 'Licences', icon: '🔑' },
     { id: 'classes', label: 'Classes', icon: '🏫' },
     { id: 'assignments', label: 'Assignments', icon: '📋' },
     { id: 'system', label: 'System', icon: '⚙️' },
@@ -143,6 +162,41 @@ export default function AdminPanel() {
     }
   };
 
+  const grantLicense = async (event) => {
+    event.preventDefault();
+    setSavingLicense(true);
+    setLicenseError('');
+    setLicenseNotice('');
+    try {
+      const emails = [...new Set(licenseEmails.split(/[\s,;]+/).map(email => email.trim().toLowerCase()).filter(Boolean))];
+      if (emails.length !== 1) throw new Error('Enter one teacher email per licence so pupil places are assigned to the right teacher.');
+      await saveAccountLicenses({ emails, organization: licenseOrganization, expiresAt: licenseExpiry, notes: licenseNotes, status: 'active', studentLimit: licenseStudentLimit });
+      setLicenseNotice(`Access activated for ${emails.length} account${emails.length === 1 ? '' : 's'}.`);
+      setLicenseEmails('');
+      setLicenseOrganization('');
+      setLicenseStudentLimit('30');
+      setLicenseExpiry('');
+      setLicenseNotes('');
+      setRefreshKey((key) => key + 1);
+    } catch (error) {
+      setLicenseError(error?.message || 'Could not save this licence. Check Firebase permissions and try again.');
+    } finally {
+      setSavingLicense(false);
+    }
+  };
+
+  const setLicenseStatus = async (license, status) => {
+    setLicenseError('');
+    setLicenseNotice('');
+    try {
+      await saveAccountLicense({ ...license, status });
+      setLicenseNotice(`${license.email} is now ${status}.`);
+      setRefreshKey((key) => key + 1);
+    } catch (error) {
+      setLicenseError(error?.message || 'Could not update this licence.');
+    }
+  };
+
   return (
     <div style={{ padding: '32px 24px', maxWidth: 1200, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 24 }}>
 
@@ -150,7 +204,7 @@ export default function AdminPanel() {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
         <div>
           <h1 style={{ margin: '0 0 4px', fontSize: 26, fontWeight: 800, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 10 }}>
-            🛡️ Admin Panel
+            <EmojiIcon e="🛡️" style={{ marginRight: '0.35em' }} />Admin Panel
           </h1>
           <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)' }}>
             ByteBuddies platform oversight — signed in as <strong>{user?.name}</strong>
@@ -161,7 +215,7 @@ export default function AdminPanel() {
           style={{ padding: '8px 16px', fontSize: 13 }}
           onClick={() => setRefreshKey(k => k + 1)}
         >
-          🔄 Refresh
+          <EmojiIcon e="🔄" style={{ marginRight: '0.35em' }} />Refresh
         </button>
       </div>
 
@@ -178,7 +232,7 @@ export default function AdminPanel() {
               transition: 'all 0.15s',
             }}
           >
-            {t.icon} {t.label}
+            <EmojiIcon e={t.icon} style={{ marginRight: '0.35em' }} />{t.label}
           </button>
         ))}
       </div>
@@ -190,7 +244,7 @@ export default function AdminPanel() {
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             {stats.map(s => (
               <div key={s.label} style={statBox}>
-                <div style={{ fontSize: 28, marginBottom: 6 }}>{s.icon}</div>
+                <div style={{ fontSize: 28, marginBottom: 6 }}><EmojiIcon e={s.icon} /></div>
                 <div style={{ fontSize: 30, fontWeight: 800, color: s.color, lineHeight: 1 }}>{s.value}</div>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>{s.label}</div>
               </div>
@@ -262,24 +316,31 @@ export default function AdminPanel() {
           {allUsers.length === 0 ? <EmptyState icon="👤" text="No user data found" /> : (
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead><tr>
-                {['Name', 'Email', 'Role', 'Level', 'XP', 'Streak', 'Joined'].map(h => <th key={h} style={th}>{h}</th>)}
+                {['Name', 'Email', 'Role', 'Can sign in?', 'Level', 'XP', 'Streak', 'Joined'].map(h => <th key={h} style={th}>{h}</th>)}
               </tr></thead>
               <tbody>
                 {allUsers.map((u, i) => (
                   <tr key={i}>
                     <td style={td}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: '#fff' }}>
-                          {u.avatarEmoji || u.avatar || '?'}
-                        </div>
+                        <ProfileAvatar value={u.avatarEmoji} name={u.name} size={32} />
                         <strong>{u.name}</strong>
                       </div>
                     </td>
                     <td style={{ ...td, fontSize: 12, color: 'var(--text-muted)' }}>{u.email || '—'}</td>
                     <td style={td}><span style={badge(u.role === 'teacher' ? '#10b981' : '#6366f1')}>{u.role || 'student'}</span></td>
+                    <td style={td}>{(() => {
+                      // Only accounts with an active licence (a teacher licence, or a pupil place) get past sign-in
+                      const lic = licenseByEmail.get(String(u.email || '').trim().toLowerCase());
+                      const expired = lic?.expiresAt && new Date(lic.expiresAt) < new Date();
+                      if (!u.email) return <span style={badge('#64748b')}>No email</span>;
+                      if (!licenses.length && licenseError) return '—';
+                      if (lic && lic.status === 'active' && !expired) return <span style={badge('#10b981')}>{lic.role === 'student' ? `Yes · ${lic.teacherEmail || 'pupil place'}` : 'Yes'}</span>;
+                      return <span style={badge('#ef4444')} title="No pupil place on a teacher's licence yet — the teacher can give one from their Classroom page">{lic ? (expired ? 'Expired' : 'Suspended') : 'No place yet'}</span>;
+                    })()}</td>
                     <td style={td}>Lv.{u.level || 1}</td>
                     <td style={td}>{u.xp || 0} XP</td>
-                    <td style={td}>🔥 {u.streak || 0}</td>
+                    <td style={td}><EmojiIcon e="🔥" style={{ marginRight: '0.35em' }} />{u.streak || 0}</td>
                     <td style={td}>{u.joinDate || '—'}</td>
                   </tr>
                 ))}
@@ -287,6 +348,67 @@ export default function AdminPanel() {
             </table>
           )}
         </Section>
+      )}
+
+      {/* Licences Tab */}
+      {tab === 'licenses' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          <Section title="Grant school access" icon="🔑">
+            <p style={{ margin: '-6px 0 18px', maxWidth: 760, color: 'var(--text-muted)', fontSize: 13, lineHeight: 1.6 }}>
+              After a school has agreed its quote, activate one teacher account and set the number of pupil places included. The teacher can then add pupils from their class dashboard. Leave the end date blank for access with no expiry.
+            </p>
+            <form onSubmit={grantLicense} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, alignItems: 'end' }}>
+              <label style={{ display: 'grid', gap: 6, color: 'var(--text-secondary)', fontSize: 12, fontWeight: 700 }}>
+                Teacher email
+                <input required type="email" value={licenseEmails} onChange={event => setLicenseEmails(event.target.value)} placeholder="teacher@school.edu" autoComplete="email" style={{ padding: '11px 12px', borderRadius: 9, border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: 14 }} />
+              </label>
+              <label style={{ display: 'grid', gap: 6, color: 'var(--text-secondary)', fontSize: 12, fontWeight: 700 }}>
+                Pupil places
+                <input required type="number" min="1" max="5000" step="1" value={licenseStudentLimit} onChange={event => setLicenseStudentLimit(event.target.value)} style={{ padding: '11px 12px', borderRadius: 9, border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: 14 }} />
+              </label>
+              <label style={{ display: 'grid', gap: 6, color: 'var(--text-secondary)', fontSize: 12, fontWeight: 700 }}>
+                School or organisation
+                <input value={licenseOrganization} onChange={event => setLicenseOrganization(event.target.value)} placeholder="School name" style={{ padding: '11px 12px', borderRadius: 9, border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: 14 }} />
+              </label>
+              <label style={{ display: 'grid', gap: 6, color: 'var(--text-secondary)', fontSize: 12, fontWeight: 700 }}>
+                Access through (optional)
+                <input type="date" value={licenseExpiry} onChange={event => setLicenseExpiry(event.target.value)} style={{ padding: '10px 12px', borderRadius: 9, border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: 14 }} />
+              </label>
+              <button type="submit" disabled={savingLicense} style={{ minHeight: 42, border: 0, borderRadius: 9, padding: '10px 18px', color: '#fff', background: savingLicense ? '#55536e' : 'linear-gradient(110deg,#6366f1,#8b5cf6)', fontWeight: 800, fontSize: 14, cursor: savingLicense ? 'wait' : 'pointer' }}>
+                {savingLicense ? 'Saving…' : '✓ Activate access'}
+              </button>
+              <label style={{ gridColumn: '1 / -1', display: 'grid', gap: 6, color: 'var(--text-secondary)', fontSize: 12, fontWeight: 700 }}>
+                Internal note (optional)
+                <textarea value={licenseNotes} onChange={event => setLicenseNotes(event.target.value)} placeholder="Quote reference or agreed access details" rows={2} style={{ resize: 'vertical', padding: '10px 12px', borderRadius: 9, border: '1px solid var(--border-color)', background: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: 13 }} />
+              </label>
+            </form>
+            {licenseError && <p role="alert" style={{ margin: '14px 0 0', padding: 12, borderRadius: 9, color: '#fca5a5', background: 'rgba(239,68,68,.1)', fontSize: 13 }}>{licenseError}</p>}
+            {licenseNotice && <p role="status" style={{ margin: '14px 0 0', padding: 12, borderRadius: 9, color: '#6ee7b7', background: 'rgba(16,185,129,.1)', fontSize: 13 }}>{licenseNotice}</p>}
+          </Section>
+
+          <Section title="School licences" icon="🏫" action={<span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{licenses.filter((l) => l.role !== 'student').length} teachers · {licenses.filter((l) => l.role === 'student').length} pupils with places</span>}>
+            {licenses.length === 0 ? <EmptyState icon="🔑" text={licenseError ? 'Licence records will appear here once Firebase access rules are ready.' : 'No licences yet. Activate a teacher above after their school is approved.'} /> : (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 760 }}>
+                  <thead><tr>{['Teacher account', 'School', 'Pupil places', 'Status', 'Access through', 'Note', ''].map(label => <th key={label} style={th}>{label}</th>)}</tr></thead>
+                  <tbody>{licenses.filter((l) => l.role !== 'student').map(license => {
+                    const expired = license.expiresAt && new Date(license.expiresAt) < new Date();
+                    const active = license.status === 'active' && !expired;
+                    return <tr key={license.id}>
+                      <td style={td}><strong>{license.email}</strong></td>
+                      <td style={td}>{license.organization || '—'}</td>
+                      <td style={td}>{Number(license.studentLimit) ? `${(license.pupilEmails || []).length} of ${Number(license.studentLimit)} used` : '— not set'}</td>
+                      <td style={td}><span style={badge(active ? '#10b981' : '#ef4444')}>{expired ? 'Expired' : license.status || 'Suspended'}</span></td>
+                      <td style={td}>{license.expiresAt ? new Date(`${license.expiresAt}T00:00:00`).toLocaleDateString() : 'No expiry'}</td>
+                      <td style={{ ...td, maxWidth: 220, color: 'var(--text-muted)' }}>{license.notes || '—'}</td>
+                      <td style={td}><button type="button" onClick={() => setLicenseStatus(license, active ? 'suspended' : 'active')} style={{ border: '1px solid var(--border-color)', borderRadius: 8, padding: '7px 10px', background: 'var(--bg-primary)', color: active ? '#fca5a5' : '#6ee7b7', fontWeight: 700, cursor: 'pointer' }}>{active ? 'Suspend' : 'Activate'}</button></td>
+                    </tr>;
+                  })}</tbody>
+                </table>
+              </div>
+            )}
+          </Section>
+        </div>
       )}
 
       {/* Classes Tab */}
@@ -412,14 +534,14 @@ export default function AdminPanel() {
                 style={{ padding: '10px 20px', fontSize: 13, background: '#ef444420', color: '#ef4444', border: '1px solid #ef444440', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}
                 onClick={() => { if (window.confirm('Delete ALL classes?')) { localStorage.removeItem('bb-classes'); setRefreshKey(k => k + 1); } }}
               >
-                🗑️ Clear All Classes
+                <EmojiIcon e="🗑️" style={{ marginRight: '0.35em' }} />Clear All Classes
               </button>
               <button
                 className="btn"
                 style={{ padding: '10px 20px', fontSize: 13, background: '#ef444420', color: '#ef4444', border: '1px solid #ef444440', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}
                 onClick={() => { if (window.confirm('Delete ALL assignments?')) { localStorage.removeItem('bb-assignments'); setRefreshKey(k => k + 1); } }}
               >
-                🗑️ Clear All Assignments
+                <EmojiIcon e="🗑️" style={{ marginRight: '0.35em' }} />Clear All Assignments
               </button>
               <button
                 className="btn"

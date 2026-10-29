@@ -3,6 +3,7 @@ import VirtualRobotDB from '../database/virtual-robot-db.js';
 import { SIM_ROBOTS } from '../simulator/virtualRobotEngine.jsx';
 import vrdApi from '../apis/vrd-api.js';
 import { migrateDesign } from '../config.js';
+import { EmojiIcon } from '../../components/ui/Icon.jsx';
 
 const FILTERS = ['all', 'favorites', 'shared'];
 const SORTS = [{ id: 'newest', label: 'Newest' }, { id: 'tested', label: 'Most Tested' }, { id: 'name', label: 'Name' }];
@@ -44,7 +45,7 @@ export default function MyCreationsPage({ onLoadDesign, onGoDesign, onGoSimulato
 
   return (
     <div>
-      <h2 style={{ margin: '0 0 8px', fontSize: 22, fontWeight: 800 }}>📁 My Creations</h2>
+      <h2 style={{ margin: '0 0 8px', fontSize: 22, fontWeight: 800 }}><EmojiIcon e="📁" style={{ marginRight: '0.35em' }} />My Creations</h2>
       <p style={{ margin: '0 0 16px', color: 'rgba(240,230,255,0.6)', fontSize: 14 }}>Your designs, variants, and favorites.</p>
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
@@ -60,9 +61,9 @@ export default function MyCreationsPage({ onLoadDesign, onGoDesign, onGoSimulato
 
       {filtered.length === 0 ? (
         <div className="vrd-card" style={{ textAlign: 'center', padding: 48 }}>
-          <div style={{ fontSize: 56 }}>🤖</div>
+          <div style={{ fontSize: 56 }}><EmojiIcon e="🤖" /></div>
           <p style={{ color: 'rgba(240,230,255,0.6)' }}>No designs yet. Create something amazing!</p>
-          <button type="button" className="vrd-btn vrd-btn-primary" style={{ marginTop: 16 }} onClick={onGoDesign}>🎨 Start Designing</button>
+          <button type="button" className="vrd-btn vrd-btn-primary" style={{ marginTop: 16 }} onClick={onGoDesign}><EmojiIcon e="🎨" style={{ marginRight: '0.35em' }} />Start Designing</button>
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
@@ -72,14 +73,14 @@ export default function MyCreationsPage({ onLoadDesign, onGoDesign, onGoSimulato
             return (
               <div key={d.id} className="vrd-card vrd-creation-card">
                 <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                  <span style={{ fontSize: 40 }}>{meta.icon}</span>
+                  <span style={{ fontSize: 40 }}><EmojiIcon e={meta.icon} /></span>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 800, fontSize: 16 }}>{d.name}</div>
                     <div style={{ fontSize: 12, color: 'rgba(240,230,255,0.5)', marginTop: 4 }}>{d.description || meta.desc}</div>
                     <div style={{ fontSize: 11, color: 'rgba(240,230,255,0.4)', marginTop: 6 }}>
                       Created {new Date(d.created_date).toLocaleDateString()} · {tests} test runs
                     </div>
-                    {d.is_public && <span style={{ fontSize: 10, color: '#00FF41', fontWeight: 700 }}>🌍 Public</span>}
+                    {d.is_public && <span style={{ fontSize: 10, color: '#00FF41', fontWeight: 700 }}><EmojiIcon e="🌍" style={{ marginRight: '0.35em' }} />Public</span>}
                   </div>
                   <button type="button" style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer' }}
                     onClick={() => { VirtualRobotDB.toggleFavorite(d.id); refresh(); }}>

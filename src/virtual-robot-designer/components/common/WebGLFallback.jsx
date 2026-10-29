@@ -1,10 +1,11 @@
 import React from 'react';
+import { EmojiIcon } from '../../../components/ui/Icon.jsx';
 
 export default function WebGLFallback({ onRetry }) {
   return (
     <div className="vrd-webgl-fallback">
       <div className="vrd-webgl-fallback-card">
-        <span className="vrd-webgl-fallback-icon" aria-hidden>🤖</span>
+        <span className="vrd-webgl-fallback-icon" aria-hidden><EmojiIcon e="🤖" /></span>
         <h1>3D graphics not available</h1>
         <p>
           Your browser could not start WebGL, which powers the robot build studio.

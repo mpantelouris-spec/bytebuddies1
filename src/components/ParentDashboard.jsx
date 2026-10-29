@@ -2,6 +2,8 @@ import React, { useMemo } from 'react';
 import { useUser } from '../contexts/UserContext';
 import { courses } from '../data/courseData';
 import { scoreToGrade, getCourseCompletion } from '../utils/adaptiveLearning';
+import { EmojiIcon, IconText } from './ui/Icon.jsx';
+import ProfileAvatar from './ui/ProfileAvatar.jsx';
 
 export default function ParentDashboard({ onNavigate }) {
   const { user } = useUser();
@@ -47,7 +49,7 @@ export default function ParentDashboard({ onNavigate }) {
     <div className="page" style={{ maxWidth: 780, margin: '0 auto' }}>
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
-          <h1>👨‍👩‍👧 Parent Dashboard</h1>
+          <h1><EmojiIcon e="👨‍👩‍👧" style={{ marginRight: '0.35em' }} />Parent Dashboard</h1>
           <p>A summary of {user.name}'s coding progress</p>
         </div>
         <button className="btn btn-secondary btn-sm" onClick={() => onNavigate('dashboard')}>
@@ -60,7 +62,7 @@ export default function ParentDashboard({ onNavigate }) {
         background: 'var(--gradient-primary)', borderRadius: 20, padding: '28px 32px',
         marginBottom: 24, display: 'flex', gap: 24, alignItems: 'center',
       }}>
-        <div style={{ fontSize: 64 }}>{user.avatarEmoji || '🧑‍💻'}</div>
+        <ProfileAvatar value={user.avatarEmoji} name={user.name} size={76} style={{ boxShadow: '0 6px 20px rgba(0,0,0,0.25)' }} />
         <div style={{ flex: 1 }}>
           <h2 style={{ color: '#fff', fontSize: 22, fontWeight: 800, marginBottom: 6 }}>{user.name}</h2>
           <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: 14, marginBottom: 12 }}>{summary}</p>
@@ -72,7 +74,7 @@ export default function ParentDashboard({ onNavigate }) {
               { label: 'This week', value: `${totalWeekXP} XP`, icon: '📈' },
             ].map(s => (
               <div key={s.label} style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: 18 }}>{s.icon}</div>
+                <div style={{ fontSize: 18 }}><EmojiIcon e={s.icon} /></div>
                 <div style={{ color: '#fff', fontWeight: 800, fontSize: 16 }}>{s.value}</div>
                 <div style={{ color: 'rgba(255,255,255,0.65)', fontSize: 11 }}>{s.label}</div>
               </div>
@@ -92,7 +94,7 @@ export default function ParentDashboard({ onNavigate }) {
         {/* This week's XP chart */}
         <div className="card">
           <div className="card-header">
-            <h3 style={{ fontSize: 15, fontWeight: 700 }}>📅 This Week</h3>
+            <h3 style={{ fontSize: 15, fontWeight: 700 }}><EmojiIcon e="📅" style={{ marginRight: '0.35em' }} />This Week</h3>
             <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{totalWeekXP} XP total</span>
           </div>
           <div style={{ padding: '12px 16px 16px' }}>
@@ -117,7 +119,7 @@ export default function ParentDashboard({ onNavigate }) {
         {/* Time & activity */}
         <div className="card">
           <div className="card-header">
-            <h3 style={{ fontSize: 15, fontWeight: 700 }}>⏱️ Activity</h3>
+            <h3 style={{ fontSize: 15, fontWeight: 700 }}><EmojiIcon e="⏱️" style={{ marginRight: '0.35em' }} />Activity</h3>
           </div>
           <div style={{ padding: 16 }}>
             {[
@@ -127,7 +129,7 @@ export default function ParentDashboard({ onNavigate }) {
               { label: 'Challenges done', value: user.badges.length, icon: '🏆' },
             ].map(s => (
               <div key={s.label} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--border-color)', fontSize: 13 }}>
-                <span style={{ color: 'var(--text-secondary)' }}>{s.icon} {s.label}</span>
+                <span style={{ color: 'var(--text-secondary)' }}><EmojiIcon e={s.icon} style={{ marginRight: '0.35em' }} />{s.label}</span>
                 <strong>{s.value}</strong>
               </div>
             ))}
@@ -139,13 +141,13 @@ export default function ParentDashboard({ onNavigate }) {
       {courseCompletions.length > 0 && (
         <div className="card" style={{ marginBottom: 24 }}>
           <div className="card-header">
-            <h3 style={{ fontSize: 15, fontWeight: 700 }}>📚 Course Progress</h3>
+            <h3 style={{ fontSize: 15, fontWeight: 700 }}><EmojiIcon e="📚" style={{ marginRight: '0.35em' }} />Course Progress</h3>
           </div>
           <div style={{ padding: 16 }}>
             {courseCompletions.map(c => (
               <div key={c.id} style={{ marginBottom: 16 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 13 }}>
-                  <span>{c.icon} {c.title}</span>
+                  <span><EmojiIcon e={c.icon} style={{ marginRight: '0.35em' }} />{c.title}</span>
                   <span style={{ fontWeight: 700, color: c.color }}>{c.completion}%</span>
                 </div>
                 <div style={{ background: 'var(--bg-tertiary)', borderRadius: 4, height: 8, overflow: 'hidden' }}>
@@ -165,7 +167,7 @@ export default function ParentDashboard({ onNavigate }) {
       {user.badges.length > 0 && (
         <div className="card" style={{ marginBottom: 24 }}>
           <div className="card-header">
-            <h3 style={{ fontSize: 15, fontWeight: 700 }}>🏅 Badges Earned</h3>
+            <h3 style={{ fontSize: 15, fontWeight: 700 }}><EmojiIcon e="🏅" style={{ marginRight: '0.35em' }} />Badges Earned</h3>
           </div>
           <div style={{ padding: 16, display: 'flex', flexWrap: 'wrap', gap: 10 }}>
             {user.badges.map((badge, i) => (
@@ -173,7 +175,7 @@ export default function ParentDashboard({ onNavigate }) {
                 background: 'var(--gradient-primary)', borderRadius: 20, padding: '6px 14px',
                 fontSize: 12, fontWeight: 700, color: '#fff',
               }}>
-                🏆 {badge}
+                <EmojiIcon e="🏆" style={{ marginRight: '0.35em' }} />{badge}
               </div>
             ))}
           </div>
@@ -183,7 +185,7 @@ export default function ParentDashboard({ onNavigate }) {
       {/* Parent tips */}
       <div className="card" style={{ marginBottom: 24, background: 'rgba(99,102,241,0.06)' }}>
         <div className="card-header">
-          <h3 style={{ fontSize: 15, fontWeight: 700 }}>💡 Tips for Supporting Your Child</h3>
+          <h3 style={{ fontSize: 15, fontWeight: 700 }}><EmojiIcon e="💡" style={{ marginRight: '0.35em' }} />Tips for Supporting Your Child</h3>
         </div>
         <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
           {[

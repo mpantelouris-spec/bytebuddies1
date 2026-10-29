@@ -13,6 +13,7 @@ import RobotViewer3D from './components/RobotViewer3D';
 import PartsLibrary from './components/PartsLibrary';
 import StatsPanel from './components/StatsPanel';
 import './styles/robot-designer.css';
+import { EmojiIcon } from '../components/ui/Icon.jsx';
 
 export default function RobotDesignerPage() {
   // Main robot configuration state
@@ -74,7 +75,7 @@ export default function RobotDesignerPage() {
         padding: '0 24px', background: '#1a1a2e',
         borderBottom: '1px solid rgba(0,217,255,0.15)',
       }}>
-        <span style={{ fontSize: 28 }}>🤖</span>
+        <span style={{ fontSize: 28 }}><EmojiIcon e="🤖" /></span>
         <div>
           <h1 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#fff' }}>Virtual Robot Designer</h1>
           <p style={{ margin: 0, fontSize: 12, color: '#64748b' }}>Design robots · test in simulation · generate code</p>

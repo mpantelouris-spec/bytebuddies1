@@ -76,9 +76,9 @@ export function buildWhatNextCards(weakModules, user) {
     },
     {
       id: 'workspace',
-      icon: '💻',
-      title: 'Build Something',
-      desc: 'Open the workspace and create a new project',
+      icon: '🐍',
+      title: 'Write Python',
+      desc: 'Open the Python workspace and run a program',
       action: 'workspace',
       color: '#8b5cf6',
     },

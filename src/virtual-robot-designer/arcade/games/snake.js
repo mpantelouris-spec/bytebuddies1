@@ -3,6 +3,7 @@
  * Teaches algorithms: look ahead, choose a turn, repeat forever.
  */
 import { roundRect, shade } from '../engine.js';
+import { createArcadeExpansion } from '../expanded-levels.js';
 
 const COLS = 20, ROWS = 15, CELL = 32, W = COLS * CELL, H = ROWS * CELL;
 // Directions: 0 right, 1 down, 2 left, 3 up
@@ -42,6 +43,7 @@ const LEVELS = [
     walls: [...box(7, 3, 7, 5), ...box(12, 9, 12, 11), ...box(9, 7, 10, 7), ...box(4, 9, 5, 9), ...box(14, 5, 15, 5)],
     palette: ['move', 'turn_left', 'turn_right', 'forever', 'if', 'else', 'repeat', 'repeat_until'] },
 ];
+LEVELS.push(...createArcadeExpansion({ id: 'snakebot', title: 'Snake Bot', emoji: '🐍', color: '#22c55e', levels: LEVELS }));
 
 export const snake = {
   id: 'snakebot',

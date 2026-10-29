@@ -1,19 +1,21 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useUser } from '../contexts/UserContext';
 import {
   localClasses, saveLocalClasses, localAssignments, saveLocalAssignments, makeInviteCode,
-  saveClass, fetchClass, fetchTeacherClasses, fetchAssignments, saveAssignment, deleteAssignment as removeAssignment,
+  saveClass, fetchClass, fetchTeacherClasses, fetchAllTeacherClasses, deleteClass, localArchivedClasses, rememberArchived, fetchAssignments, saveAssignment, deleteAssignment as removeAssignment,
   updateRoster, postAnnouncement, replaceAnnouncements, resolveHelp, markSubmission, handIn,
   findSub, safeKey, statusFor, STATUS, dueLabel,
 } from '../utils/classroomStore.js';
 import {
-  getGcSession, createCourseWork, createAnnouncement, syncGrades, openShareToClassroom, appLink,
+  getGcSession, createCourseWork, syncGrades, openShareToClassroom, appLink,
 } from '../utils/googleClassroom.js';
 import { Modal, Avatar, Chip, GoogleClassroomLogo, useToast, copyText, timeAgo, classGradient, CLASS_COLORS, STICKERS } from './classroom/ui.jsx';
 import { KIND_META, classroomHash } from './classroom/assignables.js';
 import SetWorkModal from './classroom/SetWorkModal.jsx';
 import GooglePanel, { GcErrorNote } from './classroom/GooglePanel.jsx';
 import HandInView from './classroom/HandInView.jsx';
+import { provisionPupilLicenses } from '../firebase.js';
+import { EmojiIcon, IconText } from './ui/Icon.jsx';
 
 const YEARS = [
   { id: 'y3', label: 'Year 3' }, { id: 'y4', label: 'Year 4' }, { id: 'y5', label: 'Year 5' }, { id: 'y6', label: 'Year 6' }, { id: 'other', label: 'Other' },
@@ -43,7 +45,7 @@ function workSummary(w) {
 
 /* ─── Small modals ─── */
 
-function CreateClassModal({ onClose, onCreate }) {
+function CreateClassModal({ onClose, onCreate, addPupilsAfter = false }) {
   const [name, setName] = useState('');
   const [year, setYear] = useState('y3');
   const [color, setColor] = useState(CLASS_COLORS[0]);
@@ -51,6 +53,7 @@ function CreateClassModal({ onClose, onCreate }) {
     <Modal icon="🏫" title="Create a class" onClose={onClose}
       footer={<><button className="cr-btn" onClick={onClose}>Cancel</button><button className="cr-btn cr-btn--primary" disabled={!name.trim()} onClick={() => onCreate({ name: name.trim(), year, color })}>Create class</button></>}>
       <div style={{ display: 'grid', gap: 14 }}>
+        {addPupilsAfter && <p className="cr-muted" style={{ margin: 0, fontSize: 13.5, lineHeight: 1.5 }}>First name your class. Next, you’ll enter pupil school emails and assign their places.</p>}
         <div>
           <label className="cr-label" htmlFor="cc-name">Class name</label>
           <input id="cc-name" className="cr-input" autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. 4 Oak or Coding Club"
@@ -74,6 +77,49 @@ function CreateClassModal({ onClose, onCreate }) {
   );
 }
 
+/** Every class this teacher has made (archived ones too): open, archive / restore, or delete. */
+function ManageClassesModal({ teacherEmail, current, onOpen, onArchive, onRestore, onDelete, onClose }) {
+  const [list, setList] = useState(null);
+  const [busy, setBusy] = useState('');
+  const load = useCallback(() => {
+    fetchAllTeacherClasses(teacherEmail).then((remote) => {
+      const map = new Map([...localClasses(), ...localArchivedClasses()].map((c) => [c.id, c]));
+      remote.forEach((r) => map.set(r.id, { ...map.get(r.id), ...r }));
+      setList([...map.values()].sort((a, b) => Number(!!a.archived) - Number(!!b.archived) || String(a.name).localeCompare(String(b.name))));
+    });
+  }, [teacherEmail]);
+  useEffect(() => { load(); }, [load]);
+  const act = async (c, fn) => { setBusy(c.id); try { await fn(c); } finally { setBusy(''); load(); } };
+  return (
+    <Modal wide icon="🗂️" title="Manage classes" onClose={onClose} footer={<button className="cr-btn" onClick={onClose}>Done</button>}>
+      {!list ? <p className="cr-muted">Loading your classes…</p> : !list.length ? <p className="cr-muted">You haven’t made any classes yet.</p> : (
+        <div className="cr-manage">
+          {list.map((c) => (
+            <div key={c.id} className={`cr-manage-row${c.archived ? ' is-archived' : ''}`}>
+              <span className="cr-dot" style={{ background: c.color || '#6366f1' }} />
+              <div className="cr-grow">
+                <b>{c.name}</b>{c.id === current ? <span className="cr-muted"> · open now</span> : null}
+                <div className="cr-muted" style={{ fontSize: 12 }}>{(c.students || []).length} pupil{(c.students || []).length === 1 ? '' : 's'}{c.archived ? ' · archived (pupils can’t see it)' : ''}{c.gcCourseName ? ` · Google Classroom: ${c.gcCourseName}` : ''}</div>
+              </div>
+              {c.archived
+                ? <button className="cr-btn cr-btn--sm" disabled={busy === c.id} onClick={() => act(c, onRestore)}>↩ Restore</button>
+                : <>
+                  <button className="cr-btn cr-btn--sm" onClick={() => onOpen(c)}>Open</button>
+                  <button className="cr-btn cr-btn--sm cr-btn--ghost" disabled={busy === c.id} onClick={() => act(c, onArchive)}>Archive</button>
+                </>}
+              <button className="cr-btn cr-btn--sm cr-btn--danger" disabled={busy === c.id} onClick={() => act(c, onDelete)}><EmojiIcon e="🗑" style={{ marginRight: '0.3em' }} />Delete</button>
+            </div>
+          ))}
+        </div>
+      )}
+      <p className="cr-muted" style={{ fontSize: 12, marginTop: 12 }}>
+        <b>Archive</b> hides a class from pupils but keeps everything, so you can restore it. <b>Delete</b> removes the class, its posts, hand-ins and the work set for it for good.
+        Pupils keep their ByteBuddies sign-in place either way.
+      </p>
+    </Modal>
+  );
+}
+
 function InviteModal({ cls, onClose, toast }) {
   const link = appLink(`classroom?join=${cls.inviteCode}`);
   return (
@@ -81,7 +127,7 @@ function InviteModal({ cls, onClose, toast }) {
       <div style={{ textAlign: 'center', padding: '6px 0 16px' }}>
         <div className="cr-label">Class code</div>
         <div style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 46, fontWeight: 900, letterSpacing: 10, color: cls.color || 'var(--accent-primary)' }}>{cls.inviteCode}</div>
-        <div className="cr-muted" style={{ fontSize: 13.5 }}>Pupils go to <b>Classroom</b> and type this code.</div>
+        <div className="cr-muted" style={{ fontSize: 13.5 }}>Add pupils by school email first so their paid place is assigned, then they can sign in and join with this code.</div>
       </div>
       <label className="cr-label" htmlFor="inv-link">Or share the join link</label>
       <div className="cr-row" style={{ flexWrap: 'nowrap' }}>
@@ -96,21 +142,38 @@ function InviteModal({ cls, onClose, toast }) {
   );
 }
 
-function AddPupilsModal({ cls, onClose, onAdd }) {
-  const [text, setText] = useState('');
-  const rows = text.split('\n').map((l) => l.trim()).filter(Boolean).map((l) => {
-    const email = (l.match(/[^\s,<>]+@[^\s,<>]+/) || [''])[0].toLowerCase();
-    const name = l.replace(email, '').replace(/[,<>]/g, ' ').trim() || email.split('@')[0];
-    return { name, email };
-  });
+function AddPupilsModal({ cls, onClose, onAdd, teacherEmail }) {
+  const [pupils, setPupils] = useState(() => Array.from({ length: 30 }, () => ({ name: '', email: '' })));
+  const rows = pupils.map(({ name, email }) => ({ name: name.trim(), email: email.trim().toLowerCase() }))
+    .filter((row) => row.name || row.email);
+  const incompleteRows = rows.some((row) => !row.name || !row.email);
+  const invalidEmails = rows.some((row) => row.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.email));
+  const includesTeacher = rows.some((row) => row.email && row.email === String(teacherEmail || '').trim().toLowerCase());
+  const updatePupil = (index, field, value) => setPupils((current) => current.map((pupil, i) => i === index ? { ...pupil, [field]: value } : pupil));
   return (
-    <Modal icon="➕" title={`Add pupils to ${cls.name}`} onClose={onClose}
-      footer={<><button className="cr-btn" onClick={onClose}>Cancel</button><button className="cr-btn cr-btn--primary" disabled={!rows.length} onClick={() => onAdd(rows)}>Add {rows.length || ''} pupil{rows.length === 1 ? '' : 's'}</button></>}>
+    <Modal wide icon="➕" title={`Add pupils to ${cls.name}`} onClose={onClose}
+      footer={<><button className="cr-btn" onClick={onClose}>Cancel</button><button className="cr-btn cr-btn--primary" disabled={!rows.length || incompleteRows || invalidEmails || includesTeacher} onClick={() => onAdd(rows)}>Add {rows.length || ''} pupil{rows.length === 1 ? '' : 's'}</button></>}>
       <p className="cr-muted" style={{ marginTop: 0, fontSize: 13.5, lineHeight: 1.5 }}>
-        One pupil per line. Add their school email if they sign in with Google — they will join automatically.
+        Enter each pupil’s name and their own school email. Adding them assigns one of your school’s pupil places.
       </p>
-      <textarea className="cr-input" style={{ minHeight: 160 }} value={text} onChange={(e) => setText(e.target.value)}
-        placeholder={'Amira Khan, amira.k@school.org\nLeo Smith\nZara Patel, zara.p@school.org'} />
+      <div style={{ display: 'grid', gridTemplateColumns: '42px minmax(0,1fr) minmax(0,1fr)', gap: '8px 12px', alignItems: 'center', maxHeight: 'min(52vh, 520px)', overflowY: 'auto', padding: '2px 8px 2px 2px' }}>
+        <span className="cr-label" style={{ margin: 0 }}>#</span>
+        <span className="cr-label" style={{ margin: 0 }}>Pupil name</span>
+        <span className="cr-label" style={{ margin: 0 }}>School email</span>
+        {pupils.map((pupil, index) => (
+          <React.Fragment key={index}>
+            <span aria-hidden="true" className="cr-muted" style={{ textAlign: 'center', fontSize: 12 }}>{index + 1}</span>
+            <input className="cr-input" aria-label={`Pupil ${index + 1} name`} autoComplete="off" value={pupil.name} onChange={(e) => updatePupil(index, 'name', e.target.value)} placeholder="e.g. Amira Khan" />
+            <input className="cr-input" aria-label={`Pupil ${index + 1} school email`} type="email" autoComplete="off" value={pupil.email} onChange={(e) => updatePupil(index, 'email', e.target.value)} placeholder="e.g. amira@school.org" />
+          </React.Fragment>
+        ))}
+      </div>
+      <div className="cr-muted" style={{ fontSize: 12.5, marginTop: 10 }}>{rows.length} of 30 pupils entered. Pupils choose Student, sign in with the Google account matching the school email entered here, then enter your class code.</div>
+      {incompleteRows && <div className="cr-note cr-note--warn" role="alert" style={{ marginTop: 10 }}>Fill in both the name and school email for every row you started.</div>}
+      {invalidEmails && <div className="cr-note cr-note--warn" role="alert" style={{ marginTop: 10 }}>Check that each school email address is valid.</div>}
+      {includesTeacher && <div className="cr-note cr-note--warn" role="alert" style={{ marginTop: 10 }}>
+        This is your teacher sign-in email. Enter each pupil’s own school email instead; a teacher account can’t also be added as a pupil.
+      </div>}
     </Modal>
   );
 }
@@ -165,7 +228,7 @@ function MarkModal({ cls, assignment, pupil, sub, onClose, onSave, onOpenProject
 /* ─── Page ─── */
 
 export default function TeacherDashboard({ onNavigate, subPath = '' }) {
-  const { user } = useUser();
+  const { user, accountLicense } = useUser();
   const [classes, setClasses] = useState(() => localClasses().filter((c) => !c.archived));
   const [selId, setSelId] = useState(() => localStorage.getItem('bb-cr-selected') || localClasses()[0]?.id || null);
   const [live, setLive] = useState(null); // freshest class doc (roster, progress, hand-ins, help)
@@ -186,6 +249,11 @@ export default function TeacherDashboard({ onNavigate, subPath = '' }) {
 
   useEffect(() => { if (cls) localStorage.setItem('bb-cr-selected', cls.id); }, [cls?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (TAB_IDS.includes(subPath)) setTab(subPath); }, [subPath]);
+  useEffect(() => {
+    if (subPath !== 'add') return;
+    setTab('pupils');
+    setModal(classes.length ? { type: 'add' } : { type: 'create', addPupilsAfter: true });
+  }, [subPath, classes.length]);
 
   const persistClasses = useCallback((updater) => {
     setClasses((prev) => {
@@ -240,9 +308,41 @@ export default function TeacherDashboard({ onNavigate, subPath = '' }) {
   const needsMarking = assignments.reduce((n, a) => n + roster.filter((p) => statusOf(a, p) === 'handed').length, 0);
   const activeThisWeek = roster.filter((p) => p.progress?.updatedAt && Date.now() - new Date(p.progress.updatedAt) < 7 * 86400000).length;
   const missingCount = assignments.reduce((n, a) => n + roster.filter((p) => statusOf(a, p) === 'late').length, 0);
+  const pupilSeatLimit = Number(accountLicense?.studentLimit) || 0;
+  const pupilSeatsUsed = Array.isArray(accountLicense?.pupilEmails) ? accountLicense.pupilEmails.length : 0;
+  const pupilSeatsLeft = Math.max(0, pupilSeatLimit - pupilSeatsUsed);
+
+  /**
+   * Give imported pupils a sign-in place on the teacher's licence, so they can log in straight away.
+   * Pupils who already have a place are skipped; a missing email or a full licence never blocks the import.
+   */
+  const givePlaces = async (students) => {
+    const lower = (e) => String(e || '').trim().toLowerCase();
+    const teacherEmail = lower(user.email);
+    const assigned = new Set((accountLicense?.pupilEmails || []).map(lower));
+    const valid = (students || []).filter((s) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(lower(s.email)) && lower(s.email) !== teacherEmail);
+    const noEmail = (students || []).length - valid.length;
+    const missing = [...new Map(valid.filter((s) => !assigned.has(lower(s.email))).map((s) => [lower(s.email), { ...s, email: lower(s.email) }])).values()];
+    const result = { given: 0, waiting: 0, noEmail, error: '' };
+    if (!missing.length) return result;
+    if (!pupilSeatLimit) return { ...result, waiting: missing.length, error: 'Your school’s pupil places haven’t been set up yet — ask your administrator.' };
+    const fit = missing.slice(0, pupilSeatsLeft);
+    result.waiting = missing.length - fit.length;
+    for (let i = 0; i < fit.length; i += 200) {
+      try { result.given += (await provisionPupilLicenses(fit.slice(i, i + 200))).length; } catch (error) {
+        result.waiting += fit.length - i; result.error = error?.message || 'Could not assign pupil places.'; break;
+      }
+    }
+    return result;
+  };
+  const placesNote = (r) => [
+    r.given ? `${r.given} pupil${r.given === 1 ? '' : 's'} can now sign in` : '',
+    r.waiting ? `${r.waiting} still need a place${r.error ? ` (${r.error})` : ' — your licence is full'}` : '',
+    r.noEmail ? `${r.noEmail} had no email in Google Classroom` : '',
+  ].filter(Boolean).join(' · ');
 
   /* Actions */
-  const createClass = async ({ name, year, color }) => {
+  const createClass = async ({ name, year, color }, addPupilsAfter = false) => {
     const c = {
       id: `${Date.now()}`, name, year, color, subject: 'Computing', grade: YEARS.find((y) => y.id === year)?.label || '',
       inviteCode: makeInviteCode(), students: [], rosterEmails: [], announcements: [],
@@ -254,9 +354,11 @@ export default function TeacherDashboard({ onNavigate, subPath = '' }) {
     setTab('classwork');
     toast(`${name} is ready — invite your pupils!`);
     try { await saveClass(c); } catch { toast('Saved on this device — will sync when online'); }
+    if (addPupilsAfter) setModal({ type: 'add' });
   };
 
   const importCourse = async (course, students) => {
+    const places = await givePlaces(students);
     const roster = students.map((s) => ({ id: s.email || s.userId, name: s.name, email: s.email, photo: s.photo, source: 'google', joined: false }));
     const c = {
       id: `${Date.now()}`, name: course.name, year: 'other', color: CLASS_COLORS[classes.length % CLASS_COLORS.length], subject: 'Computing',
@@ -267,6 +369,7 @@ export default function TeacherDashboard({ onNavigate, subPath = '' }) {
     persistClasses((p) => [...p, c]);
     setSelId(c.id);
     await saveClass(c);
+    return placesNote(places);
   };
 
   const mergeRoster = (existing, students) => {
@@ -279,31 +382,90 @@ export default function TeacherDashboard({ onNavigate, subPath = '' }) {
   };
 
   const linkCourse = async (c, course, students) => {
+    const places = await givePlaces(students);
     const merged = mergeRoster(c.students || [], students);
     const patch = { gcCourseId: course.id, gcCourseName: course.name, gcLink: course.link, students: merged, rosterEmails: merged.map((s) => (s.email || '').toLowerCase()).filter(Boolean) };
     persistClasses((p) => p.map((x) => (x.id === c.id ? { ...x, ...patch } : x)));
     setLive((l) => (l?.id === c.id ? { ...l, ...patch } : l));
     await saveClass({ ...c, ...patch });
+    return placesNote(places);
   };
 
   const refreshRoster = async (c, students) => {
+    const places = await givePlaces(students);
     const merged = mergeRoster(c.students || [], students);
     await updateRoster(c.id, merged);
     persistClasses((p) => p.map((x) => (x.id === c.id ? { ...x, students: merged } : x)));
     setLive((l) => (l?.id === c.id ? { ...l, students: merged } : l));
-    return merged.length;
+    return { count: merged.length, note: placesNote(places) };
   };
 
+  // Pupils on the teacher's class lists who have no sign-in place yet — e.g. imported from
+  // Google Classroom before imports gave out places. They are shown in a notice and given a
+  // place automatically. (Retries whenever the class lists finish loading or change.)
+  const lowerEmail = (e) => String(e || '').trim().toLowerCase();
+  const withoutPlace = useMemo(() => {
+    if (!accountLicense || accountLicense.role !== 'teacher') return [];
+    const assigned = new Set((accountLicense.pupilEmails || []).map(lowerEmail));
+    const me = lowerEmail(user.email);
+    const seen = new Map();
+    classes.forEach((c) => (c.students || []).forEach((st) => {
+      const e = lowerEmail(st.email);
+      if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e) && e !== me && !assigned.has(e)) seen.set(e, { ...st, email: e });
+    }));
+    return [...seen.values()];
+  }, [classes, accountLicense, user.email]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [placesBusy, setPlacesBusy] = useState(false);
+  const placesTried = useRef('');
+  const catchUpPlaces = useCallback(async (manual = false) => {
+    if (!withoutPlace.length || placesBusy) return;
+    setPlacesBusy(true);
+    try {
+      const r = await givePlaces(withoutPlace);
+      if (manual || r.given || r.waiting) toast(placesNote(r) || 'Every pupil already has a place');
+    } catch (error) {
+      if (manual) toast(error?.message || 'Could not assign pupil places.');
+    } finally { setPlacesBusy(false); }
+  }, [withoutPlace, placesBusy]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!pupilSeatLimit || !withoutPlace.length) return;
+    const sig = withoutPlace.map((p) => p.email).sort().join(',');
+    if (placesTried.current === sig) return;
+    placesTried.current = sig;
+    catchUpPlaces(false);
+  }, [withoutPlace, pupilSeatLimit]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const addPupils = async (rows) => {
+    if (rows.some((row) => !row.email)) {
+      toast('Add a school email for every pupil so they can use their licensed account.');
+      return;
+    }
+    if (rows.some((row) => row.email.toLowerCase() === String(user.email || '').trim().toLowerCase())) {
+      toast('Your teacher sign-in email cannot also be a pupil. Enter the pupil’s own school email.');
+      return;
+    }
     const existing = cls.students || [];
     const have = new Set(existing.map(pupilKey));
-    const added = rows.map((r) => ({ id: r.email || r.name, name: r.name, email: r.email, joined: false })).filter((r) => !have.has(pupilKey(r)));
+    const uniqueAdded = rows.map((r) => ({ id: r.email || r.name, name: r.name, email: r.email, joined: false })).filter((r) => !have.has(pupilKey(r)));
+    const allocatedEmails = new Set(accountLicense?.pupilEmails || []);
+    const needsPlace = uniqueAdded.filter((row) => !allocatedEmails.has(row.email));
+    const placeAllowed = new Set((pupilSeatLimit ? needsPlace.slice(0, pupilSeatsLeft) : needsPlace).map((row) => row.email));
+    const added = uniqueAdded.filter((row) => allocatedEmails.has(row.email) || placeAllowed.has(row.email));
+    if (pupilSeatLimit && needsPlace.length > pupilSeatsLeft) toast(`Only ${pupilSeatsLeft} pupil place${pupilSeatsLeft === 1 ? '' : 's'} left on your school's licence`);
+    if (!added.length && uniqueAdded.length) { setModal(null); return; }
+    let newlyLicensed = [];
+    try {
+      newlyLicensed = await provisionPupilLicenses(added);
+    } catch (error) {
+      toast(error?.message || 'Could not assign pupil places. Check your school licence and try again.');
+      return;
+    }
     const next = [...existing, ...added];
     await updateRoster(cls.id, next);
     persistClasses((p) => p.map((x) => (x.id === cls.id ? { ...x, students: next } : x)));
     setLive((l) => (l ? { ...l, students: next } : l));
     setModal(null);
-    toast(`Added ${added.length} pupil${added.length === 1 ? '' : 's'}`);
+    toast(`Added ${added.length} pupil${added.length === 1 ? '' : 's'} · ${newlyLicensed.length} new place${newlyLicensed.length === 1 ? '' : 's'} assigned`);
   };
 
   const removePupil = async (pupil) => {
@@ -322,11 +484,34 @@ export default function TeacherDashboard({ onNavigate, subPath = '' }) {
     setLive((l) => (l ? { ...l, students: next } : l));
   };
 
-  const archiveClass = async () => {
-    if (!window.confirm(`Archive ${cls.name}? Pupils will no longer see it.`)) return;
-    await saveClass({ ...cls, archived: true });
-    persistClasses((p) => p.filter((x) => x.id !== cls.id));
-    setSelId(null);
+  const archiveClass = async (c = cls) => {
+    if (!window.confirm(`Archive ${c.name}? Pupils will no longer see it. You can restore it from Manage classes.`)) return;
+    await saveClass({ ...c, archived: true });
+    rememberArchived(c, true);
+    persistClasses((p) => p.filter((x) => x.id !== c.id));
+    if (c.id === cls?.id) setSelId(null);
+    toast(`${c.name} archived`);
+  };
+  const restoreClass = async (c) => {
+    const back = { ...c, archived: false };
+    await saveClass(back);
+    rememberArchived(c, false);
+    persistClasses((p) => [...p.filter((x) => x.id !== c.id), back]);
+    toast(`${c.name} is back`);
+  };
+  /** Delete a class for good (after a clear warning). */
+  const removeClass = async (c = cls) => {
+    const n = (c.students || []).length;
+    if (!window.confirm(`Delete ${c.name} for good?\n\nIts pupil list${n ? ` (${n} pupil${n === 1 ? '' : 's'})` : ''}, posts, hand-ins and the work set for it will be removed. This can’t be undone.\n\nPupils keep their ByteBuddies sign-in.`)) return;
+    try {
+      await deleteClass(c.id);
+    } catch (e) {
+      toast('Could not delete the class — check your connection and try again.');
+      return;
+    }
+    persistClasses((p) => p.filter((x) => x.id !== c.id));
+    if (c.id === cls?.id) setSelId(null);
+    toast(`${c.name} deleted`);
   };
 
   const setWork = async (data, { postToGc }) => {
@@ -395,12 +580,17 @@ export default function TeacherDashboard({ onNavigate, subPath = '' }) {
     const text = post.trim();
     if (!text) return;
     const p = { id: `${Date.now()}`, text, author: user.name || 'Teacher', createdAt: new Date().toISOString(), pinned: false };
+    // Google Classroom copy goes through Google's own Share page (opened straight from the click,
+    // so it isn't blocked). It needs no extra Classroom permission — ByteBuddies never posts
+    // announcements through the API.
+    const shareGc = postGc && cls.gcCourseId;
+    if (shareGc) {
+      openShareToClassroom({ url: appLink('classroom'), title: `${cls.name} — update`, body: text, itemtype: 'announcement', courseId: cls.gcCourseId });
+    }
     setLive((l) => (l ? { ...l, announcements: [...(l.announcements || []), p] } : l));
     setPost('');
     await postAnnouncement(cls.id, p);
-    if (postGc && cls.gcCourseId && getGcSession()) {
-      try { await createAnnouncement(cls.gcCourseId, text, appLink('classroom')); toast('Posted here and in Google Classroom'); } catch (e) { setGcError(e); }
-    } else toast('Posted to your class');
+    toast(shareGc ? 'Posted to your class — finish posting in the Google Classroom window' : 'Posted to your class');
   };
 
   const editPosts = async (fn) => {
@@ -422,6 +612,10 @@ export default function TeacherDashboard({ onNavigate, subPath = '' }) {
     try {
       localStorage.setItem('cv_gamebuilder_sprites', JSON.stringify(project.sprites || []));
       localStorage.setItem('cv_gamebuilder_bg', project.background || 'Space');
+      if (project.levels) localStorage.setItem('cv_gamebuilder_levels', JSON.stringify(project.levels));
+      if (project.gameMode !== undefined) localStorage.setItem('bb_gb_game_mode', JSON.stringify(project.gameMode));
+      if (project.backdrops) localStorage.setItem('cv_gamebuilder_backdrops', JSON.stringify(project.backdrops));
+      if (project.customBackdrops) localStorage.setItem('cv_gamebuilder_custom_bgs', JSON.stringify(project.customBackdrops));
       sessionStorage.setItem('bb-viewing-submission', JSON.stringify({ studentName: modal?.pupil?.name || 'Pupil', assignmentTitle: modal?.a?.title || '' }));
     } catch { /* ignore */ }
     window.location.hash = 'gamebuilder';
@@ -436,7 +630,7 @@ export default function TeacherDashboard({ onNavigate, subPath = '' }) {
   const header = (
     <div className="cr-top">
       <div>
-        <div className="cr-muted" style={{ fontWeight: 700, fontSize: 13 }}>👩‍🏫 {user.name || 'Teacher'}</div>
+        <div className="cr-muted" style={{ fontWeight: 700, fontSize: 13 }}><EmojiIcon e="👩‍🏫" style={{ marginRight: '0.35em' }} />{user.name || 'Teacher'}</div>
         <h1 className="cr-title">Classroom</h1>
       </div>
       <div className="cr-row">
@@ -453,7 +647,22 @@ export default function TeacherDashboard({ onNavigate, subPath = '' }) {
       <div className="cr">
         {toastEl}
         {header}
-        {modal?.type === 'create' && <CreateClassModal onClose={() => setModal(null)} onCreate={createClass} />}
+        <div className="cr-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', marginBottom: 14, border: '1px solid rgba(99,102,241,.38)' }}>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 900 }}><EmojiIcon e="🎟️" style={{ marginRight: '0.35em' }} />Pupil places</div>
+            <div className="cr-muted" style={{ fontSize: 13, marginTop: 4 }}>
+              {pupilSeatLimit ? `0 of ${pupilSeatLimit} places used · ${pupilSeatLimit} available` : 'Your school’s pupil places will appear here once your administrator sets them.'}
+            </div>
+          </div>
+          <div className="cr-row" style={{ gap: 8 }}>
+            <button className="cr-btn" onClick={() => setModal({ type: 'create' })}><EmojiIcon e="🏫" style={{ marginRight: '0.35em' }} />New class</button>
+            <button className="cr-btn cr-btn--primary" disabled={pupilSeatLimit > 0 && pupilSeatsLeft < 1}
+              onClick={() => setModal({ type: 'create', addPupilsAfter: true })}><EmojiIcon e="➕" style={{ marginRight: '0.35em' }} />Add pupils</button>
+          </div>
+        </div>
+        {modal?.type === 'create' && <CreateClassModal onClose={() => setModal(null)} addPupilsAfter={modal.addPupilsAfter}
+          onCreate={(data) => createClass(data, modal.addPupilsAfter)} />}
+        {modal?.type === 'add' && cls && <AddPupilsModal cls={cls} teacherEmail={user.email} onClose={() => setModal(null)} onAdd={addPupils} />}
         {tab === 'google' ? (
           <>
             <button className="cr-btn cr-btn--sm" style={{ marginBottom: 12 }} onClick={() => setTab('classwork')}>← Back</button>
@@ -474,7 +683,7 @@ export default function TeacherDashboard({ onNavigate, subPath = '' }) {
                 <p>Bring in your classes and pupils in one click. Pupils sign in with Google — no codes to type.</p>
               </button>
               <button className="cr-choice" onClick={() => setModal({ type: 'create' })}>
-                <span style={{ fontSize: 40 }}>🏫</span>
+                <span style={{ fontSize: 40 }}><EmojiIcon e="🏫" /></span>
                 <h3>Create a class</h3>
                 <p>Get a 6-letter class code. Pupils type it in, or you share the join link anywhere.</p>
               </button>
@@ -505,24 +714,57 @@ export default function TeacherDashboard({ onNavigate, subPath = '' }) {
       {toastEl}
       {header}
 
+      <div className="cr-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', marginBottom: 14, border: '1px solid rgba(99,102,241,.38)' }}>
+        <div>
+          <div style={{ fontSize: 14, fontWeight: 900 }}><EmojiIcon e="🎟️" style={{ marginRight: '0.35em' }} />Pupil places</div>
+          <div className="cr-muted" style={{ fontSize: 13, marginTop: 4 }}>
+      {pupilSeatLimit ? `${pupilSeatsUsed} of ${pupilSeatLimit} places used · ${pupilSeatsLeft} available` : 'Your school’s pupil places will appear here once your administrator sets them.'}
+          </div>
+        </div>
+        <button className="cr-btn cr-btn--primary" onClick={() => { setTab('pupils'); setModal({ type: 'add' }); }} disabled={pupilSeatLimit > 0 && pupilSeatsLeft < 1}><EmojiIcon e="➕" style={{ marginRight: '0.35em' }} />Add pupils</button>
+      </div>
+
+      {withoutPlace.length > 0 && (
+        <div className="cr-card" role="status" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', marginBottom: 14, border: '1px solid rgba(245,158,11,.55)', background: 'rgba(245,158,11,.08)' }}>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{ fontSize: 14, fontWeight: 900 }}><EmojiIcon e="⚠️" style={{ marginRight: '0.35em' }} />{withoutPlace.length} pupil{withoutPlace.length === 1 ? '' : 's'} can’t sign in yet</div>
+            <div className="cr-muted" style={{ fontSize: 13, marginTop: 4 }}>
+              {!pupilSeatLimit
+                ? 'Your school’s pupil places haven’t been set up yet — ask your ByteBuddies administrator to add places to your licence.'
+                : pupilSeatsLeft < withoutPlace.length
+                  ? `They need a pupil place on your licence, but only ${pupilSeatsLeft} ${pupilSeatsLeft === 1 ? 'is' : 'are'} left — ask your administrator for more places.`
+                  : 'They are on your class lists but don’t have a pupil place on your licence yet.'}
+              {' '}<span title={withoutPlace.map((p) => p.email).join(', ')}>({withoutPlace.slice(0, 3).map((p) => p.name || p.email).join(', ')}{withoutPlace.length > 3 ? ` and ${withoutPlace.length - 3} more` : ''})</span>
+            </div>
+          </div>
+          <button className="cr-btn cr-btn--primary" disabled={placesBusy || !pupilSeatLimit || pupilSeatsLeft < 1} onClick={() => catchUpPlaces(true)}>
+            <EmojiIcon e="🎟️" style={{ marginRight: '0.35em' }} />{placesBusy ? 'Giving places…' : 'Give them places'}
+          </button>
+        </div>
+      )}
+
       {modal?.type === 'create' && <CreateClassModal onClose={() => setModal(null)} onCreate={createClass} />}
       {modal?.type === 'invite' && <InviteModal cls={cls} onClose={() => setModal(null)} toast={toast} />}
-      {modal?.type === 'add' && <AddPupilsModal cls={cls} onClose={() => setModal(null)} onAdd={addPupils} />}
+      {modal?.type === 'add' && <AddPupilsModal cls={cls} teacherEmail={user.email} onClose={() => setModal(null)} onAdd={addPupils} />}
       {modal?.type === 'setwork' && <SetWorkModal cls={cls} onClose={() => setModal(null)} onCreate={setWork} />}
       {modal?.type === 'mark' && (
         <MarkModal cls={cls} assignment={modal.a} pupil={modal.pupil} sub={modal.sub} onClose={() => setModal(null)}
           onSave={(m) => saveMark(modal.a, modal.pupil, modal.sub, m)} onOpenProject={openProject} />
       )}
 
-      {classes.length > 1 && (
-        <div className="cr-pills" style={{ marginBottom: 14 }}>
-          {classes.map((c) => (
-            <button key={c.id} className="cr-pill" aria-pressed={c.id === cls.id} onClick={() => setSelId(c.id)}>
-              <span className="cr-dot" style={{ background: c.color || '#6366f1' }} /> {c.name}
-            </button>
-          ))}
-        </div>
+      {modal?.type === 'manage' && (
+        <ManageClassesModal teacherEmail={user.email} current={cls?.id} onClose={() => setModal(null)}
+          onOpen={(c) => { setSelId(c.id); setModal(null); }}
+          onArchive={(c) => archiveClass(c)} onRestore={restoreClass} onDelete={(c) => removeClass(c)} />
       )}
+      <div className="cr-pills" style={{ marginBottom: 14 }}>
+        {classes.length > 1 && classes.map((c) => (
+          <button key={c.id} className="cr-pill" aria-pressed={c.id === cls.id} onClick={() => setSelId(c.id)}>
+            <span className="cr-dot" style={{ background: c.color || '#6366f1' }} /> {c.name}
+          </button>
+        ))}
+        <button className="cr-pill" onClick={() => setModal({ type: 'manage' })} title="Open, archive, restore or delete classes"><EmojiIcon e="🗂️" style={{ marginRight: '0.35em' }} />Manage classes</button>
+      </div>
 
       <div className="cr-banner" style={{ background: classGradient(cls.color || '#6366f1') }}>
         <div className="cr-row" style={{ alignItems: 'flex-start', gap: 16 }}>
@@ -530,8 +772,8 @@ export default function TeacherDashboard({ onNavigate, subPath = '' }) {
             <div style={{ fontSize: 13, fontWeight: 800, opacity: 0.85 }}>{[cls.grade, cls.subject].filter(Boolean).join(' · ') || 'Computing'}</div>
             <h2>{cls.name}</h2>
             <div className="cr-row" style={{ marginTop: 10, fontSize: 13.5, fontWeight: 700, opacity: 0.95 }}>
-              <span>👥 {roster.length} pupil{roster.length === 1 ? '' : 's'}</span>
-              <span>📋 {assignments.length} piece{assignments.length === 1 ? '' : 's'} of work</span>
+              <span><EmojiIcon e="👥" style={{ marginRight: '0.35em' }} />{roster.length} pupil{roster.length === 1 ? '' : 's'}</span>
+              <span><EmojiIcon e="📋" style={{ marginRight: '0.35em' }} />{assignments.length} piece{assignments.length === 1 ? '' : 's'} of work</span>
               {gcLinked && <span className="cr-row" style={{ gap: 5 }}><GoogleClassroomLogo size={16} /> {cls.gcCourseName}</span>}
             </div>
           </div>
@@ -542,37 +784,39 @@ export default function TeacherDashboard({ onNavigate, subPath = '' }) {
         </div>
         <div className="cr-row" style={{ marginTop: 16 }}>
           <button className="cr-btn cr-btn--sm" style={{ background: '#fff', color: '#111827' }} onClick={() => setModal({ type: 'setwork' })}>＋ Set work</button>
-          <button className="cr-btn cr-btn--sm" onClick={() => setModal({ type: 'invite' })}>👋 Invite pupils</button>
-          <button className="cr-btn cr-btn--sm" onClick={() => onNavigate?.('learn')}>📚 Teach a lesson</button>
+          <button className="cr-btn cr-btn--sm" onClick={() => setModal({ type: 'invite' })}><EmojiIcon e="👋" style={{ marginRight: '0.35em' }} />Invite pupils</button>
+          <button className="cr-btn cr-btn--sm" onClick={() => onNavigate?.('learn')}><EmojiIcon e="📚" style={{ marginRight: '0.35em' }} />Teach a lesson</button>
           {gcLinked && cls.gcLink && <a className="cr-btn cr-btn--sm" href={cls.gcLink} target="_blank" rel="noopener noreferrer">Open in Google Classroom ↗</a>}
+          <span className="cr-grow" />
+          <button className="cr-btn cr-btn--sm" onClick={() => removeClass(cls)} title="Delete this class"><EmojiIcon e="🗑" style={{ marginRight: '0.35em' }} />Delete class</button>
         </div>
       </div>
 
       <div className="cr-stats">
         <button className="cr-stat" onClick={() => setTab('pupils')}>
-          <b>{activeThisWeek}<small> / {roster.length}</small></b><span>👥 Active this week</span>
+          <b>{activeThisWeek}<small> / {roster.length}</small></b><span><EmojiIcon e="👥" style={{ marginRight: '0.35em' }} />Active this week</span>
         </button>
         <button className="cr-stat" onClick={() => setTab('marking')} data-hot={needsMarking > 0 || undefined} style={{ '--tone': '#6366f1' }}>
-          <b>{needsMarking}</b><span>🖍️ Waiting to mark</span>
+          <b>{needsMarking}</b><span><EmojiIcon e="🖍️" style={{ marginRight: '0.35em' }} />Waiting to mark</span>
         </button>
         <button className="cr-stat" onClick={() => setTab('stream')} data-hot={openHelp.length > 0 || undefined} style={{ '--tone': '#f59e0b' }}>
-          <b>{openHelp.length}</b><span>🙋 Asking for help</span>
+          <b>{openHelp.length}</b><span><EmojiIcon e="🙋" style={{ marginRight: '0.35em' }} />Asking for help</span>
         </button>
         <button className="cr-stat" onClick={() => setTab('pupils')} data-hot={missingCount > 0 || undefined} style={{ '--tone': '#ef4444' }}>
-          <b>{missingCount}</b><span>⏰ Missing work</span>
+          <b>{missingCount}</b><span><EmojiIcon e="⏰" style={{ marginRight: '0.35em' }} />Missing work</span>
         </button>
       </div>
 
       {openHelp.length > 0 && tab !== 'stream' && (
         <button className="cr-note cr-note--warn" style={{ width: '100%', textAlign: 'left', cursor: 'pointer', marginBottom: 14, color: 'inherit', font: 'inherit' }} onClick={() => setTab('stream')}>
-          🙋 <b>{openHelp.length} pupil{openHelp.length === 1 ? '' : 's'} asked for help</b> — {openHelp.map((h) => h.name).slice(0, 3).join(', ')}. Tap to see.
+          <EmojiIcon e="🙋" style={{ marginRight: '0.4em' }} /><b>{openHelp.length} pupil{openHelp.length === 1 ? '' : 's'} asked for help</b> — {openHelp.map((h) => h.name).slice(0, 3).join(', ')}. Tap to see.
         </button>
       )}
 
       <div className="cr-tabs" role="tablist">
         {TABS.map((t) => (
           <button key={t.id} role="tab" className="cr-tab" aria-selected={tab === t.id} onClick={() => setTab(t.id)}>
-            {t.icon && <GoogleClassroomLogo size={16} />} {t.label} {t.badge > 0 && <span className="cr-badge">{t.badge}</span>}
+            {t.icon && <GoogleClassroomLogo size={16} />} <IconText>{t.label}</IconText> {t.badge > 0 && <span className="cr-badge">{t.badge}</span>}
           </button>
         ))}
       </div>
@@ -584,7 +828,7 @@ export default function TeacherDashboard({ onNavigate, subPath = '' }) {
         <div>
           {assignments.length === 0 ? (
             <div className="cr-card cr-empty">
-              <div className="cr-big">📋</div>
+              <div className="cr-big"><EmojiIcon e="📋" /></div>
               <h3 style={{ color: 'var(--text-primary)', marginBottom: 6 }}>No work set yet</h3>
               <p style={{ margin: '0 0 16px' }}>Pick a lesson, a mission, a game to build or a robot challenge.</p>
               <button className="cr-btn cr-btn--primary" onClick={() => setModal({ type: 'setwork' })}>＋ Set the first piece of work</button>
@@ -605,10 +849,10 @@ export default function TeacherDashboard({ onNavigate, subPath = '' }) {
                     {a.gc && <a href={a.gc.link} target="_blank" rel="noopener noreferrer" title="Open in Google Classroom"><GoogleClassroomLogo size={18} /></a>}
                   </div>
                   <div className="cr-work__meta">
-                    <span>📅 {dueLabel(a.dueDate)}</span>
-                    <span>🏅 {a.points || 10} points</span>
-                    <span>✅ {finished}/{roster.length} finished</span>
-                    {counts.handed > 0 && <span style={{ color: '#6366f1', fontWeight: 700 }}>🖍️ {counts.handed} to mark</span>}
+                    <span><EmojiIcon e="📅" style={{ marginRight: '0.35em' }} />{dueLabel(a.dueDate)}</span>
+                    <span><EmojiIcon e="🏅" style={{ marginRight: '0.35em' }} />{a.points || 10} points</span>
+                    <span><EmojiIcon e="✅" style={{ marginRight: '0.35em' }} />{finished}/{roster.length} finished</span>
+                    {counts.handed > 0 && <span style={{ color: '#6366f1', fontWeight: 700 }}><EmojiIcon e="🖍️" style={{ marginRight: '0.35em' }} />{counts.handed} to mark</span>}
                   </div>
                   {a.description && <div style={{ fontSize: 13.5, marginTop: 6, lineHeight: 1.5 }}>{a.description}</div>}
                   <div className="cr-bar" style={{ marginTop: 10 }} title={`${finished} of ${roster.length} finished`}>
@@ -630,7 +874,7 @@ export default function TeacherDashboard({ onNavigate, subPath = '' }) {
                       <GoogleClassroomLogo size={15} /> Share
                     </button>
                   )}
-                  <button className="cr-btn cr-btn--sm cr-btn--ghost cr-btn--danger" onClick={() => deleteWork(a)} aria-label="Delete work">🗑️</button>
+                  <button className="cr-btn cr-btn--sm cr-btn--ghost cr-btn--danger" onClick={() => deleteWork(a)} aria-label="Delete work"><EmojiIcon e="🗑️" /></button>
                 </div>
               </div>
             );
@@ -645,7 +889,7 @@ export default function TeacherDashboard({ onNavigate, subPath = '' }) {
             <div className="cr-card" style={{ marginBottom: 14 }}>
               <textarea className="cr-input" value={post} onChange={(e) => setPost(e.target.value)} placeholder={`Share something with ${cls.name}…`} style={{ minHeight: 80 }} />
               <div className="cr-row" style={{ marginTop: 10 }}>
-                {gcLinked && gcLive && (
+                {gcLinked && (
                   <label className="cr-row" style={{ gap: 6, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
                     <input type="checkbox" checked={postGc} onChange={(e) => setPostGc(e.target.checked)} /> <GoogleClassroomLogo size={16} /> Also post in Google Classroom
                   </label>
@@ -660,20 +904,20 @@ export default function TeacherDashboard({ onNavigate, subPath = '' }) {
                   <div className="cr-row" style={{ gap: 8 }}>
                     <b style={{ fontSize: 14 }}>{p.author}</b>
                     <span className="cr-muted" style={{ fontSize: 12 }}>{timeAgo(p.createdAt)}</span>
-                    {p.pinned && <Chip color="#6366f1">📌 Pinned</Chip>}
+                    {p.pinned && <Chip color="#6366f1"><EmojiIcon e="📌" style={{ marginRight: '0.35em' }} />Pinned</Chip>}
                     <span style={{ marginLeft: 'auto' }} className="cr-row">
-                      <button className="cr-btn cr-btn--sm cr-btn--ghost" onClick={() => editPosts((l) => l.map((x) => (x.id === p.id ? { ...x, pinned: !x.pinned } : x)))}>{p.pinned ? 'Unpin' : '📌'}</button>
-                      <button className="cr-btn cr-btn--sm cr-btn--ghost" aria-label="Delete post" onClick={() => editPosts((l) => l.filter((x) => x.id !== p.id))}>🗑️</button>
+                      <button className="cr-btn cr-btn--sm cr-btn--ghost" onClick={() => editPosts((l) => l.map((x) => (x.id === p.id ? { ...x, pinned: !x.pinned } : x)))}><IconText>{p.pinned ? 'Unpin' : '📌'}</IconText></button>
+                      <button className="cr-btn cr-btn--sm cr-btn--ghost" aria-label="Delete post" onClick={() => editPosts((l) => l.filter((x) => x.id !== p.id))}><EmojiIcon e="🗑️" /></button>
                     </span>
                   </div>
                   <p>{p.text}</p>
                 </div>
               </div>
             ))}
-            {!(cls.announcements || []).length && <div className="cr-empty">Nothing posted yet. Say hello to your class! 👋</div>}
+            {!(cls.announcements || []).length && <div className="cr-empty">Nothing posted yet. Say hello to your class!</div>}
           </div>
           <div className="cr-card">
-            <h3 style={{ fontSize: 15, fontWeight: 900, marginBottom: 10 }}>🙋 Help requests</h3>
+            <h3 style={{ fontSize: 15, fontWeight: 900, marginBottom: 10 }}><EmojiIcon e="🙋" style={{ marginRight: '0.35em' }} />Help requests</h3>
             {openHelp.length === 0 && <div className="cr-muted" style={{ fontSize: 13 }}>No one needs help right now.</div>}
             {openHelp.map((h) => (
               <div key={h.id} className="cr-sub" style={{ marginBottom: 8 }}>
@@ -691,12 +935,12 @@ export default function TeacherDashboard({ onNavigate, subPath = '' }) {
         <div className="cr-card">
           <div className="cr-row" style={{ marginBottom: 12 }}>
             <h3 className="cr-grow" style={{ fontSize: 16, fontWeight: 900 }}>Pupils & progress</h3>
-            <button className="cr-btn cr-btn--sm" onClick={() => setModal({ type: 'add' })}>➕ Add pupils</button>
-            <button className="cr-btn cr-btn--sm" onClick={() => setModal({ type: 'invite' })}>👋 Invite</button>
-            <button className="cr-btn cr-btn--sm" onClick={() => printReport(cls, roster, assignments, statusOf, user)}>📄 Report</button>
+            <button className="cr-btn cr-btn--sm" onClick={() => setModal({ type: 'add' })}><EmojiIcon e="➕" style={{ marginRight: '0.35em' }} />Add pupils</button>
+            <button className="cr-btn cr-btn--sm" onClick={() => setModal({ type: 'invite' })}><EmojiIcon e="👋" style={{ marginRight: '0.35em' }} />Invite</button>
+            <button className="cr-btn cr-btn--sm" onClick={() => printReport(cls, roster, assignments, statusOf, user)}><EmojiIcon e="📄" style={{ marginRight: '0.35em' }} />Report</button>
           </div>
           {roster.length === 0 ? (
-            <div className="cr-empty"><div className="cr-big">👥</div>No pupils yet — share the class code <b>{cls.inviteCode}</b> or add them by name.</div>
+            <div className="cr-empty"><div className="cr-big"><EmojiIcon e="👥" /></div>No pupils yet — share the class code <b>{cls.inviteCode}</b> or add them by name.</div>
           ) : (
             <div className="cr-scroll">
               <table className="cr-table">
@@ -707,7 +951,7 @@ export default function TeacherDashboard({ onNavigate, subPath = '' }) {
                     <th>Lessons</th>
                     <th>Missions</th>
                     <th>XP</th>
-                    {assignments.slice(0, 8).map((a) => <th key={a.id} title={a.title} style={{ textAlign: 'center' }}>{a.emoji || '📋'}</th>)}
+                    {assignments.slice(0, 8).map((a) => <th key={a.id} title={a.title} style={{ textAlign: 'center' }}><IconText>{a.emoji || '📋'}</IconText></th>)}
                     <th />
                   </tr>
                 </thead>
@@ -726,18 +970,18 @@ export default function TeacherDashboard({ onNavigate, subPath = '' }) {
                       <td className="cr-muted" style={{ whiteSpace: 'nowrap' }}>{p.progress ? timeAgo(p.progress.updatedAt) : (p.joined ? 'Joined' : '—')}</td>
                       <td><b>{p.progress?.lessonsDone?.length || 0}</b></td>
                       <td><b>{p.progress?.missionsDone?.length || 0}</b></td>
-                      <td>⚡{p.progress?.xp || 0}</td>
+                      <td><EmojiIcon e="⚡" color="#f59e0b" style={{ marginRight: 3 }} />{p.progress?.xp || 0}</td>
                       {assignments.slice(0, 8).map((a) => {
                         const st = STATUS[statusOf(a, p)];
                         return (
                           <td key={a.id} style={{ textAlign: 'center' }}>
                             <button className="cr-cell" title={`${a.title}: ${st.label}`} style={{ background: `${st.color}22`, border: 'none', cursor: 'pointer' }}
-                              onClick={() => setModal({ type: 'mark', a, pupil: p, sub: findSub(subs, a.id, p.key) })}>{st.icon}</button>
+                              onClick={() => setModal({ type: 'mark', a, pupil: p, sub: findSub(subs, a.id, p.key) })}><EmojiIcon e={st.icon} /></button>
                           </td>
                         );
                       })}
                       <td style={{ whiteSpace: 'nowrap', textAlign: 'right' }}>
-                        <button className="cr-btn cr-btn--sm cr-btn--ghost" onClick={() => renamePupil(p)} aria-label={`Rename ${p.name}`}>✏️</button>
+                        <button className="cr-btn cr-btn--sm cr-btn--ghost" onClick={() => renamePupil(p)} aria-label={`Rename ${p.name}`}><EmojiIcon e="✏️" /></button>
                         <button className="cr-btn cr-btn--sm cr-btn--ghost" onClick={() => removePupil(p)} aria-label={`Remove ${p.name}`}>✕</button>
                       </td>
                     </tr>
@@ -745,13 +989,14 @@ export default function TeacherDashboard({ onNavigate, subPath = '' }) {
                 </tbody>
               </table>
               <div className="cr-row" style={{ marginTop: 12, gap: 14, fontSize: 12 }}>
-                {Object.entries(STATUS).map(([k, s]) => <span key={k} className="cr-muted">{s.icon} {s.label}</span>)}
+                {Object.entries(STATUS).map(([k, s]) => <span key={k} className="cr-muted"><EmojiIcon e={s.icon} style={{ marginRight: '0.35em' }} />{s.label}</span>)}
               </div>
             </div>
           )}
           <div className="cr-row" style={{ marginTop: 18, paddingTop: 14, borderTop: '1px solid var(--border-color)' }}>
             <span className="cr-muted cr-grow" style={{ fontSize: 12.5 }}>Finished with this class at the end of the year?</span>
-            <button className="cr-btn cr-btn--sm cr-btn--ghost cr-btn--danger" onClick={archiveClass}>Archive class</button>
+            <button className="cr-btn cr-btn--sm cr-btn--ghost" onClick={() => archiveClass(cls)}>Archive class</button>
+            <button className="cr-btn cr-btn--sm cr-btn--danger" onClick={() => removeClass(cls)}><EmojiIcon e="🗑" style={{ marginRight: '0.35em' }} />Delete class</button>
           </div>
         </div>
       )}
@@ -759,7 +1004,7 @@ export default function TeacherDashboard({ onNavigate, subPath = '' }) {
       {/* ── Marking ── */}
       {tab === 'marking' && (
         assignments.length === 0 ? (
-          <div className="cr-card cr-empty"><div className="cr-big">🖍️</div>Set some work first — hand-ins will appear here.</div>
+          <div className="cr-card cr-empty"><div className="cr-big"><EmojiIcon e="🖍️" /></div>Set some work first — hand-ins will appear here.</div>
         ) : (
           <div className="cr-card">
             <div className="cr-row" style={{ marginBottom: 14 }}>
@@ -788,7 +1033,7 @@ export default function TeacherDashboard({ onNavigate, subPath = '' }) {
                       {sub?.feedback ? ` · “${sub.feedback.slice(0, 50)}${sub.feedback.length > 50 ? '…' : ''}”` : ''}
                     </div>
                   </div>
-                  <Chip color={st.color}>{st.icon} {st.label}</Chip>
+                  <Chip color={st.color}><EmojiIcon e={st.icon} style={{ marginRight: '0.35em' }} />{st.label}</Chip>
                   {sub?.grade != null && <b style={{ minWidth: 60, textAlign: 'right' }}>{sub.sticker} {sub.grade}/{markA.points || 10}</b>}
                   <button className={`cr-btn cr-btn--sm${stKey === 'handed' ? ' cr-btn--primary' : ''}`} onClick={() => setModal({ type: 'mark', a: markA, pupil: p, sub })}>
                     {stKey === 'handed' ? 'Mark' : sub ? 'Edit' : 'Feedback'}

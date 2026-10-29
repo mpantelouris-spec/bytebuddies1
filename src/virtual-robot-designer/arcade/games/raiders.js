@@ -3,6 +3,7 @@
  * marches side to side and creeps down; your robot ship zaps them from below,
  * dodges slime drops and hides behind shields.
  */
+import { createArcadeExpansion } from '../expanded-levels.js';
 
 export const RW = 640, RH = 480;
 export const SHIP_Y = 440;
@@ -79,6 +80,7 @@ const LEVELS = [
     raiders: () => fleet(['CCCCCCC', 'BBBBBBB', 'AAAAAAA'], { top: 110 }), shields: [120, 320, 520], march: 55, drop: 14, bombs: 0.7,
     palette: ['zap', 'move_left', 'move_right', 'forever', 'if', 'else', 'repeat', 'repeat_until', 'wait'] },
 ];
+LEVELS.push(...createArcadeExpansion({ id: 'raiderbot', title: 'Space Raiders', emoji: '👾', color: '#a855f7', levels: LEVELS }));
 
 const alive = (w) => w.raiders.filter((a) => a.hp > 0);
 const hit = (ax, ay, aw, ah, x, y) => x > ax - aw / 2 && x < ax + aw / 2 && y > ay - ah / 2 && y < ay + ah / 2;

@@ -10,9 +10,32 @@ export const RING_SKIN_NAMES = [
   'Warehouse Brawl', 'Space Station Ring', 'Jungle Pit', 'Championship Gold', 'Boss Throne Room',
 ];
 
+/** Accent light and card colours for each ring, in the same order as RING_SKIN_NAMES. */
+export const RING_SKIN_COLORS = [
+  { light: 0xffa040, card: ['#92400e', '#fbbf24'] },
+  { light: 0xec4899, card: ['#0f172a', '#ec4899'] },
+  { light: 0x93c5fd, card: ['#020617', '#334155'] },
+  { light: 0xff5a1f, card: ['#1a0500', '#f97316'] },
+  { light: 0xbae6fd, card: ['#0c4a6e', '#e0f2fe'] },
+  { light: 0xfbbf24, card: ['#1a1a28', '#b45309'] },
+  { light: 0x60a5fa, card: ['#000008', '#475569'] },
+  { light: 0x4ade80, card: ['#0a2818', '#15803d'] },
+  { light: 0xffd700, card: ['#1a1040', '#fbbf24'] },
+  { light: 0x8b5cf6, card: ['#000000', '#7c3aed'] },
+];
+
+/**
+ * Which ring a bout is fought in. Robot Studio modes step through all ten in turn
+ * (so neighbouring modes never share a ring); other bouts get one from their name.
+ */
 export function getRingSkinIndex(challenge = {}) {
-  const idx = Number(challenge.modeIndex || challenge.ringSkin || 1);
-  return Math.max(0, Math.min(9, idx - 1));
+  if (challenge.ringSkin != null) return Math.max(0, Math.min(9, Number(challenge.ringSkin) || 0));
+  const mode = Number(challenge.modeIndex);
+  if (mode > 0) return (mode - 1) % 10;
+  const key = String(challenge.id || challenge.name || '');
+  let h = 0;
+  for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0;
+  return h % 10;
 }
 
 function makeLabelTex(title, sub, w = 512, h = 128) {

@@ -284,6 +284,20 @@ function wallTexture(r, title) {
         x.fillRect(wx, 156, 180, 8);
       }
     }
+    if (r.wallPad) {
+      const padTop = h * 0.64;
+      const padBottom = h * 0.86;
+      x.fillStyle = css(r.wallPad);
+      x.fillRect(0, padTop, w, padBottom - padTop);
+      // Upholstered wall panels give the gym a purposeful, padded sports-hall edge.
+      x.fillStyle = 'rgba(255,255,255,0.16)';
+      x.fillRect(0, padTop, w, 5);
+      x.strokeStyle = 'rgba(255,255,255,0.16)';
+      x.lineWidth = 3;
+      for (let px = 0; px <= w; px += 128) {
+        x.beginPath(); x.moveTo(px, padTop + 8); x.lineTo(px, padBottom - 8); x.stroke();
+      }
+    }
     if (r.posters !== false) {
       const cols = r.posterColors ?? ['#ff5d8f', '#ffd23f', '#3fa7ff', '#3fcf7a'];
       for (let i = 0; i < 3; i++) {
@@ -358,6 +372,24 @@ function buildRoom(ctx, r, title) {
   ceil.rotation.x = Math.PI / 2;
   ceil.position.set(cx, y0 + H, cz);
   ctx.root.add(ceil);
+  if (r.sportsHall) {
+    const beamMat = new THREE.MeshStandardMaterial({ color: 0x71829a, roughness: 0.7, metalness: 0.18 });
+    const lampMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xc8efff, emissiveIntensity: 1.1, roughness: 0.25 });
+    const beamLen = half * 2 - 2;
+    for (let z = cz - half + 10; z < cz + half; z += 20) {
+      const beam = new THREE.Mesh(new THREE.BoxGeometry(beamLen, 0.34, 0.42), beamMat);
+      beam.position.set(cx, y0 + H - 0.7, z);
+      ctx.root.add(beam);
+      const lamp = new THREE.Mesh(new THREE.BoxGeometry(beamLen * 0.72, 0.07, 0.2), lampMat);
+      lamp.position.set(cx, y0 + H - 0.92, z);
+      ctx.root.add(lamp);
+    }
+    for (let x = cx - half + 10; x < cx + half; x += 20) {
+      const beam = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.3, beamLen), beamMat);
+      beam.position.set(x, y0 + H - 0.55, cz);
+      ctx.root.add(beam);
+    }
+  }
   ctx.roomHalf = half;
 }
 
@@ -393,6 +425,86 @@ function restylePath(scene, ctx, rc) {
     // Worlds with their own hero start (e.g. the Giant Garden) drop the generic gantry
     if (o.name === 'MissionStartGantry' && rc.hideGantry) o.visible = false;
   });
+}
+
+function addBalanceBeamCourse(ctx) {
+  const curve = ctx.curve;
+  const segments = Math.max(72, Math.ceil(ctx.len * 5));
+  const halfWidth = 1.32;
+  const topOffset = 0.24;
+  const ribbon = (width, sideOffset = 0, yOffset = topOffset) => {
+    const positions = new Float32Array((segments + 1) * 2 * 3);
+    const indices = [];
+    const forward = new THREE.Vector3();
+    const right = new THREE.Vector3();
+    for (let i = 0; i <= segments; i++) {
+      const t = i / segments;
+      const point = curve.getPointAt(t);
+      forward.copy(curve.getTangentAt(t)).setY(0).normalize();
+      right.set(-forward.z, 0, forward.x);
+      const center = point.addScaledVector(right, sideOffset);
+      const y = center.y + yOffset;
+      const j = i * 6;
+      positions[j] = center.x - right.x * width / 2;
+      positions[j + 1] = y;
+      positions[j + 2] = center.z - right.z * width / 2;
+      positions[j + 3] = center.x + right.x * width / 2;
+      positions[j + 4] = y;
+      positions[j + 5] = center.z + right.z * width / 2;
+      if (i < segments) {
+        const a = i * 2;
+        indices.push(a, a + 1, a + 2, a + 1, a + 3, a + 2);
+      }
+    }
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geometry.setIndex(indices);
+    geometry.computeVertexNormals();
+    return geometry;
+  };
+
+  const base = new THREE.Mesh(ribbon(halfWidth * 2 + 0.16, 0, 0.1), new THREE.MeshStandardMaterial({
+    color: 0x17365d, roughness: 0.72, metalness: 0.12,
+  }));
+  base.name = 'BalanceGymBeamBase';
+  base.receiveShadow = true;
+  ctx.root.add(base);
+
+  const deck = new THREE.Mesh(ribbon(halfWidth * 2), new THREE.MeshStandardMaterial({
+    color: 0x176fc1, roughness: 0.52, metalness: 0.03,
+  }));
+  deck.name = 'BalanceGymBeamDeck';
+  deck.receiveShadow = true;
+  deck.castShadow = true;
+  ctx.root.add(deck);
+
+  const edgeMaterial = new THREE.MeshStandardMaterial({
+    color: 0x27e0cd, emissive: 0x08766e, emissiveIntensity: 0.3, roughness: 0.38,
+  });
+  for (const side of [-1, 1]) {
+    const edge = new THREE.Mesh(ribbon(0.09, side * (halfWidth - 0.09), topOffset + 0.015), edgeMaterial);
+    edge.name = 'BalanceGymBeamEdge';
+    ctx.root.add(edge);
+  }
+
+  const supportMaterial = new THREE.MeshStandardMaterial({ color: 0x17365d, roughness: 0.7 });
+  const panelMaterial = new THREE.MeshStandardMaterial({ color: 0xeaf8ff, roughness: 0.55 });
+  for (let d = 6; d < ctx.len - 4; d += 6) {
+    const t = d / ctx.len;
+    const p = curve.getPointAt(t);
+    const tangent = curve.getTangentAt(t).setY(0).normalize();
+    const yaw = Math.atan2(tangent.x, tangent.z);
+    const support = new THREE.Mesh(new THREE.BoxGeometry(2.05, 0.38, 0.44), supportMaterial);
+    support.position.set(p.x, p.y + 0.045, p.z);
+    support.rotation.y = yaw;
+    support.castShadow = true;
+    ctx.root.add(support);
+
+    const marker = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.025, 0.055), panelMaterial);
+    marker.position.set(p.x, p.y + topOffset + 0.018, p.z);
+    marker.rotation.y = yaw;
+    ctx.root.add(marker);
+  }
 }
 
 // ─── Placement ──────────────────────────────────────────────────────
@@ -856,7 +968,7 @@ export function installMissionTheme(scene, curve, arena, challenge) {
     const spawnRoot = aerial && rc.groundAt != null && scene.getObjectByName('FlyingSpawnRoot');
     if (spawnRoot) spawnRoot.visible = false;
 
-    const ctx = createThemeContext(scene, curve, { halfWidth: aerial ? 4.5 : 3.4, seed: hashStr(arena.id) });
+    const ctx = createThemeContext(scene, curve, { halfWidth: aerial ? 4.5 : 3.4, seed: hashStr(arena.tierLevel ? `${arena.id}:${arena.mode}` : arena.id) });
     ctx.root.name = MISSION_THEME_ROOT;
     ctx.aerial = aerial;
     let y0 = Infinity;
@@ -913,6 +1025,7 @@ export function installMissionTheme(scene, curve, arena, challenge) {
     if (rc.room) buildRoom(ctx, rc.room, arena.title);
     else if (rc.ground) buildGround(ctx, rc.ground);
     if (!aerial) restylePath(scene, ctx, rc);
+    if (!aerial && rc.balanceBeamCourse) addBalanceBeamCourse(ctx);
     // Worlds can frame their own shot, e.g. a low bug's-eye view in the Giant Garden
     if (rc.camera) scene.userData.missionCameraPreset = { ...(scene.userData.missionCameraPreset || {}), ...rc.camera };
 
@@ -964,4 +1077,4 @@ export function installMissionTheme(scene, curve, arena, challenge) {
   }
 }
 
-export { E, labelTexture, PROPS as MISSION_PROPS };
+export { E, labelTexture, PROPS as MISSION_PROPS, surfaceTexture };

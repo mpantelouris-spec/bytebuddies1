@@ -70,6 +70,38 @@ export async function fetchTeacherClasses(email) {
   }
 }
 
+/** Archived classes are kept on this device too, so Manage classes can show them offline. */
+export const localArchivedClasses = () => readLocal('bb-classes-archived', []);
+export function rememberArchived(cls, archived) {
+  const rest = readLocal('bb-classes-archived', []).filter((c) => c.id !== cls.id);
+  writeLocal('bb-classes-archived', archived ? [...rest, { ...cls, archived: true }] : rest);
+}
+
+/** Archived classes too — for the teacher's Manage classes list (restore or delete). */
+export async function fetchAllTeacherClasses(email) {
+  if (DEMO() || !email) return readLocal('bb-classes', []);
+  await ensureAuth();
+  try {
+    const snap = await getDocs(query(collection(db, 'classes'), where('teacherEmail', '==', email)));
+    return snap.docs.map((d) => d.data());
+  } catch (e) {
+    console.warn('[classroom] fetchAllTeacherClasses', e);
+    return [];
+  }
+}
+
+/** Delete a class for good: the class (roster, posts, hand-ins) and the work set for it. */
+export async function deleteClass(id) {
+  writeLocal('bb-classes', readLocal('bb-classes', []).filter((c) => c.id !== id));
+  writeLocal('bb-classes-archived', readLocal('bb-classes-archived', []).filter((c) => c.id !== id));
+  writeLocal('bb-assignments', readLocal('bb-assignments', []).filter((a) => a.classId !== id));
+  if (DEMO()) return;
+  await ensureAuth();
+  const work = await getDocs(query(collection(db, 'assignments'), where('classId', '==', id))).catch(() => null);
+  await Promise.all((work?.docs || []).map((d) => deleteDoc(d.ref).catch(() => {})));
+  await deleteDoc(doc(db, 'classes', id));
+}
+
 export async function findClassByCode(code) {
   if (DEMO()) return readLocal('bb-classes', []).find((c) => c.inviteCode === String(code).toUpperCase().trim()) || null;
   await ensureAuth();

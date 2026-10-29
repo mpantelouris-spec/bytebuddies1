@@ -3,6 +3,7 @@
  */
 import React from 'react';
 import { FOOTBALL_COURSES } from '../data/football-courses.js';
+import { EmojiIcon } from '../../components/ui/Icon.jsx';
 
 export function FootballHub({ courses = FOOTBALL_COURSES, currentId, onSelect, onClose, robotName = 'FootballBot' }) {
   const ordered = [...courses].sort((a, b) => {
@@ -14,7 +15,7 @@ export function FootballHub({ courses = FOOTBALL_COURSES, currentId, onSelect, o
       <div className="fight-hub-panel football-hub-panel">
         <header className="fight-hub-header">
           <div>
-            <span className="fight-hub-icon">⚽</span>
+            <span className="fight-hub-icon"><EmojiIcon e="⚽" /></span>
             <h2>Robot Football Arena</h2>
             <p>Code your {robotName} to chase, pass &amp; score!</p>
           </div>
@@ -25,7 +26,7 @@ export function FootballHub({ courses = FOOTBALL_COURSES, currentId, onSelect, o
 
         <div className="fight-hub-stats football-hub-tip">
           <span>🏟️ FIFA 3v3 teams</span>
-          <span>⚽ Pass &amp; shoot</span>
+          <span><EmojiIcon e="⚽" style={{ marginRight: '0.35em' }} />Pass &amp; shoot</span>
           <span>🥅 Beat the blue team</span>
         </div>
 
@@ -41,7 +42,7 @@ export function FootballHub({ courses = FOOTBALL_COURSES, currentId, onSelect, o
               className={`fight-hub-card football-hub-card${currentId === c.id ? ' active' : ''}${isFifa ? ' hero' : ''}`}
               onClick={() => onSelect?.(c)}
             >
-              <span className="fight-hub-card-icon">{c.icon}</span>
+              <span className="fight-hub-card-icon"><EmojiIcon e={c.icon} /></span>
               <strong>{c.name}</strong>
               <span className={`football-hub-badge${teamCode ? ' team' : ' solo'}`}>
                 {isFifa ? 'FULL MATCH — code 3 players' : isPenalty ? 'SOLO — one kicker only' : teamCode ? 'Code your team' : 'Solo drill — not a full match'}

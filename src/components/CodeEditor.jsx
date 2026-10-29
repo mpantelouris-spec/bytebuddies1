@@ -1,7 +1,14 @@
 import React, { useRef, useEffect } from 'react';
+import { useTheme } from '../contexts/ThemeContext';
+
+// Created once: making it inside the component gave a new editor on every keystroke, which lost focus
+const MonacoLazy = React.lazy(() =>
+  import('@monaco-editor/react').then(mod => ({ default: mod.default }))
+);
 
 export default function CodeEditor({ code, language, onChange }) {
   const editorRef = useRef(null);
+  const light = useTheme()?.theme === 'light';
   const monacoRef = useRef(null);
 
   useEffect(() => {
@@ -21,10 +28,6 @@ export default function CodeEditor({ code, language, onChange }) {
     return () => { disposed = true; };
   }, []);
 
-  const MonacoLazy = React.lazy(() =>
-    import('@monaco-editor/react').then(mod => ({ default: mod.default }))
-  );
-
   const languageMap = {
     python: 'python',
     javascript: 'javascript',
@@ -43,7 +46,7 @@ export default function CodeEditor({ code, language, onChange }) {
         <MonacoLazy
           height="100%"
           language={languageMap[language] || 'python'}
-          theme="vs-dark"
+          theme={light ? 'light' : 'vs-dark'}
           value={code}
           onChange={(val) => onChange(val || '')}
           options={{
@@ -55,7 +58,7 @@ export default function CodeEditor({ code, language, onChange }) {
             lineNumbers: 'on',
             roundedSelection: true,
             automaticLayout: true,
-            tabSize: 2,
+            tabSize: language === 'python' ? 4 : 2,
             wordWrap: 'on',
             bracketPairColorization: { enabled: true },
             cursorBlinking: 'smooth',
@@ -79,8 +82,8 @@ function FallbackEditor({ code, language, onChange }) {
       style={{
         width: '100%',
         height: '100%',
-        background: '#1e1e1e',
-        color: '#d4d4d4',
+        background: 'var(--bg-input, #1e1e1e)',
+        color: 'var(--text-primary, #d4d4d4)',
         border: 'none',
         outline: 'none',
         resize: 'none',

@@ -221,7 +221,7 @@ export function buildFootballArena(scene, challenge = {}, playerConfig = {}) {
   ].forEach(([x, z]) => pitchGrp.add(buildCornerFlag(x, z)));
   scene.add(pitchGrp);
 
-  buildStadiumLighting(scene, false, { fifaLite: layout.kind === 'fifa' && layout.teamSize >= 3 });
+  buildStadiumLighting(scene, layout.kind === 'arcade', { fifaLite: layout.kind === 'fifa' && layout.teamSize >= 3 });
   if (layout.kind !== 'fifa' || layout.teamSize < 3) {
     finalizeFootballArenaLighting(scene, tier);
   }

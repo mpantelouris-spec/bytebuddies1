@@ -3,6 +3,7 @@
  */
 import React from 'react';
 import { analyzeRobot } from '../../services/robot-profile.js';
+import { EmojiIcon } from '../../../components/ui/Icon.jsx';
 
 export default function SmartStageBanner({ design, activeCourse }) {
   const profile = analyzeRobot(design);
@@ -20,7 +21,7 @@ export default function SmartStageBanner({ design, activeCourse }) {
           </span>
         )}
       </div>
-      <span className="ta-smart-profile-pill">{profile.archetype.icon} {profile.archetype.label}</span>
+      <span className="ta-smart-profile-pill"><EmojiIcon e={profile.archetype.icon} style={{ marginRight: '0.35em' }} />{profile.archetype.label}</span>
     </div>
   );
 }

@@ -15,7 +15,13 @@ import { useUser } from '../contexts/UserContext';
 import AppMode from '../utils/AppMode';
 import { assetUrl } from '../utils/assetUrl';
 import ScratchStyleBlock from './ScratchStyleBlock';
-import UnifiedBlocklyWorkspace from './UnifiedBlocklyWorkspace';
+import UnifiedBlocklyWorkspace, { xmlToWorkspaceNodes } from './UnifiedBlocklyWorkspace';
+import { GameModesGallery, ChallengePanel, readModeProgress, saveModeStars } from './gamebuilder/GameModes';
+import ByteBuddy, { ByteFace } from './gamebuilder/ByteBuddy';
+import LevelBar from './gamebuilder/LevelBar';
+import { LEVELS_KEY, normalizeLevels, defaultLevels, captureLayout, applyLayout, applyLayoutInPlace, addLevel as addLevelTo, removeLevel, moveLevel, resolveLevel } from './gamebuilder/levels';
+import { findGameMode } from '../data/gameModes';
+import { countBlocks, usesLoop } from '../data/gameModes/checks';
 import { BLOCK_STACK_GAP, columnizeBlocks } from '../utils/blockStack';
 import { snapCanvasStack } from '../utils/blockSnap';
 import ExtensionsModal from './ExtensionsModal';
@@ -26,12 +32,16 @@ import { SHORT_TO_SCRATCH_BLOCKLY } from '../utils/blocklyToolboxEntries';
 import { BB_ADD_SIDEBAR_BLOCK, BB_OPEN_EXTENSIONS } from '../utils/blockLibraryEvents';
 import { initializeSpriteState } from '../utils/spritePhysics';
 import { RASTER_SPRITE_LIBRARY } from '../data/rasterSpriteLibrary';
+import { setLiveCostumeNames, setLiveSoundNames, setLiveSpriteNames, setLiveBackdropNames } from '../data/liveAssetDropdowns';
+import GameBuilderAssetStudio from './gamebuilder/GameBuilderAssetStudio';
+import BackdropStudio from './gamebuilder/BackdropStudio';
 import {
   blocklyNodeToEvaluatorBlock,
   evaluateOperatorBlock,
   OPERATOR_GAME_TYPES,
 } from '../utils/operatorsRuntime';
 import { LOOKS_REPORTER_GAME_TYPES, LIST_REPORTER_GAME_TYPES } from '../utils/blocklyToolboxEntries';
+import { publishCommunityProject } from '../firebase';
 import {
   listAdd,
   listDeleteAt,
@@ -62,6 +72,8 @@ import {
 } from '../utils/gameBuilderPlatformer';
 import { MAX_BLOCK_STEPS_PER_ANIMATION_FRAME } from '../utils/scratchVmMapping';
 import { GameRuntime } from '../utils/gameRuntime';
+import { rememberSpriteImage } from '../utils/pixelCollision';
+import { gameModeProbe } from '../utils/gameModeProbe';
 import {
   runExtensionGame,
   readExtensionGame,
@@ -108,9 +120,14 @@ import {
   resyncSpriteThreadsOnBlockChange,
   startCloneHatThreads,
   stepCloneHatThreads,
+  startEventScript,
+  stepEventScripts,
 } from '../utils/spriteScriptRunner';
 import {
   collectLoopBody,
+  loopStateFor,
+  clearLoopState,
+  isHat,
   getFlowContext,
   setWaitSeconds,
   setWaitUntilCondition,
@@ -158,19 +175,61 @@ import {
   applyStageBackdrop,
   runLooksBlocksOnSprite,
 } from '../utils/looksRuntime';
+import { defaultCostumesForSprite, isLegacyBakedPack, isPlaceholderCostumeList } from '../utils/spriteCostumePack';
 import {
   getSpriteSoundState,
   playSpriteSound,
+  playSpriteSoundUntilDone,
   stopSpriteSounds,
   runSoundBlocksOnSprite,
   getSpriteVolumeReporter,
 } from '../utils/soundRuntime';
 import { ensureBlockSoundAudio } from '../utils/blockSounds';
 import { STAGE_BACKDROP_NAMES, STAGE_BACKDROPS, findStageBackdrop, resolveStageBackdropName } from '../data/stageBackdrops';
+import { EmojiIcon, IconText } from './ui/Icon.jsx';
 
 const STAGE_W = 480;
 const STAGE_H = 360;
 const DEFAULT_STAGE_BACKDROP = 'White';
+
+function ShareProjectModal({ project, initialTitle, onClose, onPublished }) {
+  const [title, setTitle] = useState(initialTitle || 'My Game');
+  const [author, setAuthor] = useState('Coder');
+  const [description, setDescription] = useState('');
+  const [preview, setPreview] = useState('🎮');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [published, setPublished] = useState(false);
+  const publish = async () => {
+    if (!title.trim() || !author.trim()) return setError('Add a project title and a nickname first.');
+    setBusy(true); setError('');
+    try {
+      const listing = await publishCommunityProject(project, { title, author, description, preview });
+      setPublished(true);
+      onPublished?.(listing);
+    } catch (e) {
+      setError(e.code === 'permission-denied'
+        ? 'Community sharing is blocked by the project’s Firestore rules. Ask an administrator to enable community project publishing.'
+        : e.message || 'Could not publish this project. Please try again.');
+    } finally { setBusy(false); }
+  };
+  const fieldStyle = { width: '100%', boxSizing: 'border-box', padding: '10px 12px', border: '1px solid var(--border-color)', borderRadius: 9, color: 'var(--text-primary)', background: 'var(--bg-primary)', font: 'inherit' };
+  return <div className="community-share-backdrop" onClick={onClose}>
+    <div className="community-share-modal" role="dialog" aria-modal="true" aria-labelledby="community-share-title" onClick={e => e.stopPropagation()}>
+      <div className="community-share-head"><div><span className="community-eyebrow">SHOW THE COMMUNITY</span><h2 id="community-share-title">Share your project</h2></div><button className="btn btn-ghost" onClick={onClose} aria-label="Close">✕</button></div>
+      {published ? <div className="community-share-success"><div><EmojiIcon e="🎉" /></div><h3>Your project is in Community!</h3><p>Other coders can now discover it and make their own remix.</p><button className="btn btn-primary" onClick={onClose}>Done</button></div> : <>
+        <p className="community-share-intro">Your project will be visible to other ByteBuddies users. You can remove it from Community later.</p>
+        <label className="community-share-label">Project title<input style={fieldStyle} maxLength={48} value={title} onChange={e => setTitle(e.target.value)} placeholder="My awesome game" /></label>
+        <label className="community-share-label">Creator nickname<input style={fieldStyle} maxLength={24} value={author} onChange={e => setAuthor(e.target.value)} placeholder="A nickname, not your full name" /></label>
+        <label className="community-share-label">What is it about?<textarea style={{ ...fieldStyle, minHeight: 82, resize: 'vertical' }} maxLength={220} value={description} onChange={e => setDescription(e.target.value)} placeholder="Tell everyone what to try or how you made it…" /></label>
+        <label className="community-share-label">Project cover<div className="community-share-emoji">{['🎮','🚀','🐱','🌈','🏎️','🧩','🪐','⚽'].map(icon => <button type="button" key={icon} aria-pressed={preview === icon} onClick={() => setPreview(icon)}>{icon}</button>)}</div></label>
+        <div className="community-share-safety">🔒 <span><strong>Share safely</strong><br />Use a nickname. Don’t include your full name, school, location, or contact details in the title, description, or game.</span></div>
+        {error && <div className="community-share-error" role="alert">{error}</div>}
+        <div className="community-share-footer"><button className="btn btn-ghost" onClick={onClose}>Cancel</button><button className="btn btn-primary" disabled={busy || !title.trim() || !author.trim()} onClick={publish}><IconText>{busy ? 'Publishing…' : '🚀 Publish to Community'}</IconText></button></div>
+      </>}
+    </div>
+  </div>;
+}
 const LEGACY_DEFAULT_BACKDROPS = new Set([
   'Sky', 'Space', 'City', 'Ocean', 'Forest', 'Desert', 'Underwater', 'Sunset', 'Snow',
   'Jungle', 'Cave', 'Lava', 'Candy', 'Dungeon', 'Kingdom', 'Neon City', 'Mountain', 'Rainbow', 'Graveyard',
@@ -180,6 +239,9 @@ function readInitialStageBackdrop() {
   try {
     const saved = localStorage.getItem('cv_gamebuilder_bg');
     if (!saved || LEGACY_DEFAULT_BACKDROPS.has(saved)) return DEFAULT_STAGE_BACKDROP;
+    // Painted / uploaded backdrops are kept too
+    const custom = JSON.parse(localStorage.getItem('cv_gamebuilder_custom_bgs') || '[]');
+    if (Array.isArray(custom) && custom.some((b) => b?.name === saved)) return saved;
     const resolved = resolveStageBackdropName(saved);
     return findStageBackdrop(resolved) ? resolved : DEFAULT_STAGE_BACKDROP;
   } catch {
@@ -307,6 +369,24 @@ function conditionBlocklyNodeToEvaluatorBlock(node) {
   const blocklyType = resolveBlocklyNodeType(node) || node.type;
   const f = node.fields || {};
 
+  // The real Sensing blocks from the toolbox ("touching Coin?", "key space pressed?"…)
+  switch (node.type) {
+    case 'sensing_touchingobject':
+      return { type: 'sense-touching', params: { target: String(f.OBJECT || f.TOUCHINGOBJECTMENU || 'edge') } };
+    case 'sensing_keypressed':
+      return { type: 'sense-key', params: { key: String(f.KEY || f.KEY_OPTION || 'space') } };
+    case 'sensing_touchingcolor':
+      return { type: 'sense-touching-color', params: { color: String(f.COLOR || '#ff0000') } };
+    case 'sensing_coloristouchingcolor':
+      return { type: 'sense-color-touching-color', params: { color1: String(f.COLOR || '#ff0000'), color2: String(f.COLOR2 || '#0000ff') } };
+    case 'sensing_mousedown':
+      return { type: 'sense-mouse-down', params: {} };
+    case 'data_variable':
+      return { type: 'var-reporter', params: { name: String(f.VARIABLE || 'my variable') } };
+    default:
+      break;
+  }
+
   const operatorBlock = blocklyNodeToEvaluatorBlock(node, reporterBlocklyNodeToEvaluatorBlock);
   if (operatorBlock) return operatorBlock;
 
@@ -426,6 +506,8 @@ function conditionBlocklyNodeToEvaluatorBlock(node) {
 }
 
 const REPORTER_SLOT_SHADOWS = new Set(['text', 'math_number']);
+/** "move N steps" block types (instant inside forever loops, like Scratch). */
+const MOVE_STEP_TYPES = new Set(['sprite-move', 'motion-move', 'motion_movesteps']);
 /** List statements evaluate their own `{ _nested }` item/index params. */
 const LIST_STATEMENT_TYPES = new Set(['list-add', 'list-delete', 'list-insert', 'list-replace']);
 
@@ -470,6 +552,7 @@ const SLOT_PARAM_KEYS = {
   'loop-repeat': { TIMES: 'times' },
   'var-set': { VALUE: 'value' },
   'var-change': { AMOUNT: 'amount', VALUE: 'amount' },
+  'game-goto-level': { LEVEL: 'level' },
 };
 
 /** Map any reporter/boolean Blockly node plugged into a slot to an evaluateCondition() block. */
@@ -477,6 +560,8 @@ function reporterBlocklyNodeToEvaluatorBlock(node) {
   if (!node) return null;
   const blocklyType = resolveBlocklyNodeType(node) || node.type;
   const f = node.fields || {};
+  // A variable plugged into a number slot, e.g. "move (side) steps"
+  if (node.type === 'data_variable') return { type: 'var-reporter', params: { name: String(f.VARIABLE || 'my variable') } };
   switch (blocklyType) {
     case 'motion_xposition':
     case 'motion_yposition':
@@ -485,6 +570,9 @@ function reporterBlocklyNodeToEvaluatorBlock(node) {
       return { type: blocklyType, params: {} };
     case 'bb_var_get': return { type: 'var-reporter', params: { name: String(f.NAME || 'myVar') } };
     case 'sensing_mousex': return { type: 'sense-mouse-x', params: {} };
+    case 'bb_game_level': return { type: 'game-level-reporter', params: {} };
+    case 'bb_game_score': return { type: 'game-score-reporter', params: {} };
+    case 'bb_game_lives': return { type: 'game-lives-reporter', params: {} };
     case 'sensing_mousey': return { type: 'sense-mouse-y', params: {} };
     case 'sensing_mousedown': return { type: 'sense-mouse-down', params: {} };
     case 'sensing_timer': return { type: 'sense-timer', params: {} };
@@ -634,6 +722,15 @@ function blocklyNodesToGameBlocks(nodes = []) {
     bb_looks_backdrop: 'looks-backdrop',
     bb_looks_next_backdrop: 'looks-next-backdrop',
     bb_looks_forward_layers: 'looks-forward-layers',
+    bb_pen_down: 'pen-down',
+    bb_pen_up: 'pen-up',
+    bb_pen_clear: 'pen-clear',
+    bb_pen_erase: 'pen-clear',
+    bb_pen_stamp: 'pen-stamp',
+    bb_pen_color: 'pen-color',
+    bb_pen_change_color: 'pen-change-color',
+    bb_pen_size: 'pen-size',
+    bb_pen_change_size: 'pen-change-size',
     bb_looks_color_effect: 'looks-color-effect',
     bb_looks_ghost_effect: 'looks-ghost-effect',
     bb_looks_clear_effects: 'looks-clear-effects',
@@ -670,6 +767,12 @@ function blocklyNodesToGameBlocks(nodes = []) {
     bb_game_score_add: 'game-score-add',
     bb_game_score_set: 'game-score-set',
     bb_game_set_lives: 'game-set-lives',
+    bb_game_win: 'game-win',
+    bb_game_next_level: 'game-next-level',
+    bb_game_goto_level: 'game-goto-level',
+    bb_game_when_level: 'event-level',
+    bb_game_over: 'game-over',
+    bb_game_lose_life: 'game-lose-life',
     bb_action_print: 'action-print',
     bb_action_alert: 'action-alert',
     bb_body_video_on: 'body-video-on',
@@ -743,7 +846,18 @@ function blocklyNodesToGameBlocks(nodes = []) {
     // "sprite" was the old dropdown value for Sprite1 before it was fixed to use the actual name
     const normSpriteName = (v) => (!v || v === 'sprite') ? 'Sprite1' : String(v);
     if (type === 'event-keypress') base.params.key = f.KEY || 'space';
+    // Music blocks: pass the chosen note, drum, beats, instrument and tempo through
+    if (blocklyType === 'bb_music_note') { base.params.note = String(f.NOTE ?? 60); base.params.beats = String(f.BEATS ?? 0.5); }
+    if (blocklyType === 'bb_music_drum') { base.params.drum = String(f.DRUM ?? 0); base.params.beats = String(f.BEATS ?? 0.5); }
+    if (blocklyType === 'bb_music_rest') base.params.beats = String(f.BEATS ?? 0.5);
+    if (blocklyType === 'bb_music_instrument') base.params.instrument = String(f.INSTRUMENT ?? 0);
+    if (blocklyType === 'bb_music_tempo') base.params.tempo = String(f.TEMPO ?? 60);
+    if (blocklyType === 'bb_music_tempo_change') base.params.change = String(f.CHANGE ?? 10);
+    if (blocklyType === 'bb_pen_color') base.params.color = String(f.COLOR || '#22c55e');
+    if (blocklyType === 'bb_pen_size') base.params.size = String(f.SIZE ?? 3);
+    if (blocklyType === 'bb_pen_change_color' || blocklyType === 'bb_pen_change_size') base.params.amount = String(f.AMOUNT ?? 10);
     if (type === 'event-backdropswitch') base.params.backdrop = String(f.BACKDROP ?? base.params.backdrop ?? '');
+    if (type === 'event-level' || type === 'game-goto-level') base.params.level = String(f.LEVEL ?? base.params.level ?? 1);
     if (type === 'event-loudness') {
       base.params.what = String(f.CONDITION ?? f.WHENGREATERTHANMENU ?? 'loudness');
       base.params.threshold = String(f.VALUE ?? 10);
@@ -1048,6 +1162,7 @@ function blocklyNodesToGameBlocks(nodes = []) {
     if (type === 'game-score-add') base.params.amount = String(f.AMOUNT ?? f.amount ?? 10);
     if (type === 'game-score-set') base.params.value = String(f.VALUE ?? f.value ?? 0);
     if (type === 'game-set-lives') base.params.value = String(f.VALUE ?? f.value ?? 3);
+    if (type === 'game-goto-level' || type === 'event-level') base.params.level = String(f.LEVEL ?? f.level ?? 1);
     if (type === 'sense-touching') {
       base.params.target = objectFieldToTarget(f.OBJECT || f.TOUCHINGOBJECTMENU || f.TARGET || 'mouse');
     }
@@ -1251,39 +1366,39 @@ const SPRITE_LIBRARY = [
   {
     category: 'People',
     items: [
-      { name: 'Adventurer', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#f97316"/></svg>`, color: '#f97316', customImage: '/assets/characters/chibi/chibi_adventurer.png?v=28' },
-      { name: 'Explorer', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#ec4899"/></svg>`, color: '#ec4899', customImage: '/assets/characters/chibi/chibi_explorer.png?v=28' },
-      { name: 'Sporty', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#2563eb"/></svg>`, color: '#2563eb', customImage: '/assets/characters/chibi/chibi_sporty.png?v=28' },
-      { name: 'Coder', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#22c55e"/></svg>`, color: '#22c55e', customImage: '/assets/characters/chibi/chibi_coder.png?v=28' },
-      { name: 'Warrior', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#3b82f6"/></svg>`, color: '#3b82f6', customImage: '/assets/characters/chibi/chibi_warrior.png?v=28' },
-      { name: 'Archer', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#16a34a"/></svg>`, color: '#16a34a', customImage: '/assets/characters/chibi/chibi_archer.png?v=28' },
-      { name: 'Wizard', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#6366f1"/></svg>`, color: '#6366f1', customImage: '/assets/characters/chibi/chibi_wizard.png?v=28' },
-      { name: 'Knight', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#64748b"/></svg>`, color: '#64748b', customImage: '/assets/characters/chibi/chibi_knight.png?v=28' },
-      { name: 'Robot', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#3b82f6"/></svg>`, color: '#3b82f6', customImage: '/assets/characters/chibi/chibi_robot.png?v=28' },
-      { name: 'Mechanic', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#eab308"/></svg>`, color: '#eab308', customImage: '/assets/characters/chibi/chibi_mechanic.png?v=28' },
-      { name: 'RoboDog', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#f5f5f5"/></svg>`, color: '#f5f5f5', customImage: '/assets/characters/chibi/chibi_robodog.png?v=28' },
-      { name: 'Drone', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#f97316"/></svg>`, color: '#f97316', customImage: '/assets/characters/chibi/chibi_drone.png?v=28' },
+      { name: 'Adventurer', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#f97316"/></svg>`, color: '#f97316', customImage: '/assets/characters/chibi/chibi_adventurer.png?o=1&v=28' },
+      { name: 'Explorer', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#ec4899"/></svg>`, color: '#ec4899', customImage: '/assets/characters/chibi/chibi_explorer.png?o=1&v=28' },
+      { name: 'Sporty', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#2563eb"/></svg>`, color: '#2563eb', customImage: '/assets/characters/chibi/chibi_sporty.png?o=1&v=28' },
+      { name: 'Coder', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#22c55e"/></svg>`, color: '#22c55e', customImage: '/assets/characters/chibi/chibi_coder.png?o=1&v=28' },
+      { name: 'Warrior', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#3b82f6"/></svg>`, color: '#3b82f6', customImage: '/assets/characters/chibi/chibi_warrior.png?o=1&v=28' },
+      { name: 'Archer', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#16a34a"/></svg>`, color: '#16a34a', customImage: '/assets/characters/chibi/chibi_archer.png?o=1&v=28' },
+      { name: 'Wizard', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#6366f1"/></svg>`, color: '#6366f1', customImage: '/assets/characters/chibi/chibi_wizard.png?o=1&v=28' },
+      { name: 'Knight', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#64748b"/></svg>`, color: '#64748b', customImage: '/assets/characters/chibi/chibi_knight.png?o=1&v=28' },
+      { name: 'Robot', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#3b82f6"/></svg>`, color: '#3b82f6', customImage: '/assets/characters/chibi/chibi_robot.png?o=1&v=28' },
+      { name: 'Mechanic', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#eab308"/></svg>`, color: '#eab308', customImage: '/assets/characters/chibi/chibi_mechanic.png?o=1&v=28' },
+      { name: 'RoboDog', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#f5f5f5"/></svg>`, color: '#f5f5f5', customImage: '/assets/characters/chibi/chibi_robodog.png?o=1&v=28' },
+      { name: 'Drone', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#f97316"/></svg>`, color: '#f97316', customImage: '/assets/characters/chibi/chibi_drone.png?o=1&v=28' },
     ]
   },
   {
     category: 'Animals',
     items: [
-      { name: 'Lion', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#eab308'}"/></svg>`, color: '#eab308', customImage: '/assets/characters/animals/animal_lion.png?v=13' },
-      { name: 'Elephant', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#9ca3af'}"/></svg>`, color: '#9ca3af', customImage: '/assets/characters/animals/animal_elephant.png?v=13' },
-      { name: 'Fox', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#ea580c'}"/></svg>`, color: '#ea580c', customImage: '/assets/characters/animals/animal_fox.png?v=13' },
-      { name: 'Panda', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#1e293b'}"/></svg>`, color: '#1e293b', customImage: '/assets/characters/animals/animal_panda.png?v=13' },
-      { name: 'Giraffe', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#f59e0b'}"/></svg>`, color: '#f59e0b', customImage: '/assets/characters/animals/animal_giraffe.png?v=13' },
-      { name: 'Dolphin', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#3b82f6'}"/></svg>`, color: '#3b82f6', customImage: '/assets/characters/animals/animal_dolphin.png?v=13' },
-      { name: 'Turtle', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#22c55e'}"/></svg>`, color: '#22c55e', customImage: '/assets/characters/animals/animal_turtle.png?v=13' },
-      { name: 'Penguin', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#1e293b'}"/></svg>`, color: '#1e293b', customImage: '/assets/characters/animals/animal_penguin.png?v=13' },
-      { name: 'Dog', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#f97316'}"/></svg>`, color: '#f97316', customImage: '/assets/characters/animals/animal_dog.png?v=13' },
-      { name: 'Cat', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#6b7280'}"/></svg>`, color: '#6b7280', customImage: '/assets/characters/animals/animal_cat.png?v=13' },
-      { name: 'Horse', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#92400e'}"/></svg>`, color: '#92400e', customImage: '/assets/characters/animals/animal_horse.png?v=13' },
-      { name: 'Cow', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#f5f5f5'}"/></svg>`, color: '#f5f5f5', customImage: '/assets/characters/animals/animal_cow.png?v=13' },
-      { name: 'Sheep', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#e2e8f0'}"/></svg>`, color: '#e2e8f0', customImage: '/assets/characters/animals/animal_sheep.png?v=13' },
-      { name: 'Wolf', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#64748b'}"/></svg>`, color: '#64748b', customImage: '/assets/characters/animals/animal_wolf.png?v=13' },
-      { name: 'Rabbit', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#f8fafc'}"/></svg>`, color: '#f8fafc', customImage: '/assets/characters/animals/animal_rabbit.png?v=13' },
-      { name: 'Crocodile', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#4d7c0f'}"/></svg>`, color: '#4d7c0f', customImage: '/assets/characters/animals/animal_crocodile.png?v=13' },
+      { name: 'Lion', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#eab308'}"/></svg>`, color: '#eab308', customImage: '/assets/characters/animals/animal_lion.png?o=1&v=13' },
+      { name: 'Elephant', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#9ca3af'}"/></svg>`, color: '#9ca3af', customImage: '/assets/characters/animals/animal_elephant.png?o=1&v=13' },
+      { name: 'Fox', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#ea580c'}"/></svg>`, color: '#ea580c', customImage: '/assets/characters/animals/animal_fox.png?o=1&v=13' },
+      { name: 'Panda', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#1e293b'}"/></svg>`, color: '#1e293b', customImage: '/assets/characters/animals/animal_panda.png?o=1&v=13' },
+      { name: 'Giraffe', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#f59e0b'}"/></svg>`, color: '#f59e0b', customImage: '/assets/characters/animals/animal_giraffe.png?o=1&v=13' },
+      { name: 'Dolphin', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#3b82f6'}"/></svg>`, color: '#3b82f6', customImage: '/assets/characters/animals/animal_dolphin.png?o=1&v=13' },
+      { name: 'Turtle', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#22c55e'}"/></svg>`, color: '#22c55e', customImage: '/assets/characters/animals/animal_turtle.png?o=1&v=13' },
+      { name: 'Penguin', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#1e293b'}"/></svg>`, color: '#1e293b', customImage: '/assets/characters/animals/animal_penguin.png?o=1&v=13' },
+      { name: 'Dog', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#f97316'}"/></svg>`, color: '#f97316', customImage: '/assets/characters/animals/animal_dog.png?o=1&v=13' },
+      { name: 'Cat', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#6b7280'}"/></svg>`, color: '#6b7280', customImage: '/assets/characters/animals/animal_cat.png?o=1&v=13' },
+      { name: 'Horse', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#92400e'}"/></svg>`, color: '#92400e', customImage: '/assets/characters/animals/animal_horse.png?o=1&v=13' },
+      { name: 'Cow', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#f5f5f5'}"/></svg>`, color: '#f5f5f5', customImage: '/assets/characters/animals/animal_cow.png?o=1&v=13' },
+      { name: 'Sheep', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#e2e8f0'}"/></svg>`, color: '#e2e8f0', customImage: '/assets/characters/animals/animal_sheep.png?o=1&v=13' },
+      { name: 'Wolf', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#64748b'}"/></svg>`, color: '#64748b', customImage: '/assets/characters/animals/animal_wolf.png?o=1&v=13' },
+      { name: 'Rabbit', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#f8fafc'}"/></svg>`, color: '#f8fafc', customImage: '/assets/characters/animals/animal_rabbit.png?o=1&v=13' },
+      { name: 'Crocodile', svg: (c) => `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="${c||'#4d7c0f'}"/></svg>`, color: '#4d7c0f', customImage: '/assets/characters/animals/animal_crocodile.png?o=1&v=13' },
     ]
   },
   ...RASTER_SPRITE_LIBRARY,
@@ -1371,6 +1486,8 @@ function SpriteThumb({ svgKey, color, customImage, size = 32 }) {
         <img
           src={assetUrl(customImage)}
           alt=""
+          loading="lazy"
+          decoding="async"
           style={{
             width: '100%',
             height: '100%',
@@ -1385,7 +1502,7 @@ function SpriteThumb({ svgKey, color, customImage, size = 32 }) {
     );
   }
   const tpl = findSpriteTemplate(svgKey);
-  if (!tpl) return <span style={{ fontSize: size * 0.6 }}>❓</span>;
+  if (!tpl) return <span style={{ fontSize: size * 0.6 }}><EmojiIcon e="❓" /></span>;
   const svgStr = tpl.svg(color || tpl.color);
   const encoded = btoa(unescape(encodeURIComponent(svgStr)));
   return <img src={`data:image/svg+xml;base64,${encoded}`} alt={svgKey} width={size} height={size} style={{ imageRendering: 'auto' }} />;
@@ -1498,6 +1615,35 @@ function stripStarterAutoScripts(sprites = []) {
    Left: Block coding area (per sprite)
    Right: Stage + Sprite pane
    ═══════════════════════════════════════════════════ */
+/**
+ * Game Modes: a dotted guide drawn under the artwork — Pen Bot's target shape
+ * (with a green start dot) or Maze Bot's counting grid. `guide` is lines or { lines, dot }.
+ */
+function drawModeGhost(ctx, guide) {
+  const lines = Array.isArray(guide) ? guide : guide?.lines;
+  if (!ctx || !lines?.length) return;
+  const showDot = Array.isArray(guide) || guide.dot !== false;
+  ctx.save();
+  ctx.setLineDash(showDot ? [7, 6] : [2, 5]);
+  ctx.lineWidth = showDot ? 3 : 1;
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = showDot ? 'rgba(100, 116, 139, 0.55)' : 'rgba(100, 116, 139, 0.35)';
+  lines.forEach((line) => {
+    ctx.beginPath();
+    line.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)));
+    ctx.stroke();
+  });
+  ctx.setLineDash([]);
+  if (showDot) {
+    const s = lines[0][0];
+    ctx.fillStyle = '#22c55e';
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, 5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
 export default function GameBuilder() {
   const { user } = useUser();
   const canvasRef = useRef(null);
@@ -1561,14 +1707,14 @@ export default function GameBuilder() {
   const [enabledExtensions, setEnabledExtensions] = useState(() => readEnabledExtensionIds());
 
   const toggleExtension = useCallback((id) => {
-    setEnabledExtensions(prev => {
-      const set = new Set(prev);
-      if (set.has(id)) set.delete(id);
-      else set.add(id);
-      const next = Array.from(set);
-      writeEnabledExtensionIds(next);
-      return next;
-    });
+    // Save outside the state updater: saving fires an event the block library listens to,
+    // and updating another component from inside an updater makes React warn.
+    const set = new Set(readEnabledExtensionIds());
+    if (set.has(id)) set.delete(id);
+    else set.add(id);
+    const next = Array.from(set);
+    setEnabledExtensions(next);
+    writeEnabledExtensionIds(next);
   }, []);
 
   // Mode scope guard: Warn if leaving Game Builder mode unexpectedly
@@ -1631,15 +1777,144 @@ export default function GameBuilder() {
   const [savedProjects, setSavedProjects] = useState(() => {
     try { const p = localStorage.getItem('cv_gamebuilder_projects'); return p ? JSON.parse(p) : []; } catch { return []; }
   });
+  const [showShareProject, setShowShareProject] = useState(false);
+  const [shareProjectSnapshot, setShareProjectSnapshot] = useState(null);
+  const [teacherShare, setTeacherShare] = useState(null);
+  const [teacherShareBusy, setTeacherShareBusy] = useState(false);
+  const [teacherShareDone, setTeacherShareDone] = useState(false);
+  const [teacherShareTarget, setTeacherShareTarget] = useState('');
+  // Game Modes: ready-made games with challenges
+  const [showGameModes, setShowGameModes] = useState(false);
+  const [byteOpen, setByteOpen] = useState(false);
+  // Levels: each has its own backdrop and sprite layout. editLevel = the one shown in the editor.
+  const [levels, setLevels] = useState(() => {
+    let saved = null;
+    try { saved = JSON.parse(localStorage.getItem(LEVELS_KEY) || 'null'); } catch { /* ignore */ }
+    return normalizeLevels(saved, readInitialStageBackdrop());
+  });
+  const [editLevel, setEditLevel] = useState(0);
+  const [banner, setBanner] = useState(null); // { kind: 'level'|'win'|'over', text, sub }
+  const levelsRef = useRef(levels);
+  levelsRef.current = levels;
+  const playLevelsRef = useRef(levels); // levels frozen when Play starts
+  const editLevelRef = useRef(editLevel);
+  editLevelRef.current = Math.min(editLevel, levels.length - 1);
+  const bannerTimerRef = useRef(null);
+  const showBanner = useCallback((b, ms = 0) => {
+    clearTimeout(bannerTimerRef.current);
+    setBanner(b);
+    if (ms) bannerTimerRef.current = setTimeout(() => setBanner(null), ms);
+  }, []);
+  useEffect(() => {
+    try { localStorage.setItem(LEVELS_KEY, JSON.stringify(levels)); } catch { /* ignore */ }
+  }, [levels]);
+  // After playing, the editor goes back to the level being edited (its backdrop)
+  const wasPlayingRef = useRef(false);
+  useEffect(() => {
+    if (wasPlayingRef.current && !isPlaying) {
+      const l = levelsRef.current[editLevelRef.current];
+      if (l?.backdrop) setBackground(l.backdrop);
+      showBanner(null);
+    }
+    wasPlayingRef.current = isPlaying;
+  }, [isPlaying]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [gameMode, setGameMode] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('bb_gb_game_mode') || 'null'); } catch { return null; }
+  });
+  const [modeStatus, setModeStatus] = useState(null);
+  const [modeProgress, setModeProgress] = useState(() => readModeProgress());
+  const activeMode = gameMode ? findGameMode(gameMode.id) : null;
+  // Layout: stage size, the tabs under the stage, and the File menu
+  const [stageLarge, setStageLarge] = useState(() => {
+    try { const v = localStorage.getItem('bb_gb_stage_large'); return v == null ? window.innerWidth >= 1400 : v === '1'; } catch { return false; }
+  });
+  useEffect(() => { try { localStorage.setItem('bb_gb_stage_large', stageLarge ? '1' : '0'); } catch { /* ignore */ } window.dispatchEvent(new Event('resize')); }, [stageLarge]);
+  // A width the pupil dragged the stage to (null = use the small/large preset)
+  const [stageCustomW, setStageCustomW] = useState(() => {
+    try { const v = Number(localStorage.getItem('bb_gb_stage_w')); return v >= 240 ? v : null; } catch { return null; }
+  });
+  const [stageResizing, setStageResizing] = useState(false);
+  useEffect(() => {
+    try { if (stageCustomW) localStorage.setItem('bb_gb_stage_w', String(Math.round(stageCustomW))); else localStorage.removeItem('bb_gb_stage_w'); } catch { /* ignore */ }
+  }, [stageCustomW]);
+  const pickStagePreset = (large) => { setStageCustomW(null); setStageLarge(large); };
+  /** Biggest stage that still leaves room for the Sprites / Levels / Challenge panel underneath. */
+  const stageMaxW = () => {
+    const pane = document.querySelector('.gb-stage-pane');
+    const canvas = pane?.querySelector('canvas');
+    let byHeight = 1100;
+    if (pane && canvas) {
+      const top = canvas.getBoundingClientRect().top - pane.getBoundingClientRect().top;
+      byHeight = ((pane.getBoundingClientRect().height - top - 250) * 4) / 3;
+    }
+    return Math.max(260, Math.min(1100, window.innerWidth - 480, byHeight));
+  };
+  // Keep a dragged stage within the room available (e.g. after the window gets smaller)
+  useEffect(() => {
+    if (!stageCustomW) return undefined;
+    const fit = () => setStageCustomW((w) => (w ? Math.min(w, Math.round(stageMaxW())) : w));
+    const t = setTimeout(fit, 400);
+    window.addEventListener('resize', fit);
+    return () => { clearTimeout(t); window.removeEventListener('resize', fit); };
+  }, [stageCustomW != null]);
+  /** Drag the stage's left edge or corner: dragging left/down makes it bigger. */
+  const startStageResize = (e, corner = false) => {
+    e.preventDefault(); e.stopPropagation();
+    const pane = e.currentTarget.closest('.gb-stage-pane');
+    const startW = pane?.querySelector('canvas')?.getBoundingClientRect().width || 360;
+    const x0 = e.clientX, y0 = e.clientY;
+    const maxW = stageMaxW();
+    setStageResizing(true);
+    const move = (ev) => {
+      const dx = x0 - ev.clientX;
+      const dy = (ev.clientY - y0) * (4 / 3); // the stage is 4:3
+      const d = corner && Math.abs(dy) > Math.abs(dx) ? dy : dx;
+      setStageCustomW(Math.round(Math.max(240, Math.min(maxW, startW + d))));
+    };
+    const up = () => {
+      setStageResizing(false);
+      window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up);
+      window.dispatchEvent(new Event('resize'));
+    };
+    window.addEventListener('pointermove', move); window.addEventListener('pointerup', up);
+  };
+  const [paneTab, setPaneTab] = useState('sprites');
+  const [fileMenu, setFileMenu] = useState(false);
+  useEffect(() => {
+    if (!fileMenu) return undefined;
+    const close = (e) => { if (!e.target.closest?.('.gb-file')) setFileMenu(false); };
+    const esc = (e) => { if (e.key === 'Escape') setFileMenu(false); };
+    document.addEventListener('mousedown', close); document.addEventListener('keydown', esc);
+    return () => { document.removeEventListener('mousedown', close); document.removeEventListener('keydown', esc); };
+  }, [fileMenu]);
+  useEffect(() => { if (activeMode) setPaneTab('challenge'); else setPaneTab((t) => (t === 'challenge' ? 'sprites' : t)); }, [activeMode?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const activeChallenge = activeMode?.challenges?.[gameMode?.challenge ?? 0] || null;
+  const ghostRef = useRef(null);
+  ghostRef.current = activeChallenge?.ghost || null;
+  useEffect(() => {
+    try { localStorage.setItem('bb_gb_game_mode', JSON.stringify(gameMode)); } catch { /* ignore */ }
+  }, [gameMode]);
   const [pendingAssignment] = useState(() => {
     try { const a = sessionStorage.getItem('bb-pending-assignment'); return a ? JSON.parse(a) : null; } catch { return null; }
   });
   const [viewingSubmission] = useState(() => {
     try { const v = sessionStorage.getItem('bb-viewing-submission'); return v ? JSON.parse(v) : null; } catch { return null; }
   });
+  useEffect(() => {
+    if (viewingSubmission && sprites.length) setSelected((current) => current || sprites[0].id);
+  }, [viewingSubmission, sprites]);
   const [exporting, setExporting] = useState(false);
+  const [editorTab, setEditorTab] = useState('code');
+  useEffect(() => {
+    document.body.classList.toggle('gb-asset-editor', editorTab !== 'code');
+    return () => document.body.classList.remove('gb-asset-editor');
+  }, [editorTab]);
   const [showLibrary, setShowLibrary] = useState(false);
   const [libCategory, setLibCategory] = useState('People');
+  const openSpriteLibrary = useCallback(() => {
+    setLibCategory('People');
+    setShowLibrary(true);
+  }, []);
   const spriteCatScrollRef = useRef(null);
 
   const scrollSpriteCategories = useCallback((direction) => {
@@ -1654,7 +1929,6 @@ export default function GameBuilder() {
     event.preventDefault();
     el.scrollLeft += event.deltaY;
   }, []);
-  const [showBgPicker, setShowBgPicker] = useState(false);
   const [score, setScore] = useState(0);
   const [draggingSprite, setDraggingSprite] = useState(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
@@ -1685,21 +1959,56 @@ export default function GameBuilder() {
 
   const spriteVarsRef = useRef({});  // Per-sprite state
   const globalVarsRef = useRef({});  // Shared global state
-  const [customBackgrounds, setCustomBackgrounds] = useState([]);
+  // Painted / uploaded / edited backdrops (kept between visits and saved with projects)
+  const [customBackgrounds, setCustomBackgrounds] = useState(() => {
+    try { const v = JSON.parse(localStorage.getItem('cv_gamebuilder_custom_bgs') || '[]'); return Array.isArray(v) ? v : []; } catch { return []; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem('cv_gamebuilder_custom_bgs', JSON.stringify(customBackgrounds)); } catch { /* storage full: keep in memory */ }
+  }, [customBackgrounds]);
+  // The project's own backdrops, in order (like PictoBlox's Backdrops tab)
+  const [projectBackdrops, setProjectBackdrops] = useState(() => {
+    try { const v = JSON.parse(localStorage.getItem('cv_gamebuilder_backdrops') || 'null'); if (Array.isArray(v) && v.length) return v; } catch { /* ignore */ }
+    return [];
+  });
+  // Remember the backdrop being edited (not ones a running game switches to)
+  useEffect(() => {
+    if (!isPlayingRef.current && background) { try { localStorage.setItem('cv_gamebuilder_bg', background); } catch { /* ignore */ } }
+  }, [background]);
+  const projectBackdropsRef = useRef(projectBackdrops);
+  projectBackdropsRef.current = projectBackdrops;
+  useEffect(() => {
+    try { localStorage.setItem('cv_gamebuilder_backdrops', JSON.stringify(projectBackdrops)); } catch { /* ignore */ }
+    setLiveBackdropNames(projectBackdrops);
+  }, [projectBackdrops]);
+  // Whatever is on the stage (and every level's backdrop) is part of the project
+  useEffect(() => {
+    const wanted = [background, ...(levels || []).map((l) => l.backdrop)].filter(Boolean);
+    setProjectBackdrops((list) => {
+      const missing = wanted.filter((n, i) => !list.includes(n) && wanted.indexOf(n) === i);
+      return missing.length ? [...list, ...missing] : list;
+    });
+  }, [background, levels]);
 
   const getBackdropNames = useCallback(() => [
     ...STAGE_BACKDROP_NAMES,
     ...(customBackgrounds || []).map((b) => b.name),
   ], [customBackgrounds]);
 
+  // Project backdrops first (so "switch backdrop to 2" means the project's 2nd backdrop),
+  // then everything else so a block naming any backdrop still works
   const getPlayBackdropNames = useCallback(() => {
-    const custom = (customBackgrounds || []).map((b) => b.name);
-    const merged = [...STAGE_BACKDROP_NAMES];
-    custom.forEach((name) => {
+    const merged = [...projectBackdropsRef.current];
+    [...STAGE_BACKDROP_NAMES, ...(customBackgrounds || []).map((b) => b.name)].forEach((name) => {
       if (name && !merged.includes(name)) merged.push(name);
     });
     return merged;
   }, [customBackgrounds]);
+  /** What "next backdrop" steps through: the project's backdrops once it has two or more. */
+  const getCycleBackdropNames = useCallback(() => {
+    const own = projectBackdropsRef.current;
+    return own.length >= 2 ? own : getPlayBackdropNames();
+  }, [getPlayBackdropNames]);
 
   const applyPlayBackdrop = useCallback((nameOrNumber) => {
     const names = getPlayBackdropNames();
@@ -1718,6 +2027,8 @@ export default function GameBuilder() {
     });
   }, [getPlayBackdropNames, setBackground]);
 
+  const getCycleBackdropNamesRef = useRef(getCycleBackdropNames);
+  getCycleBackdropNamesRef.current = getCycleBackdropNames;
   const applyPlayBackdropRef = useRef(applyPlayBackdrop);
   applyPlayBackdropRef.current = applyPlayBackdrop;
 
@@ -1735,7 +2046,7 @@ export default function GameBuilder() {
     const looksChanged = runLooksBlocksOnSprite(playSprite, playSprite.blocks, {
       invalidateCache: invalidateSpriteImageCache,
       applyBackdrop: (name) => applyPlayBackdropRef.current?.(name),
-      getBackdropNames: getPlayBackdropNames,
+      getBackdropNames: getCycleBackdropNames,
       playBackdropRef,
     });
     const soundChanged = runSoundBlocksOnSprite(playSprite, playSprite.blocks);
@@ -1749,11 +2060,130 @@ export default function GameBuilder() {
 
   const pickBackdrop = useCallback((name) => {
     setBackground(name);
+    // The backdrop belongs to the level being edited
+    if (!isPlayingRef.current) setLevels((ls) => ls.map((l, i) => (i === editLevelRef.current ? { ...l, backdrop: name } : l)));
     imgCacheRef.current = {};
     if (isPlayingRef.current) {
       applyPlayBackdropRef.current?.(name);
     }
   }, [setBackground]);
+
+  /* ── Backdrops tab: the project's own backdrops (like PictoBlox) ── */
+  const backdropEntries = useMemo(() => projectBackdrops.map((name) => {
+    const custom = (customBackgrounds || []).find((b) => b.name === name);
+    const built = STAGE_BACKDROPS.find((b) => b.name === name);
+    const src = custom?.dataUrl || built?.image || null;
+    return { name, src, thumb: custom?.dataUrl || built?.thumb || built?.image || null, custom: !!custom };
+  }), [projectBackdrops, customBackgrounds]);
+
+  const uniqueBackdropName = (base, ignore = null) => {
+    const taken = new Set([...STAGE_BACKDROP_NAMES, ...(customBackgrounds || []).map((b) => b.name), ...projectBackdrops].filter((n) => n !== ignore));
+    const clean = String(base || 'backdrop').trim() || 'backdrop';
+    if (!taken.has(clean)) return clean;
+    const stem = clean.replace(/\s+\d+$/, '');
+    let k = 2;
+    while (taken.has(`${stem} ${k}`)) k += 1;
+    return `${stem} ${k}`;
+  };
+
+  /** Any picture → a 480×360 stage-sized JPEG (keeps saved projects small). */
+  const toStageImage = (src) => new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const c = document.createElement('canvas'); c.width = STAGE_W; c.height = STAGE_H;
+      const g = c.getContext('2d'); g.fillStyle = '#ffffff'; g.fillRect(0, 0, STAGE_W, STAGE_H);
+      const k = Math.max(STAGE_W / img.width, STAGE_H / img.height); // cover the stage
+      const w = img.width * k, h = img.height * k;
+      g.drawImage(img, (STAGE_W - w) / 2, (STAGE_H - h) / 2, w, h);
+      try { resolve(c.toDataURL('image/jpeg', 0.9)); } catch { resolve(null); }
+    };
+    img.onerror = () => resolve(null);
+    img.src = src;
+  });
+
+  const addCustomBackdrop = (dataUrl, base) => {
+    const name = uniqueBackdropName(base);
+    setCustomBackgrounds((prev) => [...prev, { name, dataUrl }]);
+    setProjectBackdrops((list) => [...list, name]);
+    pickBackdrop(name);
+    return name;
+  };
+
+  const backdropActions = {
+    select: (name) => pickBackdrop(name),
+    addLibrary: (name) => {
+      setProjectBackdrops((list) => (list.includes(name) ? list : [...list, name]));
+      pickBackdrop(name);
+    },
+    paintNew: () => {
+      const c = document.createElement('canvas'); c.width = STAGE_W; c.height = STAGE_H;
+      const g = c.getContext('2d'); g.fillStyle = '#ffffff'; g.fillRect(0, 0, STAGE_W, STAGE_H);
+      addCustomBackdrop(c.toDataURL('image/jpeg', 0.9), 'backdrop');
+    },
+    upload: (file) => {
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const dataUrl = await toStageImage(reader.result);
+        if (dataUrl) addCustomBackdrop(dataUrl, file.name.replace(/\.[^.]+$/, '').slice(0, 24) || 'backdrop');
+      };
+      reader.readAsDataURL(file);
+    },
+    // Painting on a library backdrop makes your own copy ("Baseball 2"), like PictoBlox
+    update: async (name, painted) => {
+      const dataUrl = (await toStageImage(painted)) || painted;
+      delete imgCacheRef.current[`__bg__${name}`];
+      if ((customBackgrounds || []).some((b) => b.name === name)) {
+        setCustomBackgrounds((prev) => prev.map((b) => (b.name === name ? { ...b, dataUrl } : b)));
+        return;
+      }
+      const copy = uniqueBackdropName(name);
+      setCustomBackgrounds((prev) => [...prev, { name: copy, dataUrl }]);
+      setProjectBackdrops((list) => list.map((n) => (n === name ? copy : n)));
+      setLevels((ls) => ls.map((l) => (l.backdrop === name ? { ...l, backdrop: copy } : l)));
+      pickBackdrop(copy);
+    },
+    rename: async (from, to) => {
+      const name = uniqueBackdropName(to, from);
+      if (name === from) return;
+      const custom = (customBackgrounds || []).find((b) => b.name === from);
+      if (custom) {
+        setCustomBackgrounds((prev) => prev.map((b) => (b.name === from ? { ...b, name } : b)));
+      } else {
+        const built = STAGE_BACKDROPS.find((b) => b.name === from);
+        const dataUrl = built?.image ? await toStageImage(built.image) : null;
+        if (!dataUrl) return;
+        setCustomBackgrounds((prev) => [...prev, { name, dataUrl }]);
+      }
+      setProjectBackdrops((list) => list.map((n) => (n === from ? name : n)));
+      setLevels((ls) => ls.map((l) => (l.backdrop === from ? { ...l, backdrop: name } : l)));
+      if (background === from) setBackground(name);
+      imgCacheRef.current = {};
+    },
+    duplicate: async (name) => {
+      const entry = backdropEntries.find((b) => b.name === name);
+      const dataUrl = entry?.custom ? entry.src : (entry?.src ? await toStageImage(entry.src) : null);
+      if (!dataUrl) return;
+      const copy = uniqueBackdropName(name);
+      setCustomBackgrounds((prev) => [...prev, { name: copy, dataUrl }]);
+      setProjectBackdrops((list) => { const at = list.indexOf(name); const next = [...list]; next.splice(at + 1, 0, copy); return next; });
+      pickBackdrop(copy);
+    },
+    remove: (name) => {
+      if (projectBackdrops.length <= 1) return;
+      const at = projectBackdrops.indexOf(name);
+      const rest = projectBackdrops.filter((n) => n !== name);
+      setProjectBackdrops(rest);
+      const fallback = rest[Math.max(0, at - 1)];
+      setLevels((ls) => ls.map((l) => (l.backdrop === name ? { ...l, backdrop: fallback } : l)));
+      if (background === name) pickBackdrop(fallback);
+    },
+    move: (from, to) => {
+      if (from == null || to == null || from === to) return;
+      setProjectBackdrops((list) => { const next = [...list]; const [it] = next.splice(from, 1); next.splice(to, 0, it); return next; });
+    },
+  };
+
 
   const spriteUploadRef = useRef(null);
   const bgUploadRef = useRef(null);
@@ -1778,11 +2208,62 @@ export default function GameBuilder() {
   const [blockDragOffset, setBlockDragOffset] = useState({ x: 0, y: 0 });
   const [hoveredBlock, setHoveredBlock] = useState(null);
 
+  // Sprite menus ("touching Coin?", "go to Robot"…) list this project's sprites. Set during render so a
+  // workspace loading a saved script can already accept those names.
+  setLiveSpriteNames(sprites.map((s) => s.name));
   const selectedSprite = sprites.find(s => s.id === selected);
   const selectedSpriteXml = selectedSprite?.blocklyXml || '';
+
+  const resizeSelectedSprite = useCallback((requestedMaxSize) => {
+    const target = Math.max(16, Math.min(STAGE_W, Number(requestedMaxSize) || 16));
+    setSprites((prev) => prev.map((sprite) => {
+      if (sprite.id !== selected) return sprite;
+      const baseW = sprite.baseW || sprite.w || 1;
+      const baseH = sprite.baseH || sprite.h || 1;
+      const baseMax = Math.max(baseW, baseH);
+      const sizePercent = (target / baseMax) * 100;
+      const w = Math.max(8, Math.round(baseW * sizePercent / 100));
+      const h = Math.max(8, Math.round(baseH * sizePercent / 100));
+      return {
+        ...sprite,
+        baseW,
+        baseH,
+        sizePercent,
+        x: sprite.x + (sprite.w - w) / 2,
+        y: sprite.y + (sprite.h - h) / 2,
+        w,
+        h,
+      };
+    }));
+    imgCacheRef.current = {};
+  }, [selected]);
   
   // Selected sprite owns its own block list; no name/owner cross-filtering needed.
   const selectedSpriteBlocks = useMemo(() => (selectedSprite?.blocks || []), [selectedSprite?.id, selectedSprite?.blocks]);
+
+  useEffect(() => {
+    const costumes = selectedSprite?.costumes;
+    const names = (Array.isArray(costumes) && costumes.length)
+      ? costumes.map((c) => c.name).filter(Boolean)
+      : ['costume1'];
+    setLiveCostumeNames(names);
+    const sounds = selectedSprite?.sounds || [];
+    setLiveSoundNames(sounds.map((s) => s.name).filter(Boolean));
+  }, [selectedSprite?.id, selectedSprite?.costumes, selectedSprite?.sounds]);
+
+  useEffect(() => {
+    if (!selectedSprite) return;
+    const needs = isPlaceholderCostumeList(selectedSprite.costumes, selectedSprite)
+      || isLegacyBakedPack(selectedSprite.costumes, selectedSprite);
+    if (!needs) return;
+    const id = selectedSprite.id;
+    const pack = defaultCostumesForSprite(selectedSprite);
+    setSprites((prev) => prev.map((sp) => {
+      if (sp.id !== id) return sp;
+      if (!isPlaceholderCostumeList(sp.costumes, sp) && !isLegacyBakedPack(sp.costumes, sp)) return sp;
+      return { ...sp, costumes: pack, currentCostumeIndex: 0, costumeFlipX: false };
+    }));
+  }, [selectedSprite?.id, selectedSprite?.costumes?.length, selectedSprite?.costumes?.[0]?.name]);
 
   const getLatestSprites = () => {
     // Flush current Blockly workspace into the sprite's blocks array before saving
@@ -1805,13 +2286,66 @@ export default function GameBuilder() {
     setSavedProjects(list);
   };
 
+  /* ─── Levels (editor) ─── */
+  const levelsWithCurrentLayout = (list) => levelsRef.current.map((l, i) => (i === editLevelRef.current ? { ...l, layout: captureLayout(list) } : l));
+
+  /** Show another level in the editor: keep this level's layout, load that one's. */
+  const selectLevel = (index) => {
+    if (isPlayingRef.current || index === editLevelRef.current) return;
+    const latest = getLatestSprites();
+    const saved = levelsWithCurrentLayout(latest);
+    const target = saved[index];
+    if (!target) return;
+    setLevels(saved);
+    setSprites(applyLayout(latest, target.layout));
+    setEditLevel(index);
+    setBackground(target.backdrop);
+    imgCacheRef.current = {};
+  };
+  const addLevel = () => {
+    const latest = getLatestSprites();
+    const next = addLevelTo(levelsWithCurrentLayout(latest), latest, STAGE_BACKDROP_NAMES.filter((n) => n !== 'White'));
+    setLevels(next);
+    setEditLevel(next.length - 1);
+    setBackground(next[next.length - 1].backdrop);
+    imgCacheRef.current = {};
+  };
+  const deleteLevel = (index) => {
+    if (levelsRef.current.length <= 1) return;
+    if (!window.confirm(`Delete ${levelsRef.current[index]?.name}? Its backdrop and sprite positions will be removed.`)) return;
+    const latest = getLatestSprites();
+    const next = removeLevel(levelsWithCurrentLayout(latest), index);
+    const show = Math.max(0, Math.min(index === editLevelRef.current ? index - 1 : editLevelRef.current - (index < editLevelRef.current ? 1 : 0), next.length - 1));
+    setLevels(next);
+    setEditLevel(show);
+    setSprites(applyLayout(latest, next[show].layout));
+    setBackground(next[show].backdrop);
+  };
+  const renameLevel = (index, name) => setLevels((ls) => ls.map((l, i) => (i === index ? { ...l, name } : l)));
+  const reorderLevel = (from, to) => {
+    const latest = getLatestSprites();
+    setLevels(moveLevel(levelsWithCurrentLayout(latest), from, to));
+    if (editLevelRef.current === from) setEditLevel(to);
+  };
+  const levelThumb = (name) => {
+    const bg = STAGE_BACKDROPS.find((b) => b.name === name) || (customBackgrounds || []).find((b) => b.name === name);
+    const src = bg?.thumb || bg?.image || bg?.dataUrl || bg?.src;
+    return src ? { backgroundImage: `url(${src})` } : { background: '#fff' };
+  };
+
+  // The project's backdrops, plus the painted/edited ones it uses (built-ins are just names)
+  const projectBackdropData = () => ({
+    backdrops: projectBackdrops,
+    customBackdrops: (customBackgrounds || []).filter((b) => projectBackdrops.includes(b.name)),
+  });
+
   const saveProject = () => {
     // If we have a current named project, save over it. Otherwise open Save As dialog.
     if (currentProjectId) {
       const flushedSprites = getLatestSprites();
       const updated = savedProjects.map(p =>
         p.id === currentProjectId
-          ? { ...p, sprites: flushedSprites, background, savedAt: Date.now() }
+          ? { ...p, sprites: flushedSprites, background, gameMode, levels: levelsWithCurrentLayout(flushedSprites), ...projectBackdropData(), savedAt: Date.now() }
           : p
       );
       persistProjects(updated);
@@ -1831,7 +2365,7 @@ export default function GameBuilder() {
     if (!name.trim()) return;
     const flushedSprites = getLatestSprites();
     const id = Date.now().toString(36) + Math.random().toString(36).slice(2);
-    const newProject = { id, name: name.trim(), sprites: flushedSprites, background, savedAt: Date.now() };
+    const newProject = { id, name: name.trim(), sprites: flushedSprites, background, gameMode, levels: levelsWithCurrentLayout(flushedSprites), ...projectBackdropData(), savedAt: Date.now() };
     const updated = [...savedProjects, newProject];
     persistProjects(updated);
     setCurrentProjectId(id);
@@ -1851,16 +2385,40 @@ export default function GameBuilder() {
     const raw = project.sprites || [];
     const loaded = bumpTinyRasterSprites(raw);
     setSprites(loaded);
-    setBackground(project.background || DEFAULT_STAGE_BACKDROP);
+    setBackground(project.levels?.[0]?.backdrop || project.background || DEFAULT_STAGE_BACKDROP);
+    setLevels(normalizeLevels(project.levels, project.background || DEFAULT_STAGE_BACKDROP));
+    setEditLevel(0);
+    if (Array.isArray(project.customBackdrops) && project.customBackdrops.length) {
+      setCustomBackgrounds((prev) => [...prev.filter((b) => !project.customBackdrops.some((c) => c.name === b.name)), ...project.customBackdrops]);
+      imgCacheRef.current = {};
+    }
+    setProjectBackdrops(Array.isArray(project.backdrops) && project.backdrops.length
+      ? project.backdrops
+      : [...new Set([project.background, ...(project.levels || []).map((l) => l.backdrop)].filter(Boolean))]);
+    if (project.levels?.[0]?.layout) setSprites(applyLayout(loaded, project.levels[0].layout));
     setCurrentProjectId(project.id);
     setCurrentProjectName(project.name);
     setSelected(null);
     setShowProjectsModal(false);
+    // A Game Mode project reopens with its challenge; any other project leaves Game Modes
+    setGameMode(project.gameMode || null);
+    setModeStatus(null);
     try {
       localStorage.setItem('cv_gamebuilder_sprites', JSON.stringify(loaded));
       localStorage.setItem('cv_gamebuilder_bg', project.background || DEFAULT_STAGE_BACKDROP);
     } catch {}
   };
+
+  // Community remixes are saved locally before navigation, then opened here.
+  useEffect(() => {
+    let projectId = null;
+    try { projectId = sessionStorage.getItem('bb-open-game-project'); } catch { /* storage may be disabled */ }
+    if (!projectId) return;
+    const project = savedProjects.find(p => p.id === projectId);
+    if (!project) return;
+    try { sessionStorage.removeItem('bb-open-game-project'); } catch { /* ignore */ }
+    loadProject(project);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const deleteProject = (id) => {
     const updated = savedProjects.filter(p => p.id !== id);
@@ -1869,6 +2427,151 @@ export default function GameBuilder() {
       setCurrentProjectId(null);
       setCurrentProjectName('');
     }
+  };
+
+  // Dev-only test hook (stripped from production builds): lets automated tests read the running game
+  if (import.meta.env?.DEV && typeof window !== 'undefined') {
+    window.__bbGameBuilderTest = { playSprites: () => playSpritesRef.current };
+  }
+
+  /* ─── Game Modes: check the challenge while the game runs ─── */
+  const scoreRef = useRef(0);
+  scoreRef.current = score;
+  useEffect(() => {
+    if (!isPlaying || !activeMode || !activeChallenge?.check) return undefined;
+    const memo = {};
+    let done = false;
+    const xmlOf = (name) => (spritesRef.current || []).find((sp) => sp.name === name)?.blocklyXml || '';
+    const allXml = (name) => (spritesRef.current || []).filter((sp) => sp.name === name).map((sp) => sp.blocklyXml || '');
+    const tick = () => {
+      if (done) return;
+      const list = playSpritesRef.current || [];
+      const ctx = {
+        sprites: list,
+        sprite: (name) => list.find((sp) => sp.name === name && !sp.isClone),
+        xml: xmlOf,
+        allXml,
+        score: scoreRef.current,
+        probe: gameModeProbe,
+        memo,
+      };
+      let res = {};
+      try { res = activeChallenge.check(ctx) || {}; } catch (e) { res = { pass: false }; }
+      if (!res.pass) {
+        setModeStatus((prev) => (prev?.note === res.note && prev?.fail === res.fail ? prev : { pass: false, note: res.note, fail: res.fail }));
+        return;
+      }
+      done = true;
+      const focusXml = xmlOf(activeMode.focus);
+      const bonus = activeChallenge.star2 ? !!activeChallenge.star2.test(ctx) : usesLoop(focusXml);
+      // "N blocks or fewer" counts the sprite the challenge is about (usually the main one)
+      const parXml = xmlOf(activeChallenge.parSprite || activeMode.focus);
+      const stars = 1 + (bonus ? 1 : 0) + (countBlocks(parXml) <= activeChallenge.par ? 1 : 0);
+      setModeStatus({ pass: true, stars });
+      setModeProgress(saveModeStars(activeMode.id, activeChallenge.id, stars));
+    };
+    const id = setInterval(tick, 150);
+    return () => clearInterval(id);
+  }, [isPlaying, gameMode?.id, gameMode?.challenge]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /* ─── Game Modes ─── */
+  const gameBlocksFromXml = (xml, owner) => (xml ? blocklyNodesToGameBlocks(xmlToWorkspaceNodes(xml)).map((b) => ({ ...b, owner })) : []);
+  const withModeCostumes = (sp) => ({ ...sp, costumes: defaultCostumesForSprite({ ...sp, costumes: [] }), currentCostumeIndex: 0 });
+
+  const modeSpritesFor = (mode, challengeIdx) => {
+    const base = Date.now();
+    let list = mode.sprites().map((m, i) => ({
+      id: base + i, name: m.name, svgKey: m.name, category: 'Game Modes',
+      x: Math.round(STAGE_W / 2 + m.x - m.w / 2), y: Math.round(STAGE_H / 2 - m.y - m.h / 2), w: m.w, h: m.h,
+      direction: 90, rotation: 90, visible: m.visible !== false, color: null, layer: i + 1,
+      blocks: [], blocklyXml: m.xml || '', customImage: m.img,
+      physicsRole: m.role || 'actor', costumes: [], sounds: [], initialVars: {},
+    }));
+    const ch = mode.challenges[challengeIdx];
+    if (ch?.setup) list = ch.setup(list);
+    // Sprite menus must already list this game's sprites, or "touching Catcher?" falls back to the mouse
+    setLiveSpriteNames(list.map((sp) => sp.name));
+    return list.map((sp) => withModeCostumes({ ...sp, blocks: gameBlocksFromXml(sp.blocklyXml, sp.name) }));
+  };
+
+  const loadGameMode = (mode, idx = 0) => {
+    const hasWork = (spritesRef.current || []).some((sp) => (sp.blocks || []).length || sp.blocklyXml);
+    if (hasWork && !gameMode && !window.confirm(`Open ${mode.title}? It replaces the game on the stage — save yours first if you want to keep it.`)) return;
+    if (isPlayingRef.current) setIsPlaying(false);
+    const list = modeSpritesFor(mode, idx);
+    imgCacheRef.current = {};
+    setSprites(list);
+    setBackground(mode.background || DEFAULT_STAGE_BACKDROP);
+    setLevels(defaultLevels(mode.background || DEFAULT_STAGE_BACKDROP));
+    setEditLevel(0);
+    if (mode.extensions?.length) {
+      setEnabledExtensions((prev) => {
+        const next = Array.from(new Set([...(prev || []), ...mode.extensions]));
+        writeEnabledExtensionIds(next);
+        return next;
+      });
+    }
+    setCurrentProjectId(null);
+    setCurrentProjectName(`${mode.title} – ${mode.subtitle}`);
+    setSelected((list.find((sp) => sp.name === mode.focus) || list[0])?.id ?? null);
+    setGameMode({ id: mode.id, challenge: idx });
+    setModeStatus(null);
+    setShowGameModes(false);
+    try {
+      localStorage.setItem('cv_gamebuilder_sprites', JSON.stringify(list));
+      localStorage.setItem('cv_gamebuilder_bg', mode.background || DEFAULT_STAGE_BACKDROP);
+    } catch { /* ignore quota */ }
+  };
+
+  // Opened from the Challenges page: jump straight into that Game Mode challenge
+  useEffect(() => {
+    let req = null;
+    try { req = JSON.parse(localStorage.getItem('bb_gb_open_mode') || 'null'); } catch { /* ignore */ }
+    const mode = req && findGameMode(req.id);
+    if (!mode) return undefined;
+    const t = setTimeout(() => {
+      // Only clear the request once it is used (dev mode mounts twice and cancels the first timer)
+      try { localStorage.removeItem('bb_gb_open_mode'); } catch { /* ignore */ }
+      if (gameMode?.id === mode.id) pickModeChallenge(Math.min(req.challenge || 0, mode.challenges.length - 1));
+      else loadGameMode(mode, Math.min(req.challenge || 0, mode.challenges.length - 1));
+    }, 400);
+    return () => clearTimeout(t);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /** Switch challenge: keep the child's code, but move the scenery (e.g. a new maze) if needed. */
+  const pickModeChallenge = (idx) => {
+    if (!activeMode) return;
+    const ch = activeMode.challenges[idx];
+    if (!ch) return;
+    if (isPlayingRef.current) setIsPlaying(false);
+    if (ch.setup) {
+      const latest = getLatestSprites();
+      const moved = ch.setup(latest).map((sp) => {
+        const before = latest.find((p) => p.id === sp.id);
+        return before && before.customImage !== sp.customImage ? withModeCostumes(sp) : sp;
+      });
+      imgCacheRef.current = {};
+      setSprites(moved);
+    }
+    setGameMode({ id: activeMode.id, challenge: idx });
+    setModeStatus(null);
+  };
+
+  /** Teacher view: load a working answer into the sprites that need it. */
+  const showModeAnswer = (ch) => {
+    if (!activeMode || !window.confirm('Replace the code with a working answer? (Great for teachers — but try it yourself first!)')) return;
+    if (isPlayingRef.current) setIsPlaying(false);
+    const latest = getLatestSprites();
+    setLiveSpriteNames(latest.map((sp) => sp.name));
+    const updated = latest.map((sp) => {
+      const xml = ch.solutionFor?.[sp.name] || (sp.name === activeMode.focus ? ch.solution : null);
+      return xml ? { ...sp, blocklyXml: xml, blocks: gameBlocksFromXml(xml, sp.name) } : sp;
+    });
+    setSprites(updated);
+    // Re-open the selected sprite so the editor shows its new script
+    const sel = selectedRef.current;
+    setSelected(null);
+    setTimeout(() => setSelected(sel), 0);
   };
 
   const exportGame = async () => {
@@ -1940,13 +2643,13 @@ export default function GameBuilder() {
 </style>
 </head>
 <body>
-<div id="title-bar">🎮 ByteBuddies Game</div>
+<div id="title-bar"><EmojiIcon e="🎮" style={{ marginRight: '0.35em' }} />ByteBuddies Game</div>
 <div id="canvas-wrap">
   <canvas id="c" width="480" height="360"></canvas>
   <div id="overlay">
-    <h2>🎮 ByteBuddies Game</h2>
+    <h2><EmojiIcon e="🎮" style={{ marginRight: '0.35em' }} />ByteBuddies Game</h2>
     <p>Use Arrow Keys or WASD to move</p>
-    <button id="start-btn">▶ Play Game</button>
+    <button id="start-btn"><EmojiIcon e="▶" style={{ marginRight: '0.35em' }} />Play Game</button>
     <div id="made-with">Made with ByteBuddies</div>
   </div>
 </div>
@@ -2050,7 +2753,11 @@ function drawSprites(){
     ctx.translate(s.x+s.w/2,s.y+s.h/2);
     const rot = s.rotation ?? 90;
     if(rot !== 90) ctx.rotate((rot-90)*Math.PI/180);
+    if(s.costumeHue) ctx.filter='hue-rotate('+(s.costumeHue||0)+'deg)';
+    if(s.costumeTilt) ctx.rotate((s.costumeTilt||0)*Math.PI/180);
+    if(s.costumeFlipX) ctx.scale(-1,1);
     ctx.drawImage(img,-s.w/2,-s.h/2,s.w,s.h);
+    ctx.filter='none';
     ctx.restore();
   });
 }
@@ -2205,10 +2912,11 @@ loadImages(function(){
       canvas.width  = Math.round(window.innerWidth * dpr);
       canvas.height = Math.round(window.innerHeight * dpr);
     } else {
-      canvas.width  = Math.round(STAGE_W * dpr);
-      canvas.height = Math.round(STAGE_H * dpr);
+      const k = Math.max(1, (stageCustomW || 0) / STAGE_W);
+      canvas.width  = Math.round(STAGE_W * dpr * k);
+      canvas.height = Math.round(STAGE_H * dpr * k);
     }
-  }, [stageFs]);
+  }, [stageFs, stageCustomW]);
 
   /* ─── Drawing ─── */
   const drawFrameRef = useRef(0);
@@ -2359,6 +3067,7 @@ loadImages(function(){
       for (let y = 0; y < STAGE_H; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(STAGE_W, y); ctx.stroke(); }
     }
 
+    drawModeGhost(ctx, ghostRef.current);
     drawPenTrails(ctx, spritesToDraw);
 
     const sorted = [...spritesToDraw].sort((a, b) => (a.layer || 0) - (b.layer || 0));
@@ -2375,6 +3084,7 @@ loadImages(function(){
       const sprite = visibleSprites[i];
       const img = spriteImages[i];
       if (!img) continue;
+      if (playing) rememberSpriteImage(sprite.id, img);
 
       const effects = sprite.effects || {};
       const ghost = Math.max(0, Math.min(100, effects.ghost || 0));
@@ -2386,7 +3096,11 @@ loadImages(function(){
       } else if (sprite.rotation != null && sprite.rotation !== 90) {
         ctx.rotate((sprite.rotation - 90) * Math.PI / 180);
       }
-      ctx.filter = buildEffectFilter(effects);
+      const hue = sprite.costumeHue || 0;
+      const fx = buildEffectFilter(effects);
+      ctx.filter = hue
+        ? `${fx === 'none' ? '' : `${fx} `}hue-rotate(${hue}deg)`.trim()
+        : fx;
       const prevAlpha = ctx.globalAlpha;
       if (ghost > 0) ctx.globalAlpha = prevAlpha * (1 - ghost / 100);
       const iw = img.naturalWidth || sprite.w;
@@ -2398,6 +3112,8 @@ loadImages(function(){
         dw = iw * fit;
         dh = ih * fit;
       }
+      if (sprite.costumeTilt) ctx.rotate((sprite.costumeTilt * Math.PI) / 180);
+      if (sprite.costumeFlipX) ctx.scale(-1, 1);
       ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh);
       ctx.globalAlpha = prevAlpha;
       ctx.filter = 'none';
@@ -2459,7 +3175,12 @@ loadImages(function(){
       ctx.font = 'bold 13px Inter, sans-serif';
       ctx.textAlign = 'left';
       ctx.textBaseline = 'middle';
-      ctx.fillText(`Score: ${gameState.score} | Lives: ${gameState.lives} | Level: ${gameState.level}`, 10, 16);
+      const gv = globalVarsRef.current || {};
+      const hudLevels = levelsRef.current?.length || 1;
+      const hud = [`Score: ${scoreRef.current ?? 0}`];
+      if (gv._lives !== undefined) hud.push(`Lives: ${gv._lives}`);
+      if (hudLevels > 1) hud.push(`Level: ${gv._level ?? 1} of ${hudLevels}`);
+      ctx.fillText(hud.join('  |  '), 10, 16);
     }
     ctx.setTransform(1, 0, 0, 1, 0, 0); // reset transform when done
   }, [selected, isPlaying, gameState, background, customBackgrounds, stageFs, getBackdropNames]);
@@ -2471,7 +3192,7 @@ loadImages(function(){
   // Editor only — during Play the game loop draws playSpritesRef (with rotation style applied)
   useEffect(() => {
     if (!isPlaying) void drawRef.current?.(sprites);
-  }, [sprites, isPlaying, selected, background, customBackgrounds, stageFs]);
+  }, [sprites, isPlaying, selected, background, customBackgrounds, stageFs, stageCustomW]);
 
   // Initialize camera system for stage-based rendering (NOT fullscreen)
   useEffect(() => {
@@ -2559,7 +3280,10 @@ loadImages(function(){
   /** Merge latest Blockly workspace into snapshot for the selected sprite before Play. */
   function snapshotSpritesForPlay(baseSprites) {
     let snapshot = (baseSprites || spritesRef.current || sprites).map((s) => {
-      const next = { ...s };
+      const next = {
+        ...s,
+        costumes: Array.isArray(s.costumes) ? s.costumes.map((c) => ({ ...c })) : [],
+      };
       if (typeof window !== 'undefined' && window.localStorage?.getItem('bb_block_probe') === '1' && Array.isArray(s._probeBlocks)) {
         next.blocks = s._probeBlocks.map((b) => ({ ...b, params: { ...(b.params || {}) } }));
       }
@@ -2615,6 +3339,7 @@ loadImages(function(){
     }
     blocklyWorkspaceRef.current?.flush?.();
     ensureBlockSoundAudio();
+    gameModeProbe.reset();
     const snap = snapshotSpritesForPlay(spritesRef.current || sprites);
     setSprites(snap);
     setScore(0);
@@ -2651,9 +3376,16 @@ loadImages(function(){
       ...STAGE_BACKDROP_NAMES,
       ...(customBackgrounds || []).map((b) => b.name).filter((n) => n && !STAGE_BACKDROP_NAMES.includes(n)),
     ];
-    const startBgIdx = backdropNames.findIndex((n) => n === background);
+    // Every game starts at level 1: remember the layout being edited, then load level 1
+    const playLevels = levelsRef.current.map((l, i) => (i === editLevelRef.current ? { ...l, layout: captureLayout(snapshot) } : l));
+    playLevelsRef.current = playLevels;
+    setLevels(playLevels);
+    const startBackdrop = playLevels[0]?.backdrop || background;
+    const startBgIdx = backdropNames.findIndex((n) => n === startBackdrop);
     playBackdropRef.current = startBgIdx >= 0 ? startBgIdx : 0;
-    playBackdropNameRef.current = backdropNames[playBackdropRef.current] || background || DEFAULT_STAGE_BACKDROP;
+    playBackdropNameRef.current = backdropNames[playBackdropRef.current] || startBackdrop || DEFAULT_STAGE_BACKDROP;
+    if (startBackdrop && startBackdrop !== background) setBackground(startBackdrop);
+    showBanner(null);
 
     playSpritesRef.current = snapshot.map((s) => {
       const copy = {
@@ -2669,6 +3401,8 @@ loadImages(function(){
       getSpriteSoundState(copy);
       return copy;
     });
+
+    applyLayoutInPlace(playSpritesRef.current, playLevels[0]?.layout);
 
     // Initialize per-sprite state, then apply inspector “start values” (same ideas as Set gravity / velocity / variables blocks).
     spriteVarsRef.current = initializeSpriteState(playSpritesRef.current);
@@ -2706,6 +3440,28 @@ loadImages(function(){
     });
     const globalVars = globalVarsRef.current;
     const vars = globalVars;
+    vars._level = 1;
+    vars._lives = undefined;
+    globalVars._levelStarted = 1;
+
+    /** Load a level: its backdrop, sprite positions and visibility; clones are cleared. */
+    function goToLevel(n) {
+      const lv = playLevelsRef.current || [];
+      if (Number(n) > lv.length) {
+        gameModeProbe.won = true;
+        showBanner({ kind: 'win', text: '🏆 You win!', sub: lv.length > 1 ? `You finished all ${lv.length} levels` : 'Well played' });
+        running = false;
+        return;
+      }
+      const k = resolveLevel(lv, n);
+      if (!k) return;
+      vars._level = k;
+      playSpritesRef.current = (playSpritesRef.current || []).filter((sp) => !sp.isClone);
+      applyLayoutInPlace(playSpritesRef.current, lv[k - 1].layout);
+      applyPlayBackdropRef.current?.(lv[k - 1].backdrop);
+      globalVars._levelStarted = k;
+      if (lv.length > 1) showBanner({ kind: 'level', text: lv[k - 1].name || `Level ${k}` }, 1400);
+    }
 
     // Key tracking for edge detection - must be local to game loop
     const keysPressed = {}; // Current frame key state
@@ -2733,6 +3489,7 @@ loadImages(function(){
 
     globalVars._timerStart = Date.now();
     globalVars._lastAnswer = '';
+    globalVars._askPending = null;
     globalVars._askResolved = false;
     globalVars._username = String(user?.name || user?.displayName || 'ByteBuddy');
 
@@ -2838,7 +3595,7 @@ loadImages(function(){
 
     let audioContext = null;
     let musicTempo = 120; // Default BPM
-    let currentInstrument = 'sine'; // sine, square, sawtooth, triangle
+    let currentInstrument = 0; // voice index: Piano, Guitar, Violin, Flute, Trumpet
 
     const getAudioContext = () => {
       if (!audioContext) {
@@ -2863,36 +3620,97 @@ loadImages(function(){
       return (octave + 1) * 12 + semitone;
     };
 
+    // Instruments: Piano, Guitar, Violin, Flute, Trumpet (wave shape + how the note fades)
+    const VOICES = [
+      { wave: 'triangle', attack: 0.005, decay: 0.9, gain: 0.22 },
+      { wave: 'sawtooth', attack: 0.004, decay: 0.55, gain: 0.09, filter: 1800 },
+      { wave: 'sawtooth', attack: 0.08, decay: 1.2, gain: 0.08, filter: 2600, sustain: true },
+      { wave: 'sine', attack: 0.04, decay: 1.2, gain: 0.2, sustain: true },
+      { wave: 'square', attack: 0.02, decay: 1, gain: 0.07, filter: 2200, sustain: true },
+    ];
     const playNote = (noteOrFreq, beats = 0.5, instrument = currentInstrument) => {
       try {
         const ctx = getAudioContext();
         if (!ctx) return;
+        // Notes arrive as numbers or text ("62"); names like "D4" also work
+        let freq;
+        const n = Number(noteOrFreq);
+        if (Number.isFinite(n)) freq = n > 127 ? n : midiToFreq(n);
+        else freq = midiToFreq(noteToMidi(noteOrFreq));
+        const voice = typeof instrument === 'number' ? VOICES[instrument] || VOICES[0]
+          : { wave: instrument || 'sine', attack: 0.01, decay: 1, gain: 0.1 };
+        const duration = Math.max(0.05, (beats / musicTempo) * 60);
+        const t0 = ctx.currentTime;
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
-
-        // Determine frequency
-        let freq;
-        if (typeof noteOrFreq === 'number') {
-          freq = noteOrFreq > 100 ? noteOrFreq : midiToFreq(noteOrFreq);
-        } else {
-          freq = midiToFreq(noteToMidi(noteOrFreq));
+        try { osc.type = voice.wave; } catch { osc.type = 'sine'; }
+        osc.frequency.setValueAtTime(freq, t0);
+        let out = osc;
+        if (voice.filter) {
+          const lp = ctx.createBiquadFilter();
+          lp.type = 'lowpass';
+          lp.frequency.value = voice.filter;
+          osc.connect(lp);
+          out = lp;
         }
-
-        // Set instrument type
-        try {
-          osc.type = instrument; // sine, square, sawtooth, triangle
-        } catch {
-          osc.type = 'sine';
-        }
-
-        const duration = (beats / musicTempo) * 60; // Convert beats to seconds
-        osc.frequency.setValueAtTime(freq, ctx.currentTime);
-        gain.gain.setValueAtTime(0.1, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration);
-        osc.connect(gain);
+        const end = t0 + (voice.sustain ? duration : Math.min(duration, voice.decay));
+        gain.gain.setValueAtTime(0.0001, t0);
+        gain.gain.exponentialRampToValueAtTime(voice.gain, t0 + voice.attack);
+        if (voice.sustain) gain.gain.setValueAtTime(voice.gain, Math.max(t0 + voice.attack, end - 0.06));
+        gain.gain.exponentialRampToValueAtTime(0.0001, end + 0.04);
+        out.connect(gain);
         gain.connect(ctx.destination);
-        osc.start();
-        osc.stop(ctx.currentTime + duration);
+        osc.start(t0);
+        osc.stop(end + 0.06);
+      } catch (e) {
+        // Ignore audio errors
+      }
+    };
+
+    // Drum kit made from noise and pitch sweeps: snare, kick, tom, cymbal, hi-hat, clap
+    let noiseBuffer = null;
+    const playDrum = (index) => {
+      try {
+        const ctx = getAudioContext();
+        if (!ctx) return;
+        if (!noiseBuffer) {
+          noiseBuffer = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
+          const d = noiseBuffer.getChannelData(0);
+          for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+        }
+        const t0 = ctx.currentTime;
+        const noise = (len, filterType, freq, level, delay = 0) => {
+          const t0 = ctx.currentTime + delay;
+          const src = ctx.createBufferSource();
+          src.buffer = noiseBuffer;
+          const f = ctx.createBiquadFilter();
+          f.type = filterType;
+          f.frequency.value = freq;
+          const g = ctx.createGain();
+          g.gain.setValueAtTime(level, t0);
+          g.gain.exponentialRampToValueAtTime(0.0001, t0 + len);
+          src.connect(f); f.connect(g); g.connect(ctx.destination);
+          src.start(t0); src.stop(t0 + len + 0.02);
+        };
+        const tone = (from, to, len, level, wave = 'sine') => {
+          const o = ctx.createOscillator();
+          o.type = wave;
+          o.frequency.setValueAtTime(from, t0);
+          o.frequency.exponentialRampToValueAtTime(to, t0 + len);
+          const g = ctx.createGain();
+          g.gain.setValueAtTime(level, t0);
+          g.gain.exponentialRampToValueAtTime(0.0001, t0 + len);
+          o.connect(g); g.connect(ctx.destination);
+          o.start(t0); o.stop(t0 + len + 0.02);
+        };
+        switch (Math.floor(Number(index) || 0)) {
+          case 1: tone(150, 45, 0.35, 0.9); break; // kick
+          case 2: tone(220, 110, 0.3, 0.5); break; // tom
+          case 3: noise(1.1, 'highpass', 5000, 0.25); break; // cymbal
+          case 4: noise(0.06, 'highpass', 7000, 0.3); break; // hi-hat
+          case 5: [0, 0.03, 0.06].forEach((d) => noise(0.12, 'bandpass', 1200, 0.45, d)); break; // clap
+          default: noise(0.18, 'highpass', 1500, 0.4); tone(190, 120, 0.1, 0.35, 'triangle'); // snare
+        }
       } catch (e) {
         // Ignore audio errors
       }
@@ -2947,10 +3765,19 @@ loadImages(function(){
         }
         case 'sense-mouse-down':
           return !!mouseDownRef.current;
+        // Scratch coordinates (centre is 0, y goes up) — the same space motion blocks use
+        case 'music-get-tempo':
+          return musicTempo;
+        case 'game-level-reporter':
+          return num(vars._level, 1);
+        case 'game-score-reporter':
+          return localScore;
+        case 'game-lives-reporter':
+          return num(vars._lives, 3);
         case 'sense-mouse-x':
-          return mouseRef.current?.x || 0;
+          return Math.round((mouseRef.current?.x ?? STAGE_W / 2) - STAGE_W / 2);
         case 'sense-mouse-y':
-          return mouseRef.current?.y || 0;
+          return Math.round(STAGE_H / 2 - (mouseRef.current?.y ?? STAGE_H / 2));
         case 'sense-distance':
           return distanceToTarget(sprite, p.target || 'mouse-pointer', senseCtx());
         case 'sense-timer':
@@ -3173,6 +4000,7 @@ loadImages(function(){
           sprites: playSpritesRef.current || [],
           mouseX: mouseRef.current?.x ?? STAGE_W / 2,
           mouseY: mouseRef.current?.y ?? STAGE_H / 2,
+          fastMove: block._inForever === true && MOVE_STEP_TYPES.has(blockType),
         });
         if (motionResult === true) return true;
         const st = spriteVars[sprite.id];
@@ -3438,8 +4266,7 @@ loadImages(function(){
           playSpriteSound(sprite, p.sound || 'pop');
           break;
         case 'sound-play-until-done':
-          playSpriteSound(sprite, p.sound || 'pop', { wait: true });
-          break;
+          return playSpriteSoundUntilDone(sprite, p.sound || 'pop', currentExecThread);
         case 'sound-stop':
           stopSpriteSounds();
           break;
@@ -3466,31 +4293,37 @@ loadImages(function(){
           getSpriteSoundState(sprite).effects = { pitch: 0, pan: 0 };
           break;
         // Music blocks
-        case 'music-note': {
-          const note = p.note || '60'; // Default to C4
-          const beats = num(p.beats, 0.5);
-          playNote(note, beats, currentInstrument);
-          break;
-        }
-        case 'music-drum': {
-          const drums = ['kick', 'snare', 'hihat', 'tom'];
-          const drum = drums[Math.min(Math.floor(num(p.drum, 0)), 3)];
-          const beats = num(p.beats, 0.5);
-          // Use drum sounds (frequency shortcuts)
-          const freqs = { kick: 80, snare: 200, hihat: 8000, tom: 150 };
-          playNote(freqs[drum] || 100, beats, 'sine');
-          break;
-        }
+        case 'music-note':
+        case 'music-drum':
         case 'music-rest': {
-          // Rest - just wait, no sound
-          const beats = num(p.beats, 0.5);
-          sprite._musicWait = Date.now() + ((beats / musicTempo) * 60 * 1000);
-          break;
+          // Each note waits for its beats so tunes play in order (like "wait")
+          const flow = getFlowContext(sprite, currentExecThread);
+          if (flow.waitEndTime != null) {
+            if (Date.now() < flow.waitEndTime) return true;
+            flow.waitEndTime = null;
+            return false;
+          }
+          const beats = Math.max(0.05, num(p.beats, 0.5));
+          if (blockType === 'music-note' && currentInstrument === 5) {
+            // "Drums" instrument: each note number picks a drum, like a drum pad
+            const drumForNote = { 35: 1, 36: 1, 38: 0, 40: 0, 41: 2, 43: 2, 45: 2, 47: 2, 48: 2, 49: 3, 57: 3, 42: 4, 44: 4, 46: 4, 39: 5 };
+            const n = Math.round(num(p.note, 60));
+            playDrum(drumForNote[n] ?? (((n % 6) + 6) % 6));
+            gameModeProbe.log('note', n);
+          } else if (blockType === 'music-note') {
+            playNote(p.note ?? '60', beats, currentInstrument);
+            gameModeProbe.log('note', Number(p.note ?? 60));
+          } else if (blockType === 'music-drum') {
+            playDrum(p.drum);
+            gameModeProbe.log('drum', Number(p.drum ?? 0));
+          }
+          setWaitSeconds(flow, (beats / musicTempo) * 60);
+          return true;
         }
         case 'music-instrument': {
-          const instruments = ['sine', 'square', 'sawtooth', 'triangle'];
-          const idx = Math.floor(num(p.instrument, 0)) % 4;
-          currentInstrument = instruments[idx];
+          // 0 Piano · 1 Guitar · 2 Violin · 3 Flute · 4 Trumpet · 5 Drums (notes play the drum kit)
+          const idx = Math.floor(num(p.instrument, 0));
+          currentInstrument = idx >= 0 && idx <= 5 ? idx : 0;
           break;
         }
         case 'music-tempo':
@@ -3513,11 +4346,14 @@ loadImages(function(){
         }
         case 'action-alert': sprite._sayText = txt(p.message, 'Notice'); sprite._sayUntil = Date.now() + 2000; break;
         case 'action-ask': {
-          const flow = getFlowContext(sprite, currentExecThread);
-          if (flow.askWaiting) {
+          // Track the waiting question by sprite + block, not by thread context: a block that
+          // pauses inside an if/else drops the thread context, which used to make the next
+          // question think it had already been answered and skip straight past.
+          const askKey = `${sprite.id}:${block.id ?? block.stackOrder ?? ''}`;
+          if (globalVars._askPending === askKey) {
             if (globalVars._askResolved) {
               vars._lastAnswer = globalVars._lastAnswer ?? '';
-              flow.askWaiting = false;
+              globalVars._askPending = null;
               setAskDialog(null);
               return false;
             }
@@ -3525,7 +4361,7 @@ loadImages(function(){
           }
           globalVars._askResolved = false;
           globalVars._lastAnswer = '';
-          flow.askWaiting = true;
+          globalVars._askPending = askKey;
           const question = txt(p.prompt, 'What is your name?').replace(/^"|"$/g, '') || '...';
           globalVars._askQuestion = question;
           setAskDialog({ question });
@@ -3538,14 +4374,27 @@ loadImages(function(){
         }
         case 'game-score-add': localScore += num(p.amount, 10); setScore(localScore); break;
         case 'game-score-set': localScore = num(p.value, 0); setScore(localScore); break;
-        case 'game-lose-life': vars._lives = Math.max(0, num(vars._lives, 3) - 1); break;
+        case 'game-lose-life':
+          vars._lives = Math.max(0, num(vars._lives, 3) - 1);
+          gameModeProbe.log('lose-life', vars._lives);
+          if (vars._lives <= 0) {
+            running = false;
+            showBanner({ kind: 'over', text: '💀 Game over', sub: 'Out of lives — press ▶ to play again' });
+          }
+          break;
         case 'game-set-lives': vars._lives = num(p.value, 3); break;
-        case 'game-over': running = false; break;
+        case 'game-over':
+          running = false;
+          showBanner({ kind: 'over', text: '💀 Game over', sub: 'Press ▶ to play again' });
+          break;
         case 'game-win':
+          gameModeProbe.won = true;
           sprite._sayText = 'You Win!';
           sprite._sayUntil = Date.now() + 2000;
+          showBanner({ kind: 'win', text: '🏆 You win!', sub: '' }, 2500);
           break;
-        case 'game-next-level': vars._level = num(vars._level, 1) + 1; break;
+        case 'game-next-level': goToLevel(num(vars._level, 1) + 1); break;
+        case 'game-goto-level': goToLevel(num(p.level, 1)); break;
         case 'control-delete-clone':
         case 'game-destroy': {
           if (sprite.isClone && playSpritesRef.current) {
@@ -3659,11 +4508,10 @@ loadImages(function(){
           applyPlayBackdropRef.current?.(p.backdrop ?? p.BACKDROP ?? DEFAULT_STAGE_BACKDROP);
           break;
         case 'looks-next-backdrop': {
-          const names = [
-            ...STAGE_BACKDROP_NAMES,
-            ...(customBackgrounds || []).map((b) => b.name).filter((n) => n && !STAGE_BACKDROP_NAMES.includes(n)),
-          ];
-          const cur = playBackdropRef.current ?? 0;
+          const names = getCycleBackdropNamesRef.current();
+          const curName = playBackdropNameRef.current;
+          const at = curName != null ? names.indexOf(curName) : -1;
+          const cur = at >= 0 ? at : (playBackdropRef.current ?? 0);
           applyPlayBackdropRef.current?.(names[nextBackdropIndex(names, cur)] || names[0]);
           break;
         }
@@ -3988,10 +4836,19 @@ loadImages(function(){
         case 'pen-color':
         case 'pen-set-color':
         case 'pen-size':
+        case 'pen-change-color':
+        case 'pen-change-size':
         case 'pen-stamp':
         case 'speech-listen':
         case 'translate-text':
         case 'ocr-scan':
+        case 'video-play':
+        case 'video-pause':
+        case 'video-seek':
+        case 'log-add':
+        case 'log-clear':
+        case 'log-count':
+        case 'hand-gesture':
         case 'weather-city':
         case 'weather-temp':
         case 'weather-cond':
@@ -4003,6 +4860,7 @@ loadImages(function(){
           executeExtensionGameBlock(block, sprite, {
             ensureCameraOn,
             setCameraOn: (on) => { cameraStateRef.current.isOn = on; },
+            sprites: playSpritesRef.current,
           });
           break;
         // ═══ CAMERA SYSTEM BLOCKS ═══
@@ -4118,9 +4976,6 @@ loadImages(function(){
 
         // Handle if/else blocks
         if (blk.type === "logic-if") {
-          const cond = blk.params?._cond
-            ? evaluateCondition(blk.params._cond, sprite)
-            : evaluateCondition(blk, sprite);
           const ifBody = [];
           const elseBody = [];
           let j = i + 1;
@@ -4129,7 +4984,7 @@ loadImages(function(){
 
           while (j < body.length && depth > 0) {
             const b = body[j];
-            if (b.type.startsWith('event-')) {
+            if (isHat(b.type)) {
               break;
             }
             if (b.type === 'logic-else') {
@@ -4158,15 +5013,25 @@ loadImages(function(){
             j++;
           }
 
-          if (cond) {
-            if (execBody(ifBody, sprite, 0, thread) !== false) {
-              currentExecThread = null;
-              return i;
-            }
-          } else if (execBody(elseBody, sprite, 0, thread) !== false) {
+          // Test the condition once, then remember the branch: if a block inside it takes time
+          // (a move, a glide, a wait) we carry on from there next frame instead of re-testing.
+          const ifHost = thread || sprite;
+          const ifState = loopStateFor(ifHost, body[i]);
+          if (ifState.ifBranch == null) {
+            const cond = blk.params?._cond
+              ? evaluateCondition(blk.params._cond, sprite)
+              : evaluateCondition(blk, sprite);
+            ifState.ifBranch = cond ? 'then' : 'else';
+            ifState.innerPc = 0;
+          }
+          const branchBody = ifState.ifBranch === 'then' ? ifBody : elseBody;
+          const pausedAt = execBody(branchBody, sprite, ifState.innerPc, thread);
+          if (pausedAt !== false) {
+            ifState.innerPc = pausedAt;
             currentExecThread = null;
             return i;
           }
+          clearLoopState(ifHost, body[i]);
           i = j - 1;
           continue;
         }
@@ -4180,10 +5045,7 @@ loadImages(function(){
           const times = Math.min(Math.max(0, parseInt(blk.params?.times, 10) || 0), 200);
           const { loopBody, endIndex } = collectLoopBody(body, i);
           const repeatHost = thread || sprite;
-          if (!repeatHost.repeatState || repeatHost.repeatState.blockIndex !== i) {
-            repeatHost.repeatState = { blockIndex: i, iteration: 0, innerPc: 0 };
-          }
-          const rs = repeatHost.repeatState;
+          const rs = loopStateFor(repeatHost, body[i]);
           while (rs.iteration < times) {
             sprite._loopIndex = rs.iteration + 1;
             const pauseAt = execBody(loopBody, sprite, rs.innerPc, thread);
@@ -4194,14 +5056,28 @@ loadImages(function(){
             }
             rs.innerPc = 0;
             rs.iteration += 1;
+            if (sprite._breakLoop) {
+              sprite._breakLoop = false;
+              break;
+            }
+            if (thread?.stopped) break;
+            // Like Scratch, show each pass on screen: carry on next frame, so
+            // "repeat 60: change y by -5" is a fall you can see, not a jump
+            if (rs.iteration < times) {
+              currentExecThread = null;
+              return i;
+            }
           }
-          repeatHost.repeatState = null;
+          clearLoopState(repeatHost, body[i]);
           i = endIndex;
           continue;
         }
 
         if (blk.type === 'loop-forever') {
           const { loopBody, endIndex } = collectLoopBody(body, i);
+          // Game loops move like Scratch: each "move N steps" completes within a frame
+          // instead of easing at a fixed 80 px/s (repeat loops keep the smooth animation).
+          loopBody.forEach((b) => { b._inForever = true; });
           registerForeverThread(sprite, loopBody);
           i = endIndex;
           continue;
@@ -4316,17 +5192,29 @@ loadImages(function(){
           const done = blk.params?._cond
             ? () => evaluateCondition(blk.params._cond, sprite)
             : () => true;
-          while (!done()) {
-            if (execBody(loopBody, sprite, 0, thread) !== false) {
+          const untilHost = thread || sprite;
+          const us = loopStateFor(untilHost, body[i]);
+          // Resume a paused pass where it stopped; only test the condition between passes
+          while (us.innerPc > 0 || !done()) {
+            const pauseAt = execBody(loopBody, sprite, us.innerPc, thread);
+            if (pauseAt !== false) {
+              us.innerPc = pauseAt;
               currentExecThread = null;
               return i;
             }
+            us.innerPc = 0;
             if (sprite._breakLoop) {
               sprite._breakLoop = false;
               break;
             }
             if (thread?.stopped) break;
+            if (!done()) {
+              // One pass per frame (as in Scratch), so movement inside the loop animates
+              currentExecThread = null;
+              return i;
+            }
           }
+          clearLoopState(untilHost, body[i]);
           i = endIndex;
           continue;
         }
@@ -4381,7 +5269,7 @@ loadImages(function(){
       spriteChains.forEach(({ sprite, chains }) => {
         chains.filter((c) => c.trigger.type === 'event-message').forEach((chain) => {
           const triggerMsg = (chain.trigger.params?.message || 'go').toLowerCase();
-          if (String(msg).toLowerCase() === triggerMsg) execBody(chain.body, sprite);
+          if (String(msg).toLowerCase() === triggerMsg) startEventScript(sprite, chain, execBody, { restart: true });
         });
       });
     }
@@ -4449,13 +5337,15 @@ loadImages(function(){
 
       // Phase 1 — clone hats (Scratch: when I start as a clone; cooperative threads)
       stepCloneHatThreads(ps, execBody);
+      // …and event scripts that paused last frame (a glide or loop inside "when key pressed")
+      stepEventScripts(ps, execBody);
 
       // Phase 2 — keyboard hats (Scratch: when key pressed — edge-triggered)
       spriteChains.forEach(({ sprite, chains }) => {
         chains.filter(c => c.trigger.type === 'event-keypress').forEach(chain => {
           const triggerKey = chain.trigger.params?.key || '';
           if (isKeyJustPressed(keysPressed, keysPressedPrev, triggerKey) || isKeyHeld(keysTapped, triggerKey)) {
-            execBody(chain.body, sprite);
+            startEventScript(sprite, chain, execBody);
           }
         });
       });
@@ -4476,7 +5366,7 @@ loadImages(function(){
       spriteChains.forEach(({ sprite, chains }) => {
         if (sprite._justClicked) {
           chains.filter(c => c.trigger.type === 'event-click').forEach(chain => {
-            execBody(chain.body, sprite);
+            startEventScript(sprite, chain, execBody);
           });
           sprite._justClicked = false; // Clear flag after processing
         }
@@ -4489,7 +5379,7 @@ loadImages(function(){
           chains.filter(c => c.trigger.type === 'event-message').forEach(chain => {
             const triggerMsg = (chain.trigger.params?.message || 'go').toLowerCase();
             if (msg.toLowerCase() === triggerMsg) {
-              execBody(chain.body, sprite);
+              startEventScript(sprite, chain, execBody, { restart: true });
             }
           });
         });
@@ -4507,7 +5397,7 @@ loadImages(function(){
               if (!sc) return;
               sc.chains.filter(function(c) { return c.trigger.type === 'event-collision'; }).forEach(function(chain) {
                 var withName = ((chain.trigger.params && chain.trigger.params.with) || 'any').toLowerCase();
-                if (withName === 'any' || other.name.toLowerCase() === withName) execBody(chain.body, sprite);
+                if (withName === 'any' || other.name.toLowerCase() === withName) startEventScript(sprite, chain, execBody);
               });
             });
           }
@@ -4529,8 +5419,20 @@ loadImages(function(){
             const want = String(chain.trigger.params?.backdrop || chain.trigger.params?.BACKDROP || '').toLowerCase();
             const got = switched.toLowerCase();
             if (!want || want === 'any' || got === want || got.includes(want) || want.includes(got)) {
-              execBody(chain.body, sprite);
+              startEventScript(sprite, chain, execBody, { restart: true });
             }
+          });
+        });
+      }
+
+      // Level hats (when level N starts)
+      if (globalVars._levelStarted) {
+        const lvl = Number(globalVars._levelStarted);
+        globalVars._levelStarted = null;
+        spriteChains.forEach(({ sprite, chains }) => {
+          if (sprite.isClone) return;
+          chains.filter((c) => c.trigger.type === 'event-level').forEach((chain) => {
+            if (Number(chain.trigger.params?.level ?? 1) === lvl) startEventScript(sprite, chain, execBody, { restart: true });
           });
         });
       }
@@ -4547,7 +5449,7 @@ loadImages(function(){
           const nowTrue = value > thresh;
           const wasTrue = !!greaterHatPrev[key];
           greaterHatPrev[key] = nowTrue;
-          if (nowTrue && !wasTrue) execBody(chain.body, sprite);
+          if (nowTrue && !wasTrue) startEventScript(sprite, chain, execBody);
         });
       });
 
@@ -4865,48 +5767,45 @@ loadImages(function(){
     if (resizingSprite && resizeStart) {
       const dx = x - resizeStart.x;
       const dy = y - resizeStart.y;
+      // Ignore the tiny pointer jitter of a click so selecting a handle never
+      // changes the sprite's size by itself.
+      if (Math.hypot(dx, dy) < 3) return;
       const minSize = 20;
       setSprites(prev => prev.map(s => {
         if (s.id !== resizingSprite) return s;
-        const aspect = resizeStart.w / resizeStart.h;
-        let newW = resizeStart.w;
-        let newH = resizeStart.h;
-        let newX = resizeStart.baseX ?? s.x;
-        let newY = resizeStart.baseY ?? s.y;
+        const baseX = resizeStart.baseX ?? s.x;
+        const baseY = resizeStart.baseY ?? s.y;
+        const growsRight = resizeHandle === 'br' || resizeHandle === 'tr';
+        const growsDown = resizeHandle === 'br' || resizeHandle === 'bl';
+        // Keep the opposite corner fixed and project pointer motion onto the
+        // sprite's original diagonal. This keeps the image proportional and
+        // makes dragging either direction feel predictable.
+        const anchorX = growsRight ? baseX : baseX + resizeStart.w;
+        const anchorY = growsDown ? baseY : baseY + resizeStart.h;
+        const directionX = growsRight ? 1 : -1;
+        const directionY = growsDown ? 1 : -1;
+        const startAlongX = (resizeStart.x - anchorX) * directionX;
+        const startAlongY = (resizeStart.y - anchorY) * directionY;
+        const alongX = (x - anchorX) * directionX;
+        const alongY = (y - anchorY) * directionY;
+        const denominator = startAlongX ** 2 + startAlongY ** 2;
+        const scale = Math.max(
+          minSize / Math.max(resizeStart.w, resizeStart.h),
+          Math.min(STAGE_W / Math.max(resizeStart.w, resizeStart.h),
+            (alongX * startAlongX + alongY * startAlongY) / denominator),
+        );
+        const newW = Math.max(1, Math.round(resizeStart.w * scale));
+        const newH = Math.max(1, Math.round(resizeStart.h * scale));
+        let newX = growsRight ? anchorX : anchorX - newW;
+        let newY = growsDown ? anchorY : anchorY - newH;
+        const baseW = s.baseW || resizeStart.w;
+        const baseH = s.baseH || resizeStart.h;
+        const sizePercent = (newW / baseW) * 100;
 
-        // Use diagonal distance for proportional scaling from corners
-        const diag = (dx + dy) / 2;
-        
-        if (resizeHandle === 'br') {
-          // Bottom-right: grow with positive dx/dy
-          newW = Math.max(minSize, resizeStart.w + diag);
-          newH = newW / aspect;
-        } else if (resizeHandle === 'bl') {
-          // Bottom-left: grow with negative dx, positive dy
-          newW = Math.max(minSize, resizeStart.w + (-dx + dy) / 2);
-          newH = newW / aspect;
-          newX = resizeStart.baseX + (resizeStart.w - newW);
-        } else if (resizeHandle === 'tr') {
-          // Top-right: grow with positive dx, negative dy
-          newW = Math.max(minSize, resizeStart.w + (dx - dy) / 2);
-          newH = newW / aspect;
-          newY = resizeStart.baseY + (resizeStart.h - newH);
-        } else if (resizeHandle === 'tl') {
-          // Top-left: grow with negative dx/dy
-          newW = Math.max(minSize, resizeStart.w - diag);
-          newH = newW / aspect;
-          newX = resizeStart.baseX + (resizeStart.w - newW);
-          newY = resizeStart.baseY + (resizeStart.h - newH);
-        }
-
-        // Enforce minimum size
-        if (newW < minSize) { newW = minSize; newH = minSize / aspect; }
-        if (newH < minSize) { newH = minSize; newW = minSize * aspect; }
-        
         // Keep at least 20px visible on stage
         newX = Math.max(-newW + 20, Math.min(STAGE_W - 20, newX));
         newY = Math.max(-newH + 20, Math.min(STAGE_H - 20, newY));
-        return { ...s, x: newX, y: newY, w: newW, h: newH };
+        return { ...s, x: newX, y: newY, w: newW, h: newH, baseW, baseH, sizePercent };
       }));
       return;
     }
@@ -4954,6 +5853,7 @@ loadImages(function(){
       sounds: [],
       initialVars: {},
     };
+    newSprite.costumes = defaultCostumesForSprite(newSprite);
     imgCacheRef.current = {};
     setSprites(prev => [...prev, newSprite]);
     setSelected(newSprite.id);
@@ -5010,8 +5910,10 @@ loadImages(function(){
         x: STAGE_W / 2 - w / 2, y: STAGE_H / 2 - h / 2,
         w, h, rotation: 90, visible: true, color: null, layer: 1,
         blocks: [],
+        sounds: [],
         initialVars: {},
       };
+      newSprite.costumes = defaultCostumesForSprite(newSprite);
       imgCacheRef.current = {};
       setSprites(prev => [...prev, newSprite]);
       setSelected(newSprite.id);
@@ -5155,17 +6057,67 @@ loadImages(function(){
     }
   };
 
+  const openTeacherShare = async () => {
+    setTeacherShare({ loading: true, options: [], error: '' });
+    setTeacherShareDone(false);
+    setTeacherShareTarget('');
+    try {
+      const { fetchAssignments, fetchClass, findClassesForEmail } = await import('../utils/classroomStore.js');
+      const classMap = new Map();
+      if (user?.classroomId) {
+        const cls = await fetchClass(user.classroomId);
+        classMap.set(user.classroomId, cls || { id: user.classroomId, name: 'My class' });
+      }
+      if (user?.email) {
+        const matches = await findClassesForEmail(user.email);
+        matches.forEach((cls) => classMap.set(cls.id, cls));
+      }
+      const options = (await Promise.all([...classMap.values()].map(async (cls) => {
+        const assignments = await fetchAssignments(cls.id);
+        return (assignments || [])
+          .filter((a) => a && (a.assignType === 'blocks' || a.target?.activity === 'gamebuilder'))
+          .map((assignment) => ({ classId: cls.id, className: cls.name || 'My class', assignment }));
+      }))).flat();
+      setTeacherShare({ loading: false, options, error: '' });
+    } catch (e) {
+      console.error('[GameBuilder] could not load teacher sharing options', e);
+      setTeacherShare({ loading: false, options: [], error: 'Could not load your class work. Check your connection and try again.' });
+    }
+  };
+
+  const sendProjectToTeacher = async () => {
+    const [classId, assignmentId] = teacherShareTarget.split('::');
+    const target = teacherShare?.options?.find((option) => option.classId === classId && option.assignment.id === assignmentId);
+    if (!target) return;
+    setTeacherShareBusy(true);
+    try {
+      const { handIn } = await import('../utils/classroomStore.js');
+      const latest = getLatestSprites();
+      await handIn(classId, target.assignment, user || {}, {
+        assignType: 'blocks',
+        answer: `Game: ${currentProjectName || 'My game'} (${latest.length} sprite${latest.length === 1 ? '' : 's'})`,
+        file: { sprites: latest, background, gameMode, levels: levelsWithCurrentLayout(latest), ...projectBackdropData() },
+      });
+      setTeacherShareDone(true);
+    } catch (e) {
+      console.error('[GameBuilder] teacher project share failed', e);
+      setTeacherShare((previous) => ({ ...previous, error: 'Could not send your game. Check your connection and try again.' }));
+    } finally {
+      setTeacherShareBusy(false);
+    }
+  };
+
   return (
     <div className="workspace-page" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {/* Assignment submit banner */}
       {pendingAssignment && (
         <div style={{ background: submitFlash ? '#16a34a' : '#4f46e5', color: '#fff', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
-          <span style={{ fontSize: 13, fontWeight: 600 }}>📋 Assignment: {pendingAssignment.title}</span>
+          <span style={{ fontSize: 13, fontWeight: 600 }}><EmojiIcon e="📋" style={{ marginRight: '0.35em' }} />Assignment: {pendingAssignment.title}</span>
           <button
             onClick={submitToAssignment}
             style={{ marginLeft: 'auto', background: submitFlash ? '#15803d' : '#ffffff33', border: '1px solid #ffffff55', color: '#fff', borderRadius: 6, padding: '5px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
           >
-            {submitFlash ? '✅ Submitted!' : '📤 Submit Project'}
+            <IconText>{submitFlash ? '✅ Submitted!' : '📤 Submit Project'}</IconText>
           </button>
           <button onClick={() => { sessionStorage.removeItem('bb-pending-assignment'); window.location.hash = 'classroom'; }}
             style={{ background: 'none', border: 'none', color: '#fff', opacity: 0.7, cursor: 'pointer', fontSize: 18, lineHeight: 1 }}>✕</button>
@@ -5174,7 +6126,7 @@ loadImages(function(){
       {/* Teacher viewing student project banner */}
       {viewingSubmission && (
         <div style={{ background: '#0f766e', color: '#fff', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
-          <span style={{ fontSize: 13, fontWeight: 600 }}>👁️ Viewing: {viewingSubmission.studentName}'s project — {viewingSubmission.assignmentTitle}</span>
+          <span style={{ fontSize: 13, fontWeight: 600 }}><EmojiIcon e="👁️" style={{ marginRight: '0.35em' }} />Viewing: {viewingSubmission.studentName}'s project — {viewingSubmission.assignmentTitle}</span>
           <button onClick={() => { sessionStorage.removeItem('bb-viewing-submission'); window.location.hash = 'dashboard'; }}
             style={{ marginLeft: 'auto', background: '#ffffff33', border: '1px solid #ffffff55', color: '#fff', borderRadius: 6, padding: '5px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
             ← Back to Dashboard
@@ -5183,28 +6135,45 @@ loadImages(function(){
       )}
       {/* Toolbar */}
       <div className="workspace-toolbar" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', borderBottom: '1px solid var(--border-color)', flexShrink: 0 }}>
-        <span style={{ fontWeight: 700, fontSize: 14 }}>🎮 Game Builder</span>
+        <span style={{ fontWeight: 700, fontSize: 14, whiteSpace: 'nowrap', flexShrink: 0 }}><EmojiIcon e="🎮" style={{ marginRight: '0.35em' }} />Game Builder</span>
         {currentProjectName && (
           <span style={{ fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             — {currentProjectName}
           </span>
         )}
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 6, alignItems: 'center' }}>
-          {isPlaying && <span className="tag tag-warning" style={{ fontSize: 12 }}>Score: {score}</span>}
           <button
-            onClick={() => setExtensionsOpen(true)}
-            style={{ background: '#6366f1', color: '#fff', border: 'none', borderRadius: 6, padding: '5px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
-            title="Add Extensions"
+            onClick={openTeacherShare}
+            style={{ background: '#0f766e', color: '#fff', border: 'none', borderRadius: 6, padding: '5px 11px', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
+            title="Send this game to your teacher"
           >
-            🧩 Extensions
+            <EmojiIcon e="📤" style={{ marginRight: '0.35em' }} />Teacher
           </button>
-          {/* My Projects button */}
           <button
-            onClick={() => setShowProjectsModal(true)}
-            style={{ background: '#0f172a', color: '#fff', border: '1px solid #334155', borderRadius: 6, padding: '5px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
-            title="Open a saved project"
+            onClick={() => setShowGameModes(true)}
+            style={{ background: 'linear-gradient(135deg,#f97316,#ec4899)', color: '#fff', border: 'none', borderRadius: 6, padding: '5px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+            title="Ready-made games with challenges"
           >
-            📂 My Projects
+            <EmojiIcon e="🎮" style={{ marginRight: '0.35em' }} />Game Modes
+          </button>
+          <button
+            onClick={() => {
+              const latest = getLatestSprites();
+              setShareProjectSnapshot({
+                id: currentProjectId || `shared-${Date.now()}`,
+                name: currentProjectName || 'My Game',
+                sprites: latest,
+                background,
+                gameMode,
+                levels: levelsWithCurrentLayout(latest),
+                ...projectBackdropData(),
+              });
+              setShowShareProject(true);
+            }}
+            style={{ background: 'linear-gradient(135deg,#7c3aed,#4f46e5)', color: '#fff', border: 'none', borderRadius: 6, padding: '5px 11px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+            title="Publish this game to the Community gallery"
+          >
+            <EmojiIcon e="🌍" style={{ marginRight: '0.35em' }} />Share
           </button>
           {/* Save / Save As buttons */}
           <div style={{ display: 'flex', gap: 0 }}>
@@ -5212,7 +6181,7 @@ loadImages(function(){
               onClick={saveProject}
               style={{ background: savedFlash ? '#22c55e' : '#334155', color: '#fff', border: 'none', borderRadius: currentProjectId ? '6px 0 0 6px' : 6, padding: '5px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'background 0.3s', minWidth: 70 }}
             >
-              {savedFlash ? '✓ Saved!' : '💾 Save'}
+              <IconText>{savedFlash ? '✓ Saved!' : '💾 Save'}</IconText>
             </button>
             {currentProjectId && (
               <button
@@ -5224,15 +6193,18 @@ loadImages(function(){
               </button>
             )}
           </div>
-          <button onClick={exportGame} disabled={exporting} style={{ background: '#7c3aed', color: '#fff', border: 'none', borderRadius: 6, padding: '5px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', minWidth: 90, opacity: exporting ? 0.7 : 1 }}>
-            📤 Export
-          </button>
-          <button
-            className={`btn btn-sm ${isPlaying ? 'btn-danger' : 'btn-success'}`}
-            onClick={togglePlay}
-          >
-            {isPlaying ? '⏹ Stop' : '▶ Play'}
-          </button>
+          <div className="gb-file">
+            <button type="button" className="gb-file-btn" onClick={() => setFileMenu((o) => !o)} aria-expanded={fileMenu}>
+              <EmojiIcon e="📁" style={{ marginRight: '0.35em' }} />File ▾
+            </button>
+            {fileMenu && (
+              <div className="gb-file-menu" onMouseLeave={() => setFileMenu(false)}>
+                <button type="button" onClick={() => { setFileMenu(false); setShowProjectsModal(true); }}><EmojiIcon e="📂" style={{ marginRight: '0.35em' }} />My Projects</button>
+                <button type="button" onClick={() => { setFileMenu(false); setExtensionsOpen(true); }}><EmojiIcon e="🧩" style={{ marginRight: '0.35em' }} />Extensions</button>
+                <button type="button" disabled={exporting} onClick={() => { setFileMenu(false); exportGame(); }}><EmojiIcon e="📤" style={{ marginRight: '0.35em' }} />Export game</button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -5243,33 +6215,52 @@ loadImages(function(){
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, borderRight: '1px solid var(--border-color)' }}>
           {/* Sprite name tab bar */}
           <div style={{
-            display: 'flex', alignItems: 'center', gap: 4, padding: '6px 10px',
+            display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px',
             background: 'var(--bg-secondary)', borderBottom: '1px solid var(--border-color)',
             fontSize: 12, fontWeight: 600,
           }}>
-            <span style={{ color: 'var(--text-muted)', marginRight: 4 }}>Coding for:</span>
+            <div className="gb-editor-tabs">
+              {[['code', 'Code', '🧩'], ['costumes', 'Costumes', '🎨'], ['sounds', 'Sounds', '🔊'], ['backdrops', 'Backdrops', '🖼️']].map(([id, label, icon]) => (
+                <button
+                  key={id}
+                  type="button"
+                  className={editorTab === id ? 'gb-editor-tab on' : 'gb-editor-tab'}
+                  onClick={() => setEditorTab(id)}
+                >
+                  <EmojiIcon e={icon} style={{ marginRight: 5 }} />{label}
+                </button>
+              ))}
+            </div>
             {selectedSprite ? (
               <span style={{
                 display: 'inline-flex', alignItems: 'center', gap: 4,
                 background: 'var(--accent-primary)22', padding: '3px 10px', borderRadius: 6,
                 border: '1px solid var(--accent-primary)', color: 'var(--accent-primary)',
               }}>
-                <div style={{
-                  width: 18, height: 18,
-                  background: 'var(--accent-primary)',
-                  borderRadius: 2,
-                }} />
                 {selectedSprite.name}
               </span>
             ) : (
               <span style={{ color: 'var(--text-muted)' }}>Select a sprite</span>
             )}
-            <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--text-muted)' }}>
-              Drag blocks from sidebar
-            </span>
+            <button type="button" className="byte-launch" onClick={() => { setEditorTab('code'); setByteOpen((o) => !o); }} title="Byte checks your code and gives you clues">
+              <ByteFace size={20} /> {byteOpen ? 'Close Byte' : 'Ask Byte'}
+            </button>
           </div>
 
-          <div className="bb-workspace-scratch-toolbox" style={{ flex: 1, minHeight: 0 }}>
+          <div className="bb-workspace-scratch-toolbox" style={{ flex: 1, minHeight: 0, display: editorTab === 'code' ? 'flex' : 'none', flexDirection: 'column', position: 'relative' }}>
+            {selectedSprite && (
+              <div role="note" style={{ flex: '0 0 auto', padding: '6px 12px', background: 'var(--bg-secondary)', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)', fontSize: 11 }}>
+                Start each script with an <strong style={{ color: 'var(--text-primary)' }}>Events</strong> hat. Add more event hats for other triggers; drag any block to the trash to remove it.
+              </div>
+            )}
+            <ByteBuddy
+              open={byteOpen && editorTab === 'code'}
+              onClose={() => setByteOpen(false)}
+              getSprites={getLatestSprites}
+              selectedId={selected}
+              challenge={activeChallenge}
+              status={modeStatus}
+            />
             <UnifiedBlocklyWorkspace
               ref={blocklyWorkspaceRef}
               libraryPage="gamebuilder"
@@ -5335,10 +6326,68 @@ loadImages(function(){
               style={{ height: '100%' }}
             />
           </div>
+          {editorTab === 'backdrops' && (
+            <BackdropStudio
+              backdrops={backdropEntries}
+              current={background}
+              library={STAGE_BACKDROPS}
+              onSelect={backdropActions.select}
+              onAddLibrary={backdropActions.addLibrary}
+              onPaintNew={backdropActions.paintNew}
+              onUpload={backdropActions.upload}
+              onUpdate={backdropActions.update}
+              onRename={backdropActions.rename}
+              onDelete={backdropActions.remove}
+              onDuplicate={backdropActions.duplicate}
+              onMove={backdropActions.move}
+            />
+          )}
+          {editorTab !== 'code' && editorTab !== 'backdrops' && (
+            <GameBuilderAssetStudio
+              tab={editorTab}
+              sprite={selectedSprite}
+              spriteLibrary={SPRITE_LIBRARY}
+              onUpdateSprite={(next) => {
+                invalidateSpriteImageCache(next);
+                imgCacheRef.current = {};
+                setSprites((prev) => prev.map((s) => (s.id === next.id ? next : s)));
+              }}
+              onSaveBackdrop={(dataUrl) => {
+                const name = `Paint ${Date.now().toString().slice(-4)}`;
+                setCustomBackgrounds((prev) => [...prev, { name, dataUrl }]);
+                setBackground(name);
+                imgCacheRef.current = {};
+              }}
+            />
+          )}
         </div>
 
         {/* ════════ RIGHT: Stage + Sprite Pane ════════ */}
-        <div style={{ width: 380, display: 'flex', flexDirection: 'column', background: 'var(--bg-secondary)', flexShrink: 0 }}>
+        <div className={`gb-stage-pane${stageLarge ? ' gb-stage-pane--large' : ''}${stageResizing ? ' is-resizing' : ''}`} style={{ display: 'flex', flexDirection: 'column', background: 'var(--bg-secondary)', flexShrink: 0, position: 'relative', ...(stageCustomW ? { width: stageCustomW + 20, '--gb-stage-w': `${stageCustomW}px` } : {}) }}>
+          {!stageFs && (
+            <div className="gb-stage-resize" onPointerDown={(e) => startStageResize(e)} onDoubleClick={() => setStageCustomW(null)}
+              role="separator" aria-orientation="vertical" aria-label="Drag to resize the stage" title="Drag to make the stage bigger or smaller (double-click to reset)">
+              <span />
+            </div>
+          )}
+
+          {/* Stage bar: run controls sit right above the game */}
+          <div className="gb-stagebar">
+            <button
+              className={`btn btn-sm ${isPlaying ? 'btn-danger' : 'btn-success'} gb-play`}
+              onClick={togglePlay}
+            >
+              <IconText>{isPlaying ? '⏹ Stop' : '▶ Play'}</IconText>
+            </button>
+            {isPlaying && <span className="gb-stagebar-score">⭐ {score}</span>}
+            <button type="button" className="gb-stagebar-level" onClick={() => setPaneTab('levels')} title="Levels">
+              <EmojiIcon e="🗺" style={{ marginRight: '0.35em' }} />{levels[Math.min(editLevel, levels.length - 1)]?.name || 'Level 1'}
+            </button>
+            <div className="gb-stagebar-size" role="group" aria-label="Stage size">
+              <button type="button" className={!stageCustomW && !stageLarge ? 'on' : ''} onClick={() => pickStagePreset(false)} title="Small stage — more room for code">▭</button>
+              <button type="button" className={!stageCustomW && stageLarge ? 'on' : ''} onClick={() => pickStagePreset(true)} title="Large stage">▢</button>
+            </div>
+          </div>
 
           {/* Stage */}
           <div ref={stageFsRef} data-bb-game-stage style={{
@@ -5387,7 +6436,7 @@ loadImages(function(){
                     transition: 'all 0.15s ease',
                   }}
                 >
-                  {isPlaying ? '⏹' : '▶'}
+                  <IconText>{isPlaying ? '⏹' : '▶'}</IconText>
                 </button>
                 {/* Reset */}
                 <button
@@ -5413,29 +6462,83 @@ loadImages(function(){
               ref={canvasRef}
               width={STAGE_W}
               height={STAGE_H}
-              onMouseDown={handleCanvasMouseDown}
-              onMouseMove={handleCanvasMouseMove}
-              onMouseUp={handleCanvasMouseUp}
-              onMouseLeave={handleCanvasMouseUp}
+              onPointerDown={(e) => {
+                e.currentTarget.setPointerCapture?.(e.pointerId);
+                handleCanvasMouseDown(e);
+              }}
+              onPointerMove={handleCanvasMouseMove}
+              onPointerUp={handleCanvasMouseUp}
+              onPointerCancel={handleCanvasMouseUp}
               style={{
                 borderRadius: stageFs ? 0 : 6,
                 border: 'none',
                 backgroundColor: '#ffffff',
                 cursor: draggingSprite || playDragSpriteRef.current ? 'grabbing' : 'default',
-                width: stageFs ? '100%' : `${STAGE_W * 0.75}px`,
-                height: stageFs ? '100%' : `${STAGE_H * 0.75}px`,
+                touchAction: 'none',
+                width: stageFs ? '100%' : 'var(--gb-stage-w, 360px)',
+                height: stageFs ? '100%' : 'calc(var(--gb-stage-w, 360px) * 0.75)',
                 display: 'block',
               }}
             />
+            {!stageFs && (
+              <div className="gb-stage-corner" onPointerDown={(e) => startStageResize(e, true)} onDoubleClick={() => setStageCustomW(null)}
+                title="Drag to resize the stage (double-click to reset)" aria-hidden="true" />
+            )}
             {askDialog && isPlaying && (
               <AskPromptBar question={askDialog.question} onSubmit={submitAskAnswer} />
             )}
             {isPlaying && <ListMonitorsOverlay monitors={listMonitors} />}
+            {isPlaying && banner && (
+              <div className={`gb-banner ${banner.kind}`}>
+                <div>{banner.text}{banner.sub ? <small>{banner.sub}</small> : null}</div>
+              </div>
+            )}
           </div>
+
+          <div className="gb-pane-tabs" role="tablist">
+            {[['sprites', `🎭 Sprites${sprites.length ? ` (${sprites.length})` : ''}`], ['levels', `🗺 Levels (${levels.length})`], ...(activeMode && activeChallenge ? [['challenge', '🏆 Challenge']] : [])].map(([id, label]) => (
+              <button key={id} type="button" role="tab" aria-selected={paneTab === id} className={paneTab === id ? 'on' : ''} onClick={() => setPaneTab(id)}><IconText>{label}</IconText></button>
+            ))}
+          </div>
+
+          {paneTab === 'levels' && (
+            <div className="gb-pane-body">
+            <LevelBar
+              levels={levels}
+              current={Math.min(editLevel, levels.length - 1)}
+              onSelect={selectLevel}
+              onAdd={addLevel}
+              onRename={renameLevel}
+              onDelete={deleteLevel}
+              onMove={reorderLevel}
+              thumbFor={levelThumb}
+              disabled={isPlaying}
+            />
+
+              <p className="gb-pane-hint">Each level has its own backdrop and its own sprite positions. Pick a level, then drag sprites and choose a backdrop for it. Use the 🏆 Game blocks to move between levels.</p>
+            </div>
+          )}
+
+          {paneTab === 'challenge' && activeMode && activeChallenge && (
+            <div className="gb-pane-body gb-pane-body--scroll">
+          {activeMode && activeChallenge && (
+            <ChallengePanel
+              mode={activeMode}
+              index={gameMode?.challenge ?? 0}
+              status={modeStatus}
+              progress={modeProgress}
+              onPickChallenge={pickModeChallenge}
+              onShowAnswer={showModeAnswer}
+              onExit={() => { setGameMode(null); setModeStatus(null); }}
+            />
+          )}
+
+            </div>
+          )}
 
           {/* ─── Sprite Pane (like Scratch's bottom-right) ─── */}
           <div style={{
-            flex: 1, borderTop: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column',
+            flex: 1, display: paneTab === 'sprites' ? 'flex' : 'none', flexDirection: 'column',
             minHeight: 0,
           }}>
             {/* Pane header */}
@@ -5460,94 +6563,33 @@ loadImages(function(){
               <button
                 className="btn btn-primary btn-sm"
                 style={{ marginLeft: 'auto', padding: '3px 8px', fontSize: 11 }}
-                onClick={() => {
-                  const nextId = Math.max(...sprites.map((s) => Number(s.id) || 0), 0) + 1;
-                  const newSprite = {
-                    id: nextId,
-                    name: `Sprite ${nextId}`,
-                    svgKey: 'Cat',
-                    category: 'People',
-                    x: 200,
-                    y: 200,
-                    w: 48,
-                    h: 48,
-                    rotation: 90,
-                    visible: true,
-                    color: null,
-                    layer: 1,
-                    blocks: [],
-                    physicsRole: 'actor',
-                    costumes: [],
-                    sounds: [],
-                    initialVars: {},
-                  };
-                  setSprites((prev) => [...prev, newSprite]);
-                  setSelected(newSprite.id);
-                }}
+                onClick={openSpriteLibrary}
               >
-                ➕ New sprite
-              </button>
-              <button
-                className="btn btn-primary btn-sm"
-                style={{ padding: '3px 8px', fontSize: 11 }}
-                onClick={() => setShowLibrary(true)}
-              >
-                Library
+                Sprite
               </button>
               <button
                 className="btn btn-secondary btn-sm"
                 style={{ padding: '3px 8px', fontSize: 11 }}
-                onClick={() => setShowBgPicker(!showBgPicker)}
+                onClick={() => { setLibCategory('__backgrounds__'); setShowLibrary(true); }}
               >
-                🖼 Backdrop
+                <EmojiIcon e="🖼" style={{ marginRight: '0.35em' }} />Choose backdrop
               </button>
             </div>
 
-            {/* Backdrop picker */}
-            {showBgPicker && (
-              <div style={{
-                borderBottom: '1px solid var(--border-color)', background: 'var(--bg-primary)',
-                maxHeight: 220, overflowY: 'auto', padding: '8px 10px',
-              }}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))', gap: 8 }}>
-                  {[...STAGE_BACKDROPS, ...customBackgrounds.map(b => ({ ...b, isCustom: true }))].map(bg => (
-                    <button key={bg.name} onClick={() => pickBackdrop(bg.name)}
-                      style={{
-                        padding: 4, borderRadius: 7,
-                        border: background === bg.name ? '2px solid var(--accent-primary)' : '1px solid var(--border-color)',
-                        background: background === bg.name ? 'var(--accent-primary)18' : 'var(--bg-secondary)',
-                        cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-                        transition: 'all 0.12s',
-                      }}
-                      onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--accent-primary)'; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.borderColor = background === bg.name ? 'var(--accent-primary)' : 'var(--border-color)'; }}
-                    >
-                      {bg.image
-                        ? <img src={bg.thumb || bg.image} alt={bg.name} loading="lazy" style={{ width: '100%', height: 56, objectFit: 'cover', borderRadius: 4, display: 'block' }} />
-                        : <div style={{ width: '100%', height: 56, background: '#ffffff', borderRadius: 4, border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>⬜</div>
-                      }
-                      <span style={{ fontSize: 9, fontWeight: 600, color: 'var(--text-primary)', textAlign: 'center', lineHeight: 1.2, maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {bg.isCustom ? '📷 ' : ''}{bg.name}
-                      </span>
-                    </button>
-                  ))}
-                  <button onClick={() => bgUploadRef.current?.click()}
-                    style={{
-                      padding: 4, borderRadius: 7, border: '1px dashed var(--accent-primary)',
-                      background: 'transparent', cursor: 'pointer',
-                      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, minHeight: 76,
-                    }}
-                  >
-                    <span style={{ fontSize: 18 }}>⬆</span>
-                    <span style={{ fontSize: 9, fontWeight: 600, color: 'var(--accent-primary)' }}>Upload</span>
-                  </button>
-                  <input ref={bgUploadRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleBgUpload} />
-                </div>
-              </div>
-            )}
+            <input ref={bgUploadRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleBgUpload} />
 
             {/* Sprite thumbnails */}
             <div style={{ flex: 1, overflow: 'auto', padding: 6, display: 'flex', flexWrap: 'wrap', gap: 6, alignContent: 'flex-start' }}>
+              {sprites.length === 0 && !gameMode && (
+                <div className="gb-empty-start">
+                  <div className="gb-empty-title">Start your game</div>
+                  <p>Add a character to the stage, or pick a ready-made game to learn from.</p>
+                  <div className="gb-empty-actions">
+                    <button type="button" className="gb-empty-primary" onClick={openSpriteLibrary}><EmojiIcon e="➕" style={{ marginRight: '0.35em' }} />Choose a sprite</button>
+                    <button type="button" onClick={() => setShowGameModes(true)}><EmojiIcon e="🎮" style={{ marginRight: '0.35em' }} />Try a Game Mode</button>
+                  </div>
+                </div>
+              )}
               {sprites.map(s => (
                 <div
                   key={s.id}
@@ -5588,7 +6630,7 @@ loadImages(function(){
             {selectedSprite && (
               <div style={{
                 padding: '6px 10px', borderTop: '1px solid var(--border-color)',
-                display: 'flex', gap: 8, alignItems: 'center', fontSize: 11, flexShrink: 0,
+                display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', fontSize: 11, flexShrink: 0,
                 background: 'var(--bg-primary)',
               }}>
                 <SpriteThumb svgKey={selectedSprite.svgKey} color={selectedSprite.color} customImage={selectedSprite.customImage} size={22} />
@@ -5601,10 +6643,22 @@ loadImages(function(){
                 <input className="input" type="number" value={Math.round(selectedSprite.y)}
                   onChange={(e) => setSprites(prev => prev.map(s => s.id === selected ? { ...s, y: +e.target.value } : s))}
                   style={{ width: 50, fontSize: 11, padding: '2px 4px' }} />
-                <label style={{ color: 'var(--text-muted)' }}>size</label>
-                <input className="input" type="number" value={selectedSprite.w}
-                  onChange={(e) => { const v = Math.max(8, +e.target.value); setSprites(prev => prev.map(s => s.id === selected ? { ...s, w: v, h: v } : s)); imgCacheRef.current = {}; }}
-                  style={{ width: 40, fontSize: 11, padding: '2px 4px' }} />
+                <label htmlFor="gb-sprite-size" style={{ color: 'var(--text-muted)' }}>Size</label>
+                <input
+                  id="gb-sprite-size"
+                  type="range"
+                  min="16"
+                  max={STAGE_W}
+                  step="1"
+                  value={Math.round(Math.max(selectedSprite.w, selectedSprite.h))}
+                  onChange={(e) => resizeSelectedSprite(e.target.value)}
+                  aria-label={`Size of ${selectedSprite.name}`}
+                  title="Resize proportionally; the sprite stays centered"
+                  style={{ width: 96, accentColor: 'var(--accent-primary)', cursor: 'ew-resize' }}
+                />
+                <output htmlFor="gb-sprite-size" style={{ minWidth: 34, color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>
+                  {Math.round(Math.max(selectedSprite.w, selectedSprite.h))}px
+                </output>
                 <button
                   onClick={() => setSprites(prev => prev.map(s => s.id === selected ? { ...s, x: STAGE_W / 2 - s.w / 2, y: STAGE_H / 2 - s.h / 2 } : s))}
                   style={{ padding: '2px 6px', fontSize: 10, borderRadius: 4, border: 'none', background: 'var(--accent)', color: '#fff', cursor: 'pointer' }}
@@ -5620,15 +6674,15 @@ loadImages(function(){
       {showLibrary && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           onClick={(e) => { if (e.target === e.currentTarget) setShowLibrary(false); }}>
-          <div className="sprite-library-modal" onClick={(e) => e.stopPropagation()}>
+          <div className={`sprite-library-modal${libCategory === '__backgrounds__' ? ' sprite-library-modal--backdrops' : ''}`} onClick={(e) => e.stopPropagation()}>
             <div className="sprite-library-header">
-              <span style={{ fontWeight: 700, fontSize: 15 }}>{libCategory === '__backgrounds__' ? '🌄 Choose a Background' : '🎭 Choose a Sprite'}</span>
+              <span style={{ fontWeight: 700, fontSize: 15 }}><IconText>{libCategory === '__backgrounds__' ? '🌄 Choose a Background' : '🎭 Choose a Sprite'}</IconText></span>
               <button onClick={() => setShowLibrary(false)} style={{
                 width: 26, height: 26, borderRadius: '50%', border: 'none', background: 'var(--bg-primary)',
                 color: 'var(--text-primary)', fontSize: 15, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>×</button>
             </div>
-            <div className="sprite-library-categories-wrap">
+            {libCategory !== '__backgrounds__' && <div className="sprite-library-categories-wrap">
               <button
                 type="button"
                 className="sprite-library-scroll-btn"
@@ -5675,7 +6729,7 @@ loadImages(function(){
                     color: libCategory === '__backgrounds__' ? '#fff' : 'var(--accent-primary)',
                   }}
                 >
-                  🌄 Backgrounds
+                  <EmojiIcon e="🌄" style={{ marginRight: '0.35em' }} />Backgrounds
                 </button>
               </div>
               <button
@@ -5686,10 +6740,10 @@ loadImages(function(){
               >
                 ›
               </button>
-            </div>
+            </div>}
             {libCategory === '__backgrounds__' ? (
               <div className="backdrop-library-grid">
-                {STAGE_BACKDROPS.map(bg => (
+                {[...STAGE_BACKDROPS, ...customBackgrounds.map((bg) => ({ ...bg, image: bg.dataUrl, thumb: bg.dataUrl, isCustom: true }))].map(bg => (
                   <button key={bg.name} onClick={() => { pickBackdrop(bg.name); setShowLibrary(false); }}
                     style={{
                       padding: 8, borderRadius: 10, border: background === bg.name ? '2px solid var(--accent-primary)' : '1px solid var(--border-color)',
@@ -5701,12 +6755,12 @@ loadImages(function(){
                     onMouseLeave={(e) => { e.currentTarget.style.borderColor = background === bg.name ? 'var(--accent-primary)' : 'var(--border-color)'; e.currentTarget.style.transform = 'scale(1)'; }}
                   >
                     {bg.image
-                      ? <img src={bg.thumb || bg.image} alt={bg.name} loading="lazy" style={{ width: '100%', height: 100, objectFit: 'cover', borderRadius: 6, display: 'block' }} />
-                      : <div style={{ width: '100%', height: 100, background: '#ffffff', borderRadius: 6, border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      ? <img src={bg.thumb || bg.image} alt={bg.name} loading="lazy" style={{ width: '100%', height: 128, flex: '0 0 128px', objectFit: 'cover', borderRadius: 6, display: 'block' }} />
+                      : <div style={{ width: '100%', height: 128, flex: '0 0 128px', background: '#ffffff', borderRadius: 6, border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           <span style={{ fontSize: 22 }}>⬜</span>
                         </div>
                     }
-                    <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-primary)', textAlign: 'center', lineHeight: 1.2 }}>{bg.name}</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', textAlign: 'center', lineHeight: 1.2 }}><IconText>{bg.isCustom ? '📷 ' : ''}</IconText>{bg.name}</span>
                   </button>
                 ))}
               </div>
@@ -5730,12 +6784,14 @@ loadImages(function(){
               </div>
             )}
             <div className="sprite-library-footer">
-              {libCategory !== '__backgrounds__' && (
+              {libCategory === '__backgrounds__' ? (
+                <button type="button" onClick={() => bgUploadRef.current?.click()} className="btn btn-secondary" style={{ padding: '8px 16px', fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}><EmojiIcon e="⬆" style={{ marginRight: '0.35em' }} />Upload a background</button>
+              ) : (
                 <>
                   <button type="button" onClick={() => spriteUploadRef.current?.click()}
                     className="btn btn-secondary"
                     style={{ padding: '8px 16px', fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}
-                  >⬆ Upload Your Own Sprite</button>
+                  ><EmojiIcon e="⬆" style={{ marginRight: '0.35em' }} />Upload Your Own Sprite</button>
                   <input ref={spriteUploadRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleSpriteUpload} />
                 </>
               )}
@@ -5757,7 +6813,7 @@ loadImages(function(){
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           onClick={(e) => { if (e.target === e.currentTarget) setShowSaveAsModal(false); }}>
           <div style={{ background: '#1e293b', borderRadius: 12, padding: 28, width: 360, boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }}>
-            <h3 style={{ margin: '0 0 16px', fontSize: 16, fontWeight: 700, color: '#f8fafc' }}>💾 Save Project As</h3>
+            <h3 style={{ margin: '0 0 16px', fontSize: 16, fontWeight: 700, color: '#f8fafc' }}><EmojiIcon e="💾" style={{ marginRight: '0.35em' }} />Save Project As</h3>
             <input
               autoFocus
               type="text"
@@ -5775,13 +6831,72 @@ loadImages(function(){
         </div>
       )}
 
+      {teacherShare && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.72)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+          onClick={(e) => { if (e.target === e.currentTarget && !teacherShareBusy) setTeacherShare(null); }}>
+          <div role="dialog" aria-modal="true" aria-labelledby="gb-teacher-share-title" style={{ background: '#1e293b', border: '1px solid #3b4268', borderRadius: 16, padding: 24, width: 'min(480px, 100%)', boxShadow: '0 20px 60px rgba(0,0,0,0.55)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <h3 id="gb-teacher-share-title" style={{ margin: 0, color: '#f8fafc', fontSize: 19 }}><EmojiIcon e="📤" style={{ marginRight: '0.35em' }} />Share your game with your teacher</h3>
+              <button type="button" aria-label="Close" onClick={() => setTeacherShare(null)} style={{ marginLeft: 'auto', background: 'transparent', border: 0, color: '#94a3b8', fontSize: 22, cursor: 'pointer' }}>×</button>
+            </div>
+            <p style={{ color: '#cbd5e1', fontSize: 13, lineHeight: 1.55, margin: '12px 0 18px' }}>
+              Send <strong>{currentProjectName || 'My game'}</strong> to your teacher as a class hand-in. Your sprites, backdrop, and levels will be included.
+            </p>
+            {teacherShare.loading ? (
+              <div style={{ color: '#cbd5e1', padding: '14px 0' }}>Looking for your class work…</div>
+            ) : teacherShareDone ? (
+              <div style={{ background: '#064e3b', color: '#a7f3d0', borderRadius: 10, padding: 16, lineHeight: 1.5 }}>
+                <EmojiIcon e="✅" style={{ marginRight: '0.35em' }} />Game sent! Your teacher can see it in the class hand-ins.
+              </div>
+            ) : teacherShare.options.length ? (
+              <>
+                <label htmlFor="gb-teacher-share-assignment" style={{ display: 'block', color: '#e2e8f0', fontSize: 13, fontWeight: 700, marginBottom: 7 }}>Choose a Game Builder assignment</label>
+                <select id="gb-teacher-share-assignment" value={teacherShareTarget} onChange={(e) => setTeacherShareTarget(e.target.value)}
+                  style={{ width: '100%', boxSizing: 'border-box', padding: '11px 12px', color: '#f8fafc', background: '#0f172a', border: '1px solid #475569', borderRadius: 9, fontSize: 14 }}>
+                  <option value="">Select an assignment…</option>
+                  {teacherShare.options.map(({ classId, className, assignment }) => (
+                    <option key={`${classId}::${assignment.id}`} value={`${classId}::${assignment.id}`}>{className} — {assignment.title || 'Game Builder project'}</option>
+                  ))}
+                </select>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 18 }}>
+                  {teacherShare.error && <span role="alert" style={{ color: '#fca5a5', fontSize: 12, flex: 1 }}>{teacherShare.error}</span>}
+                  <button type="button" onClick={() => setTeacherShare(null)} style={{ marginLeft: 'auto', padding: '9px 14px', borderRadius: 8, border: '1px solid #475569', color: '#cbd5e1', background: 'transparent', cursor: 'pointer' }}>Cancel</button>
+                  <button type="button" onClick={sendProjectToTeacher} disabled={!teacherShareTarget || teacherShareBusy}
+                    style={{ padding: '9px 16px', borderRadius: 8, border: 0, color: '#fff', background: teacherShareTarget && !teacherShareBusy ? '#0f766e' : '#475569', fontWeight: 700, cursor: teacherShareTarget && !teacherShareBusy ? 'pointer' : 'default' }}>
+                    {teacherShareBusy ? 'Sending…' : 'Send game'}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div style={{ background: '#312e48', color: '#e2e8f0', borderRadius: 10, padding: 16, lineHeight: 1.55, fontSize: 13 }}>
+                {teacherShare.error || (user?.classroomId || user?.email
+                  ? 'There are no Game Builder assignments in your class yet. Ask your teacher to set a Game Builder activity, then you can send your project here.'
+                  : 'Join your teacher’s class or sign in first. Once your teacher sets a Game Builder activity, it will appear here.')}
+                <button type="button" onClick={() => { setTeacherShare(null); window.location.hash = 'classroom'; }} style={{ display: 'block', marginTop: 12, padding: '8px 12px', border: 0, borderRadius: 8, background: '#4f46e5', color: '#fff', fontWeight: 700, cursor: 'pointer' }}>Open Classroom</button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {showShareProject && shareProjectSnapshot && (
+        <ShareProjectModal
+          project={shareProjectSnapshot}
+          initialTitle={shareProjectSnapshot.name}
+          onClose={() => setShowShareProject(false)}
+        />
+      )}
+
+      {showGameModes && (
+        <GameModesGallery onPick={(m) => loadGameMode(m, 0)} onClose={() => setShowGameModes(false)} />
+      )}
       {/* My Projects Modal */}
       {showProjectsModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           onClick={(e) => { if (e.target === e.currentTarget) setShowProjectsModal(false); }}>
           <div style={{ background: '#1e293b', borderRadius: 12, padding: 28, width: 480, maxHeight: '70vh', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }}>
             <div style={{ display: 'flex', alignItems: 'center', marginBottom: 16 }}>
-              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#f8fafc' }}>📂 My Projects</h3>
+              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#f8fafc' }}><EmojiIcon e="📂" style={{ marginRight: '0.35em' }} />My Projects</h3>
               <button onClick={() => setShowProjectsModal(false)} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#94a3b8', fontSize: 20, cursor: 'pointer', lineHeight: 1 }}>✕</button>
             </div>
             {savedProjects.length === 0 ? (

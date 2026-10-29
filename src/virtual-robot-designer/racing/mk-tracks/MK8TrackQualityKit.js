@@ -1,3 +1,4 @@
+import { cachedNodes, cachedChild } from './AnimNodeCache.js';
 /**
  * MK8TrackQualityKit.js — Mario Kart 8–grade shared track dressing & hero props.
  * Reference fidelity: chunky moss curbs, twin gold lanes, glowing landmarks, particle life.
@@ -6,6 +7,7 @@ import * as THREE from 'three';
 import { placeAtTrack } from '../GameWorldBuilder.js';
 import { pbrMat } from './BiomeAAAKit.js';
 import { getTrackStandard } from './CodeRacerTrackStandards.js';
+import { isCosmicSkywayArena, getCosmicTheme } from './CosmicSkywayRegistry.js';
 import { buildSurfShack, buildMiningCartProp, buildTransitBreakRoom } from './TrackStoryKit.js';
 import { buildResearchHut } from './VolcanoHeroKit.js';
 import { buildHoloBillboard } from './CyberCityHeroKit.js';
@@ -475,8 +477,8 @@ const BIOME_DRESSING = {
     twinGold: false, dashed: true, curbHeight: 0.62, emi: 0.45, slab: 0x2f2f2f, slabAccent: 0x4a3020,
   },
   star_station_01: {
-    moss: 0x1a0840, lip: 0xaa44ff, flower: 0xaa44ff, lane: 0x00ffff, edge: 0xaa44ff,
-    twinGold: false, dashed: false, emi: 0.48, slab: 0x1a0840, slabAccent: 0x2a1050,
+    moss: 0x14161e, lip: 0xff9a2e, flower: 0x33e6ff, lane: 0xff9a2e, edge: 0x33e6ff,
+    twinGold: false, dashed: false, emi: 0.6, slab: 0x1c1e28, slabAccent: 0x262a36,
   },
   fairy_glen_01: {
     moss: 0x8fd456, lip: 0xff69b4, flower: 0xffd700, lane: 0xff69b4, edge: 0x7cb342,
@@ -490,7 +492,10 @@ const BIOME_DRESSING = {
 
 /** MK8 play-layer dressing — lane markings + edge glow; kerbs from MarioKartTrackBuilder only on cup tracks. */
 export function installMK8PlayDressing(world, curve, hw, arenaType, opts = {}) {
-  const cfg = BIOME_DRESSING[arenaType];
+  const cosmicTheme = isCosmicSkywayArena(arenaType) ? getCosmicTheme(arenaType) : null;
+  const cfg = cosmicTheme
+    ? { ...BIOME_DRESSING.star_station_01, lane: cosmicTheme.lane, lip: cosmicTheme.right, edge: cosmicTheme.left, flower: cosmicTheme.left }
+    : BIOME_DRESSING[arenaType];
   if (!cfg) return;
   const tier = opts.qualityTier || 'medium';
   const cupIds = new Set([
@@ -498,7 +503,7 @@ export function installMK8PlayDressing(world, curve, hw, arenaType, opts = {}) {
     'jungle_ruins_01', 'frost_peak_01', 'lava_foundry_01', 'star_station_01',
     'fairy_glen_01', 'thunder_ridge_01',
   ]);
-  const isCup = cupIds.has(arenaType);
+  const isCup = cupIds.has(arenaType) || isCosmicSkywayArena(arenaType);
   // Cup tracks: skip heavy moss slabs — keep lane guides + edge glow for MK8 road read.
   if (isCup) {
     const steps = tier === 'high' ? 30 : tier === 'medium' ? 24 : 18;
@@ -958,8 +963,9 @@ export function installMK8HeroLandmarks(world, curve, hw, bounds, arenaType, fin
   world.add(plaque);
 }
 
+const isMK8Anim = (o) => !!(o.userData?.blade || o.userData?.spin || o.userData?.petal || o.userData?.mist);
 export function animateMK8Quality(world, time) {
-  world.traverse((o) => {
+  cachedNodes(world, 'mk8', isMK8Anim).forEach((o) => {
     if (o.userData?.blade) o.rotation.y += 0.025;
     if (o.userData?.spin) {
       o.children.forEach((c) => { if (c.userData?.blade) c.rotation.y += 0.03; });

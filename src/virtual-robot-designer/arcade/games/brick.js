@@ -2,6 +2,7 @@
  * Brick Bot — Breakout! Code the paddle robot to keep the ball bouncing and
  * smash every brick. Teaches sensors and fast If/Else loops.
  */
+import { createArcadeExpansion } from '../expanded-levels.js';
 
 export const BW = 640, BH = 480;
 const PADDLE_Y = 440, PADDLE_H = 16, BALL_R = 8;
@@ -57,6 +58,7 @@ const LEVELS = [
     bricks: () => layout(['MMMMMMMMMM', '#*##SS##*#', '##########', '#M##*###M#']), slide: [0], paddle: 86, speed: 300, serve: -30,
     palette: ['serve', 'move_left', 'move_right', 'forever', 'if', 'else', 'repeat_until', 'wait'] },
 ];
+LEVELS.push(...createArcadeExpansion({ id: 'brickbot', title: 'Brick Bot', emoji: '🧱', color: '#f97316', levels: LEVELS }));
 
 function resetBall(w) {
   w.ball = { x: w.paddle.x, y: PADDLE_Y - BALL_R - 1, vx: 0, vy: 0, live: false };

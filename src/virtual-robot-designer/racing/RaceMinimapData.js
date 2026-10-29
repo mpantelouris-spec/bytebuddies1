@@ -190,6 +190,8 @@ const COURSE_ZONE_RACING = {
 
 /** Resolve minimap data from stats payload or build from course config (cached). */
 export function resolveRaceMinimap(challenge, fromStats) {
+  // Rover races 11–50 on a new road: draw the road actually built, not the world's original
+  if (challenge?.expandedCarTrack?.customRoad && fromStats?.points?.length) return fromStats;
   const arenaType = challenge?.arenaType;
   const cacheKey = (arenaType && BIOME_ARENA_TYPES.has(arenaType))
     ? arenaType

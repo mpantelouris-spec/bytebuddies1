@@ -1,0 +1,15 @@
+This is ByteBuddies. [[slnc 250]] The whole computing platform, in the browser.
+[[slnc 400]]
+One hundred and fifty-two lessons for Years 3 to 6, mapped to the National Curriculum.
+[[slnc 400]]
+Pupils build games with blocks, costumes and sounds, the way they would in Scratch, only made for class.
+[[slnc 400]]
+They design robots in 3D, then drive them in a simulator. No kits to buy.
+[[slnc 350]]
+When they are ready, they switch to Python in the same place.
+[[slnc 350]]
+Missions, challenges and a teacher classroom sit on top, so you can set work and see who needs help.
+[[slnc 350]]
+Google Classroom ready. Free school pilots for 2026 and 2027.
+[[slnc 400]]
+ByteBuddies. See the whole site at bytebuddies.technology.

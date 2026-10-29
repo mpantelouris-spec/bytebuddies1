@@ -6,6 +6,7 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { EmojiIcon } from '../../components/ui/Icon.jsx';
 
 const CATEGORIES = [
   {
@@ -142,7 +143,7 @@ function PartTile({ item, isEquipped, onClick }) {
       whileTap={{ scale: 0.96 }}
       title={item.label}
     >
-      <span className="holo-part-icon">{item.icon}</span>
+      <span className="holo-part-icon"><EmojiIcon e={item.icon} /></span>
       <span className="holo-part-name">{item.label}</span>
     </motion.button>
   );
@@ -176,9 +177,9 @@ function CategoryRow({
         onClick={onToggle}
         title={cat.desc}
       >
-        <span className="holo-cat-icon">{cat.icon}</span>
+        <span className="holo-cat-icon"><EmojiIcon e={cat.icon} /></span>
         <span className="holo-cat-label">{cat.label}</span>
-        <span className="holo-cat-arrow">▶</span>
+        <span className="holo-cat-arrow"><EmojiIcon e="▶" /></span>
       </button>
 
       <AnimatePresence>
@@ -198,13 +199,13 @@ function CategoryRow({
                     className={`holo-mode-toggle${buildMode === 'advanced' ? ' active' : ''}`}
                     onClick={() => onBuildModeChange('advanced')}
                   >
-                    🤖 Advanced
+                    <EmojiIcon e="🤖" style={{ marginRight: '0.35em' }} />Advanced
                   </button>
                   <button
                     className={`holo-mode-toggle${buildMode === 'blocks' ? ' active' : ''}`}
                     onClick={() => onBuildModeChange('blocks')}
                   >
-                    🧱 LEGO
+                    <EmojiIcon e="🧱" style={{ marginRight: '0.35em' }} />LEGO
                   </button>
                 </div>
                 <div style={{ padding: '8px 0 0', fontSize: 9, letterSpacing: '1px', color: 'rgba(100,180,255,0.6)', textTransform: 'uppercase', textAlign: 'center' }}>

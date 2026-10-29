@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { EmojiIcon } from '../../components/ui/Icon.jsx';
 
 const BUILD_MODES = [
   {
@@ -73,10 +74,10 @@ export default function WelcomeScreen({ onStart }) {
               {m.id === 'blocks' ? (
                 <span className="vrd-lego-preview"><span /><span /><span /><span /></span>
               ) : (
-                <span className="vrd-real-preview">⚙️</span>
+                <span className="vrd-real-preview"><EmojiIcon e="⚙️" /></span>
               )}
             </span>
-            <span className="vrd-welcome-mode-icon">{m.icon}</span>
+            <span className="vrd-welcome-mode-icon"><EmojiIcon e={m.icon} /></span>
             <strong>{m.label}</strong>
             <em>{m.tagline}</em>
             <span className="vrd-welcome-style-desc">{m.desc}</span>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import LabBuddy from './LabBuddy.jsx';
 import { runProgram, judgeRun, starsFor, blockCount } from './labEngine.js';
+import { EmojiIcon, IconText } from '../../ui/Icon.jsx';
 
 const BLOCKS = {
   forward:    { cat: 'Move',    label: 'Move forward', icon: '⬆️', color: '#4c6ef5', num: [1, 9] },
@@ -79,7 +80,7 @@ function ScriptBlock({ b, depth, active, selected, disabled, onSelect, onParam, 
           transform: active ? 'scale(1.03)' : 'none', transition: 'transform 0.12s, box-shadow 0.12s',
           cursor: 'pointer', userSelect: 'none', fontWeight: 800, fontSize: 14,
         }}>
-        <span aria-hidden style={{ fontSize: 16 }}>{def.icon}</span>
+        <span aria-hidden style={{ fontSize: 16 }}><EmojiIcon e={def.icon} /></span>
         <span>{def.label}</span>
         {def.num && (
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, background: 'rgba(255,255,255,0.22)', borderRadius: 999, padding: 2 }}>
@@ -253,7 +254,7 @@ export default function BlockCodingLab({ config, color = '#14b8a6', storageKey =
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, minWidth: 0 }}>
       {mission.predict && (
         <div style={{ ...banner, background: '#fff9db', borderColor: '#fcc419', color: '#7a5b00' }}>
-          {predictResult === true && '🎯 Your prediction was spot on!'}
+          <IconText>{predictResult === true && '🎯 Your prediction was spot on!'}</IconText>
           {predictResult === false && '🤔 Dot stopped somewhere else — that’s why we test our predictions!'}
           {predictResult == null && (prediction ? '🤔 Prediction saved. Now press ▶ Go to test it.' : '🤔 Predict first: tap the square where you think Dot will stop.')}
         </div>
@@ -283,12 +284,12 @@ export default function BlockCodingLab({ config, color = '#14b8a6', storageKey =
                 display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: cell * 0.5,
                 cursor: mission.predict ? 'pointer' : 'default',
               }}>
-              {walls.has(key) && <span aria-label="wall">🧱</span>}
+              {walls.has(key) && <span aria-label="wall"><EmojiIcon e="🧱" /></span>}
               {trail.has(key) && !walls.has(key) && <span style={{ position: 'absolute', width: 8, height: 8, borderRadius: 4, background: `${color}aa` }} />}
               {isStar && <span aria-label="star" style={{ filter: 'drop-shadow(0 2px 2px rgba(0,0,0,0.3))' }}>⭐</span>}
-              {isHouse && <span aria-label="house">🏠</span>}
-              {isParcel && <span aria-label="parcel">📦</span>}
-              {gem && <span aria-label="gem">💎</span>}
+              {isHouse && <span aria-label="house"><EmojiIcon e="🏠" /></span>}
+              {isParcel && <span aria-label="parcel"><EmojiIcon e="📦" /></span>}
+              {gem && <span aria-label="gem"><EmojiIcon e="💎" /></span>}
               {cp != null && (
                 <span aria-label={`flag ${cp + 1}`} style={{ position: 'relative' }}>
                   🚩<b style={{ position: 'absolute', right: -6, bottom: -4, fontSize: cell * 0.24, background: frame.cpNext > cp ? '#2f9e44' : '#fff', color: frame.cpNext > cp ? '#fff' : '#1e293b', borderRadius: 8, padding: '0 4px' }}>{cp + 1}</b>
@@ -307,7 +308,7 @@ export default function BlockCodingLab({ config, color = '#14b8a6', storageKey =
           animation: frame.bump ? 'bb-lab-shake 0.4s' : undefined,
         }}>
           <LabBuddy size={cell * 1.08} mood={verdict?.ok ? 'happy' : undefined} />
-          {frame.carrying && <span style={{ position: 'absolute', top: -2, right: 2, fontSize: cell * 0.3 }}>📦</span>}
+          {frame.carrying && <span style={{ position: 'absolute', top: -2, right: 2, fontSize: cell * 0.3 }}><EmojiIcon e="📦" /></span>}
           <span aria-hidden style={{
             position: 'absolute', left: '50%', top: '50%', width: cell, height: cell, marginLeft: -cell / 2, marginTop: -cell / 2,
             transform: `rotate(${-dir}deg)`, transition: `transform ${SPEED[speed] * 0.6}ms`,
@@ -327,14 +328,14 @@ export default function BlockCodingLab({ config, color = '#14b8a6', storageKey =
           ? { background: '#ebfbee', borderColor: '#40c057', color: '#2b8a3e' }
           : { background: '#fff4e6', borderColor: '#ff922b', color: '#a63e00' }) }}>
           <div style={{ fontWeight: 900, fontSize: 16 }}>
-            {verdict.ok ? `🎉 ${verdict.message}` : verdict.message}
+            <IconText>{verdict.ok ? `🎉 ${verdict.message}` : verdict.message}</IconText>
           </div>
           {verdict.ok ? (
             <div style={{ marginTop: 4 }}>
               <span style={{ fontSize: 22, letterSpacing: 2 }}>{'⭐'.repeat(stars)}<span style={{ opacity: 0.25 }}>{'⭐'.repeat(3 - stars)}</span></span>
               {stars < 3 && <div style={{ fontSize: 13, marginTop: 2 }}>{sawSolution ? 'Now try building it yourself for more stars!' : 'Can you do it with fewer blocks or hints for 3 stars?'}</div>}
             </div>
-          ) : <div style={{ fontSize: 13, marginTop: 2 }}>💡 {verdict.tip}</div>}
+          ) : <div style={{ fontSize: 13, marginTop: 2 }}><EmojiIcon e="💡" style={{ marginRight: '0.35em' }} />{verdict.tip}</div>}
         </div>
       )}
     </div>
@@ -359,7 +360,7 @@ export default function BlockCodingLab({ config, color = '#14b8a6', storageKey =
                   background: BLOCKS[id].color, color: '#fff', fontWeight: 800, fontSize: 14, cursor: busy ? 'not-allowed' : 'pointer',
                   boxShadow: 'inset 0 -3px 0 rgba(0,0,0,0.18)', textAlign: 'left', fontFamily: 'inherit',
                 }}>
-                <span aria-hidden>{BLOCKS[id].icon}</span>{BLOCKS[id].label}
+                <span aria-hidden><EmojiIcon e={BLOCKS[id].icon} /></span>{BLOCKS[id].label}
               </button>
             ))}
           </div>
@@ -383,7 +384,7 @@ export default function BlockCodingLab({ config, color = '#14b8a6', storageKey =
         <div onClick={() => setCursor(0)} style={{
           alignSelf: 'flex-start', background: '#2f9e44', color: '#fff', fontWeight: 900, fontSize: 14, padding: '10px 14px',
           borderRadius: '18px 18px 10px 10px', boxShadow: 'inset 0 -3px 0 rgba(0,0,0,0.18)', cursor: 'pointer',
-        }}>🏁 When ▶ Go is pressed</div>
+        }}><EmojiIcon e="🏁" style={{ marginRight: '0.35em' }} />When ▶ Go is pressed</div>
         {blocks.map((b, i) => (
           <React.Fragment key={b.uid}>
             {cursor === i && !busy && <Caret depth={b.id === 'end_repeat' ? dep[i] + 1 : dep[i]} />}
@@ -421,13 +422,13 @@ export default function BlockCodingLab({ config, color = '#14b8a6', storageKey =
           <button type="button" onClick={run} disabled={busy || !blocks.length || needPredict}
             title={needPredict ? 'Make a prediction first' : 'Run the program'}
             style={{ ...ctl, background: '#2f9e44', color: '#fff', fontSize: 16, padding: '0 22px', opacity: busy || !blocks.length || needPredict ? 0.55 : 1 }}>
-            ▶ Go
+            <EmojiIcon e="▶" style={{ marginRight: '0.35em' }} />Go
           </button>
           <button type="button" onClick={resetDot} disabled={busy} style={ctl}>↺ Reset Dot</button>
           <select aria-label="speed" value={speed} onChange={(e) => setSpeed(e.target.value)} style={{ ...ctl, paddingRight: 8 }}>
-            <option value="slow">🐢 Slow</option>
-            <option value="normal">🙂 Normal</option>
-            <option value="fast">🐇 Fast</option>
+            <option value="slow">Slow</option>
+            <option value="normal">Normal</option>
+            <option value="fast">Fast</option>
           </select>
         </div>
       </div>
@@ -449,10 +450,10 @@ export default function BlockCodingLab({ config, color = '#14b8a6', storageKey =
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 14, paddingTop: 12, borderTop: '1px solid #e9ecef' }}>
         <button type="button" disabled={hintLevel >= hints.length} onClick={() => setHintLevel((h) => Math.min(hints.length, h + 1))}
           style={{ ...ctl, background: '#fff9db', borderColor: '#fcc419', color: '#7a5b00', opacity: hintLevel >= hints.length ? 0.5 : 1 }}>
-          💡 Hint {hintLevel > 0 ? `${hintLevel}/${hints.length}` : ''}
+          <EmojiIcon e="💡" style={{ marginRight: '0.35em' }} />Hint {hintLevel > 0 ? `${hintLevel}/${hints.length}` : ''}
         </button>
-        <button type="button" onClick={clearAll} disabled={busy} style={ctl}>🗑 Start again</button>
-        <button type="button" onClick={showSolution} disabled={busy} style={{ ...ctl, color: '#5f3dc4' }}>👀 Show a solution</button>
+        <button type="button" onClick={clearAll} disabled={busy} style={ctl}><EmojiIcon e="🗑" style={{ marginRight: '0.35em' }} />Start again</button>
+        <button type="button" onClick={showSolution} disabled={busy} style={{ ...ctl, color: '#5f3dc4' }}><EmojiIcon e="👀" style={{ marginRight: '0.35em' }} />Show a solution</button>
         {stars > 0 && <span style={{ marginLeft: 'auto', fontWeight: 800 }}>Best: {'⭐'.repeat(stars)}</span>}
       </div>
       {hintLevel > 0 && (

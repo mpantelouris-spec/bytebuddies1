@@ -18,27 +18,48 @@ export const RAINBOW_LAUNCH_ZONE = {
   heading: Math.PI,
 };
 
+/**
+ * Grand prix layout: a long launch straight, two hairpin pockets, a fast back
+ * straight and a looping final hairpin back onto the start line.
+ */
 export function buildProfessionalCircuitWaypoints() {
   const y = TRACK_Y;
   return [
-    { x: 0, y, z: 72 },   // finishT=0 — start/finish line
-    { x: 0, y, z: 55 },
-    { x: 0, y, z: 38 },
-    { x: 0, y, z: 21 },
-    { x: 0, y, z: 4 },
-    { x: 0, y, z: -13 },
-    { x: 0, y, z: -30 },
-    { x: 0, y, z: -47 },
-    { x: 22, y, z: -64 },
-    { x: 48, y, z: -58 },
-    { x: 58, y, z: -32 },
-    { x: 48, y, z: -4 },
-    { x: 22, y, z: 24 },
-    { x: 0, y, z: 48 },
-    { x: 0, y, z: 62 },
-    { x: 0, y, z: 79 },   // grid back straight
-    { x: 0, y, z: 75 },   // spawn row
-    { x: 0, y, z: 72 },   // close loop at start line
+    { x: 0, y, z: 72 },   // start/finish line (finishT=0)
+    { x: 0, y, z: 30 },
+    { x: 0, y, z: -10 },
+    { x: 0, y, z: -47 },   // end of the launch straight
+    { x: 3, y, z: -62 },   // turn 1
+    { x: 12, y, z: -72 },
+    { x: 22, y, z: -70 },
+    { x: 28, y, z: -58 },
+    { x: 31, y, z: -47 },   // first hairpin pocket
+    { x: 35, y, z: -38 },
+    { x: 42, y, z: -35 },
+    { x: 49, y, z: -39 },
+    { x: 52, y, z: -50 },
+    { x: 55, y, z: -66 },
+    { x: 61, y, z: -76 },
+    { x: 70, y, z: -75 },
+    { x: 74, y, z: -62 },   // back straight
+    { x: 74, y, z: -40 },
+    { x: 74, y, z: -4 },
+    { x: 74, y, z: 30 },
+    { x: 72, y, z: 48 },
+    { x: 64, y, z: 60 },   // second hairpin pocket
+    { x: 55, y, z: 58 },
+    { x: 51, y, z: 47 },
+    { x: 48, y, z: 35 },
+    { x: 44, y, z: 26 },
+    { x: 37, y, z: 22 },
+    { x: 31, y, z: 26 },
+    { x: 29, y, z: 38 },
+    { x: 30, y, z: 56 },   // run home
+    { x: 29, y, z: 76 },
+    { x: 24, y, z: 92 },   // final hairpin onto the start straight
+    { x: 12, y, z: 99 },
+    { x: 3, y, z: 93 },
+    { x: 0, y, z: 82 },
   ];
 }
 

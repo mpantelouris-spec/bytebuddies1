@@ -7,6 +7,7 @@ import {
   activateShield, activateMagnet, updateMagnetTimer, collectStar, recordPowerup,
 } from './RacingPhysics.js';
 import { closestTrackT } from './RacingTrackSystem.js';
+import { resolveRaceCollisions, wouldHitRaceSolid, recordRaceHit, senseRaceAhead } from './KartRivalsKit.js';
 import { sampleTrackFrame } from './GameWorldBuilder.js';
 import { isOnLaunchStrip, RAINBOW_LAUNCH_ZONE } from './ProfessionalRainbowTrack.js';
 
@@ -37,15 +38,18 @@ export function getRoadDeckOffset(scene) {
 
 const _rayOrigin = new THREE.Vector3();
 const _rayDir = new THREE.Vector3(0, -1, 0);
+const _roadRay = new THREE.Raycaster();
 
 /** Raycast the built road mesh — most reliable surface height at (x, z). */
 export function raycastRoadSurfaceY(scene, x, z, fallbackY = FLAT_ROAD_SURFACE_Y) {
   const mesh = scene?.userData?.raceRoadMesh;
   if (!mesh || x == null || z == null) return fallbackY;
-  scene.updateMatrixWorld?.(true);
+  // Only the road's own matrices matter here; refreshing the whole scene every
+  // frame cost ~20% of a frame on slow laptops.
+  mesh.updateWorldMatrix?.(true, true);
   _rayOrigin.set(x, 120, z);
-  const raycaster = new THREE.Raycaster(_rayOrigin, _rayDir);
-  const hits = raycaster.intersectObject(mesh, true);
+  _roadRay.set(_rayOrigin, _rayDir);
+  const hits = _roadRay.intersectObject(mesh, true);
   if (hits.length > 0) {
     // Never snap below the analytic deck — stray hits / coplanar geometry cause sinking.
     return Math.max(fallbackY - 0.02, hits[0].point.y);
@@ -181,6 +185,15 @@ export function getRaceSensors(rs = {}) {
     currentLap: rs.raceLap ?? 1,
     wrongWay: !!rs.raceWrongWay,
     falling: !!rs.raceFalling,
+    carAhead: !!rs.raceCarAhead,
+    objectAhead: !!rs.raceObjectAhead,
+    leftLaneClear: !!rs.raceLeftLaneClear,
+    rightLaneClear: !!rs.raceRightLaneClear,
+    myLane: rs._raceLaneTarget ?? 0,
+    distanceAhead: rs.raceDistanceAhead ?? 99,
+    collisions: rs.collisions ?? 0,
+    carHits: rs.raceCarHits ?? 0,
+    objectHits: rs.raceObjectHits ?? 0,
   };
 }
 
@@ -350,10 +363,54 @@ export function advanceAlongRaceTrack(rs, dt, scene, fwdSpd) {
   } else {
     newT = ((newT % 1) + 1) % 1;
   }
-  const pt = curve.getPointAt(newT);
+  const centerPt = curve.getPointAt(newT);
   const eps = 0.004;
   const pA = curve.getPointAt((newT - eps + 1) % 1);
   const pB = curve.getPointAt((newT + eps) % 1);
+  const tanX = pB.x - pA.x;
+  const tanZ = pB.z - pA.z;
+  const tanLen = Math.hypot(tanX, tanZ) || 1;
+  const sideX = -tanZ / tanLen;
+  const sideZ = tanX / tanLen;
+
+  // Lanes: when the pupil's code picks a lane ("Change lane left/right"), the kart goes there and
+  // nowhere else, so dodging is their job. Otherwise it swerves into a free lane around rival
+  // karts and bumpers by itself, and stops only if every lane is blocked.
+  let lane = rs._raceLane ?? 0;
+  const step = raceLaneStep(scene);
+  if (rs._raceLaneTarget != null) {
+    const target = Math.max(-1, Math.min(1, rs._raceLaneTarget)) * step;
+    lane += Math.max(-dt * 10, Math.min(dt * 10, target - lane));
+    rs._raceLane = lane;
+  } else if (scene.userData.kartRivals && (rs._raceStuckT ?? 0) > 1.6) {
+    // No dodging code: the kart bumps into things and only slides round once it's been stuck
+    // for a moment (so the race never stalls, but coding the lane change is much faster)
+    const probes = [0, 2.5, 5, 8].map((d) => {
+      const t = isOpen ? Math.min(1, newT + d / curveLen) : (newT + d / curveLen) % 1;
+      return curve.getPointAt(t);
+    });
+    const offsets = step > 0 ? [0, step, -step] : [0];
+    const free = offsets.find((o) => probes.every((p) => !wouldHitRaceSolid(scene, p.x + sideX * o, p.z + sideZ * o)));
+    const target = free ?? lane;
+    lane += Math.max(-dt * 7, Math.min(dt * 7, target - lane));
+    rs._raceLane = lane;
+  }
+  const pt = { x: centerPt.x + sideX * lane, y: centerPt.y, z: centerPt.z + sideZ * lane };
+
+  const blockedBy = scene.userData.kartRivals ? wouldHitRaceSolid(scene, pt.x, pt.z) : null;
+  if (blockedBy) {
+    // Count the bump once, not again every moment the kart is stuck behind it
+    if (!rs._raceBlocked && !(rs._raceHitCooldown > 0)) {
+      recordRaceHit(rs, blockedBy);
+      rs._raceHitCooldown = 1.5;
+    }
+    rs._raceBlocked = true;
+    rs._raceStuckT = (rs._raceStuckT ?? 0) + dt;
+    rs._raceSpeedEstimate = 0;
+    return true;
+  }
+  rs._raceBlocked = false;
+  rs._raceStuckT = Math.max(0, (rs._raceStuckT ?? 0) - dt * 0.5);
 
   rs.x = pt.x;
   rs.z = pt.z;
@@ -369,6 +426,13 @@ function fmtLapTime(sec) {
   const m = Math.floor(sec / 60);
   const s = sec % 60;
   return `${String(m).padStart(2, '0')}:${s.toFixed(1).padStart(4, '0')}`;
+}
+
+/** Sideways distance between the middle lane and the left or right lane. */
+export function raceLaneStep(scene) {
+  if (scene?.userData?.raceLaneStep != null) return scene.userData.raceLaneStep;
+  const maxLane = Math.max(0, (scene?.userData?.racingConfig?.trackWidth ?? 8) / 2 - 1.6);
+  return Math.min(2.4, maxLane);
 }
 
 /**
@@ -409,6 +473,7 @@ export function createRaceMover(config) {
     flatStraightTrack = null,
     useLateralFall = false,
     difficulty = 3,
+    strictTargetTime = null,
   } = config;
   const beginner = difficulty <= 2;
 
@@ -437,6 +502,7 @@ export function createRaceMover(config) {
   let lap = 1;
   let cpIndex = 0;
   let lapStartT = 0;
+  let raceStartT = 0; // when Run was pressed — race times never include coding time
   let lapTime = 0;
   let bestLap = null;
   let lastX = 0;
@@ -463,6 +529,8 @@ export function createRaceMover(config) {
     gateMeshes,
     padPositions,
     pickups,
+    /** Simulate/Restart: start the clock and the lap count again from the grid. */
+    restartRace() { _firstFrame = true; },
     update(time, dt, rs, scene) {
       if (env?.update) env.update(time, dt);
       if (onTrackTimeUpdate) onTrackTimeUpdate(time);
@@ -479,7 +547,8 @@ export function createRaceMover(config) {
 
       if (_firstFrame) {
         _firstFrame = false;
-        lap = 1; cpIndex = 0; lapStartT = time; lapTime = 0; bestLap = null;
+        lap = 1; cpIndex = 0; lapStartT = time; raceStartT = time; lapTime = 0; bestLap = null;
+        rs.raceTotalTime = 0; rs.raceLapTime = 0;
         missedCheckpoint = false; finishCooldown = 1.8; wrongWayTimer = 0;
         rs.x = spawn.x; rs.z = spawn.z;
         rs.angle = spawn.angle;
@@ -493,6 +562,24 @@ export function createRaceMover(config) {
       }
       // Auto-steer only when the student adds "Follow track" — never force it.
       if (rs.done) return;
+
+      // Lane change while driving freely: slide sideways a little each frame
+      if (rs._laneShiftLeft) {
+        const move = Math.sign(rs._laneShiftLeft) * Math.min(Math.abs(rs._laneShiftLeft), dt * 6);
+        rs._laneShiftLeft -= move;
+        rs.x += -Math.cos(rs.angle) * move;
+        rs.z += Math.sin(rs.angle) * move;
+      }
+
+      if (scene) {
+        resolveRaceCollisions(scene, rs, dt);
+        const ahead = senseRaceAhead(scene, rs, raceLaneStep(scene));
+        rs.raceCarAhead = ahead.carAhead;
+        rs.raceObjectAhead = ahead.objectAhead;
+        rs.raceLeftLaneClear = ahead.leftLaneClear;
+        rs.raceRightLaneClear = ahead.rightLaneClear;
+        rs.raceDistanceAhead = ahead.distanceAhead;
+      }
 
       // When Follow Track is driving along the spline (rail mode), trust the
       // param advanced by advanceAlongRaceTrack — re-searching closest x/z each
@@ -639,6 +726,26 @@ export function createRaceMover(config) {
         }
       }
 
+      // Boost pads and ramps on the road: a speed burst, and a ramp also makes the kart jump
+      scene?.userData?.raceObstacles?.forEach((o) => {
+        if (o.type !== 'boost' && o.type !== 'ramp') return;
+        const near = (rs.x - o.mesh.position.x) ** 2 + (rs.z - o.mesh.position.z) ** 2 < 1.9 * 1.9;
+        if (near && !o._touching) {
+          if (o.type === 'boost') {
+            rs.raceBoostPadsHit = (rs.raceBoostPadsHit || 0) + 1;
+            activateBoost(rs, { boostMul: 1.35 }, 0.9);
+            onBurst(rs.x, o.mesh.position.y + 0.3, rs.z, 0x20d9d1);
+          } else {
+            rs._hopT = 0.75;
+            activateBoost(rs, { boostMul: 1.15 }, 0.6);
+            onBurst(rs.x, o.mesh.position.y + 0.4, rs.z, 0xffd45c);
+          }
+        }
+        o._touching = near;
+      });
+      rs._hopT = Math.max(0, (rs._hopT || 0) - dt);
+      rs.raceHopY = rs._hopT > 0 ? Math.sin(Math.PI * (1 - rs._hopT / 0.75)) * 1.4 : 0;
+
       // Power-up pickups — speed/shield/magnet/star. Respawn each lap.
       for (const pk of pickups) {
         if (pk.collected) continue;
@@ -673,8 +780,14 @@ export function createRaceMover(config) {
           if (bestLap == null || lapTime < bestLap) bestLap = lapTime;
           if (lap >= totalLaps) {
             rs.done = true;
-            rs.raceWon = true;
-            onBurst(finishPos.x, 4, finishPos.z, 0xffd400);
+            if (strictTargetTime && time - raceStartT > strictTargetTime) {
+              // Tier races must beat the clock
+              rs.raceWon = false;
+              rs.raceFailReason = `So close! Finish in under ${Math.floor(strictTargetTime / 60)}:${String(Math.round(strictTargetTime % 60)).padStart(2, '0')} to win.`;
+            } else {
+              rs.raceWon = true;
+              onBurst(finishPos.x, 4, finishPos.z, 0xffd400);
+            }
           } else {
             lap++;
             cpIndex = 0;
@@ -714,6 +827,7 @@ export function createRaceMover(config) {
             rs._fallTimer = 0;
             onBurst(rs.x, rs.y + 0.4, rs.z, 0x44aaff);
           } else {
+            if (!rs.raceFalling) rs.raceFallCount = (rs.raceFallCount || 0) + 1;
             rs.raceFalling = true;
             rs._fallTimer = (rs._fallTimer ?? 0) + dt;
             // On 3D tracks, the Y-snap above keeps the vehicle surfaced for the
@@ -742,7 +856,7 @@ export function createRaceMover(config) {
       rs.raceCheckpoint = cpIndex;
       rs.raceCheckpointsTotal = gateMeshes.length;
       rs.raceMissedCheckpoint = missedCheckpoint;
-      rs.raceTotalTime = time;
+      rs.raceTotalTime = time - raceStartT;
       rs.raceLapTimeStr = fmtLapTime(lapTime);
       rs.raceBestLapStr = fmtLapTime(bestLap);
       // Rail mode: advanceAlongRaceTrack owns raceTrackT — don't overwrite it.

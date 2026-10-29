@@ -32,7 +32,7 @@ def js_str(s: str) -> str:
 
 
 def item_js(name: str, prefix: str, slug: str, color: str, v: int = 6) -> str:
-    path = f"/assets/characters/{prefix}/{prefix}_{slug}.png?v={v}"
+    path = f"/assets/characters/{prefix}/{prefix}_{slug}.png?o=1&v={v}"  # o=1: web-sized images
     svg_tpl = (
         f'<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">'
         f'<rect width="64" height="64" fill="{color}"/></svg>'

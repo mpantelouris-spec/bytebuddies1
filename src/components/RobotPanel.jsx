@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback, useImperativeHandle, forwardRef } from 'react';
-import ScratchStyleBlock, { getCategoryColor } from './ScratchStyleBlock';
+import ScratchStyleBlock from './ScratchStyleBlock';
 import UnifiedBlocklyWorkspace from './UnifiedBlocklyWorkspace';
 import { resolveBlocklyNodeType } from '../utils/blocks';
 import { BLOCK_STACK_GAP, columnizeBlocks } from '../utils/blockStack';
@@ -23,13 +23,15 @@ import {
 } from '@flash/index.js';
 import { flashMicrobitHex, requestMicrobitUsbEarly } from '@flash/flashMicrobit.js';
 import { formatSignalBars } from '@flash/microbitWebBle.js';
+import { connectQuarkyWireless } from '@flash/quarkyWebBle.js';
 import { validateHexStrict } from '@flash/hexValidationStrict.js';
 import MicrobitDualFlashPanel from './MicrobitDualFlashPanel.jsx';
 import {
-  ROBOT_COMMANDS, ROBOT_CATEGORY_COLORS, darkenHex, ROBOT_PROFILES, MICROBIT_KIT_SETUPS,
-  requestRobotSerialPort, QUARKY_HELPER_SCRIPT, MICROBIT_FALLBACKS, generateFullProgram, generateQuarkyProgram,
+  ROBOT_COMMANDS, darkenHex, ROBOT_PROFILES, ROBOT_BOARD_EXTENSIONS, getRobotCommandsForBoard, MICROBIT_KIT_SETUPS,
+  requestRobotSerialPort, QUARKY_HELPER_SCRIPT, MICROBIT_FALLBACKS, generateFullProgram, generateQuarkyProgram, generateQuarkyPictoBloxProgram,
 } from '../utils/robotProfiles.js';
 import { compileForRuntime, RUNTIME_KIT } from '../utils/runtimeCompiler.js';
+import { EmojiIcon, IconText } from './ui/Icon.jsx';
 
 async function _idbCache(key, fetchFn) {
   try {
@@ -1860,7 +1862,7 @@ const VirtualRobot = forwardRef(function VirtualRobot({ simRobotType, simTrack, 
       }}>
         {/* Headlights row — always visible */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span style={{ fontSize: 11, color: '#64748b', fontWeight: 700, width: 78 }}>💡 Headlights</span>
+          <span style={{ fontSize: 11, color: '#64748b', fontWeight: 700, width: 78 }}><EmojiIcon e="💡" style={{ marginRight: '0.35em' }} />Headlights</span>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             {['L','R'].map((side, i) => {
               const c = i === 0 ? out.headlightL : out.headlightR;
@@ -1885,7 +1887,7 @@ const VirtualRobot = forwardRef(function VirtualRobot({ simRobotType, simTrack, 
         {/* NeoPixel strip */}
         {out.neopixels.some(Boolean) && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 11, color: '#64748b', fontWeight: 700, width: 78 }}>🌈 NeoPixels</span>
+            <span style={{ fontSize: 11, color: '#64748b', fontWeight: 700, width: 78 }}><EmojiIcon e="🌈" style={{ marginRight: '0.35em' }} />NeoPixels</span>
             <div style={{ display: 'flex', gap: 4 }}>
               {out.neopixels.map((c, i) => {
                 const col = rgbStr(c) || '#1e293b';
@@ -1946,12 +1948,56 @@ const VirtualRobot = forwardRef(function VirtualRobot({ simRobotType, simTrack, 
 
 
 /* ─── Main RobotPanel component ─── */
+function BoardPicture({ board, style }) {
+  const common = { viewBox: '0 0 180 92', role: 'img', 'aria-label': `${ROBOT_PROFILES[board]?.name || board} board`, style };
+  if (board === 'microbit') return <svg {...common}>
+    <rect x="36" y="5" width="108" height="82" rx="13" fill="#087c72" stroke="#38d4bd" strokeWidth="3" />
+    <rect x="43" y="12" width="94" height="68" rx="8" fill="#10a58f" />
+    {Array.from({ length: 25 }, (_, i) => <circle key={i} cx={62 + (i % 5) * 14} cy={29 + Math.floor(i / 5) * 12} r="2.8" fill="#d7fff5" opacity={i % 3 ? .88 : .52} />)}
+    <circle cx="51" cy="67" r="7" fill="#e34463" stroke="#ff9dad" strokeWidth="2" /><circle cx="129" cy="67" r="7" fill="#e34463" stroke="#ff9dad" strokeWidth="2" />
+    <path d="M54 87v5m18-5v5m18-5v5m18-5v5m18-5v5" stroke="#d8dce7" strokeWidth="3" strokeLinecap="round" />
+  </svg>;
+  if (board === 'mbot') return <svg {...common}>
+    <rect x="34" y="30" width="112" height="47" rx="17" fill="#168ac0" stroke="#50c7f2" strokeWidth="3" />
+    <rect x="49" y="37" width="82" height="31" rx="11" fill="#27a8d8" />
+    <circle cx="42" cy="55" r="22" fill="#212b3b" stroke="#596579" strokeWidth="4" /><circle cx="138" cy="55" r="22" fill="#212b3b" stroke="#596579" strokeWidth="4" />
+    <circle cx="42" cy="55" r="8" fill="#8c9aad" /><circle cx="138" cy="55" r="8" fill="#8c9aad" />
+    <rect x="72" y="21" width="36" height="16" rx="5" fill="#1c2c41" stroke="#90a4ba" strokeWidth="2" />
+    <circle cx="80" cy="29" r="3" fill="#e7f3ff" /><circle cx="100" cy="29" r="3" fill="#e7f3ff" />
+    <rect x="82" y="46" width="16" height="12" rx="3" fill="#f6c94a" /><path d="M90 47v10m-6-5h12" stroke="#775615" strokeWidth="2" />
+    <path d="M55 76v8m70-8v8" stroke="#ffca55" strokeWidth="4" strokeLinecap="round" />
+  </svg>;
+  if (board === 'arduino') return <svg {...common}>
+    <path d="M40 12h91l12 12v51l-10 8H43l-8-9V23z" fill="#08759a" stroke="#43c9df" strokeWidth="3" />
+    <rect x="40" y="32" width="23" height="34" rx="3" fill="#c9d1dc" /><rect x="44" y="36" width="15" height="25" rx="2" fill="#667385" />
+    <rect x="75" y="28" width="35" height="29" rx="3" fill="#202a37" stroke="#748396" strokeWidth="2" />
+    <rect x="82" y="63" width="25" height="12" rx="2" fill="#263240" />
+    <circle cx="126" cy="65" r="5" fill="#e44a52" /><circle cx="68" cy="20" r="3" fill="#e8c456" />
+    {Array.from({ length: 8 }, (_, i) => <circle key={i} cx={72 + i * 8} cy="77" r="2" fill="#f4d36a" />)}
+    {Array.from({ length: 6 }, (_, i) => <circle key={i} cx="135" cy={28 + i * 7} r="2" fill="#f4d36a" />)}
+  </svg>;
+  return <svg {...common}>
+    <path d="M49 8h82l12 12v52l-11 11H48L37 72V20z" fill="#6946c4" stroke="#b2a0ff" strokeWidth="3" />
+    <path d="M51 15h78v60H51z" fill="#7958df" />
+    <rect x="68" y="26" width="42" height="31" rx="4" fill="#29243d" stroke="#b9a7ff" strokeWidth="2" />
+    {Array.from({ length: 15 }, (_, i) => <circle key={i} cx={76 + (i % 5) * 7} cy={34 + Math.floor(i / 5) * 7} r="1.7" fill={i % 4 === 0 ? '#ffd45c' : '#d9d3ff'} />)}
+    <rect x="57" y="26" width="6" height="22" rx="2" fill="#d8d3e9" /><rect x="116" y="27" width="7" height="21" rx="2" fill="#3b3158" />
+    <circle cx="59" cy="62" r="4" fill="#50dfbf" /><circle cx="121" cy="62" r="4" fill="#ffcd54" />
+    <rect x="78" y="65" width="27" height="6" rx="2" fill="#34275c" />
+    <path d="M48 82v7m15-7v7m15-7v7m15-7v7m15-7v7m15-7v7" stroke="#d8dce7" strokeWidth="3" strokeLinecap="round" />
+  </svg>;
+}
+
 export default function RobotPanel({ onNavigate }) {
   const [connected, setConnected] = useState(false);
   const [connectionKind, setConnectionKind] = useState(null); // 'usb' | 'bluetooth'
   const [connecting, setConnecting] = useState(false);
   const [portInfo, setPortInfo] = useState(null);
-  const [robotType, setRobotType] = useState('microbit');
+  const [robotType, setRobotType] = useState(() => {
+    const saved = localStorage.getItem('cv_robotlab_board');
+    return saved && ROBOT_PROFILES[saved] ? saved : 'microbit';
+  });
+  const [showBoardMenu, setShowBoardMenu] = useState(false);
   const [microbitKit, setMicrobitKit] = useState(() => localStorage.getItem('cv_mb_kit') || 'generic');
   /** WebUSB flashes a single-board hex; universal .hex is split using V1 vs V2 here. */
   const [microbitHw, setMicrobitHw] = useState(() => localStorage.getItem('cv_mb_hw') || 'v2');
@@ -1961,10 +2007,6 @@ export default function RobotPanel({ onNavigate }) {
   const [terminal, setTerminal] = useState([]);
   const [running, setRunning] = useState(false);
   const [showSetup, setShowSetup] = useState(false);
-  // Auto-open setup guide for robots that need initial configuration
-  React.useEffect(() => {
-    if (robotType === 'mbot' || robotType === 'arduino' || robotType === 'quarky') setShowSetup(true);
-  }, [robotType]);
   const [flashProgress, setFlashProgress] = useState(null); // null=idle, 0-100+=flashing, 'done'=complete
   const [rightTab, setRightTab] = useState('virtual');
   const [firmwareOk, setFirmwareOk] = useState(null); // null=unknown, true=microPython, false=makecode
@@ -2034,6 +2076,8 @@ export default function RobotPanel({ onNavigate }) {
   const bleBufferRef    = useRef('');
 
   const profile = ROBOT_PROFILES[robotType];
+  const boardExtension = ROBOT_BOARD_EXTENSIONS[robotType];
+  const boardCommands = getRobotCommandsForBoard(robotType);
   // The exact sketch users download, so the preview can never drift from it
   const [sketchSource, setSketchSource] = useState('');
   useEffect(() => {
@@ -2086,7 +2130,7 @@ export default function RobotPanel({ onNavigate }) {
     setFirmwareOk(true);
     firmwareOkRef.current = true;
     const want = RUNTIME_KIT[microbitKit];
-    if (want === null) addTerminal('⚠️ This robot kit isn’t in the runtime yet — it will use Generic motor pins. Pick Cutebot, Maqueen, Bit:Bot, Move or Ring:bit, or use MicroPython.', 'warn');
+    if (want === null) addTerminal('⚠️ This robot kit is not supported by ByteBuddies Runtime yet. Its motors may not work correctly. Choose a supported kit in Robot Lab, or use the MicroPython connection instead.', 'error');
     await serialAsk(`KIT ${want || 'generic'}\n`, 2500);
     addTerminal(`✅ ByteBuddies Runtime found (micro:bit ${board.toUpperCase()}). Press ▶ Run — your program is sent and saved on the micro:bit.`, 'success');
     if (board === 'v1') addTerminal('ℹ️ micro:bit V1 runs the runtime over USB only (no room for Bluetooth). Melodies, follow-line and avoid-walls are V2 only.', 'info');
@@ -2153,10 +2197,13 @@ export default function RobotPanel({ onNavigate }) {
       await new Promise((r) => setTimeout(r, 600));
     }
     setConnecting(true);
+    let quarkyBleReady = false;
     try {
       addTerminal('📡 Unplug USB after flash, press reset, then connect here.', 'info');
 
-      const conn = await connectMicrobitWireless((m) => addTerminal(`  ${m}`, 'info'));
+      const conn = robotType === 'quarky'
+        ? await connectQuarkyWireless((m) => addTerminal(`  ${m}`, 'info'))
+        : await connectMicrobitWireless((m) => addTerminal(`  ${m}`, 'info'));
       const device = conn.device;
       btUartRef.current = conn;
       btDeviceRef.current = device;
@@ -2206,6 +2253,46 @@ export default function RobotPanel({ onNavigate }) {
             await conn.uartService.sendText('ping\n');
           } catch (_) { /* optional */ }
         }
+      } else if (robotType === 'quarky') {
+        connectionTypeRef.current = 'bluetooth';
+        runtimeRef.current = null;
+        conn.onNotify?.(handleBleData);
+        addTerminal('🔎 Checking Quarky MicroPython over Bluetooth…', 'info');
+        const waitForRepl = (ms = 3500) => new Promise((resolve) => {
+          serialSniffRef.current = { pattern: 'raw REPL', resolve };
+          setTimeout(() => {
+            if (serialSniffRef.current?.pattern === 'raw REPL') {
+              serialSniffRef.current = null;
+              resolve(false);
+            }
+          }, ms);
+        });
+        let gotRepl = false;
+        for (let attempt = 0; attempt < 4 && !gotRepl; attempt++) {
+          await writeChunked('\x03\x03');
+          await new Promise((r) => setTimeout(r, 180));
+          await writeChunked('\x02');
+          await new Promise((r) => setTimeout(r, 180));
+          const ready = waitForRepl();
+          await writeChunked('\x01');
+          gotRepl = await ready;
+        }
+        if (!gotRepl) {
+          addTerminal('⚠️ Bluetooth connected, but Quarky did not expose a MicroPython REPL over BLE UART.', 'warn');
+          addTerminal('💡 Quarky BLE needs compatible MicroPython + Nordic UART firmware; its standard PictoBlox Bluetooth firmware uses a different protocol.', 'info');
+        } else {
+          const ready = new Promise((resolve) => {
+            rawReplDoneRef.current = () => { rawReplDoneRef.current = null; resolve(true); };
+            setTimeout(() => { if (rawReplDoneRef.current) { rawReplDoneRef.current = null; resolve(false); } }, 8000);
+          });
+          await writeChunked(QUARKY_HELPER_SCRIPT + '\x04');
+          if (await ready) {
+            quarkyBleReady = true;
+            addTerminal('✅ Quarky MicroPython is ready over Bluetooth — press ▶ Run.', 'success');
+          } else {
+            addTerminal('⚠️ Connected, but Quarky did not finish loading the robot helpers.', 'warn');
+          }
+        }
       } else {
         conn.onNotify?.(handleBleData);
         addTerminal('✅ Connected — MicroPython Bluetooth bridge', 'success');
@@ -2237,8 +2324,9 @@ export default function RobotPanel({ onNavigate }) {
       connectedRef.current = true;
       setConnected(true);
       setConnectionKind('bluetooth');
-      setFirmwareOk(true);
-      firmwareOkRef.current = true;
+      const firmwareReady = robotType === 'quarky' ? quarkyBleReady : true;
+      setFirmwareOk(firmwareReady);
+      firmwareOkRef.current = firmwareReady;
 
       // Keep the GATT connection alive — OS/browser will drop it after ~30s of inactivity.
       clearInterval(bleKeepaliveRef.current);
@@ -3165,23 +3253,24 @@ export default function RobotPanel({ onNavigate }) {
     [program, microbitKit],
   );
 
-  const handleSaveHex = useCallback(async () => {
-    if (!program.length) { addTerminal('⚠️ Add some blocks first!', 'warn'); return; }
+  const handleDownloadQuarkyProgram = useCallback(() => {
+    if (!program.length) { addTerminal('⚠️ Add blocks before downloading a Quarky program.', 'warn'); return; }
     try {
-      const pythonCode = generateFullProgram(program, microbitKit);
-      const hexStr = await buildMicrobitHex(pythonCode, (msg) => addTerminal(msg, 'info'));
-      const blob = new Blob([hexStr], { type: 'text/plain' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = 'bytebuddies.hex';
-      document.body.appendChild(a); a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      addTerminal('💾 bytebuddies.hex saved — copy it to your MICROBIT USB drive to flash!', 'success');
+      const { source, warnings } = generateQuarkyPictoBloxProgram(program);
+      const url = URL.createObjectURL(new Blob([source], { type: 'text/x-python;charset=utf-8' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'bytebuddies-quarky.py';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      addTerminal('📥 Downloaded bytebuddies-quarky.py — open the code in PictoBlox Python with Board set to Quarky, then use Upload Code over USB.', 'success');
+      warnings.forEach(warning => addTerminal(`⚠️ ${warning}`, 'warn'));
     } catch (e) {
-      addTerminal(`❌ Save failed: ${e.message}`, 'error');
+      addTerminal(`❌ Program download failed: ${e.message}`, 'error');
     }
-  }, [program, microbitKit, addTerminal]);
+  }, [program, addTerminal]);
 
   const showDownloadInstructions = useCallback(() => {
     const instructions = getFlashingInstructions();
@@ -3326,10 +3415,7 @@ export default function RobotPanel({ onNavigate }) {
   }, [addTerminal, showDownloadInstructions, microbitHw, disconnect]);
 
   const handleFlashMethod = useCallback(async (method) => {
-    if (robotType !== 'microbit') {
-      handleSaveHex();
-      return;
-    }
+    if (robotType !== 'microbit') return;
     setFlashMethod(null);
     setRightTab('terminal');
 
@@ -3542,15 +3628,7 @@ export default function RobotPanel({ onNavigate }) {
         addTerminal(`❌ ${e.message}`, 'error');
       }
     }
-  }, [program, microbitKit, microbitHw, robotType, handleSaveHex, addTerminal, runCoordinatorFlash, disconnect]);
-
-  const handleFlash = useCallback(async () => {
-    if (robotType !== 'microbit') {
-      handleSaveHex();
-      return;
-    }
-    setFlashMethod(flashMethod ? null : 'showOptions');
-  }, [robotType, flashMethod, handleSaveHex]);
+  }, [program, microbitKit, microbitHw, robotType, addTerminal, runCoordinatorFlash, disconnect]);
 
   const canvasAreaRef = useRef(null);
   const ROBOT_BLOCK_LANE_X = 30;
@@ -3968,58 +4046,98 @@ export default function RobotPanel({ onNavigate }) {
       `}</style>
       {/* Header */}
       <div style={s.header}>
-        <span style={{ fontSize: 28 }}>🤖</span>
+        <button
+          type="button"
+          onClick={() => (onNavigate ? onNavigate('dashboard') : (window.location.hash = 'dashboard'))}
+          title="Back to homepage"
+          aria-label="Back to homepage"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '8px 14px',
+            borderRadius: 10,
+            border: 'none',
+            background: '#6366f1',
+            color: '#fff',
+            fontWeight: 800,
+            fontSize: 14,
+            cursor: 'pointer',
+            flexShrink: 0,
+            boxShadow: '0 3px 0 #4338ca',
+          }}
+        >
+          <span aria-hidden="true">←</span>
+          Back
+        </button>
+        <img src="/images/bytebuddies-mascot-head.webp" alt="" draggable="false" style={{ width: 48, height: 48, objectFit: 'contain', flexShrink: 0, filter: 'drop-shadow(0 3px 6px rgba(30,10,80,0.35))' }} />
         <div>
           <h2 style={s.title}>Robot Lab</h2>
           <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)' }}>Connect & program your robot</p>
         </div>
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          {/* Robot type */}
-          <select
-            value={robotType}
-            onChange={e => setRobotType(e.target.value)}
-            disabled={connected}
-            style={{ padding: '6px 10px', borderRadius: 8, background: 'var(--bg-secondary)', border: '1px solid var(--border)', color: 'var(--text-primary)', fontSize: 13 }}
-          >
-            {Object.entries(ROBOT_PROFILES).map(([k, v]) => (
-              <option key={k} value={k}>{v.icon} {v.name}</option>
-            ))}
-          </select>
-
-          {/* micro:bit kit selector — hidden for Quarky (it has its own setup) */}
-          {robotType === 'microbit' && (
-            <select
-              value={microbitKit}
-              onChange={e => setMicrobitKit(e.target.value)}
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ position: 'relative' }}>
+            <button
+              type="button"
+              aria-label="Choose board"
+              aria-haspopup="dialog"
+              aria-expanded={showBoardMenu}
+              onClick={() => !connected && setShowBoardMenu(open => !open)}
               disabled={connected}
-              style={{ padding: '6px 10px', borderRadius: 8, background: ui.setupBg, border: `1px solid ${ui.setupBorder}`, color: isLightTheme ? '#334155' : '#a5b4fc', fontSize: 13 }}
+              title={connected ? 'Disconnect before changing boards' : 'Choose the board you are using'}
+              style={{ ...s.btn(showBoardMenu ? '#4f46e5' : 'var(--bg-secondary)', 'var(--text-primary)'), border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}
             >
-              <option value="generic">🔌 Generic H-bridge</option>
-              <option value="cutebot">🐱 Elecfreaks Cutebot</option>
-              <option value="cutebotpro">🐱 Elecfreaks Cutebot Pro</option>
-              <option value="bitbot">🤖 4tronix Bit:Bot</option>
-              <option value="maqueen">🦆 DFRobot Maqueen</option>
-              <option value="maqueenplus">🦆 DFRobot Maqueen Plus</option>
-              <option value="move">🚗 Kitronik :MOVE Motor</option>
-              <option value="ringbitcar">🚙 Elecfreaks Ring:bit Car</option>
-            </select>
-          )}
-
+              <EmojiIcon e="🔌" style={{ marginRight: '0.35em' }} />Board: {profile.icon} {profile.name} <span aria-hidden="true">▾</span>
+            </button>
+            {showBoardMenu && !connected && <div
+              role="presentation"
+              onMouseDown={event => { if (event.target === event.currentTarget) setShowBoardMenu(false); }}
+              style={{ position: 'fixed', inset: 0, display: 'grid', placeItems: 'center', padding: 18, background: 'rgba(5,7,18,.68)', zIndex: 1200 }}
+            >
+              <div role="dialog" aria-modal="true" aria-labelledby="robot-board-dialog-title" style={{ width: 'min(760px, 100%)', maxHeight: 'min(620px, calc(100vh - 36px))', display: 'flex', flexDirection: 'column', overflow: 'hidden', borderRadius: 15, background: 'var(--bg-primary)', border: '1px solid var(--border)', boxShadow: '0 20px 55px rgba(0,0,0,.48)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
+                  <div style={{ flex: 1 }}><strong id="robot-board-dialog-title" style={{ display: 'block', fontSize: 18, color: 'var(--text-primary)' }}>Select a Board</strong><span style={{ display: 'block', marginTop: 3, fontSize: 12, color: 'var(--text-muted)' }}>Choose the board you want to connect and program.</span></div>
+                  <button type="button" aria-label="Close board selector" onClick={() => setShowBoardMenu(false)} style={{ width: 34, height: 34, border: '1px solid var(--border)', borderRadius: 9, background: 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: 19, cursor: 'pointer' }}>×</button>
+                </div>
+                <div style={{ padding: 16, overflowY: 'auto' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 150px), 1fr))', gap: 10 }}>
+                {Object.entries(ROBOT_PROFILES).map(([key, board]) => {
+                  const detail = key === 'microbit' ? 'micro:bit extension · USB or Bluetooth'
+                    : key === 'mbot' ? 'mBot extension · USB serial'
+                    : key === 'arduino' ? 'Arduino extension · USB serial'
+                    : 'Quarky extension · USB or BLE UART';
+                  const selected = robotType === key;
+                  return <button key={key} type="button" aria-pressed={selected} onClick={() => { setRobotType(key); localStorage.setItem('cv_robotlab_board', key); setActiveCat('Movement'); setShowSetup(false); setFlashMethod(null); setShowBoardMenu(false); }} style={{ position: 'relative', display: 'flex', flexDirection: 'column', minWidth: 0, padding: 10, textAlign: 'left', border: selected ? '2px solid #818cf8' : '1px solid var(--border)', borderRadius: 11, background: selected ? 'rgba(99,102,241,.11)' : 'var(--bg-secondary)', color: 'var(--text-primary)', cursor: 'pointer', transition: 'border-color .15s, background .15s', overflow: 'hidden' }}>
+                    <span style={{ display: 'grid', placeItems: 'center', width: '100%', height: 100, marginBottom: 8, borderRadius: 7, background: 'rgba(99,102,241,.07)' }}><BoardPicture board={key} style={{ width: 'min(165px, 100%)', height: 92, filter: 'drop-shadow(0 5px 5px rgba(0,0,0,.22))' }} /></span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><strong style={{ fontSize: 14 }}><EmojiIcon e={board.icon} style={{ marginRight: '0.35em' }} />{board.name}</strong>{selected && <span style={{ marginLeft: 'auto', padding: '2px 6px', borderRadius: 999, background: '#6366f1', color: 'white', fontSize: 9, fontWeight: 800 }}>✓ Active</span>}</span>
+                    <span style={{ marginTop: 4, fontSize: 11, lineHeight: 1.35, color: 'var(--text-muted)' }}>{detail}</span>
+                  </button>;
+                })}
+                </div>
+                </div>
+              </div>
+            </div>}
+          </div>
           {robotType === 'microbit' && (
-            <select
-              value={microbitHw}
-              onChange={(e) => {
-                const v = e.target.value;
-                setMicrobitHw(v);
-                localStorage.setItem('cv_mb_hw', v);
-              }}
-              disabled={connected}
-              title="WebUSB needs the correct board version (universal .hex contains both)"
-              style={{ padding: '6px 10px', borderRadius: 8, background: ui.setupBg, border: `1px solid ${ui.setupBorder}`, color: isLightTheme ? '#334155' : '#a5b4fc', fontSize: 13 }}
-            >
-              <option value="v2">⚡ Flash target: V2</option>
-              <option value="v1">⚡ Flash target: V1</option>
-            </select>
+            <label title="This selects the motor driver for your robot car." style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '5px 8px', border: `1px solid ${microbitKit === 'generic' ? '#f59e0b' : 'var(--border)'}`, borderRadius: 9, background: 'var(--bg-secondary)', fontSize: 11, color: microbitKit === 'generic' ? '#fbbf24' : 'var(--text-muted)' }}>
+              Robot kit
+              <select
+                aria-label="Choose micro:bit robot kit"
+                value={microbitKit}
+                onChange={e => { setMicrobitKit(e.target.value); localStorage.setItem('cv_mb_kit', e.target.value); }}
+                disabled={connected}
+                style={{ padding: '5px 7px', borderRadius: 6, background: 'var(--bg-primary)', border: '1px solid var(--border)', color: 'var(--text-primary)', fontSize: 13, fontWeight: 700 }}
+              >
+                <option value="generic">Generic H-bridge</option>
+                <option value="cutebot">Elecfreaks Cutebot</option>
+                <option value="cutebotpro">Elecfreaks Cutebot Pro</option>
+                <option value="bitbot">4tronix Bit:Bot</option>
+                <option value="maqueen">DFRobot Maqueen</option>
+                <option value="maqueenplus">DFRobot Maqueen Plus</option>
+                <option value="move">Kitronik :MOVE Motor</option>
+                <option value="ringbitcar">Elecfreaks Ring:bit Car</option>
+              </select>
+            </label>
           )}
 
           {/* Connect status */}
@@ -4033,22 +4151,40 @@ export default function RobotPanel({ onNavigate }) {
             : robotType === 'microbit'
               ? <span style={{ display:'flex', gap:6 }}>
                   <button style={s.btn('#6366f1')} onClick={connect} disabled={connecting} title="Connect via USB cable">
-                    {connecting ? 'Connecting…' : '🔌 USB'}
+                  <IconText>{connecting ? 'Connecting…' : '🔌 Connect USB'}</IconText>
                   </button>
                   <button style={s.btn('#0ea5e9')} onClick={connectBluetooth} disabled={connecting} title="Connect wirelessly via Bluetooth">
-                    {connecting ? 'Connecting…' : '📡 Bluetooth'}
+                  <IconText>{connecting ? 'Connecting…' : '📡 Connect Bluetooth'}</IconText>
                   </button>
                 </span>
               : robotType === 'quarky'
-              ? <button style={s.btn('#6366f1')} onClick={connect} disabled={connecting} title="Connect Quarky via USB cable (MicroPython REPL)">
-                  {connecting ? 'Connecting…' : '🔌 USB'}
-                </button>
+              ? <span style={{ display:'flex', gap:6 }}>
+                  <button style={s.btn('#6366f1')} onClick={connect} disabled={connecting} title="Connect Quarky over USB">
+                    <IconText>{connecting ? 'Connecting…' : '🔌 Connect USB'}</IconText>
+                  </button>
+                  <button style={s.btn('#0ea5e9')} onClick={connectBluetooth} disabled={connecting} title="Connect Quarky via Bluetooth Low Energy">
+                    <IconText>{connecting ? 'Connecting…' : '📡 Connect Bluetooth'}</IconText>
+                  </button>
+                </span>
               : <button style={s.btn('#6366f1')} onClick={connect} disabled={connecting}>
-                  {connecting ? 'Connecting…' : '🔌 Connect Robot'}
+                  <IconText>{connecting ? 'Connecting…' : '🔌 Connect'}</IconText>
                 </button>
           }
-          <button style={s.btn('var(--bg-secondary)', 'var(--text-muted)')} onClick={() => setShowSetup(!showSetup)}>
-            📋 Setup Guide
+          {robotType === 'microbit' ? (
+            <button style={s.btn(flashProgress !== null ? '#f59e0b' : '#7c3aed')} onClick={() => handleFlashMethod('flash-runtime')} disabled={flashProgress !== null} title="Install the ByteBuddies runtime once, then send programs with Run">
+              <EmojiIcon e="⚡" style={{ marginRight: '0.35em' }} />Flash micro:bit
+            </button>
+          ) : robotType === 'mbot' || robotType === 'arduino' ? (
+            <a href={profile.sketchUrl} download style={{ ...s.btn('#16a34a'), textDecoration: 'none' }}>
+              <EmojiIcon e="⬇" style={{ marginRight: '0.35em' }} />Download {profile.name} sketch
+            </a>
+          ) : (
+            <button style={s.btn('#7c3aed')} onClick={() => setShowSetup(true)}>
+              <EmojiIcon e="🛠" style={{ marginRight: '0.35em' }} />Quarky setup
+            </button>
+          )}
+          <button style={s.btn('var(--bg-secondary)', 'var(--text-muted)')} onClick={() => setShowSetup(!showSetup)} aria-expanded={showSetup}>
+            <IconText>{showSetup ? '✕ Close setup' : '⚙ Setup & settings'}</IconText>
           </button>
         </div>
       </div>
@@ -4057,96 +4193,74 @@ export default function RobotPanel({ onNavigate }) {
       {showSetup && (
         <div style={{ padding: 16, background: ui.setupBg, borderBottom: `1px solid ${ui.setupBorder}` }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-            <strong style={{ fontSize: 14 }}>📋 {profile.name} Setup Guide</strong>
+            <strong style={{ fontSize: 14 }}><EmojiIcon e="📋" style={{ marginRight: '0.35em' }} />{profile.name} Setup Guide</strong>
             <button style={s.iconBtn} onClick={() => setShowSetup(false)}>✕</button>
           </div>
-          <ol style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 2 }}>
+          {robotType === 'microbit' && (
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', margin: '8px 0 12px', padding: 10, borderRadius: 9, background: ui.infoBg, border: `1px solid ${ui.infoBorder}` }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)' }}>
+                Board
+                <select value={microbitHw} onChange={e => { setMicrobitHw(e.target.value); localStorage.setItem('cv_mb_hw', e.target.value); }} disabled={connected} title="Choose V1 or V2 before USB flashing" style={{ padding: '6px 8px', borderRadius: 7, background: 'var(--bg-primary)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}>
+                  <option value="v2">micro:bit V2</option>
+                  <option value="v1">micro:bit V1</option>
+                </select>
+              </label>
+              <span style={{ alignSelf: 'center', fontSize: 11, color: 'var(--text-muted)' }}>USB flashing also detects the board automatically.</span>
+            </div>
+          )}
+          {robotType === 'mbot' && (
+            <section style={{ padding: 14, margin: '8px 0 12px', borderRadius: 12, background: ui.infoBg, border: `1px solid ${ui.infoBorder}`, color: 'var(--text-secondary)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                <div>
+                  <strong style={{ color: 'var(--text-primary)', fontSize: 15 }}>mBot setup · one-time USB upload</strong>
+                  <div style={{ marginTop: 3, fontSize: 12 }}>For the classic mBot with an mCore board. Keep the robot switched on.</div>
+                </div>
+                <a href="/bytebuddies-mbot.ino" download style={{ ...s.btn('#16a34a'), textDecoration: 'none', whiteSpace: 'nowrap' }}>
+                  <EmojiIcon e="⬇" style={{ marginRight: '0.35em' }} />Download mBot sketch (.ino)
+                </a>
+              </div>
+              <ol style={{ margin: '12px 0 0', paddingLeft: 22, fontSize: 13, lineHeight: 1.7 }}>
+                <li>Install <a href="https://github.com/Makeblock-official/Makeblock-Libraries" target="_blank" rel="noopener noreferrer" style={{ color: '#818cf8', fontWeight: 700 }}>Makeblock’s official Arduino library</a> in Arduino IDE: <strong>Sketch → Include Library → Add .ZIP Library</strong>. Restart the IDE if it was open.</li>
+                <li>Open the downloaded <strong>bytebuddies-mbot.ino</strong>. In Arduino IDE choose <strong>Arduino Uno</strong> and the serial port for the mBot (often named USB Serial or CH340).</li>
+                <li>Click <strong>Upload</strong> and wait for <strong>Done uploading</strong>. The sketch uses the mBot’s M1/M2 motors, Port 3 ultrasonic sensor, Port 2 line sensor and built-in LEDs/buzzer.</li>
+                <li>Close Arduino IDE and its Serial Monitor to release the port. In Chrome or Edge, return here, choose <strong>mBot</strong>, click <strong>Connect Robot</strong>, and select that same port.</li>
+                <li>Use a simple <strong>Move forward</strong> block and press <strong>Run</strong>. The sketch only needs re-uploading when ByteBuddies provides an updated sketch.</li>
+              </ol>
+              <details style={{ marginTop: 10 }}>
+                <summary style={{ cursor: 'pointer', fontSize: 12, fontWeight: 700, color: ui.setupAccent }}>Troubleshooting</summary>
+                <ul style={{ margin: '6px 0 0', paddingLeft: 20, fontSize: 12, lineHeight: 1.65 }}>
+                  <li><strong>“MeMCore.h: No such file”</strong> — install the Makeblock library ZIP, then reopen Arduino IDE.</li>
+                  <li><strong>Port busy or missing</strong> — close Arduino Serial Monitor, unplug/replug the USB data cable, then reconnect.</li>
+                  <li><strong>Connected but wheels do not move</strong> — check the mBot battery charge and power switch; USB alone may not power the motors.</li>
+                  <li><strong>One wheel runs backward</strong> — the sketch has a <code>FLIP</code> setting near the top for motor direction correction.</li>
+                </ul>
+              </details>
+            </section>
+          )}
+          <ol style={{ display: robotType === 'mbot' ? 'none' : undefined, margin: 0, paddingLeft: 18, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 2 }}>
             {robotType === 'microbit' && <>
-              <li><strong>Easiest (any device):</strong> ⚡ Flash → <strong>⭐ ByteBuddies Runtime</strong> once. Then 🔌 USB or 📡 Bluetooth → ▶ Run — programs are saved on the micro:bit. On iPad, use “📥 Download runtime” and the free micro:bit app.</li>
-              <li><strong>Flash once, code forever:</strong> ⚡ Flash → <strong>MicroPython (USB, flash once)</strong> — only needed one time per board</li>
-              <li>Then: USB cable → <strong>🔌 USB</strong> → build blocks → <strong>▶ Run</strong> (sends code wirelessly over USB — no reflash)</li>
-              <li><strong>Wireless:</strong> ⚡ Flash → <strong>Bluetooth bridge firmware</strong> once → wait for <strong>B</strong> → <strong>📡 Bluetooth</strong> → pick <strong>ByteBuddies</strong> → ▶ Run</li>
+              <li><strong>Easiest (any device):</strong> <EmojiIcon e="⚡" style={{ marginRight: '0.35em' }} />Flash → <strong>⭐ ByteBuddies Runtime</strong> once. Then 🔌 USB or 📡 Bluetooth → ▶ Run — programs are saved on the micro:bit. On iPad, use “📥 Download runtime” and the free micro:bit app.</li>
+              <li><strong>Flash once, code forever:</strong> <EmojiIcon e="⚡" style={{ marginRight: '0.35em' }} />Flash → <strong>MicroPython (USB, flash once)</strong> — only needed one time per board</li>
+              <li>Then: USB cable → <strong><EmojiIcon e="🔌" style={{ marginRight: '0.35em' }} />USB</strong> → build blocks → <strong><EmojiIcon e="▶" style={{ marginRight: '0.35em' }} />Run</strong> (sends code wirelessly over USB — no reflash)</li>
+              <li><strong>Wireless:</strong> <EmojiIcon e="⚡" style={{ marginRight: '0.35em' }} />Flash → <strong>Bluetooth bridge firmware</strong> once → wait for <strong>B</strong> → <strong><EmojiIcon e="📡" style={{ marginRight: '0.35em' }} />Bluetooth</strong> → pick <strong>ByteBuddies</strong> → ▶ Run</li>
               <li>Set <strong>V1/V2</strong> next to the kit menu before flashing so the correct image is used</li>
               <li>Only use <strong>Flash program</strong> if you need a .hex file offline — normal coding does not need it</li>
             </>}
             {robotType === 'quarky' && <>
-              <li><strong>One-time setup:</strong> Flash <strong>MicroPython for ESP32</strong> to your Quarky using <a href="https://thonny.org" target="_blank" rel="noopener noreferrer" style={{color:'#6366f1'}}>Thonny IDE</a> (Tools → Options → Interpreter → ESP32 → Install MicroPython)</li>
-              <li>Plug in your Quarky via <strong>USB-C</strong>. Click <strong>🔌 USB</strong> and pick the CP210x, CH340, or ESP32 port (not the micro:bit).</li>
-              <li>ByteBuddies talks to the MicroPython REPL at 115200 baud and loads motors automatically. Then <strong>▶ Run</strong> — no re-flash each time.</li>
-              <li><strong>LEDs:</strong> Use "LED RGB" or "Set All LEDs" blocks to light up the 35-pixel matrix</li>
-              <li><strong>IR sensors:</strong> "If Line Found" reads the two infrared sensors (GPIO 34 &amp; 35)</li>
-            </>}
-            {robotType === 'mbot' && <>
-              <li>Step 1 — <strong>Download &amp; upload the sketch</strong> to your mBot (Arduino IDE + Makeblock library)</li>
-              <li>Step 2 — Connect mBot via USB cable</li>
-              <li>Step 3 — Click <strong>Connect Robot</strong> → select the mBot port → click <strong>Run</strong></li>
-              <li><strong>Used ByteBuddies before?</strong> Upload the new sketch once more — it adds sensors (distance, line, light, button), lights, sound and servos, and Stop now works instantly.</li>
+              <li><strong>Install or repair firmware:</strong> use STEMpedia’s <a href="https://ai.thestempedia.com/docs/quarky/quarky-troubleshooting/quarky-firmware-troubleshooting/" target="_blank" rel="noopener noreferrer" style={{color:'#6366f1'}}>official Quarky firmware guide</a> in PictoBlox on a computer over USB-C.</li>
+              <li>In PictoBlox, select <strong>Board → Quarky</strong>, connect over USB, and use <strong>Python Upload Mode</strong>.</li>
+              <li>Choose <strong>Export for PictoBlox</strong>, open the downloaded Python code in PictoBlox, then choose <strong>Upload Code</strong>. The export uses Quarky’s documented left/right motor API.</li>
+              <li><strong>Bluetooth from this page:</strong> this connection supports Quarky firmware that exposes a Nordic UART service and MicroPython REPL. Select <strong><EmojiIcon e="📡" style={{ marginRight: '0.35em' }} />Connect Bluetooth</strong>, then choose your powered Quarky (often named <em>Quarky wxyz</em>). Standard PictoBlox Bluetooth firmware uses a different protocol and cannot run ByteBuddies code through this connection.</li>
+              <li>Sensor and advanced control blocks are marked as TODO in the export and need setup in PictoBlox before uploading.</li>
             </>}
             {robotType === 'arduino' && <>
               <li>Use <strong>Chrome or Edge</strong> (Web Serial). Upload <a href="/bytebuddies-arduino.ino" download style={{color:'#6366f1'}}>bytebuddies-arduino.ino</a> in Arduino IDE (Uno, 9600 baud).</li>
               <li>Plug in USB. Click <strong>Connect Robot</strong> — pick Arduino, CH340, or CP210x. If the list is empty, cancel and the next picker shows every port.</li>
               <li>Wiring is listed at the top of the sketch (motors 2/3 + 4/5, buzzer 8, ultrasonic 12/11, line sensors A0/A1, light A2, buttons 6/7) — change the numbers there if yours differ.</li>
               <li><strong>Used ByteBuddies before?</strong> Upload the new sketch once more — it adds sensors, lights, sound and servos.</li>
-              <li>Wait 2 seconds after connect (the board resets). Then press <strong>▶ Run</strong> or use the arrow pad.</li>
+              <li>Wait 2 seconds after connect (the board resets). Then press <strong><EmojiIcon e="▶" style={{ marginRight: '0.35em' }} />Run</strong> or use the arrow pad.</li>
             </>}
           </ol>
-          {robotType === 'microbit' && (
-            <>
-              <div style={{ marginTop: 12, padding: '12px 14px', background: ui.infoBg, border: `1px solid ${ui.infoBorder}`, borderRadius: 8 }}>
-                <strong style={{ fontSize: 13, color: ui.infoText }}>⚡ How to Flash Your Program</strong>
-                <p style={{ margin: '6px 0', fontSize: 12, color: 'var(--text-secondary)' }}>
-                  Click the <strong>⚡ Flash</strong> button to choose your flashing method:
-                </p>
-                <div style={{ background: 'rgba(0,0,0,0.1)', padding: '8px 12px', borderRadius: 6, margin: '8px 0', fontSize: 11, color: 'var(--text-primary)' }}>
-                  <strong>🔌 Flash via USB:</strong>
-                  <ul style={{ margin: '4px 0 0 0', paddingLeft: 16 }}>
-                    <li><strong>Chrome/Edge:</strong> One-click direct flashing (no downloads!)</li>
-                    <li><strong>Safari/Firefox:</strong> Auto-downloads .hex file → drag onto MICROBIT drive</li>
-                  </ul>
-                </div>
-                <div style={{ background: 'rgba(0,0,0,0.1)', padding: '8px 12px', borderRadius: 6, margin: '8px 0', fontSize: 11, color: 'var(--text-primary)' }}>
-                  <strong>📡 Flash via Bluetooth:</strong>
-                  <ul style={{ margin: '4px 0 0 0', paddingLeft: 16 }}>
-                    <li>First connect via 📡 Bluetooth button</li>
-                    <li>Then click ⚡ Flash → Bluetooth to send wirelessly</li>
-                  </ul>
-                </div>
-              </div>
-
-              <div style={{ marginTop: 12, padding: '12px 14px', background: '#f0f4f8', border: '1px solid #bfdbfe', borderRadius: 8 }}>
-                <strong style={{ fontSize: 13, color: '#1e40af' }}>🍎 Mac Users: Flashing Guide</strong>
-                <p style={{ margin: '6px 0', fontSize: 12, color: 'var(--text-secondary)' }}>
-                  <strong>Chrome on Mac:</strong> Click ⚡ Flash → USB → one-click flashing!
-                </p>
-                <p style={{ margin: '6px 0', fontSize: 12, color: 'var(--text-secondary)' }}>
-                  <strong>Safari on Mac:</strong> Click ⚡ Flash → USB → file downloads → drag to MICROBIT drive
-                </p>
-                <ol style={{ margin: '6px 0', fontSize: 11, color: 'var(--text-secondary)', paddingLeft: 16 }}>
-                  <li>Connect micro:bit via USB to your Mac</li>
-                  <li>Your Mac will show a "MICROBIT" disk</li>
-                  <li>Click ⚡ Flash button in ByteBuddies</li>
-                  <li>Choose "Flash via USB"</li>
-                  <li>If it downloads: Drag bytebuddies.hex onto the MICROBIT disk</li>
-                  <li>Micro:bit restarts automatically ✓</li>
-                </ol>
-              </div>
-            </>
-          )}
-          {(robotType === 'mbot' || robotType === 'arduino') && (
-            <div style={{ marginTop: 12, padding: '10px 14px', background: ui.successBg, border: `1px solid ${ui.successBorder}`, borderRadius: 8, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-              <a
-                href={robotType === 'mbot' ? '/bytebuddies-mbot.ino' : '/bytebuddies-arduino.ino'}
-                download
-                style={{ ...s.btn('#16a34a'), fontSize: 14, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 18px', fontWeight: 700, flexShrink: 0 }}>
-                ⬇️ Download {robotType === 'mbot' ? 'mBot' : 'Arduino'} Sketch (.ino)
-              </a>
-              <span style={{ fontSize: 12, color: ui.successText }}>
-                {robotType === 'mbot'
-                  ? 'Upload once via Arduino IDE (needs Makeblock library) — then just Connect + Run every time'
-                  : 'Upload once via Arduino IDE — then just Connect + Run every time'}
-              </span>
-            </div>
-          )}
           <details style={{ marginTop: 10 }}>
             <summary style={{ cursor: 'pointer', fontSize: 13, fontWeight: 600, color: ui.setupAccent }}>
               Show sketch source code →
@@ -4156,7 +4270,7 @@ export default function RobotPanel({ onNavigate }) {
             </pre>
             <button style={{ ...s.btn('#6366f1'), marginTop: 6, fontSize: 12 }}
               onClick={() => navigator.clipboard?.writeText(sketchSource).then(() => addTerminal('Code copied to clipboard!', 'success'))}>
-              📋 Copy Code
+              <EmojiIcon e="📋" style={{ marginRight: '0.35em' }} />Copy Code
             </button>
           </details>
         </div>
@@ -4172,7 +4286,7 @@ export default function RobotPanel({ onNavigate }) {
         const browserName = isFirefox ? 'Firefox' : isSafari ? 'Safari' : 'your browser';
         return (
           <div style={{ padding: '12px 20px', background: ui.warnBg, borderBottom: `1px solid ${ui.warnBorder}`, fontSize: 13, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 20 }}>ℹ️</span>
+            <span style={{ fontSize: 20 }}><EmojiIcon e="ℹ️" /></span>
             <div>
               <strong>You're using {browserName}</strong> — the simulator below works fine, but connecting to a real robot requires
               {' '}<strong>Google Chrome</strong> or <strong>Microsoft Edge</strong>.
@@ -4185,33 +4299,25 @@ export default function RobotPanel({ onNavigate }) {
       <div style={s.body}>
         {/* Left: block palette sidebar */}
         <div style={s.leftCol}>
-          {/* Category tabs */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, padding: 6, borderBottom: '1px solid var(--border)' }}>
-            {['Movement','Sensors','Control','Math','Outputs','Servo','Variables','Comms','Lights'].map(cat => {
-              const col = getCategoryColor(cat);
-              return (
-                <button key={cat} onClick={() => setActiveCat(cat)} style={{
-                  padding: '4px 8px',
-                  borderRadius: 4,
-                  border: `1px solid ${activeCat === cat ? col : 'rgba(148,163,184,0.25)'}`,
-                  background: activeCat === cat
-                    ? `linear-gradient(180deg, ${col}, ${darkenHex(col, 30)})`
-                    : ui.tabInactiveBg,
-                  color: activeCat === cat ? '#fff' : ui.tabInactiveText,
-                  fontSize: 10,
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  transition: 'all 0.12s',
-                }}>{cat}</button>
-              );
-            })}
+          {/* One clear category picker uses less room than nine wrapped tabs. */}
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 9px', borderBottom: '1px solid var(--border)', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>
+            Blocks
+            <select aria-label="Block category" value={activeCat} onChange={e => setActiveCat(e.target.value)} style={{ flex: 1, minWidth: 0, padding: '6px 8px', borderRadius: 7, background: ui.tabInactiveBg, border: '1px solid var(--border)', color: ui.tabInactiveText, fontSize: 12, fontWeight: 700 }}>
+              {Array.from(new Set(boardCommands.map(command => command.cat))).map(cat => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+          </label>
+          <div style={{ padding: '8px 10px', borderBottom: '1px solid var(--border)', background: 'rgba(99,102,241,.08)' }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: '#a5b4fc' }}><EmojiIcon e={profile.icon} style={{ marginRight: '0.35em' }} />{boardExtension?.name} extension loaded</div>
+            <div style={{ marginTop: 3, fontSize: 10, lineHeight: 1.4, color: 'var(--text-muted)' }}>{boardExtension?.summary} · {boardCommands.length} board-compatible blocks</div>
           </div>
           {/* Block list — draggable */}
           <div style={{ flex: 1, overflowY: 'auto', padding: '6px 4px' }}>
             <div style={{ fontSize: 10, color: 'var(--text-muted)', padding: '4px 10px 6px', fontStyle: 'italic' }}>
               Drag blocks onto the canvas →
             </div>
-            {ROBOT_COMMANDS.filter(c => c.cat === activeCat).map(cmd => (
+            {boardCommands.filter(c => c.cat === activeCat).map(cmd => (
               <div
                 key={cmd.id}
                 draggable
@@ -4261,7 +4367,7 @@ export default function RobotPanel({ onNavigate }) {
                     userSelect: 'none',
                   }}
                 >
-                  <span style={{ fontSize: 13, lineHeight: 1 }}>{cmd.icon}</span>
+                  <span style={{ fontSize: 13, lineHeight: 1 }}><EmojiIcon e={cmd.icon} /></span>
                   <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{cmd.label}</span>
                   {(cmd.params || []).slice(0, 2).map((p) => (
                     <span
@@ -4292,7 +4398,7 @@ export default function RobotPanel({ onNavigate }) {
         <div style={s.midCol}>
           <div style={{ padding: '8px 14px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg-secondary)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ fontWeight: 600, fontSize: 14 }}>🧩 Block Canvas</span>
+              <span style={{ fontWeight: 600, fontSize: 14 }}><EmojiIcon e="🧩" style={{ marginRight: '0.35em' }} />Block Canvas</span>
               <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Top → bottom · indent blocks inside a loop</span>
             </div>
             <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
@@ -4300,9 +4406,9 @@ export default function RobotPanel({ onNavigate }) {
                 title="Show track recipes"
                 style={{ ...s.btn('var(--bg-primary)', '#a78bfa'), fontSize: 12, padding: '5px 10px' }}
                 onClick={() => setShowRecipe(v => !v)}
-              >💡 Recipe</button>
+              ><EmojiIcon e="💡" style={{ marginRight: '0.35em' }} />Recipe</button>
               <button style={s.btn('var(--bg-primary)', 'var(--text-muted)')} onClick={() => { setProgram([]); setSelectedBlock(null); }}>
-                🗑 Clear
+                <EmojiIcon e="🗑" style={{ marginRight: '0.35em' }} />Clear
               </button>
             </div>
           </div>
@@ -4371,12 +4477,12 @@ export default function RobotPanel({ onNavigate }) {
             return (
               <div style={{ background: '#1a1040', borderBottom: '1px solid #7c3aed44', padding: '10px 16px', fontSize: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <span style={{ fontWeight: 700, color: '#a78bfa' }}>💡 {r.title}</span>
+                  <span style={{ fontWeight: 700, color: '#a78bfa' }}><EmojiIcon e="💡" style={{ marginRight: '0.35em' }} />{r.title}</span>
                   <button
                     onClick={loadRecipe}
                     style={{ background: '#7c3aed', border: 'none', color: '#fff', borderRadius: 6,
                       padding: '4px 12px', cursor: 'pointer', fontWeight: 700, fontSize: 12 }}>
-                    ⚡ Load onto canvas
+                    <EmojiIcon e="⚡" style={{ marginRight: '0.35em' }} />Load onto canvas
                   </button>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -4388,7 +4494,7 @@ export default function RobotPanel({ onNavigate }) {
                       <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8,
                         paddingLeft: isLoop ? 0 : 16,
                         color: isLoop ? '#c4b5fd' : '#e2e8f0' }}>
-                        <span style={{ fontSize: 14 }}>{cmd.icon}</span>
+                        <span style={{ fontSize: 14 }}><EmojiIcon e={cmd.icon} /></span>
                         <span style={{ flex: 1 }}>{cmd.label}</span>
                         {Object.entries(spec.params).map(([k, v]) => (
                           <span key={k} style={{ background: `${cmd.color}22`, border: `1px solid ${cmd.color}55`,
@@ -4401,7 +4507,7 @@ export default function RobotPanel({ onNavigate }) {
                   })}
                 </div>
                 <div style={{ marginTop: 8, color: '#64748b', fontSize: 11 }}>
-                  🔁 Repeat block runs everything below it N times · Click "Load" to auto-place blocks
+                  <EmojiIcon e="🔁" style={{ marginRight: '0.35em' }} />Repeat block runs everything below it N times · Click "Load" to auto-place blocks
                 </div>
               </div>
             );
@@ -4412,6 +4518,7 @@ export default function RobotPanel({ onNavigate }) {
             <div className="bb-workspace-scratch-toolbox" style={{ flex: 1, minHeight: 0, background: 'var(--bg-primary)' }}>
               <UnifiedBlocklyWorkspace
                 libraryPage="workspace"
+                extensionsKey={robotType}
                 scrollbarSide="top-left"
                 onModelChange={(nodes) => setProgram(blocklyNodesToRobotProgram(nodes))}
                 style={{ height: '100%' }}
@@ -4502,7 +4609,7 @@ export default function RobotPanel({ onNavigate }) {
 
             {program.length === 0 && (
               <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', pointerEvents: 'none' }}>
-                <div style={{ fontSize: 52, marginBottom: 12, opacity: 0.3 }}>🤖</div>
+                <div style={{ fontSize: 52, marginBottom: 12, opacity: 0.3 }}><EmojiIcon e="🤖" /></div>
                 <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 6 }}>Empty canvas</div>
                 <div style={{ fontSize: 13 }}>Click or drag blocks from the left panel</div>
               </div>
@@ -4558,7 +4665,7 @@ export default function RobotPanel({ onNavigate }) {
                       animation: 'cv-running-pulse 0.8s ease-in-out infinite alternate',
                       zIndex: 101,
                     }}>
-                      ▶ Running
+                      <EmojiIcon e="▶" style={{ marginRight: '0.35em' }} />Running
                     </div>
                   )}
 
@@ -4571,7 +4678,7 @@ export default function RobotPanel({ onNavigate }) {
                     fontSize: 10, fontWeight: 800, boxShadow: '0 1px 4px rgba(0,0,0,0.4)',
                   }}>{stepNum}</span>
 
-                  <span style={{ fontSize: 16 }}>{block.icon}</span>
+                  <span style={{ fontSize: 16 }}><EmojiIcon e={block.icon} /></span>
                   <span style={{ marginRight: 4 }}>{block.label}</span>
 
                   {/* Inline param inputs */}
@@ -4633,9 +4740,9 @@ export default function RobotPanel({ onNavigate }) {
 
           <div style={s.runBar}>
             {running
-              ? <button style={s.btn('#ef4444')} onClick={stopProgram}>⏹ Stop</button>
+              ? <button style={s.btn('#ef4444')} onClick={stopProgram}><EmojiIcon e="⏹" style={{ marginRight: '0.35em' }} />Stop</button>
               : <button style={{ ...s.btn('#22c55e'), opacity: program.length === 0 ? 0.4 : 1 }} onClick={runProgram} disabled={program.length === 0}>
-                  ▶ Run
+                  <EmojiIcon e="▶" style={{ marginRight: '0.35em' }} />Run
                 </button>
             }
             <button
@@ -4645,7 +4752,7 @@ export default function RobotPanel({ onNavigate }) {
                 transition: 'background 0.3s', minWidth: 80,
               }}
             >
-              {savedFlash ? '✓ Saved!' : '💾 Save'}
+              <IconText>{savedFlash ? '✓ Saved!' : '💾 Save'}</IconText>
             </button>
             {robotType === 'microbit' && (
               <div style={{ position: 'relative' }}>
@@ -4655,7 +4762,7 @@ export default function RobotPanel({ onNavigate }) {
                   disabled={flashProgress !== null}
                   title="Flash your program or Bluetooth bridge firmware"
                 >
-                  {flashProgress === 'done' ? '✅ Done!' : flashProgress !== null ? `⚡ ${flashProgress}%` : '⚡ Flash'}
+                  <IconText>{flashProgress === 'done' ? '✅ Done!' : flashProgress !== null ? `⚡ ${flashProgress}%` : '⚡ Flash'}</IconText>
                 </button>
                 {flashMethod === 'showOptions' && (
                   <div style={{
@@ -4685,8 +4792,12 @@ export default function RobotPanel({ onNavigate }) {
                       }}
                       title="For iPad, Safari, Firefox or any computer: download the runtime and copy it to the micro:bit"
                     >
-                      📥 Download runtime — iPad, Safari, Firefox, any computer
+                      <EmojiIcon e="📥" style={{ marginRight: '0.35em' }} />Download runtime — iPad, Safari, Firefox, any computer
                     </button>
+                    <details style={{ padding: '0 10px 10px', borderTop: '1px solid var(--border)' }}>
+                      <summary style={{ padding: '10px 4px 4px', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 12, fontWeight: 700 }}>
+                        More flashing choices
+                      </summary>
                     <button
                       onClick={() => handleFlashMethod('flash-micropython-runtime')}
                       style={{
@@ -4699,7 +4810,7 @@ export default function RobotPanel({ onNavigate }) {
                       onMouseLeave={e => { e.target.style.background = 'rgba(34,197,94,0.12)'; }}
                       title="Flash MicroPython once — then use USB + Run without reflashing"
                     >
-                      ✅ MicroPython (USB) — flash once
+                      <EmojiIcon e="✅" style={{ marginRight: '0.35em' }} />MicroPython (USB) — flash once
                     </button>
                     <button
                       onClick={() => handleFlashMethod('bluetooth-firmware')}
@@ -4713,7 +4824,7 @@ export default function RobotPanel({ onNavigate }) {
                       onMouseLeave={e => { e.target.style.background = 'rgba(14,165,233,0.12)'; }}
                       title="BLE bridge — flash once, then Connect Bluetooth + Run"
                     >
-                      📡 Bluetooth bridge — flash once
+                      <EmojiIcon e="📡" style={{ marginRight: '0.35em' }} />Bluetooth bridge — flash once
                     </button>
                     <button
                       onClick={() => handleFlashMethod('flash-prog-auto')}
@@ -4727,7 +4838,7 @@ export default function RobotPanel({ onNavigate }) {
                       onMouseLeave={e => { e.target.style.background = 'transparent'; }}
                       title="Bakes blocks into a hex file — only if you need offline .hex"
                     >
-                      ⚡ Flash current program (advanced)
+                      <EmojiIcon e="⚡" style={{ marginRight: '0.35em' }} />Flash current program (advanced)
                     </button>
                     <button
                       onClick={() => handleFlashMethod('flash-prog-webusb')}
@@ -4741,7 +4852,7 @@ export default function RobotPanel({ onNavigate }) {
                       onMouseLeave={e => { e.target.style.background = 'transparent'; }}
                       title="Chrome / Edge — direct USB like MakeCode"
                     >
-                      🔌 WebUSB only (Chrome / Edge)
+                      <EmojiIcon e="🔌" style={{ marginRight: '0.35em' }} />WebUSB only (Chrome / Edge)
                     </button>
                     <button
                       onClick={() => handleFlashMethod('flash-prog-msd')}
@@ -4755,7 +4866,7 @@ export default function RobotPanel({ onNavigate }) {
                       onMouseLeave={e => { e.target.style.background = 'transparent'; }}
                       title="Requires ByteBuddies desktop (Electron)"
                     >
-                      💾 USB drive copy (desktop app)
+                      <EmojiIcon e="💾" style={{ marginRight: '0.35em' }} />USB drive copy (desktop app)
                     </button>
                     <button
                       onClick={() => handleFlashMethod('flash-prog-ble')}
@@ -4769,7 +4880,7 @@ export default function RobotPanel({ onNavigate }) {
                       onMouseLeave={e => { e.target.style.background = 'transparent'; }}
                       title="MicroPython → USB; MakeCode hex → wireless partial update"
                     >
-                      📡 Bluetooth (USB for blocks / partial for MakeCode)
+                      <EmojiIcon e="📡" style={{ marginRight: '0.35em' }} />Bluetooth (USB for blocks / partial for MakeCode)
                     </button>
                     <button
                       onClick={() => handleFlashMethod('flash-prog-download')}
@@ -4783,29 +4894,25 @@ export default function RobotPanel({ onNavigate }) {
                       onMouseLeave={e => { e.target.style.background = 'transparent'; }}
                       title="Drag program.hex to the MICROBIT drive"
                     >
-                      ⬇️ Download .hex only
+                      <EmojiIcon e="⬇️" style={{ marginRight: '0.35em' }} />Download .hex only
                     </button>
+                    </details>
                   </div>
                 )}
               </div>
             )}
-            {robotType === 'microbit' && (
-              <button
-                style={{ ...s.btn('#0e7490'), marginLeft: 2 }}
-                onClick={handleSaveHex}
-                disabled={program.length === 0}
-                title="Download .hex file — copy it to the MICROBIT USB drive"
-              >
-                💾 .hex
+            {robotType === 'quarky' && (
+              <button style={{ ...s.btn('#0e7490'), marginLeft: 2 }} onClick={handleDownloadQuarkyProgram} disabled={program.length === 0} title="Export the blocks using Quarky's native PictoBlox Python API">
+                <EmojiIcon e="⬇️" style={{ marginRight: '0.35em' }} />Export for PictoBlox
               </button>
             )}
             <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{program.length} block{program.length !== 1 ? 's' : ''}</span>
-            {!connected && program.length > 0 && robotType === 'microbit' && <span style={{ fontSize: 12, color: '#a5b4fc', marginLeft: 'auto' }}>💡 Click ⚡ Flash to program your micro:bit</span>}
-            {!connected && program.length > 0 && robotType !== 'microbit' && <span style={{ fontSize: 12, color: '#fbbf24', marginLeft: 'auto' }}>⚠️ Sim only — connect robot first</span>}
-            {connected && firmwareOk === false && robotType === 'microbit' && <span style={{ fontSize: 12, color: '#fbbf24', marginLeft: 'auto' }}>💡 MakeCode detected — click ⚡ Flash</span>}
-            {connected && firmwareOk === false && robotType === 'quarky' && <span style={{ fontSize: 12, color: '#fbbf24', marginLeft: 'auto' }}>💡 No MicroPython detected — flash it via Thonny first</span>}
-            {connected && firmwareOk === true && <span style={{ fontSize: 12, color: '#4ade80', marginLeft: 'auto' }}>✅ {profile.name} live ready</span>}
-            {connected && firmwareOk === null && robotType !== 'microbit' && <span style={{ fontSize: 12, color: '#4ade80', marginLeft: 'auto' }}>✅ {profile.name} ready</span>}
+            {!connected && program.length > 0 && robotType === 'microbit' && <span style={{ fontSize: 12, color: '#a5b4fc', marginLeft: 'auto' }}><EmojiIcon e="💡" style={{ marginRight: '0.35em' }} />Click ⚡ Flash to program your micro:bit</span>}
+            {!connected && program.length > 0 && robotType !== 'microbit' && <span style={{ fontSize: 12, color: '#fbbf24', marginLeft: 'auto' }}><EmojiIcon e="⚠️" style={{ marginRight: '0.35em' }} />Sim only — connect robot first</span>}
+            {connected && firmwareOk === false && robotType === 'microbit' && <span style={{ fontSize: 12, color: '#fbbf24', marginLeft: 'auto' }}><EmojiIcon e="💡" style={{ marginRight: '0.35em' }} />MakeCode detected — click ⚡ Flash</span>}
+            {connected && firmwareOk === false && robotType === 'quarky' && <span style={{ fontSize: 12, color: '#fbbf24', marginLeft: 'auto' }}><EmojiIcon e="💡" style={{ marginRight: '0.35em' }} />No MicroPython detected — flash it via Thonny first</span>}
+            {connected && firmwareOk === true && <span style={{ fontSize: 12, color: '#4ade80', marginLeft: 'auto' }}><EmojiIcon e="✅" style={{ marginRight: '0.35em' }} />{profile.name} live ready</span>}
+            {connected && firmwareOk === null && robotType !== 'microbit' && <span style={{ fontSize: 12, color: '#4ade80', marginLeft: 'auto' }}><EmojiIcon e="✅" style={{ marginRight: '0.35em' }} />{profile.name} ready</span>}
           </div>
         </div>
 
@@ -4814,46 +4921,13 @@ export default function RobotPanel({ onNavigate }) {
           <div style={s.tabBar}>
             {['virtual', 'terminal', 'code'].map(tab => (
               <button key={tab} style={s.tab(rightTab === tab)} onClick={() => setRightTab(tab)}>
-                {tab === 'virtual' ? '🤖 Simulator' : tab === 'terminal' ? '💻 Terminal' : '📄 Code'}
+                <IconText>{tab === 'virtual' ? '🤖 Simulator' : tab === 'terminal' ? '💻 Terminal' : '📄 Code'}</IconText>
               </button>
             ))}
           </div>
 
           {rightTab === 'virtual' && (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px 16px', gap: 10, overflowY: 'auto' }}>
-              <div style={{
-                width: '100%',
-                padding: '12px 14px',
-                borderRadius: 12,
-                background: 'linear-gradient(135deg, rgba(30,144,255,0.15), rgba(0,200,83,0.12))',
-                border: '1px solid rgba(30,144,255,0.35)',
-                fontSize: 13,
-                lineHeight: 1.45,
-                color: 'var(--text-primary)',
-              }}>
-                <strong style={{ display: 'block', marginBottom: 6 }}>🚀 New 3D Test Arena</strong>
-                Build your own robot in <strong>Robot Design</strong>, then open step <strong>Test It</strong> (or{' '}
-                <button
-                  type="button"
-                  style={{
-                    border: 'none',
-                    background: 'none',
-                    color: '#1e90ff',
-                    fontWeight: 800,
-                    cursor: 'pointer',
-                    textDecoration: 'underline',
-                    padding: 0,
-                    fontSize: 'inherit',
-                  }}
-                  onClick={() => {
-                    if (onNavigate) onNavigate('academy');
-                    else window.location.hash = 'academy';
-                  }}
-                >
-                  open Test Arena directly
-                </button>
-                ). This panel is for physical micro:bit / Quarky robots.
-              </div>
               {/* Robot type picker */}
               <div style={{ width: '100%' }}>
                 <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: 'var(--text-muted)', marginBottom: 6 }}>Choose Robot</div>
@@ -4876,7 +4950,7 @@ export default function RobotPanel({ onNavigate }) {
                         transition: 'all 0.15s',
                       }}
                     >
-                      <span style={{ fontSize: 18 }}>{r.icon}</span>
+                      <span style={{ fontSize: 18 }}><EmojiIcon e={r.icon} /></span>
                       <span>{r.label}</span>
                     </button>
                   ))}
@@ -4905,7 +4979,7 @@ export default function RobotPanel({ onNavigate }) {
                         transition: 'all 0.15s',
                       }}
                     >
-                      <span style={{ fontSize: 15 }}>{t.icon}</span>
+                      <span style={{ fontSize: 15 }}><EmojiIcon e={t.icon} /></span>
                       <span style={{ lineHeight: 1.2, textAlign: 'center' }}>{t.label}</span>
                     </button>
                   ))}
@@ -4964,7 +5038,7 @@ export default function RobotPanel({ onNavigate }) {
                           : '0 0 20px rgba(34,197,94,0.5)',
                         transition: 'all 0.15s ease',
                       }}
-                    >{running ? '⏹' : '▶'}</button>
+                    ><IconText>{running ? '⏹' : '▶'}</IconText></button>
 
                     {/* Reset */}
                     <button
@@ -4998,17 +5072,17 @@ export default function RobotPanel({ onNavigate }) {
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr', gap: 5, maxWidth: 230, margin: '0 auto' }}>
                     {/* Row 1: empty, empty, up, empty, empty */}
                     <div /><div />
-                    <button title="Forward" style={{ ...s.btn('#22c55e'), justifyContent: 'center', padding: '7px 0' }} onClick={() => { robotRef.current?.execute({ id: 'forward', params: { amount: 40 } }); if (connected) sendLive('forward', { amount: 40 }); }}>⬆️</button>
+                    <button title="Forward" style={{ ...s.btn('#22c55e'), justifyContent: 'center', padding: '7px 0' }} onClick={() => { robotRef.current?.execute({ id: 'forward', params: { amount: 40 } }); if (connected) sendLive('forward', { amount: 40 }); }}><EmojiIcon e="⬆️" /></button>
                     <div /><div />
                     {/* Row 2: turn-left, strafe-left, stop, strafe-right, turn-right */}
                     <button title="Turn Left" style={{ ...s.btn('#3b82f6'), justifyContent: 'center', padding: '7px 0' }} onClick={() => { robotRef.current?.execute({ id: 'left', params: { degrees: 45 } }); if (connected) sendLive('left', { degrees: 45 }); }}>↺</button>
-                    <button title="Move Left" style={{ ...s.btn('#06b6d4'), justifyContent: 'center', padding: '7px 0' }} onClick={() => robotRef.current?.execute({ id: 'move_left', params: { amount: 40 } })}>⬅️</button>
-                    <button title="Stop" style={{ ...s.btn('#f59e0b'), justifyContent: 'center', padding: '7px 0' }} onClick={() => { if (connected) sendLive('stop', {}); }}>⏹</button>
-                    <button title="Move Right" style={{ ...s.btn('#06b6d4'), justifyContent: 'center', padding: '7px 0' }} onClick={() => robotRef.current?.execute({ id: 'move_right', params: { amount: 40 } })}>➡️</button>
+                    <button title="Move Left" style={{ ...s.btn('#06b6d4'), justifyContent: 'center', padding: '7px 0' }} onClick={() => robotRef.current?.execute({ id: 'move_left', params: { amount: 40 } })}><EmojiIcon e="⬅️" /></button>
+                    <button title="Stop" style={{ ...s.btn('#f59e0b'), justifyContent: 'center', padding: '7px 0' }} onClick={() => { if (connected) sendLive('stop', {}); }}><EmojiIcon e="⏹" /></button>
+                    <button title="Move Right" style={{ ...s.btn('#06b6d4'), justifyContent: 'center', padding: '7px 0' }} onClick={() => robotRef.current?.execute({ id: 'move_right', params: { amount: 40 } })}><EmojiIcon e="➡️" /></button>
                     <button title="Turn Right" style={{ ...s.btn('#a855f7'), justifyContent: 'center', padding: '7px 0' }} onClick={() => { robotRef.current?.execute({ id: 'right', params: { degrees: 45 } }); if (connected) sendLive('right', { degrees: 45 }); }}>↻</button>
                     {/* Row 3: empty, empty, down, empty, empty */}
                     <div /><div />
-                    <button title="Backward" style={{ ...s.btn('#ef4444'), justifyContent: 'center', padding: '7px 0' }} onClick={() => { robotRef.current?.execute({ id: 'back', params: { amount: 40 } }); if (connected) sendLive('back', { amount: 40 }); }}>⬇️</button>
+                    <button title="Backward" style={{ ...s.btn('#ef4444'), justifyContent: 'center', padding: '7px 0' }} onClick={() => { robotRef.current?.execute({ id: 'back', params: { amount: 40 } }); if (connected) sendLive('back', { amount: 40 }); }}><EmojiIcon e="⬇️" /></button>
                     <div /><div />
                   </div>
                   <div style={{ textAlign: 'center', fontSize: 10, color: 'var(--text-muted)', marginTop: 5 }}>
@@ -5092,7 +5166,7 @@ export default function RobotPanel({ onNavigate }) {
               <div style={s.codeBox}>{generatedCode || '// Add blocks to generate code…'}</div>
               <div style={{ padding: 8, borderTop: '1px solid var(--border)', display: 'flex', gap: 6 }}>
                 <button style={s.btn('#6366f1')} onClick={() => navigator.clipboard?.writeText(generatedCode).then(() => addTerminal('Code copied!', 'success'))}>
-                  📋 Copy Code
+                  <EmojiIcon e="📋" style={{ marginRight: '0.35em' }} />Copy Code
                 </button>
                 <span style={{ fontSize: 12, color: 'var(--text-muted)', alignSelf: 'center' }}>
                   {profile.name} format
@@ -5106,7 +5180,7 @@ export default function RobotPanel({ onNavigate }) {
       {/* Flash progress overlay */}
       {flashProgress !== null && flashProgress !== 'done' && (
         <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 9999, background: ui.setupBg, border: `1px solid ${ui.setupBorder}`, borderRadius: 12, padding: '14px 20px', minWidth: 260, boxShadow: '0 8px 32px rgba(0,0,0,0.35)' }}>
-          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 8, color: isLightTheme ? '#1e293b' : '#e0e7ff' }}>⚡ Flashing to micro:bit...</div>
+          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 8, color: isLightTheme ? '#1e293b' : '#e0e7ff' }}><EmojiIcon e="⚡" style={{ marginRight: '0.35em' }} />Flashing to micro:bit...</div>
           <div style={{ background: isLightTheme ? '#c7d2fe' : '#312e81', borderRadius: 6, height: 8, overflow: 'hidden' }}>
             <div style={{ height: '100%', background: 'linear-gradient(90deg,#6366f1,#a5b4fc)', width: `${flashProgress}%`, transition: 'width 0.3s ease', borderRadius: 6 }} />
           </div>

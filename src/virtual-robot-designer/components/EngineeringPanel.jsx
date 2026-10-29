@@ -8,6 +8,7 @@ import BuildGuide from './BuildGuide.jsx';
 import RobotWorkshop from './RobotWorkshop.jsx';
 import BlockWorkshop from './BlockWorkshop.jsx';
 import RobotQuickControls from './RobotQuickControls.jsx';
+import { EmojiIcon, IconText } from '../../components/ui/Icon.jsx';
 
 export default function EngineeringPanel({
   design,
@@ -54,14 +55,14 @@ export default function EngineeringPanel({
   return (
     <motion.div className="vrd-engineering">
       <div className={`vrd-panel-head vrd-panel-head--${buildMode}`}>
-        <strong>{isLego ? '🧱 BUILD YOUR LEGO ROBOT' : '🤖 BUILD YOUR REAL ROBOT'}</strong>
+        <strong><IconText>{isLego ? '🧱 BUILD YOUR LEGO ROBOT' : '🤖 BUILD YOUR REAL ROBOT'}</IconText></strong>
         <button type="button" className="vrd-switch-style" onClick={handleSwitchStyle}>
           Switch to {isLego ? '🤖 Real' : '🧱 LEGO'}
         </button>
       </div>
 
       <motion.div className={`vrd-style-banner vrd-style-banner--${buildMode}`}>
-        <span>{style.icon}</span>
+        <span><EmojiIcon e={style.icon} /></span>
         <motion.div>
           <strong>{style.label}</strong>
           <p>{isLego ? 'Click blocks below, then tap the grid or 3D floor to snap them on' : 'Pick a body, add wheels & parts — your robot appears in 3D'}</p>
@@ -85,7 +86,7 @@ export default function EngineeringPanel({
                 whileHover={{ scale: 1.03 }}
                 whileTap={{ scale: 0.97 }}
               >
-                <span className="vrd-blueprint-icon">{bp.icon}</span>
+                <span className="vrd-blueprint-icon"><EmojiIcon e={bp.icon} /></span>
                 <strong>{bp.name}</strong>
                 <span>{bp.desc}</span>
               </motion.button>

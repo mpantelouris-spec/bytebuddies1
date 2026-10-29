@@ -2,6 +2,8 @@
  * Scratch-style UI sounds (Web Audio API — no external files).
  */
 
+import { SOUND_LIBRARY_ITEMS, findLibrarySound } from '../data/soundLibrary';
+
 const activeNodes = new Set();
 
 let _ctx;
@@ -52,14 +54,21 @@ export const BLOCK_SOUND_OPTIONS = [
   { id: 'meow', label: 'Meow' },
 ];
 
-const IDS = new Set(BLOCK_SOUND_OPTIONS.map((o) => o.id));
+const IDS = new Set([
+  ...BLOCK_SOUND_OPTIONS.map((o) => o.id),
+  ...SOUND_LIBRARY_ITEMS.map((o) => o.id),
+]);
 
 export function normalizeSoundId(raw) {
   if (raw == null) return 'pop';
+  const lib = findLibrarySound(raw);
+  if (lib) return lib.id;
   let s = String(raw).trim().toLowerCase().replace(/['"]/g, '');
+  const dashed = s.replace(/\s+/g, '-');
+  if (IDS.has(dashed)) return dashed;
   s = s.replace(/\s+/g, '');
   if (IDS.has(s)) return s;
-  const aliases = { success: 'win', error: 'lose', beep: 'click' };
+  const aliases = { success: 'win', error: 'lose' };
   if (aliases[s]) return aliases[s];
   const spaced = String(raw).trim().toLowerCase().replace(/['"]/g, '');
   const hit = BLOCK_SOUND_OPTIONS.find((o) => o.label.toLowerCase() === spaced || o.id === spaced);
@@ -279,7 +288,182 @@ export function playBlockSound(rawName, opts = {}) {
       break;
     }
     default:
-      b(now, 440, 0.08, 'sine', 0.12 * m);
+      if (!playExtraLibrarySound(id, ctx, now, v, m, rate, b)) {
+        b(now, 440, 0.08, 'sine', 0.12 * m);
+      }
+  }
+}
+
+function sweep(ctx, now, from, to, dur, type, vol, rate) {
+  const o = ctx.createOscillator();
+  const g = ctx.createGain();
+  o.type = type;
+  o.frequency.setValueAtTime(Math.max(20, from * rate), now);
+  o.frequency.exponentialRampToValueAtTime(Math.max(20, to * rate), now + dur);
+  g.gain.setValueAtTime(Math.max(0.0001, vol), now);
+  g.gain.exponentialRampToValueAtTime(0.001, now + dur);
+  o.connect(g);
+  g.connect(out());
+  o.start(now);
+  o.stop(now + dur + 0.02);
+  track(o);
+}
+
+function playExtraLibrarySound(id, ctx, now, v, m, rate, b) {
+  switch (id) {
+    case 'bark':
+      sweep(ctx, now, 220, 90, 0.1, 'sawtooth', 0.18 * m, rate);
+      noiseBurst(ctx, now + 0.04, 0.08, 0.18 * v);
+      return true;
+    case 'chirp':
+      b(now, 1800, 0.05, 'sine', 0.12 * m);
+      b(now + 0.07, 2200, 0.05, 'sine', 0.1 * m);
+      b(now + 0.14, 1600, 0.05, 'sine', 0.08 * m);
+      return true;
+    case 'horse':
+      noiseBurst(ctx, now, 0.08, 0.16 * v);
+      sweep(ctx, now + 0.05, 140, 80, 0.12, 'triangle', 0.16 * m, rate);
+      noiseBurst(ctx, now + 0.22, 0.08, 0.14 * v);
+      sweep(ctx, now + 0.26, 140, 80, 0.12, 'triangle', 0.14 * m, rate);
+      return true;
+    case 'frog':
+      sweep(ctx, now, 280, 90, 0.14, 'square', 0.12 * m, rate);
+      sweep(ctx, now + 0.16, 260, 80, 0.12, 'square', 0.1 * m, rate);
+      return true;
+    case 'duck':
+      sweep(ctx, now, 420, 240, 0.1, 'sawtooth', 0.14 * m, rate);
+      sweep(ctx, now + 0.12, 400, 220, 0.1, 'sawtooth', 0.12 * m, rate);
+      return true;
+    case 'roar':
+      noiseBurst(ctx, now, 0.5, 0.22 * v);
+      sweep(ctx, now, 160, 50, 0.5, 'sawtooth', 0.16 * m, rate);
+      return true;
+    case 'buzz':
+      b(now, 180, 0.38, 'sawtooth', 0.1 * m);
+      b(now, 190, 0.38, 'square', 0.05 * m);
+      return true;
+    case 'splash':
+      noiseBurst(ctx, now, 0.08, 0.22 * v);
+      noiseBurst(ctx, now + 0.06, 0.2, 0.12 * v);
+      b(now, 420, 0.08, 'sine', 0.06 * m);
+      return true;
+    case 'crash':
+      noiseBurst(ctx, now, 0.35, 0.32 * v);
+      b(now, 70, 0.2, 'sine', 0.18 * m);
+      return true;
+    case 'magic':
+      [784, 988, 1174, 1568].forEach((f, i) => b(now + i * 0.08, f, 0.22, 'sine', 0.1 * m));
+      return true;
+    case 'powerup':
+      [392, 523, 659, 784, 1046].forEach((f, i) => b(now + i * 0.07, f, 0.12, 'triangle', 0.12 * m));
+      return true;
+    case 'hit':
+      noiseBurst(ctx, now, 0.08, 0.28 * v);
+      b(now, 110, 0.1, 'sine', 0.2 * m);
+      return true;
+    case 'extra-life':
+      [523, 659, 784, 1046, 1318].forEach((f, i) => b(now + i * 0.08, f, 0.16, 'sine', 0.12 * m));
+      return true;
+    case 'game-over':
+      [392, 349, 311, 261].forEach((f, i) => b(now + i * 0.14, f, 0.2, 'triangle', 0.14 * m));
+      return true;
+    case 'kick':
+      sweep(ctx, now, 140, 40, 0.14, 'sine', 0.28 * m, rate);
+      noiseBurst(ctx, now, 0.04, 0.12 * v);
+      return true;
+    case 'snare':
+      noiseBurst(ctx, now, 0.12, 0.3 * v);
+      b(now, 180, 0.06, 'triangle', 0.1 * m);
+      return true;
+    case 'hihat':
+      noiseBurst(ctx, now, 0.05, 0.18 * v);
+      return true;
+    case 'clap':
+      noiseBurst(ctx, now, 0.04, 0.22 * v);
+      noiseBurst(ctx, now + 0.03, 0.08, 0.16 * v);
+      return true;
+    case 'cymbal':
+      noiseBurst(ctx, now, 0.5, 0.22 * v);
+      b(now, 6400, 0.2, 'square', 0.04 * m);
+      return true;
+    case 'tom':
+      sweep(ctx, now, 180, 70, 0.2, 'sine', 0.22 * m, rate);
+      return true;
+    case 'woodblock':
+      b(now, 890, 0.05, 'square', 0.1 * m);
+      b(now, 445, 0.04, 'sine', 0.08 * m);
+      return true;
+    case 'piano':
+      b(now, 523.25, 0.4, 'triangle', 0.16 * m);
+      b(now, 1046.5, 0.2, 'sine', 0.06 * m);
+      return true;
+    case 'fanfare':
+      [392, 523, 659, 784].forEach((f, i) => b(now + i * 0.12, f, 0.22, 'sawtooth', 0.1 * m));
+      return true;
+    case 'chime':
+      b(now, 1046, 0.5, 'sine', 0.12 * m);
+      b(now + 0.04, 1568, 0.4, 'sine', 0.08 * m);
+      return true;
+    case 'guitar':
+      noiseBurst(ctx, now, 0.02, 0.08 * v);
+      b(now, 196, 0.35, 'sawtooth', 0.1 * m);
+      b(now, 247, 0.3, 'triangle', 0.08 * m);
+      return true;
+    case 'synth':
+      sweep(ctx, now, 220, 440, 0.45, 'sawtooth', 0.1 * m, rate);
+      b(now, 330, 0.45, 'square', 0.04 * m);
+      return true;
+    case 'arp':
+      [261, 329, 392, 523, 392, 329].forEach((f, i) => b(now + i * 0.07, f, 0.1, 'square', 0.08 * m));
+      return true;
+    case 'laugh':
+      [420, 500, 380, 520, 360].forEach((f, i) => b(now + i * 0.08, f, 0.07, 'triangle', 0.12 * m));
+      return true;
+    case 'cheer':
+      [523, 659, 784].forEach((f, i) => b(now + i * 0.05, f, 0.35, 'triangle', 0.1 * m));
+      noiseBurst(ctx, now, 0.4, 0.08 * v);
+      return true;
+    case 'aww':
+      sweep(ctx, now, 480, 280, 0.32, 'sine', 0.14 * m, rate);
+      return true;
+    case 'footstep':
+      noiseBurst(ctx, now, 0.06, 0.16 * v);
+      b(now, 80, 0.08, 'sine', 0.12 * m);
+      return true;
+    case 'rain':
+      noiseBurst(ctx, now, 0.65, 0.12 * v);
+      noiseBurst(ctx, now + 0.08, 0.5, 0.08 * v);
+      return true;
+    case 'wind':
+      noiseBurst(ctx, now, 0.6, 0.14 * v);
+      sweep(ctx, now, 240, 140, 0.6, 'triangle', 0.04 * m, rate);
+      return true;
+    case 'waves':
+      noiseBurst(ctx, now, 0.3, 0.1 * v);
+      noiseBurst(ctx, now + 0.25, 0.4, 0.16 * v);
+      return true;
+    case 'thunder':
+      noiseBurst(ctx, now, 0.12, 0.28 * v);
+      sweep(ctx, now + 0.08, 90, 30, 0.5, 'sawtooth', 0.18 * m, rate);
+      noiseBurst(ctx, now + 0.15, 0.45, 0.16 * v);
+      return true;
+    case 'beep':
+      b(now, 880, 0.1, 'square', 0.1 * m);
+      return true;
+    case 'alarm':
+      b(now, 880, 0.12, 'square', 0.12 * m);
+      b(now + 0.16, 620, 0.12, 'square', 0.12 * m);
+      b(now + 0.32, 880, 0.12, 'square', 0.12 * m);
+      return true;
+    case 'ding':
+      b(now, 1318, 0.25, 'sine', 0.14 * m);
+      b(now, 2637, 0.12, 'sine', 0.05 * m);
+      return true;
+    case 'buzzer':
+      b(now, 140, 0.28, 'square', 0.14 * m);
+      return true;
+    default:
+      return false;
   }
 }
 

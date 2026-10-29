@@ -1,6 +1,8 @@
 /**
  * BiomeAAAVisualSpec.js — Lighting, fog, post per 2026 track lineup.
  */
+import { isCosmicSkywayArena } from './CosmicSkywayRegistry.js';
+
 export const BIOME_CAMERA_STANDARD = {
   camBack: 6.4,
   camUp: 2.9,
@@ -73,14 +75,14 @@ export const BIOME_AAA_SPECS = {
     mood: 'Lava Foundry — molten forge circuit',
   },
   star_station_01: {
-    palette: { primary: '#AA44FF', secondary: '#00FFFF', accent: '#AA44FF', fog: 0x1a0840 },
-    keyLight: 0xccd8ff, fillLight: 0x6644aa, rimLight: 0x00ffff, ambient: 0x2a1850,
-    ground: 0x12101c, roadStyle: 'stardust_violet',
-    lightingTemp: 'space-station', atmosphere: 'orbital-deck', fogDensity: 0.0018,
-    post: { ...BASE_POST, bloom: 0.42, gradeCss: 'saturate(1.18) contrast(1.08) brightness(1.02)' },
-    underground: true,
+    palette: { primary: '#AA44FF', secondary: '#00FFFF', accent: '#FF8844', fog: 0x4a2878 },
+    keyLight: 0xfff0e8, fillLight: 0x6a7088, rimLight: 0x44eeff, ambient: 0x2a2c3a,
+    ground: 0x0a0818, roadStyle: 'cosmic_metal',
+    lightingTemp: 'cosmic-skyway', atmosphere: 'neon-space-highway', fogDensity: 0.0012,
+    post: { ...BASE_POST, bloom: 0.45, gradeCss: 'saturate(1.2) contrast(1.12) brightness(1.02)' },
+    underground: false,
     isCosmicBiome: true,
-    mood: 'Star Station — orbital ring race',
+    mood: 'Cosmic Skyway — neon highway past wormhole and planet',
   },
   fairy_glen_01: {
     palette: { primary: '#7CFC00', secondary: '#FFD700', accent: '#FF69B4', fog: 0xd0ecc0 },
@@ -101,6 +103,7 @@ export const BIOME_AAA_SPECS = {
 };
 
 export function getBiomeAAASpec(arenaType) {
+  if (isCosmicSkywayArena(arenaType)) return BIOME_AAA_SPECS.star_station_01;
   return BIOME_AAA_SPECS[arenaType] || BIOME_AAA_SPECS.sunset_cove_01;
 }
 

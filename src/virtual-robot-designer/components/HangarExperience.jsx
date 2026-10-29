@@ -32,6 +32,7 @@ import AICoreDiagnostics        from './AICoreDiagnostics.jsx';
 import CommandTerminal          from './CommandTerminal.jsx';
 
 import '../styles/hangar-experience.css';
+import { EmojiIcon, IconText } from '../../components/ui/Icon.jsx';
 
 /* ── Blueprint overlay ──────────────────────────────────────── */
 function BlueprintOverlay({ onSelect, onClose }) {
@@ -72,7 +73,7 @@ function BlueprintOverlay({ onSelect, onClose }) {
             whileTap={{ scale: 0.97 }}
             onClick={() => onSelect(bp)}
           >
-            <span className="blueprint-card-icon">{bp.icon}</span>
+            <span className="blueprint-card-icon"><EmojiIcon e={bp.icon} /></span>
             <div className="blueprint-card-name">{bp.name}</div>
             <div className="blueprint-card-desc">{bp.desc}</div>
           </motion.div>
@@ -363,7 +364,7 @@ export default function HangarExperience() {
             </div>
           )}
           <div className="hangar-robot-subtitle">
-            {asm.buildMode === 'blocks' ? '🧱 LEGO Mode' : '🤖 Advanced Mode'} · {Object.values(asm.slots || {}).filter(Boolean).length} modules
+            <IconText>{asm.buildMode === 'blocks' ? '🧱 LEGO Mode' : '🤖 Advanced Mode'}</IconText> · {Object.values(asm.slots || {}).filter(Boolean).length} modules
           </div>
         </div>
 
@@ -371,9 +372,9 @@ export default function HangarExperience() {
         <nav className="hangar-mode-nav">
           <button className="hangar-mode-btn active">BUILD</button>
           <button className="hangar-mode-btn" onClick={() => setInnerView('code')}>CODE</button>
-          <button className="hangar-mode-btn mode-test" onClick={handleTestInSimulator}>⚡ TEST</button>
+          <button className="hangar-mode-btn mode-test" onClick={handleTestInSimulator}><EmojiIcon e="⚡" style={{ marginRight: '0.35em' }} />TEST</button>
           <button className="hangar-mode-btn" onClick={() => setInnerView('bots')}>MY BOTS</button>
-          <button className="hangar-mode-btn" onClick={handleSaveDesign} title="Save design">💾</button>
+          <button className="hangar-mode-btn" onClick={handleSaveDesign} title="Save design"><EmojiIcon e="💾" /></button>
         </nav>
       </div>
 
@@ -431,7 +432,7 @@ export default function HangarExperience() {
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
         >
-          ⚡ Test in Simulator
+          <EmojiIcon e="⚡" style={{ marginRight: '0.35em' }} />Test in Simulator
         </motion.button>
       </div>
 

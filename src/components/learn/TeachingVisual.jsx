@@ -6,6 +6,7 @@
  */
 import React from 'react';
 import LabBuddy from './CodingLab/LabBuddy.jsx';
+import { IconText } from '../ui/Icon.jsx';
 
 const INK = '#0f172a';
 const MUTED = '#475569';
@@ -45,7 +46,7 @@ export function BlockStack({ blocks = [], size = 15 }) {
               boxShadow: `inset 0 -3px 0 ${edge}`, whiteSpace: 'pre',
               opacity: isEnd ? 0.9 : 1,
             }}>
-              {isEnd ? ' ' : text.replace(/▶/g, '🏁')}
+              <IconText>{isEnd ? ' ' : text.replace(/▶/g, '🏁')}</IconText>
             </div>
           </div>
         );
@@ -172,7 +173,7 @@ function Grid({ cols, rows, start, dir = 'right', path = [], walls = [], program
             <div key={n} style={{ position: 'absolute', left: c * cell, top: r * cell, width: cell, height: cell,
               background: wallSet.has(`${c},${r}`) ? '#868e96' : (c + r) % 2 ? '#b2f2bb' : '#d3f9d8',
               display: 'grid', placeItems: 'center', fontSize: cell * 0.5 }}>
-              {wallSet.has(`${c},${r}`) ? '🧱' : ''}
+              <IconText>{wallSet.has(`${c},${r}`) ? '🧱' : ''}</IconText>
             </div>
           );
         })}

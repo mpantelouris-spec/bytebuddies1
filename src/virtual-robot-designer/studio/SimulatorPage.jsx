@@ -8,6 +8,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import * as THREE    from 'three';
 import * as Blockly  from 'blockly';
 import { buildRobotModel } from '../services/studio-robot-builder.js';
+import { EmojiIcon, IconText } from '../../components/ui/Icon.jsx';
 
 // ─── Challenges ──────────────────────────────────────────────────────────────
 const CHALLENGES = [
@@ -768,7 +769,7 @@ function BlocklyPanel({ robotConfig, onCodeChange, execBlockId, blockCount }) {
   return (
     <div className="bb-sim-code-panel">
       <div className="bb-sim-code-header">
-        <span className="bb-sim-code-title">🤖 Robot Code</span>
+        <span className="bb-sim-code-title"><EmojiIcon e="🤖" style={{ marginRight: '0.35em' }} />Robot Code</span>
         <span className="bb-sim-code-badge">
           {blockCount > 0 ? `${blockCount} step${blockCount !== 1 ? 's' : ''}` : 'Empty program'}
         </span>
@@ -875,7 +876,7 @@ export default function SimulatorPage({ robotConfig }) {
       {/* ── Top bar ── */}
       <div className="bb-sim-topbar">
         <div className="bb-sim-topbar-left">
-          <span className="bb-sim-ch-icon">{activeChallenge.icon}</span>
+          <span className="bb-sim-ch-icon"><EmojiIcon e={activeChallenge.icon} /></span>
           <span className="bb-sim-ch-title">{activeChallenge.name}</span>
           <span className="bb-sim-ch-diff" style={{ background:activeChallenge.color+'22', color:activeChallenge.color }}>
             {activeChallenge.difficulty}
@@ -894,11 +895,11 @@ export default function SimulatorPage({ robotConfig }) {
         </div>
         <div className="bb-sim-topbar-right">
           {!running ? (
-            <button className="bb-sim-btn launch" onClick={doStart}>▶ Launch</button>
+            <button className="bb-sim-btn launch" onClick={doStart}><EmojiIcon e="▶" style={{ marginRight: '0.35em' }} />Launch</button>
           ) : (
             <>
-              <button className="bb-sim-btn pause" onClick={doPause}>{paused?'▶ Resume':'⏸ Pause'}</button>
-              <button className="bb-sim-btn stop"  onClick={doStop}>⏹ Stop</button>
+              <button className="bb-sim-btn pause" onClick={doPause}><IconText>{paused?'▶ Resume':'⏸ Pause'}</IconText></button>
+              <button className="bb-sim-btn stop"  onClick={doStop}><EmojiIcon e="⏹" style={{ marginRight: '0.35em' }} />Stop</button>
             </>
           )}
           {!running && stats.progress>0 && (
@@ -948,14 +949,14 @@ export default function SimulatorPage({ robotConfig }) {
           {/* Launch prompt */}
           {!running && stats.progress===0 && (
             <div className="bb-sim-launch-hint">
-              <span style={{fontSize:22}}>{activeChallenge.icon}</span>
+              <span style={{fontSize:22}}><EmojiIcon e={activeChallenge.icon} /></span>
               <div>
                 <div className="bb-sim-launch-hint-title">{activeChallenge.name}</div>
                 <div className="bb-sim-launch-hint-sub">
                   {robotCode.length>0 ? `${robotCode.length} blocks ready` : 'Build your code on the left, then launch!'}
                 </div>
               </div>
-              <button className="bb-sim-btn launch" onClick={doStart}>▶ Launch!</button>
+              <button className="bb-sim-btn launch" onClick={doStart}><EmojiIcon e="▶" style={{ marginRight: '0.35em' }} />Launch!</button>
             </div>
           )}
         </div>
@@ -990,7 +991,7 @@ export default function SimulatorPage({ robotConfig }) {
                   onClick={()=>!running&&setChallenge(ch)}
                   disabled={running&&!active}
                 >
-                  <span className="bb-sim-ch-row-icon">{ch.icon}</span>
+                  <span className="bb-sim-ch-row-icon"><EmojiIcon e={ch.icon} /></span>
                   <div className="bb-sim-ch-row-info">
                     <span className="bb-sim-ch-row-name">{ch.name}</span>
                     <span className="bb-sim-ch-row-diff"
@@ -1016,11 +1017,11 @@ export default function SimulatorPage({ robotConfig }) {
 
           {!running&&stats.progress>=100&&(
             <div className="bb-sim-complete">
-              <div style={{fontSize:30}}>🏆</div>
+              <div style={{fontSize:30}}><EmojiIcon e="🏆" /></div>
               <div className="bb-sim-complete-title">Complete!</div>
               <div className="bb-sim-complete-sub">{stats.dist.toFixed(1)}m · {Math.floor(stats.time)}s</div>
               <button className="bb-sim-btn launch" style={{width:'100%',marginTop:8}} onClick={doStart}>
-                ▶ Play Again
+                <EmojiIcon e="▶" style={{ marginRight: '0.35em' }} />Play Again
               </button>
             </div>
           )}

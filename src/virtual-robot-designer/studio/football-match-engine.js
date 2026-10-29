@@ -62,6 +62,8 @@ function makeBot(id, team, x, z, role, isPlayer = false, extra = {}) {
     visualX: x,
     visualZ: z,
     visualFacing: extra.facing != null ? extra.facing : (team === 'player' ? 0 : Math.PI),
+    visualSpeed: 0,
+    animState: 'idle',
     action: null,
     actionTimer: 0,
     canAct: true,
@@ -535,6 +537,12 @@ export function createFootballEngine({
         b.z = b.anchorZ;
         b.visualX = b.anchorX;
         b.visualZ = b.anchorZ;
+        b.visualSpeed = 0;
+        b.animState = 'idle';
+        b.lastX = b.x;
+        b.lastZ = b.z;
+        b.mesh?.userData?.setAnimState?.('idle');
+        b.mesh?.userData?.footballRig?.setRunSpeed?.(0);
         b.moveSpeed = 0;
         b.intent = null;
         b.facing = b.team === 'player' ? 0 : Math.PI;
@@ -570,6 +578,12 @@ export function createFootballEngine({
           bot.z = z;
           bot.visualX = x;
           bot.visualZ = z;
+          bot.visualSpeed = 0;
+          bot.animState = 'idle';
+          bot.lastX = x;
+          bot.lastZ = z;
+          bot.mesh?.userData?.setAnimState?.('idle');
+          bot.mesh?.userData?.footballRig?.setRunSpeed?.(0);
           bot.moveSpeed = 0;
           bot.intent = null;
           bot.facing = team === 'player' ? 0 : Math.PI;
@@ -584,6 +598,12 @@ export function createFootballEngine({
         b.z = b.anchorZ;
         b.visualX = b.anchorX;
         b.visualZ = b.anchorZ;
+        b.visualSpeed = 0;
+        b.animState = 'idle';
+        b.lastX = b.x;
+        b.lastZ = b.z;
+        b.mesh?.userData?.setAnimState?.('idle');
+        b.mesh?.userData?.footballRig?.setRunSpeed?.(0);
         b.moveSpeed = 0;
         b.intent = null;
       }
@@ -1211,27 +1231,30 @@ export function createFootballEngine({
   }
 
   function syncBotMeshes(dt) {
-    const frameDt = Math.max(dt, 1 / 120);
+    // Keep animation and presentation stable when a frame is delayed (tab
+    // switches, shader compilation, or a busy browser can produce large dt).
+    const frameDt = clamp(dt || 1 / 60, 1 / 120, 0.05);
     for (const bot of bots) {
       if (!bot.mesh) continue;
-      if (bot.isPlayer) {
-        bot.visualX = bot.x;
-        bot.visualZ = bot.z;
-        bot.visualFacing = bot.facing;
-      } else {
-        const posLerp = Math.min(1, frameDt * 14);
-        bot.visualX += (bot.x - bot.visualX) * posLerp;
-        bot.visualZ += (bot.z - bot.visualZ) * posLerp;
-        bot.visualFacing = lerpAngle(bot.visualFacing, bot.facing, Math.min(1, frameDt * 11));
-      }
+      const prevVisualX = bot.visualX;
+      const prevVisualZ = bot.visualZ;
+      const posLerp = 1 - Math.exp(-14 * frameDt);
+      bot.visualX += (bot.x - bot.visualX) * posLerp;
+      bot.visualZ += (bot.z - bot.visualZ) * posLerp;
+      bot.visualFacing = lerpAngle(bot.visualFacing, bot.facing, 1 - Math.exp(-11 * frameDt));
 
       bot.mesh.position.x = bot.visualX;
       bot.mesh.position.z = bot.visualZ;
       if (bot.mesh.userData.groundY != null) bot.mesh.position.y = bot.mesh.userData.groundY;
       bot.mesh.rotation.y = bot.visualFacing;
 
-      const moved = Math.abs(bot.x - bot.lastX) + Math.abs(bot.z - bot.lastZ);
-      const moveSpeed = moved / Math.max(frameDt, 0.001);
+      // Drive the gait from visible movement, not unsmoothed simulation
+      // coordinates. Filtering the speed prevents AI target corrections from
+      // rapidly toggling the walk/run clips.
+      const moved = Math.hypot(bot.visualX - prevVisualX, bot.visualZ - prevVisualZ);
+      const measuredSpeed = moved / frameDt;
+      bot.visualSpeed += (measuredSpeed - bot.visualSpeed) * (1 - Math.exp(-8 * frameDt));
+      const moveSpeed = bot.visualSpeed;
       bot.lastX = bot.x;
       bot.lastZ = bot.z;
 
@@ -1253,6 +1276,7 @@ export function createFootballEngine({
       }
 
       if (state.celebrating && bot.mesh.userData?.setAnimState && bot.team === 'player') {
+        bot.animState = 'celebrate';
         bot.mesh.userData.setAnimState('celebrate', frameDt);
       } else if (kickingBot?.id === bot.id && kickType && bot.mesh.userData?.rig) {
         kickFrame += 1;
@@ -1266,10 +1290,13 @@ export function createFootballEngine({
         if (kickFrame >= maxFrames) { kickType = null; kickingBot = null; }
       } else if (bot.mesh.userData?.setAnimState) {
         const hasBall = state.possessionBotId === bot.id;
-        const anim = moveSpeed > 0.06
-          ? (hasBall ? 'dribble' : 'run')
-          : 'idle';
-        bot.mesh.userData.setAnimState(anim, frameDt);
+        const wasMoving = bot.animState !== 'idle';
+        const isMoving = wasMoving ? moveSpeed > 0.09 : moveSpeed > 0.16;
+        const nextAnim = isMoving ? (hasBall ? 'dribble' : 'run') : 'idle';
+        if (nextAnim !== bot.animState) {
+          bot.animState = nextAnim;
+          bot.mesh.userData.setAnimState(nextAnim, frameDt);
+        }
       }
       bot.mesh.userData.animate?.(state.matchTime, frameDt);
     }
@@ -1382,12 +1409,23 @@ export function createFootballEngine({
         playerStamina: 1,
       });
       ai.warmupTimer = difficulty === 'hard' ? 0.8 : difficulty === 'easy' ? 1.2 : 0.5;
-      for (const b of bots) { b.x = b.anchorX; b.z = b.anchorZ; b.visualX = b.anchorX; b.visualZ = b.anchorZ; b.moveSpeed = 0; b.canAct = true; b.action = null; b.actionTimer = 0; b.intent = null; }
+      for (const b of bots) { b.x = b.anchorX; b.z = b.anchorZ; b.visualX = b.anchorX; b.visualZ = b.anchorZ; b.visualSpeed = 0; b.animState = 'idle'; b.lastX = b.x; b.lastZ = b.z; b.mesh?.userData?.setAnimState?.('idle'); b.mesh?.userData?.footballRig?.setRunSpeed?.(0); b.moveSpeed = 0; b.canAct = true; b.action = null; b.actionTimer = 0; b.intent = null; }
       resetBall();
     },
     doAction(actionId, params = {}, botId = null, fromCoded = false) {
       const bot = botId ? bots.find((b) => b.id === botId && b.team === 'player') : playerBot;
       if (!bot || state.over) return;
+      // Sensor blocks: the robot measures a distance and says it (works any time, even before kick-off)
+      if (actionId === 'check_ball_distance' || actionId === 'check_goal_distance') {
+        const attackGoalZ = bot.team === 'player' ? goalZ : -goalZ;
+        const d = actionId === 'check_ball_distance'
+          ? Math.hypot(ball.x - bot.x, ball.z - bot.z)
+          : Math.hypot(bot.x, attackGoalZ - bot.z);
+        state.lastMeasured = Math.round(d);
+        state.codedActionLabel = `${botLabel(bot)}: ${actionId === 'check_ball_distance' ? 'ball' : 'goal'} is ${Math.round(d)} m away`;
+        state.codedActionTimer = 2.4;
+        return;
+      }
       const movementOnly = MOVE_INTENTS.has(actionId);
       if (!movementOnly && !bot.canAct) return;
       state.lastActBotId = bot.id;

@@ -4,7 +4,7 @@
  */
 import * as THREE from 'three';
 import { placeAtTrack, sampleTrackFrame } from '../GameWorldBuilder.js';
-import { getTrackManifest, trackHasBundledAssets, probeTrackBundledAssets } from './TrackAssetManifest.js';
+import { getTrackManifest, trackHasBundledAssets } from './TrackAssetManifest.js';
 import { getTrackWorldRecipe } from './TrackWorldRecipes.js';
 import { snapPropToRoad } from './TrackGroundSnap.js';
 import { countTrackWorldProps } from './TrackWorldBuilder.js';
@@ -301,7 +301,7 @@ async function placeVistaGltf(world, bounds, arenaType, curve, finishT) {
 
 /** Load Kenney glTF props for a track (async, parallel). */
 export async function enrichTrackWorldGltf(world, curve, hw, arenaType, perf, scene, finishT = 0) {
-  const has = trackHasBundledAssets(arenaType) || await probeTrackBundledAssets(arenaType);
+  const has = trackHasBundledAssets(arenaType);
   if (!has) {
     console.warn('[TrackGltf] no bundled assets verified', arenaType);
     return 0;

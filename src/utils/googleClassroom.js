@@ -11,7 +11,7 @@
  *     ByteBuddies session. The access token lives in sessionStorage only.
  */
 import { initializeApp, getApps } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { getAuth, GoogleAuthProvider, signInWithPopup, browserPopupRedirectResolver } from 'firebase/auth';
 import { firebaseConfig } from '../firebase';
 
 const API = 'https://classroom.googleapis.com/v1';
@@ -67,18 +67,83 @@ export function disconnectGoogleClassroom() {
 }
 
 function gcAuth() {
-  const app = getApps().find((a) => a.name === 'bb-gclassroom') || initializeApp(firebaseConfig, 'bb-gclassroom');
+  const existing = getApps().find((a) => a.name === 'bb-gclassroom');
+  if (existing) return getAuth(existing);
+  // Classroom OAuth must use Firebase's registered handler. The main app uses
+  // bytebuddies.technology as authDomain (Chromebooks), but Google's OAuth
+  // client only allows https://connectr-5b7a4.firebaseapp.com/__/auth/handler
+  // — that mismatch was Error 400: redirect_uri_mismatch.
+  const app = initializeApp({
+    ...firebaseConfig,
+    authDomain: 'connectr-5b7a4.firebaseapp.com',
+  }, 'bb-gclassroom');
   return getAuth(app);
+}
+
+/* ─── Hidden test route: Google sign-in in the same tab ───
+   Open https://bytebuddies.technology/?gcdemo=1#classroom and "Connect Google Classroom"
+   goes to Google in the same tab (no pop-up) and comes back to /gc-callback with the
+   Classroom token. Used to record Google's verification video; everyone else keeps the pop-up. */
+const GC_CLIENT_ID = '175950389999-tege9fhcl3497kq5kir4pmdlgeolbo8a.apps.googleusercontent.com';
+export const GC_REDIRECT_PATH = '/gc-callback';
+const DEMO_KEY = 'bb-gc-demo';
+const STATE_KEY = 'bb-gc-state';
+
+export function isGcDemoMode() {
+  try {
+    if (new URLSearchParams(window.location.search).get('gcdemo') === '1') sessionStorage.setItem(DEMO_KEY, '1');
+    return sessionStorage.getItem(DEMO_KEY) === '1';
+  } catch { return false; }
+}
+
+function connectWithRedirect(role) {
+  const state = Math.random().toString(36).slice(2) + Date.now().toString(36);
+  try { sessionStorage.setItem(STATE_KEY, JSON.stringify({ state, role, back: window.location.hash || '#classroom' })); } catch { /* ignore */ }
+  const params = new URLSearchParams({
+    client_id: GC_CLIENT_ID,
+    redirect_uri: `${window.location.origin}${GC_REDIRECT_PATH}`,
+    response_type: 'token',
+    scope: (GC_SCOPES[role] || GC_SCOPES.teacher).join(' '),
+    include_granted_scopes: 'true',
+    prompt: 'select_account consent',
+    state,
+  });
+  window.location.assign(`https://accounts.google.com/o/oauth2/v2/auth?${params}`);
+  return new Promise(() => {}); // the page is leaving
+}
+
+/** Runs before the app starts when Google sends the browser back to /gc-callback. */
+export async function completeGcRedirect() {
+  if (window.location.pathname !== GC_REDIRECT_PATH) return false;
+  const h = new URLSearchParams(window.location.hash.slice(1));
+  let saved = {};
+  try { saved = JSON.parse(sessionStorage.getItem(STATE_KEY) || '{}') || {}; sessionStorage.removeItem(STATE_KEY); } catch { /* ignore */ }
+  const token = h.get('access_token');
+  if (token && h.get('state') && h.get('state') === saved.state) {
+    let email = ''; let name = '';
+    try {
+      const r = await fetch(`${API}/userProfiles/me`, { headers: { Authorization: `Bearer ${token}` } });
+      if (r.ok) { const me = await r.json(); email = me.emailAddress || ''; name = me.name?.fullName || ''; }
+    } catch { /* ignore */ }
+    const session = {
+      token, email, name, photo: '', role: saved.role || 'teacher',
+      exp: Date.now() + (Number(h.get('expires_in')) || 3600) * 1000 - 60_000,
+    };
+    try { sessionStorage.setItem(TOKEN_KEY, JSON.stringify(session)); } catch { /* ignore */ }
+  }
+  window.history.replaceState(null, '', `/${saved.back || '#classroom'}`);
+  return true;
 }
 
 /** Opens Google sign-in asking for Classroom access. Must be called from a click. */
 export async function connectGoogleClassroom(role = 'teacher') {
+  if (isGcDemoMode()) return connectWithRedirect(role);
   const provider = new GoogleAuthProvider();
   (GC_SCOPES[role] || GC_SCOPES.teacher).forEach((s) => provider.addScope(s));
-  provider.setCustomParameters({ prompt: 'select_account' });
+  provider.setCustomParameters({ prompt: 'select_account', include_granted_scopes: 'true' });
   let result;
   try {
-    result = await signInWithPopup(gcAuth(), provider);
+    result = await signInWithPopup(gcAuth(), provider, browserPopupRedirectResolver);
   } catch (e) {
     throw friendly(e);
   }
@@ -104,13 +169,17 @@ export class GcError extends Error {
 
 function friendly(e) {
   const code = e?.code || '';
+  const msg = String(e?.message || '');
   if (code === 'auth/popup-blocked') return new GcError('popup', 'Your browser blocked the Google window. Allow pop-ups for this site and try again.');
   if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') return new GcError('cancelled', 'Google sign-in was closed before it finished.');
   if (code === 'auth/unauthorized-domain') return new GcError('domain', 'This web address is not allowed to use Google sign-in yet.');
-  if (code === 'auth/admin-restricted-operation' || /access_denied|admin_policy/i.test(e?.message || '')) {
+  if (/redirect_uri_mismatch|invalid-oauth-client|auth\/invalid-oauth-client|Error 400/i.test(`${code} ${msg}`)) {
+    return new GcError('redirect', 'Google’s OAuth client is missing ByteBuddies’ Firebase callback URL. Add the callback shown below in Google Cloud Console, then try Connect again.');
+  }
+  if (code === 'auth/admin-restricted-operation' || /access_denied|admin_policy/i.test(msg)) {
     return new GcError('admin', 'Your school\'s Google admin has not allowed ByteBuddies yet. Ask your IT team to trust ByteBuddies in the Google Admin console.');
   }
-  return new GcError('unknown', e?.message || 'Could not connect to Google Classroom.');
+  return new GcError('unknown', msg || 'Could not connect to Google Classroom.');
 }
 
 async function gcFetch(path, { method = 'GET', body } = {}) {
@@ -199,12 +268,6 @@ export async function createCourseWork(courseId, { title, description = '', link
   return { id: cw.id, link: cw.alternateLink };
 }
 
-export async function createAnnouncement(courseId, text, link) {
-  const body = { text, state: 'PUBLISHED', materials: link ? [{ link: { url: link } }] : [] };
-  return gcFetch(`/courses/${courseId}/announcements`, { method: 'POST', body });
-}
-
-/** Pupil side: ByteBuddies work set in their Google Classroom classes. */
 export async function listMyByteBuddiesWork(courses) {
   const all = [];
   for (const c of courses) {

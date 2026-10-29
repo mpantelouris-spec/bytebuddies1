@@ -422,9 +422,16 @@ export function finalizePhotoLighting(scene, renderer, lights, skyId) {
     sun.updateMatrixWorld();
   };
   (scene.getObjectByName('mk8-showcase') || scene).add(hook);
+  // Struggling device: redraw the shadow map every 4th frame instead of turning
+  // shadows off — switching shadows off recompiles every shader (a freeze).
   (scene.userData.perfShedders ||= []).push(() => {
-    if (sun) sun.castShadow = false;
-    renderer.shadowMap.enabled = false;
+    renderer.shadowMap.autoUpdate = false;
+    let n = 0;
+    const tick = hook.onBeforeRender;
+    hook.onBeforeRender = (...args) => {
+      tick(...args);
+      if ((n++ & 3) === 0) renderer.shadowMap.needsUpdate = true;
+    };
   });
   scene.userData.mk8PhotoSky = skyId;
   console.log('[MK8Photo] lighting', skyId);

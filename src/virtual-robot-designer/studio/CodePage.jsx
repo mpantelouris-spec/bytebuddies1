@@ -16,6 +16,7 @@
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import * as THREE from 'three';
 import { buildRobotModel } from '../services/studio-robot-builder.js';
+import { EmojiIcon, IconText } from '../../components/ui/Icon.jsx';
 
 // ─── Block Definitions ───────────────────────────────────────────────────────
 const BLOCK_PALETTE = [
@@ -184,14 +185,14 @@ function WorkspaceBlock({ block, index, onDelete, onMoveUp, onMoveDown, onParamC
         gap: 8,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 18 }}>{block.icon}</span>
+          <span style={{ fontSize: 18 }}><EmojiIcon e={block.icon} /></span>
           <span style={{ fontWeight: 700, fontSize: 13, color: '#fff' }}>{block.label}</span>
           {hasError && (
             <span style={{
               background: '#ef4444', color: '#fff',
               fontSize: 9, fontWeight: 800, padding: '2px 6px', borderRadius: 8,
               marginLeft: 'auto',
-            }}>⚠ NEEDS FIX</span>
+            }}><EmojiIcon e="⚠" style={{ marginRight: '0.35em' }} />NEEDS FIX</span>
           )}
         </div>
 
@@ -411,7 +412,7 @@ export default function CodePage({ robotConfig, robotCode, setRobotCode, onSimul
         <div style={{ flex: 1, overflowY: 'auto', padding: '8px 12px' }}>
           {visibleBlocks.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '20px 0', color: '#475569', fontSize: 11 }}>
-              🔒 Add matching parts in Build to unlock these blocks
+              <EmojiIcon e="🔒" style={{ marginRight: '0.35em' }} />Add matching parts in Build to unlock these blocks
             </div>
           ) : (
             visibleBlocks.map(block => (
@@ -435,7 +436,7 @@ export default function CodePage({ robotConfig, robotCode, setRobotCode, onSimul
                   transition: 'all 0.15s',
                 }}
               >
-                <span style={{ fontSize: 16 }}>{block.icon}</span>
+                <span style={{ fontSize: 16 }}><EmojiIcon e={block.icon} /></span>
                 <div>
                   <div style={{ fontSize: 11, fontWeight: 700 }}>{block.label}</div>
                   {block.params?.length > 0 && (
@@ -458,7 +459,7 @@ export default function CodePage({ robotConfig, robotCode, setRobotCode, onSimul
             color: '#475569',
             lineHeight: 1.4,
           }}>
-            🔒 {lockedCount} blocks locked — add parts in Build tab to unlock
+            <EmojiIcon e="🔒" style={{ marginRight: '0.35em' }} />{lockedCount} blocks locked — add parts in Build tab to unlock
           </div>
         )}
       </div>
@@ -476,7 +477,7 @@ export default function CodePage({ robotConfig, robotCode, setRobotCode, onSimul
         }}>
           <div>
             <div style={{ fontSize: 14, fontWeight: 800, color: '#fff' }}>
-              📝 Code My Robot
+              <EmojiIcon e="📝" style={{ marginRight: '0.35em' }} />Code My Robot
             </div>
             <div style={{ fontSize: 11, color: '#64748b' }}>
               Add blocks below. Click ▶️ to run!
@@ -493,11 +494,11 @@ export default function CodePage({ robotConfig, robotCode, setRobotCode, onSimul
               fontSize: 11, fontWeight: 700,
               color: codeErrors.length > 0 ? '#fca5a5' : codeWarnings.length > 0 ? '#fdba74' : '#86efac',
             }}>
-              {codeErrors.length > 0
+              <IconText>{codeErrors.length > 0
                 ? `⚠ ${codeErrors.length} block issue${codeErrors.length > 1 ? 's' : ''} to fix`
                 : codeWarnings.length > 0
                 ? `💡 ${codeWarnings.length} tip${codeWarnings.length > 1 ? 's' : ''}`
-                : '✓ Code looks good!'}
+                : '✓ Code looks good!'}</IconText>
             </div>
           )}
           <div style={{ display: 'flex', gap: 8 }}>
@@ -515,7 +516,7 @@ export default function CodePage({ robotConfig, robotCode, setRobotCode, onSimul
                   cursor: 'pointer',
                 }}
               >
-                🗑 Clear All
+                <EmojiIcon e="🗑" style={{ marginRight: '0.35em' }} />Clear All
               </button>
             )}
             <button
@@ -534,7 +535,7 @@ export default function CodePage({ robotConfig, robotCode, setRobotCode, onSimul
                 cursor: robotCode.length === 0 ? 'not-allowed' : 'pointer',
               }}
             >
-              ▶️ Run in Simulator
+              <EmojiIcon e="▶️" style={{ marginRight: '0.35em' }} />Run in Simulator
             </button>
           </div>
         </div>
@@ -570,7 +571,7 @@ export default function CodePage({ robotConfig, robotCode, setRobotCode, onSimul
                 border: '2px solid #0d9488',
                 borderRadius: 12,
               }}>
-                <span style={{ fontSize: 18 }}>🤖</span>
+                <span style={{ fontSize: 18 }}><EmojiIcon e="🤖" /></span>
                 <span style={{ fontSize: 13, fontWeight: 800, color: '#5eead4' }}>When Run is pressed</span>
               </div>
 
@@ -600,7 +601,7 @@ export default function CodePage({ robotConfig, robotCode, setRobotCode, onSimul
                 border: '2px solid #6366f1',
                 borderRadius: 12,
               }}>
-                <span style={{ fontSize: 18 }}>🏁</span>
+                <span style={{ fontSize: 18 }}><EmojiIcon e="🏁" /></span>
                 <span style={{ fontSize: 13, fontWeight: 800, color: '#a5b4fc' }}>Program ends</span>
               </div>
             </div>
@@ -641,7 +642,7 @@ export default function CodePage({ robotConfig, robotCode, setRobotCode, onSimul
 
           {/* Movement */}
           <div style={capsulesRow}>
-            <span style={capsule('#22c55e')}>⚙️ {robotConfig.movementId}</span>
+            <span style={capsule('#22c55e')}><EmojiIcon e="⚙️" style={{ marginRight: '0.35em' }} />{robotConfig.movementId}</span>
             <span style={capsule('#64748b', true)}>→ movement blocks</span>
           </div>
 
@@ -653,7 +654,7 @@ export default function CodePage({ robotConfig, robotCode, setRobotCode, onSimul
             });
             return (
               <div key={s} style={capsulesRow}>
-                <span style={capsule('#f97316')}>📡 {s}</span>
+                <span style={capsule('#f97316')}><EmojiIcon e="📡" style={{ marginRight: '0.35em' }} />{s}</span>
                 <span style={capsule('#64748b', true)}>→ {blocks.length} blocks</span>
               </div>
             );
@@ -667,7 +668,7 @@ export default function CodePage({ robotConfig, robotCode, setRobotCode, onSimul
             });
             return (
               <div key={t} style={capsulesRow}>
-                <span style={capsule('#d97706')}>🔧 {t}</span>
+                <span style={capsule('#d97706')}><EmojiIcon e="🔧" style={{ marginRight: '0.35em' }} />{t}</span>
                 <span style={capsule('#64748b', true)}>→ {blocks.length} blocks</span>
               </div>
             );
@@ -682,7 +683,7 @@ export default function CodePage({ robotConfig, robotCode, setRobotCode, onSimul
               borderRadius: 8,
               fontSize: 11,
             }}>
-              <div style={{ fontWeight: 700, color: '#fff', marginBottom: 8 }}>📋 Program</div>
+              <div style={{ fontWeight: 700, color: '#fff', marginBottom: 8 }}><EmojiIcon e="📋" style={{ marginRight: '0.35em' }} />Program</div>
               {robotCode.map((b, i) => (
                 <div key={b.instanceId} style={{ color: '#94a3b8', padding: '2px 0' }}>
                   {i + 1}. {b.label}
@@ -716,7 +717,7 @@ export default function CodePage({ robotConfig, robotCode, setRobotCode, onSimul
               cursor: robotCode.length === 0 ? 'not-allowed' : 'pointer',
             }}
           >
-            ▶️ Test My Robot!
+            <EmojiIcon e="▶️" style={{ marginRight: '0.35em' }} />Test My Robot!
           </button>
         </div>
       </div>
